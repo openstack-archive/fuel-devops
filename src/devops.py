@@ -1,4 +1,6 @@
-from main import *
+__author__ = 'vic'
+#!/usr/bin/env python
+import os, sys
 
 
 def saved(args):
@@ -31,3 +33,33 @@ elif arguments.command == 'resume':
 else:
     help()
     sys.exit(1)
+
+
+from src.devops.controller import Controller
+
+class ControllerSingleton(Controller):
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(ControllerSingleton, cls).__new__(
+                cls, *args, **kwargs)
+        return cls._instance
+
+
+def getController():
+    return ControllerSingleton(Libvirt())
+
+
+def build(environment):
+    getController().build_environment(environment)
+
+
+def destroy(environment):
+    getController().destroy_environment(environment)
+
+
+
+
+if __name__ == "__main__":
+    pass

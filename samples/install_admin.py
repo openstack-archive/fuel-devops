@@ -7,11 +7,10 @@ import time
 import shutil
 from optparse import OptionParser
 
-from devops.model import Environment, Network, Node, Disk, Cdrom, Interface
-from devops.controller import Controller
-from devops.network import IpNetworksPool
-from devops.driver.libvirt import Libvirt
-from devops.helpers import tcp_ping, wait
+from src.devops.model import Environment, Network, Node, Disk, Cdrom, Interface
+from src.devops.controller import Controller
+from src.devops.driver.libvirt import Libvirt
+from src.devops.helpers import tcp_ping, wait
 
 ADMIN_ISO_NAME = 'nailgun-ubuntu-12.04-amd64.last.iso'
 ADMIN_ISO_URL = "http://mc0n1-srt.srt.mirantis.net/%s" % ADMIN_ISO_NAME

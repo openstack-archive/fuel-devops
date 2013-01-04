@@ -1,5 +1,4 @@
 import os
-import os.path
 import urllib
 import stat
 import socket
@@ -7,7 +6,6 @@ import time
 import httplib
 import xmlrpclib
 import paramiko
-import string
 import random
 from threading import Thread
 
@@ -16,9 +14,9 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 import posixpath
 
 import logging
-from devops.error import DevopsError
+from src.devops.error import DevopsError
 
-logger = logging.getLogger('devops.helpers')
+logger = logging.getLogger(__name__)
 
 
 class TimeoutError(Exception):
@@ -309,14 +307,3 @@ def xmlrpcmethod(uri, method):
     except:
         raise AttributeError, "Error occured while getting server method"
 
-def retry(count, func, **kwargs):
-    i = 0
-    while True:
-        #noinspection PyBroadException
-        try:
-            return func(**kwargs)
-        except:
-            if i >= count:
-                raise
-            i += 1
-            time.sleep(1)

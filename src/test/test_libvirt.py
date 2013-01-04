@@ -1,10 +1,10 @@
 import unittest
 import re
 from ipaddr import IPv4Network
-from devops import xml
-from devops.model import Network, Node, Disk, Cdrom
-from devops.network import IPv4Address, IPv4Network
-from devops.driver.libvirt import Libvirt, LibvirtXMLBuilder, DeploymentSpec
+from src.devops.helpers import xml
+from src.devops.model import Network, Node, Cdrom
+from src.devops.helpers.network import IPv4Address
+from src.devops.driver.libvirt import Libvirt, LibvirtXMLBuilder, DeploymentSpec
 
 
 class TestLibvirtXMLBuilder(unittest.TestCase):

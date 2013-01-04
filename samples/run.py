@@ -1,7 +1,7 @@
 import time
 
-import devops
-from devops.helpers import wait, tcp_ping
+from src import devops
+from src.devops.helpers import wait, tcp_ping
 
 import logging
 

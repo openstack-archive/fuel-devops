@@ -1,5 +1,4 @@
 # vim: ts=4 sw=4 expandtab
-from devops import xml, scancodes
 import os
 import tempfile
 import time
@@ -11,7 +10,7 @@ import ipaddr
 import re
 
 import logging
-from devops.helpers import retry
+from src.devops.helpers import retry, scancodes, xml
 
 logger = logging.getLogger('devops.libvirt')
 

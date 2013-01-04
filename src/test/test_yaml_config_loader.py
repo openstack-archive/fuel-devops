@@ -1,5 +1,5 @@
 import unittest
-from devops import yaml_config_loader
+from src.devops import yaml_config_loader
 
 
 class TestYamlConfigLoader(unittest.TestCase):

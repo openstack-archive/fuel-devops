@@ -1,6 +1,6 @@
 import unittest
-import devops
-from devops.helpers import wait, TimeoutError
+from src import devops
+from src.devops.helpers import wait, TimeoutError
 import time
 
 ISO_URL = 'http://mc0n1-srt.srt.mirantis.net/livecd.iso'

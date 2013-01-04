@@ -1,5 +1,4 @@
-from itertools import chain
-from devops.helpers import retry
+from src.devops.helpers import retry
 
 
 class EnvironmentException(object):
@@ -49,6 +48,8 @@ class Environment(ManagedObject):
         for network in self.networks:
             name2network[network.name] = network
         return name2network
+
+
 
 
 class Network(ManagedObject):

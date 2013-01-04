@@ -1,5 +1,5 @@
-from devops import xml
 import unittest
+from src.devops.helpers import xml
 
 
 class TestXml(unittest.TestCase):
