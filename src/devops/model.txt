@@ -25,7 +25,6 @@ class ManagedObject(object):
     def driver(self):
         del self._driver
 
-
 class Environment(ManagedObject):
     def __init__(self, name):
         super(Environment, self).__init__()

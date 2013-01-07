@@ -1,5 +1,5 @@
 import unittest
-from src.devops.helpers import scancodes
+from devops.helpers import scancodes
 
 
 class TestScancodes(unittest.TestCase):

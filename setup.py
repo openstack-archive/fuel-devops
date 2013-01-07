@@ -8,5 +8,5 @@ setup(
     author_email='product@mirantis.com',
     packages=['devops', 'devops.driver'],
     scripts=['bin/devops'],
-    install_requires=['xmlbuilder', "ipaddr", "paramiko", "lxml"]
+    install_requires=['xmlbuilder', "ipaddr", "paramiko", "django"]
 )

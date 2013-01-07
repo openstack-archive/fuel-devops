@@ -1,2 +1,2 @@
 class DevopsError(Exception):
-    pass
+    message ="Devops Error"

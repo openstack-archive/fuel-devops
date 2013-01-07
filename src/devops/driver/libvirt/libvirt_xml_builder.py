@@ -1,7 +1,7 @@
 from collections import deque
-from ipaddr import IPNetwork
+from ipaddr import IPNetwork, IPAddress
 from xmlbuilder import XMLBuilder
-from src.devops.models import Node
+from src.devops.models import Node, Volume, Network
 
 
 class LibvirtXMLBuilder:
@@ -14,12 +14,6 @@ class LibvirtXMLBuilder:
             hash_str = str(hash(name))
             name=hash_str+name[len(name)-self.NAME_SIZE+len(hash_str):]
         return  name
-
-    def find(self, p, seq):
-        for item in seq:
-            if p(item):
-                return item
-        return None
 
     def build_network_xml(self, network):
         """
@@ -34,30 +28,26 @@ class LibvirtXMLBuilder:
             ip_network = IPNetwork(network.ip_network)
             with network_xml.ip(
                 address=str(ip_network.network),
-                prefix=str(network.ip_network.prefixlen)):
+                prefix=str(ip_network.prefixlen)):
                 if network.has_pxe_server:
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:
                     with network_xml.dhcp:
-                        allowed_addresses = list(network.ip_addresses)[2: - 2]
-                        network_xml.range(start=str(start), end=str(end))
+                        network_xml.range(start=str(network.dhcp_start), end=str(network.dhcp_end))
                         for interface in network.interfaces:
-                            address = self.find(
-                                lambda ip: ip in allowed_addresses,
-                                interface.ip_addresses
-                            )
-                            if address and interface.mac_address:
-                                network_xml.host(
-                                    mac=str(interface.mac_address),
-                                    ip=str(address),
-                                    name=interface.node.name
-                                )
-                        if network.pxe:
+                            for address in interface.addresses:
+                                if IPAddress(address) in ip_network:
+                                    network_xml.host(
+                                        mac=str(interface.mac_address),
+                                        ip=str(address),
+                                        name=interface.node.name
+                                    )
+                        if network.has_pxe_server:
                             network_xml.bootp(file="pxelinux.0")
 
         return str(network_xml)
 
-    def build_volume_xml(self, volume, backing_store_path=None):
+    def build_volume_xml(self, volume):
         """
         :type volume: Volume
         :type backing_store_path: String
@@ -70,7 +60,7 @@ class LibvirtXMLBuilder:
             volume_xml.format(type=volume.format)
         if volume.backing_store:
             with volume_xml.backing_store:
-                volume_xml.path = backing_store_path
+                volume_xml.path = volume.backing_store.path
                 volume_xml.format = volume.backing_store.format
         return str(volume_xml)
 
@@ -85,6 +75,17 @@ class LibvirtXMLBuilder:
             xml_builder.name(name)
         if not (description is None):
             xml_builder.description(description)
+
+    def _build_disk_device(self, device_xml, disk_device):
+        with device_xml.disk(type=disk_device.type, device=disk_device.device):
+            device_xml.source(file=disk_device.path)
+            device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
+
+    def _build_interface_device(self, device_xml, interface):
+        with device_xml.interface(type=interface.type):
+            device_xml.source(network=interface.network.id)
+            if not (interface.type is None):
+                device_xml.model(type=interface.type)
 
     def build_node_xml(self, node, emulator):
         """
@@ -101,41 +102,20 @@ class LibvirtXMLBuilder:
             for boot_dev in node.boot:
                 node_xml.boot(dev=boot_dev)
 
-        serial_disk_names = deque(
-            ['sd' + c for c in list('abcdefghijklmnopqrstuvwxyz')])
-
-        def disk_name():
-            return serial_disk_names.popleft()
-
         with node_xml.devices:
             node_xml.emulator(emulator)
-
-            if len(node.disks) > 0:
-                node_xml.controller(type="ide")
-
-            for disk in node.disks:
-                with node_xml.disk(type="file", device="disk"):
-#                    node_xml.driver(
-#                        name="qemu", type=disk.format,
-#                        cache="unsafe")
-                    node_xml.source(file=disk.path)
-                    node_xml.target(dev=disk_name(disk.bus), bus=disk.bus)
-
-            if node.cdrom:
-                with node_xml.disk(type="file", device="cdrom"):
-#                    node_xml.driver(name="qemu", type="raw")
-                    node_xml.source(file=node.cdrom.isopath)
-                    node_xml.target(
-                        dev=disk_name(node.cdrom.bus),
-                        bus=node.cdrom.bus)
-
-            for interface in node.interfaces:
-                with node_xml.interface(type=interface.type):
-                    node_xml.source(network=interface.network.id)
-                    if not (interface.type is None):
-                        node_xml.model(type=interface.type)
-
             if node.has_vnc:
                 node_xml.graphics(type='vnc', listen='0.0.0.0', autoport='yes')
 
+            for disk_device in node.disk_devices:
+                self._build_disk_device(node_xml, disk_device)
+            for interface in node.interfaces:
+                self._build_interface_device(node_xml, interface)
+
         return str(node_xml)
+
+serial_disk_names = deque(
+    ['sd' + c for c in list('abcdefghijklmnopqrstuvwxyz')])
+
+def disk_name():
+    return serial_disk_names.popleft()

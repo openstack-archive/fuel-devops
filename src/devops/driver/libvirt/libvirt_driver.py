@@ -10,10 +10,10 @@ from src.devops.models import Node, Volume
 
 
 class LibvirtDriver:
-    def __init__(self, name, xml_builder=LibvirtXMLBuilder()):
+    def __init__(self, connection_string="", xml_builder=LibvirtXMLBuilder()):
         self.xml_builder = xml_builder
         libvirt.virInitialize()
-        self.conn = libvirt.open(name)
+        self.conn = libvirt.open(connection_string)
         self.capabilities = None
 
     @retry()
@@ -171,7 +171,6 @@ class LibvirtDriver:
         xml = self.xml_builder.build_snapshot_xml(name, description)
         self.conn.lookupByUUID(node.uuid).snapshotCreateXML(xml)
 
-    @retry()
     def _get_snapshot(self, domain, name):
         """
         :type name: String
