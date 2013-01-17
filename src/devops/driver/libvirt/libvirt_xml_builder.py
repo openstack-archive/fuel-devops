@@ -33,7 +33,7 @@ class LibvirtXMLBuilder:
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:
                     with network_xml.dhcp:
-                        network_xml.range(start=str(network.dhcp_start), end=str(network.dhcp_end))
+                        network_xml.range(start=str(network.ip_pool_start), end=str(network.ip_pool_end))
                         for interface in network.interfaces:
                             for address in interface.addresses:
                                 if IPAddress(address) in ip_network:

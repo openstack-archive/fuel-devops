@@ -1,5 +1,6 @@
 from ipaddr import IPNetwork
-from devops.managers import EnvironmentManager, NodeManager, DiskDeviceManager, VolumeManager, AddressManager, NetworkManager
+#from devops.driver.libvirt.libvirt_driver import LibvirtDriver
+from devops.managers import EnvironmentManager, NodeManager, DiskDeviceManager, VolumeManager, AddressManager, NetworkManager, InterfaceManager
 
 from django.db import models
 
@@ -15,7 +16,24 @@ def double_tuple(*args):
         dict.append((arg,arg))
     return tuple(dict)
 
+_driver = None
+def get_driver():
+    """
+        :rtype : LibvirtDriver
+    """
+    global _driver
+    return _driver or LibvirtDriver()
+
+
 class ExternalModel(models.Model):
+
+    @property
+    def driver(self):
+        """
+        :rtype : LibvirtDriver
+        """
+        return get_driver()
+
     name = models.CharField(max_length=255, unique=True, null=False)
     uuid = models.CharField(max_length=255)
 
@@ -31,6 +49,10 @@ class Environment(models.Model):
     def networks(self):
         return Network.objects.filter(environment=self)
 
+    @property
+    def volumes(self):
+        return Volume.objects.filter(environment=self)
+
     def node_by_name(self, name):
         self.nodes.filter(name=name)
 
@@ -40,7 +62,37 @@ class Environment(models.Model):
     def network_by_name(self, name):
         self.networks.filter(name=name)
 
+    def define(self):
+        for network in self.networks:
+            network.define()
+        for volume in self.volumes:
+            volume.define()
+        for node in self.nodes:
+            node.define()
+        self.delete()
+
+    def start(self):
+        for network in self.networks:
+            network.start()
+        for node in self.nodes:
+            node.start()
+
+    def destroy(self):
+        for node in self.nodes:
+            node.destroy()
+
+    def remove(self):
+        for node in self.nodes:
+            node.remove()
+        for network in self.networks:
+            network.remove()
+        for volume in self.volumes:
+            volume.remove()
+
+
 class Network(ExternalModel):
+    _iterhosts = None
+
     has_dhcp_server = models.BooleanField()
     has_pxe_server = models.BooleanField()
     has_reserved_ips = models.BooleanField(default=True)
@@ -55,8 +107,37 @@ class Network(ExternalModel):
         return Interface.objects.filter(network=self)
 
     @property
-    def dhcp_start(self):
-        return IPNetwork(self.ip_network).iterhosts
+    def ip_pool_start(self):
+        return IPNetwork(self.ip_network)[2]
+
+    @property
+    def ip_pool_end(self):
+        return IPNetwork(self.ip_network)[-2]
+
+    def next_ip(self):
+        while True:
+            self._iterhosts = self._iterhosts or IPNetwork(self.ip_network).iterhosts()
+            ip = self._iterhosts.next()
+            if ip<self.ip_pool_start or ip>self.ip_pool_end:
+                continue
+            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).count():
+                return ip
+
+    def bridge_name(self):
+        self.driver.network_bridge_name(self)
+
+    def define(self):
+        self.driver.network_define(self)
+        self.save()
+
+    def start(self):
+        self.driver.network_start(self)
+
+    def destroy(self):
+        self.driver.network_destroy(self)
+
+    def remove(self):
+        self.driver.network_delete(self)
 
 class Node(ExternalModel):
     hypervisor = choices('kvm')
@@ -79,6 +160,22 @@ class Node(ExternalModel):
     def interfaces(self):
         return Interface.objects.filter(node=self)
 
+    def interface_by_name(self, name):
+        self.interfaces.filter(name=name)
+
+    def define(self):
+        self.driver.node_define(self)
+        self.save()
+
+    def start(self):
+        self.driver.node_start(self)
+
+    def destroy(self):
+        self.driver.node_destroy(self)
+
+    def remove(self):
+        self.driver.node_delete(self)
+
 class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')
     type = choices('file')
@@ -90,17 +187,54 @@ class Volume(ExternalModel):
     capacity = models.IntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
-    objects = VolumeManager()
     environment = models.ForeignKey(Environment, null=True)
+    objects = VolumeManager()
 
-class Interface(ExternalModel):
+    @property
+    def path(self):
+        return self.driver.volume_path(self)
+
+    def define(self):
+        self.driver.volume_define(self)
+        self.save()
+
+    def remove(self):
+        self.driver.volume_delete(self)
+
+class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
     network = models.ForeignKey(Network)
     node = models.ForeignKey(Node)
     type = models.CharField(max_length=255, null=False)
-    target_dev = models.CharField(max_length=255, unique=True, null=False)
+    target_dev = models.CharField(max_length=255, unique=True, null=True)
+    objects = InterfaceManager()
+
+    @property
+    def addresses(self):
+        return Address.objects.filter(interface=self)
+
+    def add_address(self, address):
+        Address.objects.create_address(ip_address=address, interface=self)
 
 class Address(models.Model):
     ip_address = models.GenericIPAddressField()
     interface = models.ForeignKey(Interface)
     objects = AddressManager()
+
+class IpNetworksPool:
+    def __init__(self, networks, prefix):
+        allocated_networks = get_driver().get_allocated_networks()
+        self._sub_nets = self._initialize(networks, prefix, allocated_networks)
+
+    def _overlaps(self, network, allocated_networks):
+        return any(an.overlaps(network) for an in allocated_networks)
+
+    def _initialize(self, networks, prefix, allocated_networks):
+        for network in networks:
+            for sub_net in network.iter_subnets(new_prefix=prefix):
+                if not self._overlaps(sub_net, allocated_networks):
+                    if not Network.objects.filter(ip_network=str(sub_net)).count():
+                        yield sub_net
+
+    def __iter__(self):
+        return self._sub_nets

@@ -33,7 +33,7 @@ class LibvirtDriver:
         self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
 
     @retry()
-    def network_create(self, network):
+    def network_define(self, network):
         """
         :rtype : None
         """
@@ -57,14 +57,14 @@ class LibvirtDriver:
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
-    def network_stop(self, network):
+    def network_destroy(self, network):
         """
         :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).destroy()
 
     @retry()
-    def node_create(self, node):
+    def node_define(self, node):
         """
         :type node: Node
         :rtype : None
@@ -219,7 +219,7 @@ class LibvirtDriver:
                 len(key_codes), 0, 0)
 
     @retry()
-    def volume_create(self, volume, pool='default'):
+    def volume_define(self, volume, pool='default'):
         """
         :type volume: Volume
         :type pool: String
@@ -228,6 +228,10 @@ class LibvirtDriver:
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume))
         volume.uuid = libvirt_volume.key()
+
+    @retry()
+    def volume_path(self, volume):
+        return self.conn.storageVolLookupByKey(volume.uuid).path()
 
     def _get_file_size(self, file):
         """

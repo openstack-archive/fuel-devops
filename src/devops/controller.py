@@ -23,7 +23,6 @@ class Controller:
                     for address in interface.ip_addresses:
                         if address in network.ip_addresses:
                             allocated_addresses.append(address)
-                dhcp_allowed_addresses = list(network.ip_addresses)[2:-2]
                 for interface in network.interfaces:
                     logger.info("Enumerated interfaces '%s' '%s'" % (interface.node, interface.network.name))
                     logger.info(list(interface.ip_addresses))
@@ -44,17 +43,7 @@ class Controller:
             self._build_node(node)
             node.driver = self.driver
 
-    def destroy_environment(self, environment):
-        for node in environment.nodes:
-            self.driver.stop_node(node)
-            for snapshot in node.snapshots:
-                self.driver.delete_snapshot(node, snapshot)
-            for disk in node.disks:
-                self.driver.delete_disk(disk)
-            self.driver.delete_node(node)
 
-        for network in environment.networks:
-            self.driver.delete_network(network)
 
     def _build_node(self, node):
         for disk in filter(lambda d: d.path is None, node.disks):
