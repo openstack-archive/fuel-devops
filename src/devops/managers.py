@@ -31,13 +31,15 @@ class NetworkManager(models.Manager):
         return self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
 
     def create_network(
-        self, environment, name, ip_network = None, pool=None, has_dhcp_server=False, has_pxe_server=False,
+        self, name, environment=None, ip_network = None, pool=None, has_dhcp_server=False, has_pxe_server=False,
         forward='route'):
-        _pool = pool or self._get_default_pool()
-        return super(NetworkManager, self).create(environment=environment, name=name, ip_network=ip_network or _pool.next(), has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server, forward=forward)
+        allocated_network = ip_network or environment.allocate_network(pool or self._get_default_pool())
+        return super(NetworkManager, self).create(environment=environment, name=name, ip_network=ip_network or allocated_network, has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server, forward=forward)
 
 class NodeManager(models.Manager):
-    pass
+
+    def create_node(self, name, environment=None, role=None, vcpu=1, memory=1024, has_vnc=True, metadata=None):
+        return super(NodeManager, self).create(name=name, environment=environment, role=role, vcpu=vcpu, memory=1024, has_vnc=has_vnc, metadata=None)
 
 class DiskDeviceManager(models.Manager):
     pass

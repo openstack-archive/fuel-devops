@@ -34,12 +34,20 @@ class ExternalModel(models.Model):
         """
         return get_driver()
 
-    name = models.CharField(max_length=255, unique=True, null=False)
+    name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
 
 class Environment(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
     objects = EnvironmentManager()
+
+#   TODO find corresponded place
+    @property
+    def driver(self):
+        """
+        :rtype : LibvirtDriver
+        """
+        return get_driver()
 
     @property
     def nodes(self):
@@ -52,6 +60,15 @@ class Environment(models.Model):
     @property
     def volumes(self):
         return Volume.objects.filter(environment=self)
+
+    def allocated_networks(self):
+        return self.driver.get_allocated_networks()
+
+    def allocate_network(self, pool):
+        while True:
+            ip_network = pool.next()
+            if not Network.objects.filter(ip_network=str(ip_network)).count():
+                return ip_network
 
     def node_by_name(self, name):
         self.nodes.filter(name=name)
@@ -114,6 +131,7 @@ class Network(ExternalModel):
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
 
+
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(self.ip_network).iterhosts()
@@ -138,6 +156,7 @@ class Network(ExternalModel):
 
     def remove(self):
         self.driver.network_delete(self)
+        self.delete()
 
 class Node(ExternalModel):
     hypervisor = choices('kvm')
@@ -175,6 +194,7 @@ class Node(ExternalModel):
 
     def remove(self):
         self.driver.node_delete(self)
+        self.delete()
 
 class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')
@@ -200,6 +220,7 @@ class Volume(ExternalModel):
 
     def remove(self):
         self.driver.volume_delete(self)
+        self.delete()
 
 class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
@@ -221,20 +242,4 @@ class Address(models.Model):
     interface = models.ForeignKey(Interface)
     objects = AddressManager()
 
-class IpNetworksPool:
-    def __init__(self, networks, prefix):
-        allocated_networks = get_driver().get_allocated_networks()
-        self._sub_nets = self._initialize(networks, prefix, allocated_networks)
 
-    def _overlaps(self, network, allocated_networks):
-        return any(an.overlaps(network) for an in allocated_networks)
-
-    def _initialize(self, networks, prefix, allocated_networks):
-        for network in networks:
-            for sub_net in network.iter_subnets(new_prefix=prefix):
-                if not self._overlaps(sub_net, allocated_networks):
-                    if not Network.objects.filter(ip_network=str(sub_net)).count():
-                        yield sub_net
-
-    def __iter__(self):
-        return self._sub_nets
