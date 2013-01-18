@@ -1,6 +1,5 @@
 from ipaddr import IPNetwork
-#from devops.driver.libvirt.libvirt_driver import LibvirtDriver
-from devops.managers import EnvironmentManager, NodeManager, DiskDeviceManager, VolumeManager, AddressManager, NetworkManager, InterfaceManager
+from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 
 from django.db import models
 
@@ -36,10 +35,10 @@ class ExternalModel(models.Model):
 
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
+    #TODO constarint name env.manme
 
 class Environment(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
-    objects = EnvironmentManager()
 
 #   TODO find corresponded place
     @property
@@ -48,18 +47,6 @@ class Environment(models.Model):
         :rtype : LibvirtDriver
         """
         return get_driver()
-
-    @property
-    def nodes(self):
-        return Node.objects.filter(environment=self)
-
-    @property
-    def networks(self):
-        return Network.objects.filter(environment=self)
-
-    @property
-    def volumes(self):
-        return Volume.objects.filter(environment=self)
 
     def allocated_networks(self):
         return self.driver.get_allocated_networks()
@@ -71,13 +58,13 @@ class Environment(models.Model):
                 return ip_network
 
     def node_by_name(self, name):
-        self.nodes.filter(name=name)
+        return self.nodes.filter(name=name, environment=self)
 
     def nodes_by_role(self, role):
-        self.nodes.filter(role=role)
+        return self.nodes.filter(role=role, environment=self)
 
     def network_by_name(self, name):
-        self.networks.filter(name=name)
+        return self.networks.filter(name=name, environment=self)
 
     def define(self):
         for network in self.networks:
@@ -86,7 +73,6 @@ class Environment(models.Model):
             volume.define()
         for node in self.nodes:
             node.define()
-        self.delete()
 
     def start(self):
         for network in self.networks:
@@ -116,8 +102,7 @@ class Network(ExternalModel):
     tftp_root_dir = models.CharField(max_length=255)
     forward = choices('nat', 'route', 'bridge', 'private', 'vepa', 'passthrough', 'hostdev')
     ip_network = models.CharField(max_length=255, unique=True)
-    environment = models.ForeignKey(Environment, null=True)
-    objects = NetworkManager()
+    environment = models.ForeignKey(Environment, null=True, related_name='networks')
 
     @property
     def interfaces(self):
@@ -168,16 +153,7 @@ class Node(ExternalModel):
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
-    environment = models.ForeignKey(Environment, null=True)
-    objects = NodeManager()
-
-    @property
-    def disk_devices(self):
-        return DiskDevice.objects.filter(node=self)
-
-    @property
-    def interfaces(self):
-        return Interface.objects.filter(node=self)
+    environment = models.ForeignKey(Environment, null=True, related_name='nodes')
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
@@ -201,14 +177,13 @@ class DiskDevice(models.Model):
     type = choices('file')
     bus = choices('virtio')
     target_dev =  models.CharField(max_length=255, null=False)
-    objects = DiskDeviceManager()
+    node = models.ForeignKey(Node, null=True, related_name='disk_devices')
 
 class Volume(ExternalModel):
     capacity = models.IntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
-    environment = models.ForeignKey(Environment, null=True)
-    objects = VolumeManager()
+    environment = models.ForeignKey(Environment, null=True, related_name='volumes')
 
     @property
     def path(self):
@@ -224,22 +199,14 @@ class Volume(ExternalModel):
 
 class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
-    network = models.ForeignKey(Network)
-    node = models.ForeignKey(Node)
+    network = models.ForeignKey(Network, related_name='interfaces')
+    node = models.ForeignKey(Node, related_name='interfaces')
     type = models.CharField(max_length=255, null=False)
     target_dev = models.CharField(max_length=255, unique=True, null=True)
-    objects = InterfaceManager()
-
-    @property
-    def addresses(self):
-        return Address.objects.filter(interface=self)
 
     def add_address(self, address):
-        Address.objects.create_address(ip_address=address, interface=self)
+        Address.objects.create(ip_address=address, interface=self)
 
 class Address(models.Model):
     ip_address = models.GenericIPAddressField()
-    interface = models.ForeignKey(Interface)
-    objects = AddressManager()
-
-
+    interface = models.ForeignKey(Interface, related_name='addresses')

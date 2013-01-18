@@ -1,8 +1,6 @@
 from django.utils import unittest
-from devops.models import choices, double_tuple
+from devops.models import double_tuple
 
-
-__author__ = 'vic'
 
 class TestModels(unittest.TestCase):
 

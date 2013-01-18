@@ -1,14 +1,13 @@
 from collections import deque
 from ipaddr import IPNetwork, IPAddress
 from xmlbuilder import XMLBuilder
-from src.devops.models import Node, Volume, Network
 
 
-class LibvirtXMLBuilder:
+class LibvirtXMLBuilder(object):
 
     NAME_SIZE = 80
 
-    def get_name(self, *args):
+    def _get_name(self, *args):
         name = '_'.join(list(args))
         if len(name) > self.NAME_SIZE:
             hash_str = str(hash(name))
@@ -21,7 +20,7 @@ class LibvirtXMLBuilder:
         :rtype : String
         """
         network_xml = XMLBuilder('network')
-        network_xml.name(self.get_name(network.environment and network.environment.name or '', network.name))
+        network_xml.name(self._get_name(network.environment and network.environment.name or '', network.name))
         if not (network.forward is None):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):
@@ -54,7 +53,7 @@ class LibvirtXMLBuilder:
         :rtype : String
         """
         volume_xml = XMLBuilder('volume')
-        volume_xml.name(self.get_name(volume.environment and volume.environment.name or '', volume.name))
+        volume_xml.name(self._get_name(volume.environment and volume.environment.name or '', volume.name))
         volume_xml.capacity(volume.capacity)
         with volume_xml.target:
             volume_xml.format(type=volume.format)
@@ -93,7 +92,7 @@ class LibvirtXMLBuilder:
         :type node: Node
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
-        node_xml.name(self.get_name(node.environment and node.environment.name or '', node.name))
+        node_xml.name(self._get_name(node.environment and node.environment.name or '', node.name))
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory), unit='MiB')
 

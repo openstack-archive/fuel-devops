@@ -1,4 +1,4 @@
-class IpNetworksPool:
+class IpNetworksPool(object):
     def __init__(self, networks, prefix):
         self.networks = networks
         self.prefix = prefix

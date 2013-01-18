@@ -1,4 +1,3 @@
-__author__ = 'vic'
 #!/usr/bin/env python
 import os, sys
 

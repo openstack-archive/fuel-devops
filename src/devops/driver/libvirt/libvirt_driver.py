@@ -1,15 +1,15 @@
 # vim: ts=4 sw=4 expandtab
 from time import sleep
-import libvirt
-from src.devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
-from src.devops.helpers import scancodes
-from src.devops.helpers.retry import retry
+#import libvirt
+from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from devops.helpers import scancodes
+from devops.helpers.retry import retry
 import xml.etree.ElementTree as ET
 import ipaddr
-from src.devops.models import Node, Volume
 
 
-class LibvirtDriver:
+
+class LibvirtDriver(object):
     def __init__(self, connection_string="", xml_builder=LibvirtXMLBuilder()):
         self.xml_builder = xml_builder
         libvirt.virInitialize()
@@ -28,6 +28,7 @@ class LibvirtDriver:
     @retry()
     def network_bridge_name(self, network):
         """
+        :type network: Network
         :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
