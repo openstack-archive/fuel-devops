@@ -3,17 +3,30 @@ from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address, Interface, Node, Network, Environment
 
-__author__ = 'vic'
-
 class Manager(object):
     def create_environment(self, name):
         return Environment.objects.create(name=name)
 
     def list_environments(self):
-        return Environment.objects.values('name')
+        return Environment.objects.all()
 
     def get_environment(self, name):
         return Environment.objects.get(name=name)
+
+    def erase_environment(self, environment):
+        environment.erase()
+
+    def snapshot_environment(self, environment, name):
+        environment.snapshot(name)
+
+    def revert_environment(self, environment, name):
+        environment.revert(name)
+
+    def suspend_environment(self, environment):
+        environment.suspend()
+
+    def resume_environment(self, environment):
+        environment.resume()
 
     def create_network_pool(self, networks, prefix):
         return IpNetworksPool(networks=networks, prefix=prefix)
@@ -47,7 +60,6 @@ class Manager(object):
 
     def upload(self, path):
         pass
-
 
     def _generate_mac(self):
         return generate_mac()

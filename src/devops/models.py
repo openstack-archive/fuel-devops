@@ -89,6 +89,22 @@ class Environment(models.Model):
         for volume in self.volumes:
             volume.erase()
 
+    def suspend(self):
+        for node in self.nodes:
+            node.suspend()
+
+    def resume(self):
+        for node in self.nodes:
+            node.resume()
+
+    def snapshot(self, name=None):
+        for node in self.nodes:
+            node.snapshot(name)
+
+    def revert(self, name=None):
+        for node in self.nodes:
+            node.revert(name)
+
 class ExternalModel(models.Model):
 
     @property
@@ -224,6 +240,18 @@ class Node(ExternalModel):
                     self.driver.node_destroy(self)
                 self.driver.node_undefine(self)
         self.delete()
+
+    def suspend(self):
+        self.driver.node_suspend(self)
+
+    def resume(self):
+        self.driver.node_resume(self)
+
+    def snapshot(self, name=None):
+        self.driver.node_create_snapshot(name)
+
+    def revert(self, name=None):
+        self.driver.node_revert_snapshot(name)
 
 class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')

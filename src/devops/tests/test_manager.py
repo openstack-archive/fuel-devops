@@ -22,7 +22,7 @@ class TestManager(TestCase):
 
     def test_network_iterator(self):
         environment = self.manager.create_environment('test_env')
-        node = self.manager.create_node('test_node')
+        node = self.manager.create_node('test_node', environment)
         network = self.manager.create_network(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
         interface = self.manager.create_interface(network=network, node=node)
@@ -53,6 +53,7 @@ class TestManager(TestCase):
             environment=environment, name='private', pool=None).ip_network))
 
     def test_node_creation(self):
+        environment = None
         try:
             print 1
             environment = self.manager.create_environment('test_env2')
@@ -68,8 +69,8 @@ class TestManager(TestCase):
 #            self.manager.create_interface(node=node, network=private)
             environment.define()
         except:
-            print 2
-            environment.erase()
+            if environment:
+                environment.erase()
             raise
 
 
