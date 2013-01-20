@@ -5,6 +5,10 @@ from xmlbuilder import XMLBuilder
 
 class LibvirtXMLBuilder(object):
 
+    def __init__(self, driver):
+        super(LibvirtXMLBuilder, self).__init__()
+        self.driver = driver
+
     NAME_SIZE = 80
 
     def _get_name(self, *args):
@@ -49,7 +53,6 @@ class LibvirtXMLBuilder(object):
     def build_volume_xml(self, volume):
         """
         :type volume: Volume
-        :type backing_store_path: String
         :rtype : String
         """
         volume_xml = XMLBuilder('volume')
@@ -59,7 +62,7 @@ class LibvirtXMLBuilder(object):
             volume_xml.format(type=volume.format)
         if volume.backing_store:
             with volume_xml.backing_store:
-                volume_xml.path = volume.backing_store.path
+                volume_xml.path = self.driver.volume_path(volume.backing_store)
                 volume_xml.format = volume.backing_store.format
         return str(volume_xml)
 
@@ -82,7 +85,7 @@ class LibvirtXMLBuilder(object):
 
     def _build_interface_device(self, device_xml, interface):
         with device_xml.interface(type=interface.type):
-            device_xml.source(network=interface.network.id)
+            device_xml.source(network=self.driver.network_name(interface.network))
             if not (interface.type is None):
                 device_xml.model(type=interface.type)
 
@@ -92,6 +95,7 @@ class LibvirtXMLBuilder(object):
         :type node: Node
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
+        print node.environment
         node_xml.name(self._get_name(node.environment and node.environment.name or '', node.name))
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory), unit='MiB')
@@ -113,8 +117,8 @@ class LibvirtXMLBuilder(object):
 
         return str(node_xml)
 
-serial_disk_names = deque(
-    ['sd' + c for c in list('abcdefghijklmnopqrstuvwxyz')])
-
-def disk_name():
-    return serial_disk_names.popleft()
+#serial_disk_names = deque(
+#    ['sd' + c for c in list('abcdefghijklmnopqrstuvwxyz')])
+#
+#def disk_name():
+#    return serial_disk_names.popleft()

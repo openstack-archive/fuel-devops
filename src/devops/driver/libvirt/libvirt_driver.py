@@ -1,6 +1,6 @@
 # vim: ts=4 sw=4 expandtab
 from time import sleep
-#import libvirt
+import libvirt
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers import scancodes
 from devops.helpers.retry import retry
@@ -8,12 +8,11 @@ import xml.etree.ElementTree as ET
 import ipaddr
 
 
-
 class LibvirtDriver(object):
-    def __init__(self, connection_string="", xml_builder=LibvirtXMLBuilder()):
-        self.xml_builder = xml_builder
+    def __init__(self, connection_string=""):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
+        self.xml_builder = LibvirtXMLBuilder(self)
         self.capabilities = None
 
     @retry()
@@ -29,9 +28,77 @@ class LibvirtDriver(object):
     def network_bridge_name(self, network):
         """
         :type network: Network
-        :rtype : None
+        :rtype : String
         """
-        self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
+        return self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
+
+    @retry()
+    def network_name(self, network):
+        """
+        :type network: Network
+        :rtype : String
+        """
+        return self.conn.networkLookupByUUIDString(network.uuid).name()
+
+
+    @retry()
+    def network_active(self, network):
+        """
+        :type network: Network
+        :rtype : Boolean
+        """
+        return self.conn.networkLookupByUUID(network.uuid).isActive()
+
+    @retry()
+    def node_active(self, node):
+        """
+        :type node: Node
+        :rtype : Boolean
+        """
+        return self.conn.networkLookupByUUID(node.uuid).isActive()
+
+
+    @retry()
+    def network_exists(self, network):
+        """
+        :type network: Network
+        :rtype : Boolean
+        """
+        try:
+            self.conn.networkLookupByUUID(network.uuid)
+            return True
+        except libvirt.libvirtError, e:
+            if e.get_error_message() ==  'virNetworkLookupByUUID() failed':
+                return False
+        raise
+
+    @retry()
+    def node_exists(self, node):
+        """
+        :type node: Node
+        :rtype : Boolean
+        """
+        try:
+            self.conn.lookupByUUID(node.uuid)
+            return True
+        except libvirt.libvirtError, e:
+            if e.get_error_message() ==  'virDomainLookupByUUID() failed':
+                return False
+        raise
+
+    @retry()
+    def volume_exists(self, volume):
+        """
+        :type volume: Volume
+        :rtype : Boolean
+        """
+        try:
+            self.conn.storageVolLookupByKey(volume.uuid)
+            return True
+        except libvirt.libvirtError, e:
+            if e.get_error_message() ==  'virStorageVolLookupByKey() failed':
+                return False
+        raise
 
     @retry()
     def network_define(self, network):
@@ -40,18 +107,24 @@ class LibvirtDriver(object):
         """
         network.uuid = self.conn.networkDefineXML(
             self.xml_builder.build_network_xml(network)
-        ).UUID()
+        ).UUIDString()
 
     @retry()
-    def network_delete(self, network):
+    def network_destroy(self, network):
         """
         :rtype : None
         """
         self.conn.networkLookupByUUID(network.uuid).destroy()
+
+    @retry()
+    def network_undefine(self, network):
+        """
+        :rtype : None
+        """
         self.conn.networkLookupByUUID(network.uuid).undefine()
 
     @retry()
-    def network_start(self, network):
+    def network_create(self, network):
         """
         :rtype : None
         """
@@ -75,15 +148,25 @@ class LibvirtDriver(object):
             'guest/arch[@name="{0:>s}"]/domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
-        self.uuid = self.conn.createXML(node_xml, 0).UUID()
+        for network in node.networks:
+            if not self.network_active:
+                self.network_create(network)
+        self.uuid = self.conn.createXML(node_xml, 0).UUIDString()
 
     @retry()
-    def node_delete(self, node):
+    def node_destroy(self, node):
         """
         :type node: Node
         :rtype : None
         """
         self.conn.lookupByUUID(node.uuid).destroy()
+
+    @retry()
+    def node_undefine(self, node):
+        """
+        :type node: Node
+        :rtype : None
+        """
         self.conn.lookupByUUID(node.uuid).undefine()
 
     @retry()
@@ -98,7 +181,7 @@ class LibvirtDriver(object):
             return vnc_element.get('port')
 
     @retry()
-    def node_start(self, node):
+    def node_create(self, node):
         """
         :type node: Node
         :rtype : None
@@ -260,7 +343,7 @@ class LibvirtDriver(object):
         :type volume: Volume
         :rtype : None
         """
-        self.conn.storageVolLookupByKey(volume.uuid)
+        self.conn.storageVolLookupByKey(volume.uuid).delete(0)
 
     @retry()
     def get_allocated_networks(self):

@@ -35,7 +35,9 @@ class ExternalModel(models.Model):
 
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
-    #TODO constarint name env.manme
+
+    class Meta:
+        unique_together = ('name', 'environment')
 
 class Environment(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
@@ -47,6 +49,18 @@ class Environment(models.Model):
         :rtype : LibvirtDriver
         """
         return get_driver()
+
+    @property
+    def volumes(self):
+        return Volume.objects.filter(environment=self)
+
+    @property
+    def networks(self):
+        return Network.objects.filter(environment=self)
+
+    @property
+    def nodes(self):
+        return Node.objects.filter(environment=self)
 
     def allocated_networks(self):
         return self.driver.get_allocated_networks()
@@ -102,7 +116,7 @@ class Network(ExternalModel):
     tftp_root_dir = models.CharField(max_length=255)
     forward = choices('nat', 'route', 'bridge', 'private', 'vepa', 'passthrough', 'hostdev')
     ip_network = models.CharField(max_length=255, unique=True)
-    environment = models.ForeignKey(Environment, null=True, related_name='networks')
+    environment = models.ForeignKey(Environment, null=True)
 
     @property
     def interfaces(self):
@@ -116,7 +130,6 @@ class Network(ExternalModel):
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
 
-
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(self.ip_network).iterhosts()
@@ -127,20 +140,30 @@ class Network(ExternalModel):
                 return ip
 
     def bridge_name(self):
-        self.driver.network_bridge_name(self)
+        return self.driver.network_bridge_name(self)
 
     def define(self):
         self.driver.network_define(self)
         self.save()
 
     def start(self):
-        self.driver.network_start(self)
+        self.create(verbose=False)
+
+    def create(self, verbose = True):
+        if verbose or not self.driver.network_active(self):
+            self.driver.network_create(self)
 
     def destroy(self):
         self.driver.network_destroy(self)
 
-    def remove(self):
-        self.driver.network_delete(self)
+    def erase(self):
+        self.remove(verbose=False)
+
+    def remove(self, verbose = True):
+        if self.driver.network_exists(self) or verbose:
+            if self.driver.network_active(self):
+                self.driver.network_destroy(self)
+            self.driver.network_undefine(self)
         self.delete()
 
 class Node(ExternalModel):
@@ -153,7 +176,23 @@ class Node(ExternalModel):
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
-    environment = models.ForeignKey(Environment, null=True, related_name='nodes')
+    environment = models.ForeignKey(Environment, null=True)
+
+    @property
+    def disk_devices(self):
+        return self.disk_devices.filter(node=self)
+
+    @property
+    def interfaces(self):
+        return Interface.objects.filter(node=self)
+
+    @property
+    def disk_devices(self):
+        return DiskDevice.objects.filter(node=self)
+
+    @property
+    def networks(self):
+        return Network.objects.filter(interface__node=self)
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
@@ -163,13 +202,23 @@ class Node(ExternalModel):
         self.save()
 
     def start(self):
-        self.driver.node_start(self)
+        self.create(verbose=False)
+
+    def create(self, verbose=True):
+        if verbose or not self.driver.node_active(self):
+            self.driver.node_create(self)
 
     def destroy(self):
         self.driver.node_destroy(self)
 
-    def remove(self):
-        self.driver.node_delete(self)
+    def erase(self):
+        self.remove(verbose=False)
+
+    def remove(self, verbose = True):
+        if verbose or self.driver.node_exists(self):
+            if self.driver.node_active(self):
+                self.driver.node_destroy(self)
+            self.driver.node_undefine(self)
         self.delete()
 
 class DiskDevice(models.Model):
@@ -177,17 +226,13 @@ class DiskDevice(models.Model):
     type = choices('file')
     bus = choices('virtio')
     target_dev =  models.CharField(max_length=255, null=False)
-    node = models.ForeignKey(Node, null=True, related_name='disk_devices')
+    node = models.ForeignKey(Node, null=True)
 
 class Volume(ExternalModel):
     capacity = models.IntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
-    environment = models.ForeignKey(Environment, null=True, related_name='volumes')
-
-    @property
-    def path(self):
-        return self.driver.volume_path(self)
+    environment = models.ForeignKey(Environment, null=True)
 
     def define(self):
         self.driver.volume_define(self)
@@ -199,14 +244,18 @@ class Volume(ExternalModel):
 
 class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
-    network = models.ForeignKey(Network, related_name='interfaces')
-    node = models.ForeignKey(Node, related_name='interfaces')
+    network = models.ForeignKey(Network)
+    node = models.ForeignKey(Node)
     type = models.CharField(max_length=255, null=False)
     target_dev = models.CharField(max_length=255, unique=True, null=True)
+
+    @property
+    def addresses(self):
+        return Address.objects.filter(interface=self)
 
     def add_address(self, address):
         Address.objects.create(ip_address=address, interface=self)
 
 class Address(models.Model):
     ip_address = models.GenericIPAddressField()
-    interface = models.ForeignKey(Interface, related_name='addresses')
+    interface = models.ForeignKey(Interface)
