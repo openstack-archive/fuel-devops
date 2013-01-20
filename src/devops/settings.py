@@ -6,7 +6,6 @@ HOME_DIR = os.environ.get('DEVOPS_HOME') or os.environ.get('APPDATA') or os.envi
 INSTALLED_APPS = ['devops']
 
 
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

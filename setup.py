@@ -6,7 +6,8 @@ setup(
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
-    packages=['devops', 'devops.driver'],
-    scripts=['bin/devops'],
+    packages=['devops', 'devops.driver', 'devops.helpers', 'devops.tests', 'devops.driver.libvirt'],
+    package_dir={'': 'src'},
+    scripts=['src/dos.py'],
     install_requires=['xmlbuilder', "ipaddr", "paramiko", "django"]
 )

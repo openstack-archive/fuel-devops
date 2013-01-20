@@ -39,10 +39,10 @@ class LibvirtXMLBuilder(object):
                         network_xml.range(start=str(network.ip_pool_start), end=str(network.ip_pool_end))
                         for interface in network.interfaces:
                             for address in interface.addresses:
-                                if IPAddress(address) in ip_network:
+                                if IPAddress(address.ip_address) in ip_network:
                                     network_xml.host(
                                         mac=str(interface.mac_address),
-                                        ip=str(address),
+                                        ip=str(address.ip_address),
                                         name=interface.node.name
                                     )
                         if network.has_pxe_server:
@@ -87,9 +87,10 @@ class LibvirtXMLBuilder(object):
         if interface.type != 'network':
             raise NotImplementedError()
         with device_xml.interface(type=interface.type):
+            device_xml.mac(address = interface.mac_address)
             device_xml.source(network=self.driver.network_name(interface.network))
             if not (interface.type is None):
-                device_xml.model(type=interface.type)
+                device_xml.model(type=interface.model)
 
     def build_node_xml(self, node, emulator):
         """

@@ -1,6 +1,5 @@
 from ipaddr import IPNetwork
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
-
 from django.db import models
 
 def choices(*args, **kwargs):
@@ -101,7 +100,9 @@ class ExternalModel(models.Model):
 
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
-    environment = models.ForeignKey(Environment, null=True)
+    #todo is it necessary to share networks and volumes between environments?
+    #environment = models.ManyToMany(Environment, null=True)
+    environment = models.ForeignKey(Environment, null=False)
 
     class Meta:
         unique_together = ('name', 'environment')
@@ -192,9 +193,9 @@ class Node(ExternalModel):
     def disk_devices(self):
         return DiskDevice.objects.filter(node=self)
 
-    @property
-    def networks(self):
-        return Network.objects.filter(interface__node=self)
+#    @property
+#    def networks(self):
+#        return Network.objects.filter(interface__node=self)
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
@@ -255,6 +256,7 @@ class Interface(models.Model):
     node = models.ForeignKey(Node)
     type = models.CharField(max_length=255, null=False)
     target_dev = models.CharField(max_length=255, unique=True, null=True)
+    model = choices('virtio')
 
     @property
     def addresses(self):

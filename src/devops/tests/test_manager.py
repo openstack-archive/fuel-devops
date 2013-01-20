@@ -4,7 +4,7 @@ from devops.helpers.network import IpNetworksPool
 from devops.manager import Manager
 
 
-class TestIpNetworksPool(TestCase):
+class TestManager(TestCase):
 
     manager = Manager()
 
@@ -54,6 +54,7 @@ class TestIpNetworksPool(TestCase):
 
     def test_node_creation(self):
         try:
+            print 1
             environment = self.manager.create_environment('test_env2')
             internal = self.manager.create_network(
                 environment=environment, name='internal', pool=None)
@@ -67,7 +68,9 @@ class TestIpNetworksPool(TestCase):
 #            self.manager.create_interface(node=node, network=private)
             environment.define()
         except:
+            print 2
             environment.erase()
+            raise
 
 
 

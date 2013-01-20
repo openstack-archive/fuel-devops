@@ -105,9 +105,9 @@ class LibvirtDriver(object):
         """
         :rtype : None
         """
-        network.uuid = self.conn.networkDefineXML(
-            self.xml_builder.build_network_xml(network)
-        ).UUIDString()
+        ret = self.conn.networkDefineXML(self.xml_builder.build_network_xml(network))
+        ret.setAutostart(True)
+        network.uuid = ret.UUIDString()
 
     @retry()
     def network_destroy(self, network):
@@ -148,12 +148,8 @@ class LibvirtDriver(object):
             'guest/arch[@name="{0:>s}"]/domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
-        for network in node.networks:
-            print network
-            if not self.network_active(network):
-                self.network_create(network)
         print node_xml
-        self.uuid = self.conn.createXML(node_xml, 0).UUIDString()
+        self.uuid = self.conn.defineXML(node_xml).UUIDString()
 
     @retry()
     def node_destroy(self, node):

@@ -22,13 +22,13 @@ class Manager(object):
         return self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
 
     def create_network(
-        self, name, environment=None, ip_network=None, pool=None, has_dhcp_server=False, has_pxe_server=False,
+        self, name, environment, ip_network=None, pool=None, has_dhcp_server=True, has_pxe_server=False,
         forward='route'):
         allocated_network = ip_network or environment.allocate_network(pool or self._get_default_pool())
         return Network.objects.create(environment=environment, name=name, ip_network=ip_network or allocated_network,
             has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server, forward=forward)
 
-    def create_node(self, name, environment=None, role=None, vcpu=2,
+    def create_node(self, name, environment, role=None, vcpu=2,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
         if not boot: boot = ['network', 'cdrom', 'hd']
@@ -52,9 +52,9 @@ class Manager(object):
     def _generate_mac(self):
         return generate_mac()
 
-    def create_interface(self, network, node, type='network', target_dev=None, mac_address=None):
+    def create_interface(self, network, node, type='network', target_dev=None, mac_address=None, model='virtio'):
         interface = Interface.objects.create(network=network, node=node, type=type, target_dev=target_dev,
-            mac_address=mac_address or self._generate_mac())
+            mac_address=mac_address or self._generate_mac(), model=model)
         interface.add_address(str(network.next_ip()))
         return interface
 
