@@ -23,26 +23,10 @@ def get_driver():
     global _driver
     return _driver or LibvirtDriver()
 
-
-class ExternalModel(models.Model):
-
-    @property
-    def driver(self):
-        """
-        :rtype : LibvirtDriver
-        """
-        return get_driver()
-
-    name = models.CharField(max_length=255, unique=False, null=False)
-    uuid = models.CharField(max_length=255)
-
-    class Meta:
-        unique_together = ('name', 'environment')
-
 class Environment(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
 
-#   TODO find corresponded place
+    #   TODO find corresponded place
     @property
     def driver(self):
         """
@@ -98,13 +82,31 @@ class Environment(models.Model):
         for node in self.nodes:
             node.destroy()
 
-    def remove(self):
+    def erase(self):
         for node in self.nodes:
-            node.remove()
+            node.erase()
         for network in self.networks:
-            network.remove()
+            network.erase()
         for volume in self.volumes:
-            volume.remove()
+            volume.erase()
+
+class ExternalModel(models.Model):
+
+    @property
+    def driver(self):
+        """
+        :rtype : LibvirtDriver
+        """
+        return get_driver()
+
+    name = models.CharField(max_length=255, unique=False, null=False)
+    uuid = models.CharField(max_length=255)
+    environment = models.ForeignKey(Environment, null=True)
+
+    class Meta:
+        unique_together = ('name', 'environment')
+
+
 
 
 class Network(ExternalModel):
@@ -116,7 +118,6 @@ class Network(ExternalModel):
     tftp_root_dir = models.CharField(max_length=255)
     forward = choices('nat', 'route', 'bridge', 'private', 'vepa', 'passthrough', 'hostdev')
     ip_network = models.CharField(max_length=255, unique=True)
-    environment = models.ForeignKey(Environment, null=True)
 
     @property
     def interfaces(self):
@@ -160,10 +161,11 @@ class Network(ExternalModel):
         self.remove(verbose=False)
 
     def remove(self, verbose = True):
-        if self.driver.network_exists(self) or verbose:
-            if self.driver.network_active(self):
-                self.driver.network_destroy(self)
-            self.driver.network_undefine(self)
+        if verbose or self.uuid:
+            if verbose or self.driver.network_exists(self):
+                if self.driver.network_active(self):
+                    self.driver.network_destroy(self)
+                self.driver.network_undefine(self)
         self.delete()
 
 class Node(ExternalModel):
@@ -176,7 +178,7 @@ class Node(ExternalModel):
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
-    environment = models.ForeignKey(Environment, null=True)
+
 
     @property
     def disk_devices(self):
@@ -215,10 +217,11 @@ class Node(ExternalModel):
         self.remove(verbose=False)
 
     def remove(self, verbose = True):
-        if verbose or self.driver.node_exists(self):
-            if self.driver.node_active(self):
-                self.driver.node_destroy(self)
-            self.driver.node_undefine(self)
+        if verbose or self.uuid:
+            if verbose or self.driver.node_exists(self):
+                if self.driver.node_active(self):
+                    self.driver.node_destroy(self)
+                self.driver.node_undefine(self)
         self.delete()
 
 class DiskDevice(models.Model):
@@ -232,14 +235,18 @@ class Volume(ExternalModel):
     capacity = models.IntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
-    environment = models.ForeignKey(Environment, null=True)
 
     def define(self):
         self.driver.volume_define(self)
         self.save()
 
-    def remove(self):
-        self.driver.volume_delete(self)
+    def erase(self):
+        self.remove(verbose=False)
+
+    def remove(self, verbose = True):
+        if verbose or self.uuid:
+            if verbose or self.driver.volume_exists(self):
+                self.driver.volume_delete(self)
         self.delete()
 
 class Interface(models.Model):

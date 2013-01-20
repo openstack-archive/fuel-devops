@@ -47,7 +47,7 @@ class LibvirtDriver(object):
         :type network: Network
         :rtype : Boolean
         """
-        return self.conn.networkLookupByUUID(network.uuid).isActive()
+        return self.conn.networkLookupByUUIDString(network.uuid).isActive()
 
     @retry()
     def node_active(self, node):
@@ -55,7 +55,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : Boolean
         """
-        return self.conn.networkLookupByUUID(node.uuid).isActive()
+        return self.conn.networkLookupByUUIDString(node.uuid).isActive()
 
 
     @retry()
@@ -65,10 +65,10 @@ class LibvirtDriver(object):
         :rtype : Boolean
         """
         try:
-            self.conn.networkLookupByUUID(network.uuid)
+            self.conn.networkLookupByUUIDString(network.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.get_error_message() ==  'virNetworkLookupByUUID() failed':
+            if e.message ==  'virNetworkLookupByUUIDString() failed':
                 return False
         raise
 
@@ -79,10 +79,10 @@ class LibvirtDriver(object):
         :rtype : Boolean
         """
         try:
-            self.conn.lookupByUUID(node.uuid)
+            self.conn.lookupByUUIDString(node.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.get_error_message() ==  'virDomainLookupByUUID() failed':
+            if e.message  ==  'virDomainLookupByUUIDString() failed':
                 return False
         raise
 
@@ -96,7 +96,7 @@ class LibvirtDriver(object):
             self.conn.storageVolLookupByKey(volume.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.get_error_message() ==  'virStorageVolLookupByKey() failed':
+            if e.message ==  'virStorageVolLookupByKey() failed':
                 return False
         raise
 
@@ -114,14 +114,14 @@ class LibvirtDriver(object):
         """
         :rtype : None
         """
-        self.conn.networkLookupByUUID(network.uuid).destroy()
+        self.conn.networkLookupByUUIDString(network.uuid).destroy()
 
     @retry()
     def network_undefine(self, network):
         """
         :rtype : None
         """
-        self.conn.networkLookupByUUID(network.uuid).undefine()
+        self.conn.networkLookupByUUIDString(network.uuid).undefine()
 
     @retry()
     def network_create(self, network):
@@ -149,8 +149,10 @@ class LibvirtDriver(object):
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
         for network in node.networks:
-            if not self.network_active:
+            print network
+            if not self.network_active(network):
                 self.network_create(network)
+        print node_xml
         self.uuid = self.conn.createXML(node_xml, 0).UUIDString()
 
     @retry()
@@ -159,7 +161,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).destroy()
+        self.conn.lookupByUUIDString(node.uuid).destroy()
 
     @retry()
     def node_undefine(self, node):
@@ -167,7 +169,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).undefine()
+        self.conn.lookupByUUIDString(node.uuid).undefine()
 
     @retry()
     def node_get_vnc_port(self, node):
@@ -175,7 +177,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : String
         """
-        xml_desc = ET.fromstring(self.conn.lookupByUUID(node.uuid).XMLDesc(0))
+        xml_desc = ET.fromstring(self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
         vnc_element = xml_desc.find('devices/graphics[@type="vnc"][@port]')
         if vnc_element:
             return vnc_element.get('port')
@@ -186,7 +188,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).create()
+        self.conn.lookupByUUIDString(node.uuid).create()
 
     @retry()
     def node_reset(self, node):
@@ -194,7 +196,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).reset()
+        self.conn.lookupByUUIDString(node.uuid).reset()
 
     @retry()
     def node_reboot(self, node):
@@ -202,7 +204,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).reboot()
+        self.conn.lookupByUUIDString(node.uuid).reboot()
 
     @retry()
     def node_suspend(self, node):
@@ -210,7 +212,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).suspend()
+        self.conn.lookupByUUIDString(node.uuid).suspend()
 
     @retry()
     def node_resume(self, node):
@@ -218,7 +220,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).resume()
+        self.conn.lookupByUUIDString(node.uuid).resume()
 
     @retry()
     def node_shutdown(self, node):
@@ -226,7 +228,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).shutdown()
+        self.conn.lookupByUUIDString(node.uuid).shutdown()
 
     @retry()
     def node_destroy(self, node):
@@ -234,7 +236,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : None
         """
-        self.conn.lookupByUUID(node.uuid).destroy()
+        self.conn.lookupByUUIDString(node.uuid).destroy()
 
 #    @retry()
     def node_get_snapshots(self, node):
@@ -242,7 +244,7 @@ class LibvirtDriver(object):
         :rtype : List
         :type node: Node
         """
-        return self.conn.lookupByUUID(node.uuid).snapshotListNames(0)
+        return self.conn.lookupByUUIDString(node.uuid).snapshotListNames(0)
 
     @retry()
     def node_create_snapshot(self, node, name=None, description=None):
@@ -253,7 +255,7 @@ class LibvirtDriver(object):
         :rtype : None
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
-        self.conn.lookupByUUID(node.uuid).snapshotCreateXML(xml)
+        self.conn.lookupByUUIDString(node.uuid).snapshotCreateXML(xml)
 
     def _get_snapshot(self, domain, name):
         """
@@ -272,7 +274,7 @@ class LibvirtDriver(object):
         :type name: String
         :rtype : None
         """
-        domain = self.conn.lookupByUUID(node.uuid)
+        domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
         domain.revertToSnapshot(snapshot, 0)
 
@@ -282,7 +284,7 @@ class LibvirtDriver(object):
         :type node: Node
         :type name: String
         """
-        domain = self.conn.lookupByUUID(node.uuid)
+        domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
         snapshot.delete(0)
 
@@ -299,7 +301,7 @@ class LibvirtDriver(object):
                 if key_codes[0] == 'wait':
                     sleep(1)
                 continue
-            self.conn.lookupByUUID(node.uuid).sendKey(0, 0, key_codes,
+            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0, key_codes,
                 len(key_codes), 0, 0)
 
     @retry()

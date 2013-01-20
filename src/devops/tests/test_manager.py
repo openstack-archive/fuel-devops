@@ -67,7 +67,7 @@ class TestIpNetworksPool(TestCase):
 #            self.manager.create_interface(node=node, network=private)
             environment.define()
         except:
-            environment.remove()
+            environment.erase()
 
 
 

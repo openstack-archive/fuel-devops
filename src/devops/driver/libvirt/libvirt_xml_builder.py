@@ -84,6 +84,8 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
     def _build_interface_device(self, device_xml, interface):
+        if interface.type != 'network':
+            raise NotImplementedError()
         with device_xml.interface(type=interface.type):
             device_xml.source(network=self.driver.network_name(interface.network))
             if not (interface.type is None):
