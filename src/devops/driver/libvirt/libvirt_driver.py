@@ -40,7 +40,6 @@ class LibvirtDriver(object):
         """
         return self.conn.networkLookupByUUIDString(network.uuid).name()
 
-
     @retry()
     def network_active(self, network):
         """
@@ -308,7 +307,7 @@ class LibvirtDriver(object):
         :rtype : None
         """
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
-            self.xml_builder.build_volume_xml(volume))
+            self.xml_builder.build_volume_xml(volume),0)
         volume.uuid = libvirt_volume.key()
 
     @retry()
@@ -342,6 +341,23 @@ class LibvirtDriver(object):
         :rtype : None
         """
         self.conn.storageVolLookupByKey(volume.uuid).delete(0)
+
+    @retry()
+    def volume_capacity(self, volume):
+        """
+        :type volume: Volume
+        :rtype : Long
+        """
+        return self.conn.storageVolLookupByKey(volume.uuid).info()[1]
+
+    @retry()
+    def volume_format(self, volume):
+        """
+        :type volume: Volume
+        :rtype : String
+        """
+        xml_desc = ET.fromstring(self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
+        return xml_desc.find('target/format[@type]').get('type')
 
     @retry()
     def get_allocated_networks(self):

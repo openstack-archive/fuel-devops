@@ -116,14 +116,10 @@ class ExternalModel(models.Model):
 
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
-    #todo is it necessary to share networks and volumes between environments?
-    #environment = models.ManyToMany(Environment, null=True)
-    environment = models.ForeignKey(Environment, null=False)
+    environment = models.ForeignKey(Environment, null=True)
 
     class Meta:
         unique_together = ('name', 'environment')
-
-
 
 
 class Network(ExternalModel):
@@ -196,6 +192,12 @@ class Node(ExternalModel):
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
 
+    def next_disk_name(self):
+        disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
+        while True:
+            disk_name = disk_names.next()
+            if not self.disk_devices.filter(target_dev=disk_name).exists():
+                return disk_name
 
     @property
     def disk_devices(self):
@@ -204,10 +206,6 @@ class Node(ExternalModel):
     @property
     def interfaces(self):
         return Interface.objects.filter(node=self)
-
-    @property
-    def disk_devices(self):
-        return DiskDevice.objects.filter(node=self)
 
 #    @property
 #    def networks(self):
@@ -257,6 +255,7 @@ class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')
     type = choices('file')
     bus = choices('virtio')
+    source_file =  models.CharField(max_length=1024, null=False)
     target_dev =  models.CharField(max_length=255, null=False)
     node = models.ForeignKey(Node, null=True)
 
@@ -277,6 +276,19 @@ class Volume(ExternalModel):
             if verbose or self.driver.volume_exists(self):
                 self.driver.volume_delete(self)
         self.delete()
+
+    def get_capacity(self):
+        return self.driver.volume_capacity(self)
+
+    def get_format(self):
+        return self.driver.volume_format(self)
+
+    def get_path(self):
+        return self.driver.volume_path(self)
+
+    def fill_from_exist(self):
+        self.capacity=self.get_capacity()
+        self.format=self.get_format()
 
 class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)

@@ -57,13 +57,17 @@ class LibvirtXMLBuilder(object):
         """
         volume_xml = XMLBuilder('volume')
         volume_xml.name(self._get_name(volume.environment and volume.environment.name or '', volume.name))
-        volume_xml.capacity(volume.capacity)
+        volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
+        print volume.backing_store
+        print volume.backing_store.format
+        print self.driver.volume_path(volume.backing_store)
         if volume.backing_store:
             with volume_xml.backing_store:
-                volume_xml.path = self.driver.volume_path(volume.backing_store)
-                volume_xml.format = volume.backing_store.format
+                volume_xml.path(self.driver.volume_path(volume.backing_store))
+                volume_xml.format(volume.backing_store.format)
+        print str(volume_xml)
         return str(volume_xml)
 
     def build_snapshot_xml(self, name=None, description=None):
@@ -80,7 +84,7 @@ class LibvirtXMLBuilder(object):
 
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
-            device_xml.source(file=disk_device.path)
+            device_xml.source(file=disk_device.source_file)
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
     def _build_interface_device(self, device_xml, interface):
@@ -120,8 +124,3 @@ class LibvirtXMLBuilder(object):
 
         return str(node_xml)
 
-#serial_disk_names = deque(
-#    ['sd' + c for c in list('abcdefghijklmnopqrstuvwxyz')])
-#
-#def disk_name():
-#    return serial_disk_names.popleft()

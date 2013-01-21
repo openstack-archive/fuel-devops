@@ -52,6 +52,11 @@ class TestManager(TestCase):
         self.assertEqual('10.0.5.0/24', str(self.manager.create_network(
             environment=environment, name='private', pool=None).ip_network))
 
+
+    def test_node_creationw(self):
+        node = self.manager.create_node(name='test_node', environment=None)
+        node.define()
+
     def test_node_creation(self):
         environment = None
         try:
@@ -72,6 +77,19 @@ class TestManager(TestCase):
             if environment:
                 environment.erase()
             raise
+
+    def test_use_exist_volume(self):
+        volume = self.manager.use_exist_volume('/var/lib/libvirt/images/disk-135871063107.qcow2')
+        print volume.format
+        print volume.capacity
+        print volume.uuid
+
+    def test_create_volume(self):
+        volume = self.manager.use_exist_volume('/var/lib/libvirt/images/disk-135871063107.qcow2')
+        v3 = self.manager.create_volume('test_vp7', None, volume.capacity, volume.format, backing_store=volume)
+        v3.define()
+
+
 
 
 

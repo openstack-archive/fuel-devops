@@ -1,7 +1,8 @@
+from collections import deque
 import ipaddr
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
-from devops.models import Address, Interface, Node, Network, Environment
+from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice
 
 class Manager(object):
     def create_environment(self, name):
@@ -51,12 +52,21 @@ class Manager(object):
         node.boot = boot
         return node
 
-    #class DiskDeviceManager(models.Manager):
-    #    pass
+    def use_exist_volume(self, uuid):
+        try:
+            return Volume.objects.get(uuid=uuid)
+        except Volume.DoesNotExist:
+            volume = Volume(uuid=uuid)
+            volume.fill_from_exist()
+            volume.save()
+            return volume
 
-    #class VolumeManager(models.Manager):
-    #    def __init__(self, capacity=None, path=None, format='qcow2', base_image=None):
-    #    pass
+
+    def create_diff_volume(self, name, backing_store, format=None, environment=None):
+        return Volume.objects.create(name=name, environment=environment, capacity=backing_store.capacity, format=format or backing_store.format, backing_store=backing_store)
+
+    def create_volume(self, name, capacity, format='qcow2', environment=None):
+        return Volume.objects.create(name=name, environment=environment, capacity=capacity, format=format)
 
     def upload(self, path):
         pass
@@ -72,3 +82,7 @@ class Manager(object):
 
     def create_address(self, ip_address, interface):
         Address.objects.create(ip_address=ip_address, interface=interface)
+
+    def attach_volume(self, node, volume, device='disk', type='file', bus='virtio', target_dev=None):
+        DiskDevice.objects.create(device=device, type=type, bus=bus, target_dev=target_dev or node.next_disk_name(), source_file=volume.get_path())
+
