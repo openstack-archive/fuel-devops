@@ -60,14 +60,10 @@ class LibvirtXMLBuilder(object):
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
-        print volume.backing_store
-        print volume.backing_store.format
-        print self.driver.volume_path(volume.backing_store)
         if volume.backing_store:
             with volume_xml.backing_store:
                 volume_xml.path(self.driver.volume_path(volume.backing_store))
                 volume_xml.format(volume.backing_store.format)
-        print str(volume_xml)
         return str(volume_xml)
 
     def build_snapshot_xml(self, name=None, description=None):
@@ -84,7 +80,7 @@ class LibvirtXMLBuilder(object):
 
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
-            device_xml.source(file=disk_device.source_file)
+            device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
     def _build_interface_device(self, device_xml, interface):
@@ -102,7 +98,6 @@ class LibvirtXMLBuilder(object):
         :type node: Node
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
-        print node.environment
         node_xml.name(self._get_name(node.environment and node.environment.name or '', node.name))
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory), unit='MiB')

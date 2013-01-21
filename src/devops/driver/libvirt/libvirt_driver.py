@@ -9,11 +9,12 @@ import ipaddr
 
 
 class LibvirtDriver(object):
-    def __init__(self, connection_string=""):
+    def __init__(self, connection_string="qemu:///system"):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
         self.capabilities = None
+        self.allocated_networks = None
 
     @retry()
     def get_capabilities(self):
@@ -54,7 +55,7 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : Boolean
         """
-        return self.conn.networkLookupByUUIDString(node.uuid).isActive()
+        return self.conn.lookupByUUIDString(node.uuid).isActive()
 
 
     @retry()
@@ -364,14 +365,16 @@ class LibvirtDriver(object):
         """
         :rtype : List
         """
-        allocated_networks = []
-        for network_name in self.conn.listDefinedNetworks():
-            et = ET.fromstring(
-                self.conn.networkLookupByName(network_name).XMLDesc())
-            ip = et.find('ip[@address]')
-            if ip:
-                address = ip.get('address')
-                prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
-                allocated_networks.append(ipaddr.IPNetwork(
-                    "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
-        return allocated_networks
+        if self.allocated_networks is None:
+            allocated_networks = []
+            for network_name in self.conn.listDefinedNetworks():
+                et = ET.fromstring(
+                    self.conn.networkLookupByName(network_name).XMLDesc())
+                ip = et.find('ip[@address]')
+                if ip:
+                    address = ip.get('address')
+                    prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
+                    allocated_networks.append(ipaddr.IPNetwork(
+                        "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
+            self.allocated_networks=allocated_networks
+        return self.allocated_networks

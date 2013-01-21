@@ -14,24 +14,8 @@ def double_tuple(*args):
         dict.append((arg,arg))
     return tuple(dict)
 
-_driver = None
-def get_driver():
-    """
-        :rtype : LibvirtDriver
-    """
-    global _driver
-    return _driver or LibvirtDriver()
-
 class Environment(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
-
-    #   TODO find corresponded place
-    @property
-    def driver(self):
-        """
-        :rtype : LibvirtDriver
-        """
-        return get_driver()
 
     @property
     def volumes(self):
@@ -44,15 +28,6 @@ class Environment(models.Model):
     @property
     def nodes(self):
         return Node.objects.filter(environment=self)
-
-    def allocated_networks(self):
-        return self.driver.get_allocated_networks()
-
-    def allocate_network(self, pool):
-        while True:
-            ip_network = pool.next()
-            if not Network.objects.filter(ip_network=str(ip_network)).count():
-                return ip_network
 
     def node_by_name(self, name):
         return self.nodes.filter(name=name, environment=self)
@@ -88,6 +63,7 @@ class Environment(models.Model):
             network.erase()
         for volume in self.volumes:
             volume.erase()
+        self.delete()
 
     def suspend(self):
         for node in self.nodes:
@@ -107,12 +83,22 @@ class Environment(models.Model):
 
 class ExternalModel(models.Model):
 
+    _driver = None
+
+    @classmethod
+    def get_driver(cls):
+        """
+        :rtype : LibvirtDriver
+        """
+        cls._driver = cls._driver or LibvirtDriver()
+        return cls._driver
+
     @property
     def driver(self):
         """
         :rtype : LibvirtDriver
         """
-        return get_driver()
+        return self.get_driver()
 
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
@@ -120,6 +106,17 @@ class ExternalModel(models.Model):
 
     class Meta:
         unique_together = ('name', 'environment')
+
+    @classmethod
+    def get_allocated_networks(cls):
+        return cls.get_driver.get_allocated_networks()
+
+    @classmethod
+    def allocate_network(cls, pool):
+        while True:
+            ip_network = pool.next()
+            if not Network.objects.filter(ip_network=str(ip_network)).exists():
+                return ip_network
 
 
 class Network(ExternalModel):
@@ -150,7 +147,7 @@ class Network(ExternalModel):
             ip = self._iterhosts.next()
             if ip<self.ip_pool_start or ip>self.ip_pool_end:
                 continue
-            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).count():
+            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).exists():
                 return ip
 
     def bridge_name(self):
@@ -201,7 +198,7 @@ class Node(ExternalModel):
 
     @property
     def disk_devices(self):
-        return self.disk_devices.filter(node=self)
+        return DiskDevice.objects.filter(node=self)
 
     @property
     def interfaces(self):
@@ -251,13 +248,6 @@ class Node(ExternalModel):
     def revert(self, name=None):
         self.driver.node_revert_snapshot(name)
 
-class DiskDevice(models.Model):
-    device = choices('disk', 'cdrom')
-    type = choices('file')
-    bus = choices('virtio')
-    source_file =  models.CharField(max_length=1024, null=False)
-    target_dev =  models.CharField(max_length=255, null=False)
-    node = models.ForeignKey(Node, null=True)
 
 class Volume(ExternalModel):
     capacity = models.IntegerField(null=False)
@@ -289,6 +279,14 @@ class Volume(ExternalModel):
     def fill_from_exist(self):
         self.capacity=self.get_capacity()
         self.format=self.get_format()
+
+class DiskDevice(models.Model):
+    device = choices('disk', 'cdrom')
+    type = choices('file')
+    bus = choices('virtio')
+    target_dev =  models.CharField(max_length=255, null=False)
+    node = models.ForeignKey(Node, null=False)
+    volume = models.ForeignKey(Volume, null=True)
 
 class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)

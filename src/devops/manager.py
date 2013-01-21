@@ -1,10 +1,15 @@
-from collections import deque
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 import ipaddr
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
-from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice
+from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice, ExternalModel
 
 class Manager(object):
+    def __init__(self):
+        super(Manager, self).__init__()
+        self.default_pool=None
+
     def environment_create(self, name):
         return Environment.objects.create(name=name)
 
@@ -14,35 +19,23 @@ class Manager(object):
     def environment_get(self, name):
         return Environment.objects.get(name=name)
 
-    def environment_erase(self, environment):
-        environment.erase()
-
-    def environment_snapshot(self, environment, name):
-        environment.snapshot(name)
-
-    def environment_revert(self, environment, name):
-        environment.revert(name)
-
-    def environment_suspend(self, environment):
-        environment.suspend()
-
-    def environment_resume(self, environment):
-        environment.resume()
-
     def create_network_pool(self, networks, prefix):
-        return IpNetworksPool(networks=networks, prefix=prefix)
+        pool = IpNetworksPool(networks=networks, prefix=prefix)
+        pool.set_allocated_networks(ExternalModel.get_allocated_networks())
+        return pool
 
     def _get_default_pool(self):
-        return self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
+        self.default_pool = self.default_pool or self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
+        return self.default_pool
 
     def network_create(
-        self, name, environment, ip_network=None, pool=None, has_dhcp_server=True, has_pxe_server=False,
+        self, name, environment=None, ip_network=None, pool=None, has_dhcp_server=True, has_pxe_server=False,
         forward='route'):
-        allocated_network = ip_network or environment.allocate_network(pool or self._get_default_pool())
+        allocated_network = ip_network or ExternalModel.allocate_network(pool or self._get_default_pool())
         return Network.objects.create(environment=environment, name=name, ip_network=ip_network or allocated_network,
             has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server, forward=forward)
 
-    def node_create(self, name, environment, role=None, vcpu=2,
+    def node_create(self, name, environment=None, role=None, vcpu=2,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
         if not boot: boot = ['network', 'cdrom', 'hd']
@@ -74,7 +67,7 @@ class Manager(object):
     def _generate_mac(self):
         return generate_mac()
 
-    def network_create_interface(self, network, node, type='network', target_dev=None, mac_address=None, model='virtio'):
+    def interface_create(self, network, node, type='network', target_dev=None, mac_address=None, model='virtio'):
         interface = Interface.objects.create(network=network, node=node, type=type, target_dev=target_dev,
             mac_address=mac_address or self._generate_mac(), model=model)
         interface.add_address(str(network.next_ip()))
@@ -84,5 +77,5 @@ class Manager(object):
         Address.objects.create(ip_address=ip_address, interface=interface)
 
     def node_attach_volume(self, node, volume, device='disk', type='file', bus='virtio', target_dev=None):
-        DiskDevice.objects.create(device=device, type=type, bus=bus, target_dev=target_dev or node.next_disk_name(), source_file=volume.get_path())
+        DiskDevice.objects.create(device=device, type=type, bus=bus, target_dev=target_dev or node.next_disk_name(), volume=volume, node=node)
 

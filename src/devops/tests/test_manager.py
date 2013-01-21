@@ -25,7 +25,7 @@ class TestManager(TestCase):
         node = self.manager.node_create('test_node', environment)
         network = self.manager.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
-        interface = self.manager.network_create_interface(network=network, node=node)
+        interface = self.manager.interface_create(network=network, node=node)
         self.manager.network_create_address(str('10.1.0.1'),interface=interface)
         ip = network.next_ip()
         self.manager.network_create_address(str('10.1.0.3'),interface=interface)
@@ -69,7 +69,7 @@ class TestManager(TestCase):
 #            private = self.manager.create_network(
 #                environment=environment, name='private', pool=None)
             node = self.manager.node_create(name='test_node', environment=environment)
-            self.manager.network_create_interface(node=node, network=internal)
+            self.manager.interface_create(node=node, network=internal)
 #            self.manager.create_interface(node=node, network=external)
 #            self.manager.create_interface(node=node, network=private)
             environment.define()
@@ -85,10 +85,42 @@ class TestManager(TestCase):
         print volume.uuid
 
     def test_create_volume(self):
-        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135871063107.qcow2')
-        v3 = self.manager.volume_create('test_vp7', None, volume.capacity, volume.format, backing_store=volume)
+        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
+        v3 = self.manager.volume_create_child('test_vp89', backing_store=volume)
         v3.define()
 
+
+    def test_create_volume(self):
+        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
+        v3 = self.manager.volume_create_child('test_vp89', backing_store=volume)
+        v3.define()
+
+
+    def test_create_node3(self):
+        environment = None
+        try:
+            print 1
+            environment = self.manager.environment_create('test_env3')
+            internal = self.manager.network_create(
+                environment=environment, name='internal', pool=None)
+            external = self.manager.network_create(
+                environment=environment, name='external', pool=None)
+            private = self.manager.network_create(
+                environment=environment, name='private', pool=None)
+            node = self.manager.node_create(name='test_node', environment=environment)
+            self.manager.interface_create(node=node, network=internal)
+            self.manager.interface_create(node=node, network=external)
+            self.manager.interface_create(node=node, network=private)
+            volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
+            v3 = self.manager.volume_create_child('test_vp892', backing_store=volume, environment=environment)
+            v4 = self.manager.volume_create_child('test_vp891', backing_store=volume, environment=environment)
+            self.manager.node_attach_volume(node=node, volume=v3)
+            self.manager.node_attach_volume(node, v4)
+            environment.define()
+        except:
+            if environment:
+                environment.erase()
+            raise
 
 
 

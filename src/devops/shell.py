@@ -13,30 +13,44 @@ class Shell(object):
         self.commands.get(self.params.command)(self)
 
     def do_list(self):
-        self.manager.environment_list()
+        print self.manager.environment_list().values('name')
 
     def do_show(self):
-        self.manager.environment_get(self.params.name)
+        environment = self.manager.environment_get(self.params.name)
+        print {
+            'name' : environment.name ,
+            'nodes':  map(lambda x: 'node', environment.nodes.values('name'))
+        }
 
     def do_erase(self):
-        self.manager.environment_erase(self.manager.environment_get(self.params.name))
+        self.manager.environment_get(self.params.name).erase()
+
+    def do_start(self):
+        self.manager.environment_get(self.params.name).start()
+
+    def do_destroy(self):
+        self.manager.environment_get(self.params.name).destroy()
 
     def do_suspend(self):
-        self.manager.environment_suspend(self.manager.environment_get(self.params.name))
+        self.manager.environment_get(self.params.name).suspend()
 
     def do_resume(self):
-        self.manager.environment_resume(self.manager.environment_get(self.params.name))
+        self.manager.environment_get(self.params.name).resume()
 
     def do_revert(self):
-        self.manager.environment_revert(self.manager.environment_get(self.params.name), self.params.snapshot_name)
+        self.manager.environment_get(self.params.name).revert(self.params.snapshot_name)
 
     def do_snapshot(self):
-        self.manager.environment_snapshot(self.manager.environment_get(self.params.name), self.params.snapshot_name)
+        self.manager.environment_get(self.params.name).snapshot(self.params.snapshot_name)
+
+
 
     commands = {
         'list' : do_list,
         'show': do_show,
         'erase': do_erase,
+        'start': do_start,
+        'destroy': do_destroy,
         'suspend': do_suspend,
         'resume': do_resume,
         'revert': do_revert,
@@ -49,12 +63,14 @@ class Shell(object):
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('--snapshot-name', help='snapshot name', default=os.getenv('SNAPSHOT_NAME'))
         parser = argparse.ArgumentParser(description="Manage virtual environments")
-        subparsers = parser.add_subparsers(help='commands')
+        subparsers = parser.add_subparsers(help='commands', dest='command')
         subparsers.add_parser('list')
         subparsers.add_parser('show', parents=[name_parser])
         subparsers.add_parser('erase', parents=[name_parser])
+        subparsers.add_parser('start', parents=[name_parser])
+        subparsers.add_parser('destroy', parents=[name_parser])
         subparsers.add_parser('suspend', parents=[name_parser])
         subparsers.add_parser('resume', parents=[name_parser])
         subparsers.add_parser('revert', parents=[name_parser, snapshot_name_parser])
-        subparsers.add_parser('suspend', parents=[name_parser, snapshot_name_parser])
+        subparsers.add_parser('snapshot', parents=[name_parser, snapshot_name_parser])
         return parser.parse_args()
