@@ -13,25 +13,25 @@ class Shell(object):
         self.commands.get(self.params.command)(self)
 
     def do_list(self):
-        self.manager.list_environments()
+        self.manager.environment_list()
 
     def do_show(self):
-        self.manager.get_environment(self.params.name)
+        self.manager.environment_get(self.params.name)
 
     def do_erase(self):
-        self.manager.erase_environment(self.manager.get_environment(self.params.name))
+        self.manager.environment_erase(self.manager.environment_get(self.params.name))
 
     def do_suspend(self):
-        self.manager.suspend_environment(self.manager.get_environment(self.params.name))
+        self.manager.environment_suspend(self.manager.environment_get(self.params.name))
 
     def do_resume(self):
-        self.manager.resume_environment(self.manager.get_environment(self.params.name))
+        self.manager.environment_resume(self.manager.environment_get(self.params.name))
 
     def do_revert(self):
-        self.manager.revert_environment(self.manager.get_environment(self.params.name), self.params.snapshot_name)
+        self.manager.environment_revert(self.manager.environment_get(self.params.name), self.params.snapshot_name)
 
     def do_snapshot(self):
-        self.manager.snapshot_environment(self.manager.get_environment(self.params.name), self.params.snapshot_name)
+        self.manager.environment_snapshot(self.manager.environment_get(self.params.name), self.params.snapshot_name)
 
     commands = {
         'list' : do_list,
