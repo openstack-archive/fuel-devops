@@ -1,4 +1,3 @@
-from collections import deque
 from ipaddr import IPNetwork, IPAddress
 from xmlbuilder import XMLBuilder
 
@@ -30,7 +29,7 @@ class LibvirtXMLBuilder(object):
         if not (network.ip_network is None):
             ip_network = IPNetwork(network.ip_network)
             with network_xml.ip(
-                address=str(ip_network.network),
+                address=str(ip_network[1]),
                 prefix=str(ip_network.prefixlen)):
                 if network.has_pxe_server:
                     network_xml.tftp(root=network.tftp_root_dir)
@@ -61,9 +60,9 @@ class LibvirtXMLBuilder(object):
         with volume_xml.target:
             volume_xml.format(type=volume.format)
         if volume.backing_store is not None:
-            with volume_xml.backing_store:
+            with volume_xml.backingStore:
                 volume_xml.path(self.driver.volume_path(volume.backing_store))
-                volume_xml.format(volume.backing_store.format)
+                volume_xml.format(type=volume.backing_store.format)
         return str(volume_xml)
 
     def build_snapshot_xml(self, name=None, description=None):
@@ -77,6 +76,7 @@ class LibvirtXMLBuilder(object):
             xml_builder.name(name)
         if not (description is None):
             xml_builder.description(description)
+        return str(xml_builder)
 
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
@@ -117,5 +117,4 @@ class LibvirtXMLBuilder(object):
                 self._build_disk_device(node_xml, disk_device)
             for interface in node.interfaces:
                 self._build_interface_device(node_xml, interface)
-
         return str(node_xml)

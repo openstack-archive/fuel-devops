@@ -243,10 +243,10 @@ class Node(ExternalModel):
         self.driver.node_resume(self)
 
     def snapshot(self, name=None):
-        self.driver.node_create_snapshot(name)
+        self.driver.node_create_snapshot(node=self, name=name)
 
     def revert(self, name=None):
-        self.driver.node_revert_snapshot(name)
+        self.driver.node_revert_snapshot(node=self, name=name)
 
 
 class Volume(ExternalModel):

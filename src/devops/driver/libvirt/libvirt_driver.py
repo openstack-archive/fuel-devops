@@ -251,7 +251,7 @@ class LibvirtDriver(object):
         :rtype : None
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
-        self.conn.lookupByUUIDString(node.uuid).snapshotCreateXML(xml)
+        self.conn.lookupByUUIDString(node.uuid).snapshotCreateXML(xml, 0)
 
     def _get_snapshot(self, domain, name):
         """
@@ -259,7 +259,7 @@ class LibvirtDriver(object):
         :rtype : libvirt.virDomainSnapshot
         """
         if name is None:
-            return domain.snapshotCurrent()
+            return domain.snapshotCurrent(0)
         else:
             return domain.snapshotLookupByName(name, 0)
 

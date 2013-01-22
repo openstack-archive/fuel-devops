@@ -11,7 +11,7 @@ def one(manager):
     internal = manager.network_create(
         environment=environment, name='internal', pool=internal_pool)
     external = manager.network_create(
-        environment=environment, name='external', pool=external_pool)
+        environment=environment, name='external', pool=external_pool, forward='nat')
     private = manager.network_create(
         environment=environment, name='private', pool=private_pool)
     node = manager.node_create(name='test_node', environment=environment)
