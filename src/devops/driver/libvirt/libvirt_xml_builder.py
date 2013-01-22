@@ -60,7 +60,7 @@ class LibvirtXMLBuilder(object):
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
-        if volume.backing_store:
+        if volume.backing_store is not None:
             with volume_xml.backing_store:
                 volume_xml.path(self.driver.volume_path(volume.backing_store))
                 volume_xml.format(volume.backing_store.format)
@@ -80,6 +80,7 @@ class LibvirtXMLBuilder(object):
 
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
+            device_xml.driver(type = disk_device.volume.format)
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
@@ -118,4 +119,3 @@ class LibvirtXMLBuilder(object):
                 self._build_interface_device(node_xml, interface)
 
         return str(node_xml)
-

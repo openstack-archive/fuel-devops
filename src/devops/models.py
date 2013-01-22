@@ -109,7 +109,7 @@ class ExternalModel(models.Model):
 
     @classmethod
     def get_allocated_networks(cls):
-        return cls.get_driver.get_allocated_networks()
+        return cls.get_driver().get_allocated_networks()
 
     @classmethod
     def allocate_network(cls, pool):
@@ -202,7 +202,7 @@ class Node(ExternalModel):
 
     @property
     def interfaces(self):
-        return Interface.objects.filter(node=self)
+        return Interface.objects.filter(node=self).order_by('id')
 
 #    @property
 #    def networks(self):

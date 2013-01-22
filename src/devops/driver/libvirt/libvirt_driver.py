@@ -149,7 +149,7 @@ class LibvirtDriver(object):
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
         print node_xml
-        self.uuid = self.conn.defineXML(node_xml).UUIDString()
+        node.uuid = self.conn.defineXML(node_xml).UUIDString()
 
     @retry()
     def node_destroy(self, node):
@@ -369,9 +369,9 @@ class LibvirtDriver(object):
             allocated_networks = []
             for network_name in self.conn.listDefinedNetworks():
                 et = ET.fromstring(
-                    self.conn.networkLookupByName(network_name).XMLDesc())
+                    self.conn.networkLookupByName(network_name).XMLDesc(0))
                 ip = et.find('ip[@address]')
-                if ip:
+                if ip is not None:
                     address = ip.get('address')
                     prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
                     allocated_networks.append(ipaddr.IPNetwork(
