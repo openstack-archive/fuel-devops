@@ -68,7 +68,7 @@ class LibvirtDriver(object):
             self.conn.networkLookupByUUIDString(network.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message ==  'virNetworkLookupByUUIDString() failed':
+            if e.message == 'virNetworkLookupByUUIDString() failed':
                 return False
         raise
 
@@ -82,7 +82,7 @@ class LibvirtDriver(object):
             self.conn.lookupByUUIDString(node.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message  ==  'virDomainLookupByUUIDString() failed':
+            if e.message == 'virDomainLookupByUUIDString() failed':
                 return False
         raise
 
@@ -96,7 +96,7 @@ class LibvirtDriver(object):
             self.conn.storageVolLookupByKey(volume.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message ==  'virStorageVolLookupByKey() failed':
+            if e.message == 'virStorageVolLookupByKey() failed':
                 return False
         raise
 
@@ -234,7 +234,7 @@ class LibvirtDriver(object):
         """
         self.conn.lookupByUUIDString(node.uuid).destroy()
 
-#    @retry()
+    @retry()
     def node_get_snapshots(self, node):
         """
         :rtype : List
@@ -251,6 +251,7 @@ class LibvirtDriver(object):
         :rtype : None
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
+        print xml
         self.conn.lookupByUUIDString(node.uuid).snapshotCreateXML(xml, 0)
 
     def _get_snapshot(self, domain, name):
@@ -308,7 +309,7 @@ class LibvirtDriver(object):
         :rtype : None
         """
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
-            self.xml_builder.build_volume_xml(volume),0)
+            self.xml_builder.build_volume_xml(volume), 0)
         volume.uuid = libvirt_volume.key()
 
     @retry()
@@ -376,5 +377,5 @@ class LibvirtDriver(object):
                     prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
                     allocated_networks.append(ipaddr.IPNetwork(
                         "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
-            self.allocated_networks=allocated_networks
+            self.allocated_networks = allocated_networks
         return self.allocated_networks

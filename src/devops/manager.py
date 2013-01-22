@@ -1,4 +1,5 @@
 import os
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 import ipaddr
 from devops.helpers.helpers import generate_mac
@@ -8,7 +9,7 @@ from devops.models import Address, Interface, Node, Network, Environment, Volume
 class Manager(object):
     def __init__(self):
         super(Manager, self).__init__()
-        self.default_pool=None
+        self.default_pool = None
 
     def environment_create(self, name):
         return Environment.objects.create(name=name)
@@ -25,12 +26,13 @@ class Manager(object):
         return pool
 
     def _get_default_pool(self):
-        self.default_pool = self.default_pool or self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
+        self.default_pool = self.default_pool or self.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')],
+            prefix=24)
         return self.default_pool
 
     def network_create(
         self, name, environment=None, ip_network=None, pool=None, has_dhcp_server=True, has_pxe_server=False,
-        forward='route'):
+        forward='nat'):
         allocated_network = ip_network or ExternalModel.allocate_network(pool or self._get_default_pool())
         return Network.objects.create(environment=environment, name=name, ip_network=ip_network or allocated_network,
             has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server, forward=forward)
@@ -41,7 +43,7 @@ class Manager(object):
         if not boot: boot = ['network', 'cdrom', 'hd']
         node = Node.objects.create(name=name, environment=environment, role=role, vcpu=vcpu, memory=memory,
             has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor, os_type=os_type, architecture=architecture,
-            )
+        )
         node.boot = boot
         return node
 
@@ -56,7 +58,8 @@ class Manager(object):
 
 
     def volume_create_child(self, name, backing_store, format=None, environment=None):
-        return Volume.objects.create(name=name, environment=environment, capacity=backing_store.capacity, format=format or backing_store.format, backing_store=backing_store)
+        return Volume.objects.create(name=name, environment=environment, capacity=backing_store.capacity,
+            format=format or backing_store.format, backing_store=backing_store)
 
     def volume_create(self, name, capacity, format='qcow2', environment=None):
         return Volume.objects.create(name=name, environment=environment, capacity=capacity, format=format)
@@ -77,5 +80,6 @@ class Manager(object):
         Address.objects.create(ip_address=ip_address, interface=interface)
 
     def node_attach_volume(self, node, volume, device='disk', type='file', bus='virtio', target_dev=None):
-        DiskDevice.objects.create(device=device, type=type, bus=bus, target_dev=target_dev or node.next_disk_name(), volume=volume, node=node)
+        DiskDevice.objects.create(device=device, type=type, bus=bus, target_dev=target_dev or node.next_disk_name(),
+            volume=volume, node=node)
 

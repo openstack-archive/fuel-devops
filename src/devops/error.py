@@ -1,2 +1,2 @@
 class DevopsError(Exception):
-    message ="Devops Error"
+    message = "Devops Error"

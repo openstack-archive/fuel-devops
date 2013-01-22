@@ -3,7 +3,6 @@ from xmlbuilder import XMLBuilder
 
 
 class LibvirtXMLBuilder(object):
-
     def __init__(self, driver):
         super(LibvirtXMLBuilder, self).__init__()
         self.driver = driver
@@ -14,7 +13,7 @@ class LibvirtXMLBuilder(object):
         name = '_'.join(list(args))
         if len(name) > self.NAME_SIZE:
             hash_str = str(hash(name))
-            name=hash_str+name[len(name)-self.NAME_SIZE+len(hash_str):]
+            name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
         return  name
 
     def build_network_xml(self, network):
@@ -80,7 +79,7 @@ class LibvirtXMLBuilder(object):
 
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
-            device_xml.driver(type = disk_device.volume.format)
+            device_xml.driver(type=disk_device.volume.format)
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
@@ -88,7 +87,7 @@ class LibvirtXMLBuilder(object):
         if interface.type != 'network':
             raise NotImplementedError()
         with device_xml.interface(type=interface.type):
-            device_xml.mac(address = interface.mac_address)
+            device_xml.mac(address=interface.mac_address)
             device_xml.source(network=self.driver.network_name(interface.network))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)

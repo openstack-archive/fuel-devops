@@ -1,7 +1,7 @@
 import functools
 from time import sleep
 
-def retry(count=1, delay=1):
+def retry(count=10, delay=1):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -15,5 +15,7 @@ def retry(count=1, delay=1):
                     if i >= count:
                         raise
                     sleep(delay)
+
         return wrapper
+
     return decorator

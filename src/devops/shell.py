@@ -3,7 +3,6 @@ import os
 from devops.manager import Manager
 
 class Shell(object):
-
     def __init__(self):
         super(Shell, self).__init__()
         self.params = self.get_params()
@@ -18,8 +17,8 @@ class Shell(object):
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
         print {
-            'name' : environment.name ,
-            'nodes':  map(lambda x: 'node', environment.nodes.values('name'))
+            'name': environment.name,
+            'nodes': map(lambda x: 'node', environment.nodes.values('name'))
         }
 
     def do_erase(self):
@@ -44,9 +43,8 @@ class Shell(object):
         self.manager.environment_get(self.params.name).snapshot(self.params.snapshot_name)
 
 
-
     commands = {
-        'list' : do_list,
+        'list': do_list,
         'show': do_show,
         'erase': do_erase,
         'start': do_start,

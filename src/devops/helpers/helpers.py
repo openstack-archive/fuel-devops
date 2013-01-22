@@ -307,6 +307,7 @@ def xmlrpcmethod(uri, method):
     except:
         raise AttributeError, "Error occured while getting server method"
 
+
 def generate_mac():
     return "64:{0:02x}:{1:02x}:{2:02x}:{3:02x}:{4:02x}".format(*bytearray(os.urandom(5)))
 

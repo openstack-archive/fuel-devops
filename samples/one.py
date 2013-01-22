@@ -1,12 +1,12 @@
 import ipaddr
-import os
+
 def one(manager):
     environment = manager.environment_create('test_env7')
-    internal_pool=manager.create_network_pool(networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
+    internal_pool = manager.create_network_pool(networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
     )
-    private_pool=manager.create_network_pool(networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
+    private_pool = manager.create_network_pool(networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
     )
-    external_pool=manager.create_network_pool(networks=[ipaddr.IPNetwork('172.18.95.0/24')], prefix=27
+    external_pool = manager.create_network_pool(networks=[ipaddr.IPNetwork('172.18.95.0/24')], prefix=27
     )
     internal = manager.network_create(
         environment=environment, name='internal', pool=internal_pool)
@@ -27,8 +27,8 @@ def one(manager):
     environment.start()
 
 
-
 if __name__ == '__main__':
     from devops.manager import Manager
+
     one(Manager())
 
