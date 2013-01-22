@@ -1,4 +1,3 @@
-import subprocess
 import os
 import urllib
 import stat
@@ -9,23 +8,13 @@ import xmlrpclib
 import paramiko
 import random
 from threading import Thread
-
 import BaseHTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import posixpath
-
 import logging
-from devops.error import DevopsError, DevopsCalledProcessError
+from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, AuthenticationError
 
 logger = logging.getLogger(__name__)
-
-
-class TimeoutError(Exception):
-    pass
-
-
-class AuthenticationError(Exception):
-    pass
 
 
 def get_free_port():
@@ -34,18 +23,22 @@ def get_free_port():
     for port in ports:
         if not tcp_ping('localhost', port):
             return port
-    raise DevopsError, "No free ports available"
+    raise DevopsError("No free ports available")
 
 
 def icmp_ping(host, timeout=1):
-    "icmp_ping(host, timeout=1) - returns True if host is pingable; False - otherwise."
+    """
+    icmp_ping(host, timeout=1) - returns True if host is pingable; False - otherwise.
+    """
     return os.system(
         "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
             'host': str(host), 'timeout': timeout}) == 0
 
 
 def tcp_ping(host, port):
-    "tcp_ping(host, port) - returns True if TCP connection to specified host and port can be established; False - otherwise."
+    """
+    tcp_ping(host, port) - returns True if TCP connection to specified host and port can be established; False - otherwise.
+    """
     s = socket.socket()
     try:
         s.connect((str(host), int(port)))
@@ -65,7 +58,7 @@ def wait(predicate, interval=5, timeout=None):
     start_time = time.time()
     while not predicate():
         if timeout and start_time + timeout < time.time():
-            raise TimeoutError, "Waiting timed out"
+            raise TimeoutError("Waiting timed out")
 
         seconds_to_sleep = interval
         if timeout:
@@ -143,7 +136,7 @@ class SSHClient(object):
 
     def check_stderr(self, command, verbose=False):
         ret = self.check_call(command, verbose)
-        if ret['stderr'] :
+        if ret['stderr']:
             raise DevopsCalledProcessError(command, ret, ret['stderr'])
         return ret
 
@@ -317,7 +310,7 @@ def xmlrpctoken(uri, login, password):
     try:
         return server.login(login, password)
     except:
-        raise AuthenticationError, "Error occured while login process"
+        raise AuthenticationError("Error occured while login process")
 
 
 def xmlrpcmethod(uri, method):
@@ -325,10 +318,9 @@ def xmlrpcmethod(uri, method):
     try:
         return getattr(server, method)
     except:
-        raise AttributeError, "Error occured while getting server method"
+        raise AttributeError("Error occured while getting server method")
 
 
 def generate_mac():
-    return "64:{0:02x}:{1:02x}:{2:02x}:{3:02x}:{4:02x}".format(*bytearray(os.urandom(5)))
-
-
+    return "64:{0:02x}:{1:02x}:{2:02x}:{3:02x}:{4:02x}".format(
+        *bytearray(os.urandom(5)))

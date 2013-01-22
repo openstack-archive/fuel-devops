@@ -37,10 +37,12 @@ class Shell(object):
         self.manager.environment_get(self.params.name).resume()
 
     def do_revert(self):
-        self.manager.environment_get(self.params.name).revert(self.params.snapshot_name)
+        self.manager.environment_get(self.params.name).revert(
+            self.params.snapshot_name)
 
     def do_snapshot(self):
-        self.manager.environment_get(self.params.name).snapshot(self.params.snapshot_name)
+        self.manager.environment_get(self.params.name).snapshot(
+            self.params.snapshot_name)
 
 
     commands = {
@@ -57,10 +59,13 @@ class Shell(object):
 
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
-        name_parser.add_argument('name', help='environment name', default=os.getenv('ENV_NAME'))
+        name_parser.add_argument('name', help='environment name',
+            default=os.getenv('ENV_NAME'))
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
-        snapshot_name_parser.add_argument('--snapshot-name', help='snapshot name', default=os.getenv('SNAPSHOT_NAME'))
-        parser = argparse.ArgumentParser(description="Manage virtual environments")
+        snapshot_name_parser.add_argument('--snapshot-name',
+            help='snapshot name', default=os.getenv('SNAPSHOT_NAME'))
+        parser = argparse.ArgumentParser(
+            description="Manage virtual environments")
         subparsers = parser.add_subparsers(help='commands', dest='command')
         subparsers.add_parser('list')
         subparsers.add_parser('show', parents=[name_parser])
@@ -69,6 +74,8 @@ class Shell(object):
         subparsers.add_parser('destroy', parents=[name_parser])
         subparsers.add_parser('suspend', parents=[name_parser])
         subparsers.add_parser('resume', parents=[name_parser])
-        subparsers.add_parser('revert', parents=[name_parser, snapshot_name_parser])
-        subparsers.add_parser('snapshot', parents=[name_parser, snapshot_name_parser])
+        subparsers.add_parser('revert',
+            parents=[name_parser, snapshot_name_parser])
+        subparsers.add_parser('snapshot',
+            parents=[name_parser, snapshot_name_parser])
         return parser.parse_args()

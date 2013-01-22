@@ -2,6 +2,7 @@ from ipaddr import IPNetwork
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from django.db import models
 
+
 def choices(*args, **kwargs):
     defaults = {'max_length': 255, 'null': False}
     defaults.update(kwargs)
@@ -128,7 +129,9 @@ class Network(ExternalModel):
     has_pxe_server = models.BooleanField()
     has_reserved_ips = models.BooleanField(default=True)
     tftp_root_dir = models.CharField(max_length=255)
-    forward = choices('nat', 'route', 'bridge', 'private', 'vepa', 'passthrough', 'hostdev')
+    forward = choices(
+        'nat', 'route', 'bridge', 'private', 'vepa',
+        'passthrough', 'hostdev')
     ip_network = models.CharField(max_length=255, unique=True)
 
     @property
@@ -145,11 +148,14 @@ class Network(ExternalModel):
 
     def next_ip(self):
         while True:
-            self._iterhosts = self._iterhosts or IPNetwork(self.ip_network).iterhosts()
+            self._iterhosts = self._iterhosts or IPNetwork(
+                self.ip_network).iterhosts()
             ip = self._iterhosts.next()
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
                 continue
-            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).exists():
+            if not Address.objects.filter(
+                interface__network=self,
+                ip_address=str(ip)).exists():
                 return ip
 
     def bridge_name(self):

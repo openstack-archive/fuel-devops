@@ -29,9 +29,11 @@ class TestManager(TestCase):
         network = self.manager.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
         interface = self.manager.interface_create(network=network, node=node)
-        self.manager.network_create_address(str('10.1.0.1'), interface=interface)
+        self.manager.network_create_address(str('10.1.0.1'),
+            interface=interface)
         ip = network.next_ip()
-        self.manager.network_create_address(str('10.1.0.3'), interface=interface)
+        self.manager.network_create_address(str('10.1.0.3'),
+            interface=interface)
         ip = network.next_ip()
         self.assertEquals('10.1.0.4', str(ip))
 
@@ -58,7 +60,8 @@ class TestManager(TestCase):
 
     def test_node_creationw(self):
         environment = self.manager.environment_create('test_env55')
-        node = self.manager.node_create(name='test_node4', environment=environment)
+        node = self.manager.node_create(name='test_node4',
+            environment=environment)
         node.define()
 
     def test_node_creation(self):
@@ -69,7 +72,8 @@ class TestManager(TestCase):
         #                environment=environment, name='external', pool=None)
         #            private = self.manager.create_network(
         #                environment=environment, name='private', pool=None)
-        node = self.manager.node_create(name='test_node', environment=environment)
+        node = self.manager.node_create(name='test_node',
+            environment=environment)
         self.manager.interface_create(node=node, network=internal)
         #            self.manager.create_interface(node=node, network=external)
         #            self.manager.create_interface(node=node, network=private)
@@ -77,12 +81,15 @@ class TestManager(TestCase):
 
     def test_create_volume(self):
         environment = self.manager.environment_create('test_env3')
-        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child('test_vp89', backing_store=volume, environment=environment)
+        volume = self.manager.volume_get_predefined(
+            '/var/lib/libvirt/images/disk-135824657433.qcow2')
+        v3 = self.manager.volume_create_child('test_vp89', backing_store=volume,
+            environment=environment)
         v3.define()
 
     def test_create_volume(self):
-        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
+        volume = self.manager.volume_get_predefined(
+            '/var/lib/libvirt/images/disk-135824657433.qcow2')
         v3 = self.manager.volume_create_child('test_vp89', backing_store=volume)
         v3.define()
 
@@ -94,13 +101,17 @@ class TestManager(TestCase):
             environment=environment, name='external', pool=None)
         private = self.manager.network_create(
             environment=environment, name='private', pool=None)
-        node = self.manager.node_create(name='test_node', environment=environment)
+        node = self.manager.node_create(name='test_node',
+            environment=environment)
         self.manager.interface_create(node=node, network=internal)
         self.manager.interface_create(node=node, network=external)
         self.manager.interface_create(node=node, network=private)
-        volume = self.manager.volume_get_predefined('/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child('test_vp892', backing_store=volume, environment=environment)
-        v4 = self.manager.volume_create_child('test_vp891', backing_store=volume, environment=environment)
+        volume = self.manager.volume_get_predefined(
+            '/var/lib/libvirt/images/disk-135824657433.qcow2')
+        v3 = self.manager.volume_create_child('test_vp892',
+            backing_store=volume, environment=environment)
+        v4 = self.manager.volume_create_child('test_vp891',
+            backing_store=volume, environment=environment)
         self.manager.node_attach_volume(node=node, volume=v3)
         self.manager.node_attach_volume(node, v4)
         environment.define()

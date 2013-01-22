@@ -22,7 +22,9 @@ class LibvirtXMLBuilder(object):
         :rtype : String
         """
         network_xml = XMLBuilder('network')
-        network_xml.name(self._get_name(network.environment and network.environment.name or '', network.name))
+        network_xml.name(self._get_name(
+            network.environment and network.environment.name or '',
+            network.name))
         if not (network.forward is None):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):
@@ -34,7 +36,8 @@ class LibvirtXMLBuilder(object):
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:
                     with network_xml.dhcp:
-                        network_xml.range(start=str(network.ip_pool_start), end=str(network.ip_pool_end))
+                        network_xml.range(start=str(network.ip_pool_start),
+                            end=str(network.ip_pool_end))
                         for interface in network.interfaces:
                             for address in interface.addresses:
                                 if IPAddress(address.ip_address) in ip_network:
@@ -54,7 +57,9 @@ class LibvirtXMLBuilder(object):
         :rtype : String
         """
         volume_xml = XMLBuilder('volume')
-        volume_xml.name(self._get_name(volume.environment and volume.environment.name or '', volume.name))
+        volume_xml.name(
+            self._get_name(volume.environment and volume.environment.name or '',
+                volume.name))
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
@@ -88,7 +93,8 @@ class LibvirtXMLBuilder(object):
             raise NotImplementedError()
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
-            device_xml.source(network=self.driver.network_name(interface.network))
+            device_xml.source(
+                network=self.driver.network_name(interface.network))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)
 
@@ -98,7 +104,9 @@ class LibvirtXMLBuilder(object):
         :type node: Node
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
-        node_xml.name(self._get_name(node.environment and node.environment.name or '', node.name))
+        node_xml.name(
+            self._get_name(node.environment and node.environment.name or '',
+                node.name))
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory), unit='MiB')
 

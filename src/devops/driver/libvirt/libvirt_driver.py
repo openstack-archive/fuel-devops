@@ -105,7 +105,8 @@ class LibvirtDriver(object):
         """
         :rtype : None
         """
-        ret = self.conn.networkDefineXML(self.xml_builder.build_network_xml(network))
+        ret = self.conn.networkDefineXML(
+            self.xml_builder.build_network_xml(network))
         ret.setAutostart(True)
         network.uuid = ret.UUIDString()
 
@@ -173,7 +174,8 @@ class LibvirtDriver(object):
         :type node: Node
         :rtype : String
         """
-        xml_desc = ET.fromstring(self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
+        xml_desc = ET.fromstring(
+            self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
         vnc_element = xml_desc.find('devices/graphics[@type="vnc"][@port]')
         if vnc_element:
             return vnc_element.get('port')
@@ -358,7 +360,8 @@ class LibvirtDriver(object):
         :type volume: Volume
         :rtype : String
         """
-        xml_desc = ET.fromstring(self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
+        xml_desc = ET.fromstring(
+            self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
         return xml_desc.find('target/format[@type]').get('type')
 
     @retry()

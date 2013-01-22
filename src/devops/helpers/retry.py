@@ -1,6 +1,7 @@
 import functools
 from time import sleep
 
+
 def retry(count=10, delay=1):
     def decorator(func):
         @functools.wraps(func)
