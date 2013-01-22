@@ -1,3 +1,4 @@
+import subprocess
 import os
 import urllib
 import stat
@@ -14,7 +15,7 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 import posixpath
 
 import logging
-from devops.error import DevopsError
+from devops.error import DevopsError, DevopsCalledProcessError
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +135,41 @@ class SSHClient(object):
             password=self.password)
         self._sftp = self._ssh.open_sftp()
 
-    def execute(self, command):
-        logger.debug("Executing command: '%s'" % command.rstrip())
+    def check_call(self, command, verbose=False):
+        ret = self.execute(command, verbose)
+        if not ret['exit_code']: raise DevopsCalledProcessError(command, ret, '\n'.join(ret['stderr']))
+        return ret
+
+    def check_stderr(self, command, verbose=False):
+        ret = self.check_call(command, verbose)
+        if ret['stderr'] : raise DevopsCalledProcessError(command, ret, '\n'.join(ret['stderr']))
+        return ret
+
+    def execute(self, command, verbose=False):
+        chan, stdin, stderr, stdout = self.execute_async(command)
+        result = {
+            'stdout': [],
+            'stderr': [],
+            'exit_code': 0
+        }
+        for line in stdout:
+            result['stdout'].append(line)
+            if verbose:
+                print line
+        for line in stderr:
+            result['stderr'].append(line)
+            if verbose:
+                print line
+
+        result['exit_code'] = chan.recv_exit_status()
+        chan.close()
+
+        return result
+
+
+
+    def execute_async(self, command):
+        logging.debug("Executing command: '%s'" % command.rstrip())
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
@@ -147,19 +181,7 @@ class SSHClient(object):
         if stdout.channel.closed is False:
             stdin.write('%s\n' % self.password)
             stdin.flush()
-        result = {
-            'stdout': [],
-            'stderr': [],
-            'exit_code': chan.recv_exit_status()
-        }
-        for line in stdout:
-            result['stdout'].append(line)
-        for line in stderr:
-            result['stderr'].append(line)
-
-        chan.close()
-
-        return result
+        return chan, stdin, stderr, stdout
 
     def mkdir(self, path):
         if self.exists(path):
