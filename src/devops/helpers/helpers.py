@@ -137,12 +137,14 @@ class SSHClient(object):
 
     def check_call(self, command, verbose=False):
         ret = self.execute(command, verbose)
-        if not ret['exit_code']: raise DevopsCalledProcessError(command, ret, '\n'.join(ret['stderr']))
+        if not ret['exit_code']:
+            raise DevopsCalledProcessError(command, ret, ret['stderr'])
         return ret
 
     def check_stderr(self, command, verbose=False):
         ret = self.check_call(command, verbose)
-        if ret['stderr'] : raise DevopsCalledProcessError(command, ret, '\n'.join(ret['stderr']))
+        if ret['stderr'] :
+            raise DevopsCalledProcessError(command, ret, ret['stderr'])
         return ret
 
     def execute(self, command, verbose=False):
@@ -160,13 +162,9 @@ class SSHClient(object):
             result['stderr'].append(line)
             if verbose:
                 print line
-
         result['exit_code'] = chan.recv_exit_status()
         chan.close()
-
         return result
-
-
 
     def execute_async(self, command):
         logging.debug("Executing command: '%s'" % command.rstrip())
