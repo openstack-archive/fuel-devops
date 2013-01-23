@@ -28,11 +28,17 @@ class Manager(object):
         return Environment.objects.get(name=name)
 
     def create_network_pool(self, networks, prefix):
+        """
+        :rtype : IpNetworksPool
+        """
         pool = IpNetworksPool(networks=networks, prefix=prefix)
         pool.set_allocated_networks(ExternalModel.get_allocated_networks())
         return pool
 
     def _get_default_pool(self):
+        """
+        :rtype : IpNetworksPool
+        """
         self.default_pool = self.default_pool or self.create_network_pool(
             networks=[ipaddr.IPNetwork('10.0.0.0/16')],
             prefix=24)
@@ -43,6 +49,9 @@ class Manager(object):
         has_dhcp_server=True, has_pxe_server=False,
         forward='nat'
     ):
+        """
+        :rtype : Network
+        """
         allocated_network = ip_network or ExternalModel.allocate_network(
             pool or self._get_default_pool())
         return Network.objects.create(
@@ -54,6 +63,9 @@ class Manager(object):
     def node_create(self, name, environment=None, role=None, vcpu=2,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
+        """
+        :rtype : Node
+        """
         if not boot:
             boot = ['network', 'cdrom', 'hd']
         node = Node.objects.create(
@@ -66,6 +78,9 @@ class Manager(object):
         return node
 
     def volume_get_predefined(self, uuid):
+        """
+        :rtype : Volume
+        """
         try:
             return Volume.objects.get(uuid=uuid)
         except Volume.DoesNotExist:
@@ -76,12 +91,18 @@ class Manager(object):
 
     def volume_create_child(self, name, backing_store, format=None,
                             environment=None):
+        """
+        :rtype : Volume
+        """
         return Volume.objects.create(
             name=name, environment=environment,
             capacity=backing_store.capacity,
             format=format or backing_store.format, backing_store=backing_store)
 
     def volume_create(self, name, capacity, format='qcow2', environment=None):
+        """
+        :rtype : Volume
+        """
         return Volume.objects.create(
             name=name, environment=environment,
             capacity=capacity, format=format)
@@ -90,10 +111,16 @@ class Manager(object):
         pass
 
     def _generate_mac(self):
+        """
+        :rtype : String
+        """
         return generate_mac()
 
     def interface_create(self, network, node, type='network', target_dev=None,
                          mac_address=None, model='virtio'):
+        """
+        :rtype : Interface
+        """
         interface = Interface.objects.create(
             network=network, node=node,
             type=type, target_dev=target_dev,
@@ -102,11 +129,17 @@ class Manager(object):
         return interface
 
     def network_create_address(self, ip_address, interface):
-        Address.objects.create(ip_address=ip_address, interface=interface)
+        """
+        :rtype : Address
+        """
+        return Address.objects.create(ip_address=ip_address, interface=interface)
 
     def node_attach_volume(self, node, volume, device='disk', type='file',
                            bus='virtio', target_dev=None):
-        DiskDevice.objects.create(
+        """
+        :rtype : DiskDevice
+        """
+        return DiskDevice.objects.create(
             device=device, type=type, bus=bus,
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)

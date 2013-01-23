@@ -33,9 +33,9 @@ def one(manager):
         manager.node_attach_volume(node, v4)
     environment.define()
     environment.start()
-    for nodea in environment.nodes:
-        nodea.await('internal')
-        nodea.remote('internal', 'root', 'r00tme').check_stderr('ls -la', verbose=True)
+    for node in environment.nodes:
+        node.await('internal')
+        node.remote('internal', 'root', 'r00tme').check_stderr('ls -la', verbose=True)
 
 
 if __name__ == '__main__':
