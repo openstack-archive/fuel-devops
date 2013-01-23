@@ -18,20 +18,24 @@ def one(manager):
         forward='nat')
     private = manager.network_create(
         environment=environment, name='private', pool=private_pool)
-    node = manager.node_create(name='test_node', environment=environment)
-    manager.interface_create(node=node, network=internal)
-    manager.interface_create(node=node, network=external)
-    manager.interface_create(node=node, network=private)
-    volume = manager.volume_get_predefined(
-        '/var/lib/libvirt/images/centos63-cobbler-base.qcow2')
-    v3 = manager.volume_create_child('test_vp895', backing_store=volume,
-        environment=environment)
-    v4 = manager.volume_create_child('test_vp896', backing_store=volume,
-        environment=environment)
-    manager.node_attach_volume(node=node, volume=v3)
-    manager.node_attach_volume(node, v4)
+    for i in range(0,2):
+        node = manager.node_create(name='test_node' + str(i), environment=environment)
+        manager.interface_create(node=node, network=internal)
+        manager.interface_create(node=node, network=external)
+        manager.interface_create(node=node, network=private)
+        volume = manager.volume_get_predefined(
+            '/var/lib/libvirt/images/centos63-cobbler-base.qcow2')
+        v3 = manager.volume_create_child('test_vp895' + str(i), backing_store=volume,
+            environment=environment)
+        v4 = manager.volume_create_child('test_vp896'+ str(i), backing_store=volume,
+            environment=environment)
+        manager.node_attach_volume(node=node, volume=v3)
+        manager.node_attach_volume(node, v4)
     environment.define()
     environment.start()
+    for nodea in environment.nodes:
+        nodea.await('internal')
+        nodea.remote('internal', 'root', 'r00tme').check_stderr('ls -la', verbose=True)
 
 
 if __name__ == '__main__':

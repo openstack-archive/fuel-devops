@@ -13,12 +13,18 @@ class Manager(object):
         self.default_pool = None
 
     def environment_create(self, name):
+        """
+        :rtype : Environment
+        """
         return Environment.objects.create(name=name)
 
     def environment_list(self):
         return Environment.objects.all()
 
     def environment_get(self, name):
+        """
+        :rtype : Environment
+        """
         return Environment.objects.get(name=name)
 
     def create_network_pool(self, networks, prefix):

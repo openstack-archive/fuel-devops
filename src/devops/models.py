@@ -159,19 +159,6 @@ class Network(ExternalModel):
                 ip_address=str(ip)).exists():
                 return ip
 
-    def ip_address_by_network_name(self, name):
-        return Address.objects.get(
-            interface__network_name=name).ip_address
-
-    def remote(self, network_name, login, password):
-        return SSHClient(
-            self.ip_address_by_network_name(network_name), login, password)
-
-    def await_remote(self, network_name, login, password, timeout=120):
-        wait(
-            lambda: tcp_ping(self.ip_address_by_network_name(network_name), 22),
-            timeout=timeout)
-        return self.remote(network_name, login, password)
 
     def bridge_name(self):
         return self.driver.network_bridge_name(self)
@@ -234,6 +221,25 @@ class Node(ExternalModel):
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
+
+    def get_ip_address_by_network_name(self, name):
+        return Address.objects.get(
+            interface__network__name=name, interface__node=self).ip_address
+
+    def remote(self, network_name, login, password):
+        """
+        :rtype : SSHClient
+        """
+        return SSHClient(
+            self.get_ip_address_by_network_name(network_name),
+            username=login,
+            password=password)
+
+    def await(self, network_name, timeout=120):
+        wait(
+            lambda: tcp_ping(
+                self.get_ip_address_by_network_name(network_name), 22),
+            timeout=timeout)
 
     def define(self):
         self.driver.node_define(self)

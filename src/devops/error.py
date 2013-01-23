@@ -3,9 +3,9 @@ class DevopsError(Exception):
 
 
 class DevopsCalledProcessError(DevopsError):
-    def __init__(self, returncode, cmd, output=None):
+    def __init__(self, command, returncode,  output=None):
         self.returncode = returncode
-        self.cmd = cmd
+        self.cmd = command
         self.output = output
 
     def __str__(self):

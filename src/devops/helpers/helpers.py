@@ -130,14 +130,14 @@ class SSHClient(object):
 
     def check_call(self, command, verbose=False):
         ret = self.execute(command, verbose)
-        if not ret['exit_code']:
-            raise DevopsCalledProcessError(command, ret, ret['stderr'])
+        if ret['exit_code'] != 0:
+            raise DevopsCalledProcessError(command, ret, ret['stdout'] + ret['stderr'])
         return ret
 
     def check_stderr(self, command, verbose=False):
         ret = self.check_call(command, verbose)
         if ret['stderr']:
-            raise DevopsCalledProcessError(command, ret, ret['stderr'])
+            raise DevopsCalledProcessError(command, ret, ret['stdout'] + ret['stderr'])
         return ret
 
     def execute(self, command, verbose=False):
