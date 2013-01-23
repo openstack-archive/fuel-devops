@@ -1,6 +1,7 @@
-from ipaddr import IPNetwork
+from ipaddr import IPNetwork, IPAddress
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from django.db import models
+from devops.helpers.helpers import SSHClient
 
 
 def choices(*args, **kwargs):
@@ -157,6 +158,11 @@ class Network(ExternalModel):
                 interface__network=self,
                 ip_address=str(ip)).exists():
                 return ip
+
+    def remote(self, network_name, login, password):
+        ip_address = Address.objects.get(
+            interface__network_name=network_name).ip_address
+        return SSHClient(ip_address, login, password)
 
     def bridge_name(self):
         return self.driver.network_bridge_name(self)
