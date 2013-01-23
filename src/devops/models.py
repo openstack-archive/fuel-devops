@@ -1,7 +1,7 @@
 from ipaddr import IPNetwork, IPAddress
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from django.db import models
-from devops.helpers.helpers import SSHClient
+from devops.helpers.helpers import SSHClient, wait, tcp_ping
 
 
 def choices(*args, **kwargs):
@@ -159,10 +159,19 @@ class Network(ExternalModel):
                 ip_address=str(ip)).exists():
                 return ip
 
+    def ip_address_by_network_name(self, name):
+        return Address.objects.get(
+            interface__network_name=name).ip_address
+
     def remote(self, network_name, login, password):
-        ip_address = Address.objects.get(
-            interface__network_name=network_name).ip_address
-        return SSHClient(ip_address, login, password)
+        return SSHClient(
+            self.ip_address_by_network_name(network_name), login, password)
+
+    def await_remote(self, network_name, login, password, timeout=120):
+        wait(
+            lambda: tcp_ping(self.ip_address_by_network_name(network_name), 22),
+            timeout=timeout)
+        return self.remote(network_name, login, password)
 
     def bridge_name(self):
         return self.driver.network_bridge_name(self)
