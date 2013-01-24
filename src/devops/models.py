@@ -50,10 +50,10 @@ class Environment(models.Model):
         for node in self.nodes:
             node.define()
 
-    def start(self):
+    def start(self, nodes=None):
         for network in self.networks:
             network.start()
-        for node in self.nodes:
+        for node in nodes or self.nodes:
             node.start()
 
     def destroy(self):
