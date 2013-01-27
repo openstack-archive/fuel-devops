@@ -9,7 +9,7 @@ class DevopsCalledProcessError(DevopsError):
         self.output = output
 
     def __str__(self):
-        message = "Command '%s' returned non-zero exit status %d" % (
+        message = "Command '%s' returned non-zero exit status %s" % (
         self.cmd, self.returncode)
         if self.output:
             message += "\n%s" % '\n'.join(self.output)
