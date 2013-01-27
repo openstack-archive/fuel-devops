@@ -34,13 +34,13 @@ class Environment(models.Model):
         return Node.objects.filter(environment=self)
 
     def node_by_name(self, name):
-        return self.nodes.filter(name=name, environment=self)
+        return self.nodes.get(name=name, environment=self)
 
     def nodes_by_role(self, role):
         return self.nodes.filter(role=role, environment=self)
 
     def network_by_name(self, name):
-        return self.networks.filter(name=name, environment=self)
+        return self.networks.get(name=name, environment=self)
 
     def define(self):
         for network in self.networks:
