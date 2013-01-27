@@ -68,7 +68,7 @@ class LibvirtDriver(object):
             self.conn.networkLookupByUUIDString(network.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message == 'virNetworkLookupByUUIDString() failed':
+            if e.message.count('not found'):
                 return False
         raise
 
@@ -82,7 +82,8 @@ class LibvirtDriver(object):
             self.conn.lookupByUUIDString(node.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message.count('Domain not found'):
+            if e.message.count('not found'):
+                print e
                 return False
         raise
 
@@ -96,7 +97,7 @@ class LibvirtDriver(object):
             self.conn.storageVolLookupByKey(volume.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message == 'virStorageVolLookupByKey() failed':
+            if e.message.count('not found'):
                 return False
         raise
 
