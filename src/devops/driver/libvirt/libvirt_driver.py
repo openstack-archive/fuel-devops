@@ -82,7 +82,7 @@ class LibvirtDriver(object):
             self.conn.lookupByUUIDString(node.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message == 'virDomainLookupByUUIDString() failed':
+            if e.message.count('Domain not found'):
                 return False
         raise
 
