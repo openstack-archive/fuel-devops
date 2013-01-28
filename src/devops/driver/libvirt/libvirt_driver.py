@@ -88,6 +88,22 @@ class LibvirtDriver(object):
         raise
 
     @retry()
+    def node_snapshot_exists(self, node, name):
+        """
+        :type node: Node
+        :rtype : Boolean
+        """
+        ret = self.conn.lookupByUUIDString(node.uuid)
+        try:
+            ret.snapshotLookupByName(name, 0)
+            return True
+        except libvirt.libvirtError, e:
+            if e.message.count('not found'):
+                print e
+                return False
+        raise
+
+    @retry()
     def volume_exists(self, volume):
         """
         :type volume: Volume

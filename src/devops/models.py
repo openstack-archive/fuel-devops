@@ -42,6 +42,9 @@ class Environment(models.Model):
     def network_by_name(self, name):
         return self.networks.get(name=name, environment=self)
 
+    def has_snapshot(self, name):
+        return  all(map(lambda x:x.has_snapshot(name), self.nodes))
+
     def define(self):
         for network in self.networks:
             network.define()
@@ -77,9 +80,9 @@ class Environment(models.Model):
         for node in self.nodes:
             node.resume()
 
-    def snapshot(self, name=None):
+    def snapshot(self, name=None, description=None, force=False):
         for node in self.nodes:
-            node.snapshot(name)
+            node.snapshot(name=name, description=description, force=force)
 
     def revert(self, name=None):
         for node in self.nodes:
@@ -274,8 +277,14 @@ class Node(ExternalModel):
     def resume(self):
         self.driver.node_resume(self)
 
-    def snapshot(self, name=None):
-        self.driver.node_create_snapshot(node=self, name=name)
+    def has_snapshot(self, name):
+        return  self.driver.node_snapshot_exists(node=self, name=name)
+
+    def snapshot(self, name=None, force=False, description=None):
+        if force and self.has_snapshot(name):
+            self.driver.node_delete_snapshot(node=self, name=name)
+        self.driver.node_create_snapshot(
+            node=self, name=name, description=description)
 
     def revert(self, name=None):
         self.driver.node_revert_snapshot(node=self, name=name)
