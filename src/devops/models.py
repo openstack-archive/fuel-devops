@@ -1,4 +1,4 @@
-from ipaddr import IPNetwork, IPAddress
+from ipaddr import IPNetwork
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from django.db import models
 from devops.helpers.helpers import SSHClient, wait, tcp_ping
