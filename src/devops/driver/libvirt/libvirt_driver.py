@@ -70,7 +70,8 @@ class LibvirtDriver(object):
         except libvirt.libvirtError, e:
             if e.message.count('not found'):
                 return False
-        raise
+            else:
+                raise
 
     @retry()
     def node_exists(self, node):
@@ -83,9 +84,9 @@ class LibvirtDriver(object):
             return True
         except libvirt.libvirtError, e:
             if e.message.count('not found'):
-                print e
                 return False
-        raise
+            else:
+                raise
 
     @retry()
     def node_snapshot_exists(self, node, name):
@@ -99,9 +100,9 @@ class LibvirtDriver(object):
             return True
         except libvirt.libvirtError, e:
             if e.message.count('not found'):
-                print e
                 return False
-        raise
+            else:
+                raise
 
     @retry()
     def volume_exists(self, volume):
@@ -115,7 +116,8 @@ class LibvirtDriver(object):
         except libvirt.libvirtError, e:
             if e.message.count('not found'):
                 return False
-        raise
+            else:
+                raise
 
     @retry()
     def network_define(self, network):
