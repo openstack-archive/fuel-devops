@@ -1,3 +1,4 @@
+from devops.helpers.retry import retry
 import os
 import urllib
 import stat
@@ -120,6 +121,7 @@ class SSHClient(object):
     def __exit__(self, type, value, traceback):
         pass
 
+    @retry()
     def reconnect(self):
         self._ssh = paramiko.SSHClient()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
