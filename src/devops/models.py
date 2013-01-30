@@ -291,7 +291,7 @@ class Node(ExternalModel):
 
 
 class Volume(ExternalModel):
-    capacity = models.IntegerField(null=False)
+    capacity = models.BigIntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
 
