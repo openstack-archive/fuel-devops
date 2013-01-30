@@ -7,6 +7,7 @@ INSTALLED_APPS = ['devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.abspath(os.path.join(HOME_DIR, 'devops.db'))
+        'NAME': os.path.abspath(os.path.join(HOME_DIR, 'devops.db')),
+        'TIMEOUT': 60,
     }
 }
