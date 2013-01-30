@@ -6,8 +6,12 @@ INSTALLED_APPS = ['devops']
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.abspath(os.path.join(HOME_DIR, 'devops.db')),
-        'TIMEOUT': 60,
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '',
+        'TEST_CHARSET': 'UTF8'
     }
 }
