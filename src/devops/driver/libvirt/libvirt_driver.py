@@ -292,6 +292,7 @@ class LibvirtDriver(object):
         :type name: String
         :rtype : None
         """
+        sleep(4) # bug
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
         domain.revertToSnapshot(snapshot, 0)

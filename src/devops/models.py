@@ -84,9 +84,9 @@ class Environment(models.Model):
         for node in self.nodes:
             node.snapshot(name=name, description=description, force=force)
 
-    def revert(self, name=None):
+    def revert(self, name=None, destroy=True):
         for node in self.nodes:
-            node.revert(name)
+            node.revert(name, destroy=destroy)
 
 
 class ExternalModel(models.Model):
@@ -210,6 +210,9 @@ class Node(ExternalModel):
             if not self.disk_devices.filter(target_dev=disk_name).exists():
                 return disk_name
 
+    def get_vnc_port(self):
+        self.driver.node_get_vnc_port(node=self)
+
     @property
     def disk_devices(self):
         return DiskDevice.objects.filter(node=self)
@@ -217,10 +220,6 @@ class Node(ExternalModel):
     @property
     def interfaces(self):
         return Interface.objects.filter(node=self).order_by('id')
-
-    #    @property
-    #    def networks(self):
-    #        return Network.objects.filter(interface__node=self)
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
@@ -286,7 +285,9 @@ class Node(ExternalModel):
         self.driver.node_create_snapshot(
             node=self, name=name, description=description)
 
-    def revert(self, name=None):
+    def revert(self, name=None, destroy=True):
+        if destroy:
+            self.destroy()
         self.driver.node_revert_snapshot(node=self, name=name)
 
 

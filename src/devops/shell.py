@@ -14,11 +14,16 @@ class Shell(object):
     def do_list(self):
         print self.manager.environment_list().values('name')
 
+    def node_dict(self, node):
+        return { 'name':node.name,
+          'vnc':node.get_vnc_port(),
+        }
+
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
         print {
             'name': environment.name,
-            'nodes': map(lambda x: 'node', environment.nodes.values('name'))
+            'nodes': map(lambda x: {'node': self.node_dict(x)}, environment.nodes)
         }
 
     def do_erase(self):
