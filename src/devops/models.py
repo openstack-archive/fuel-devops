@@ -211,7 +211,7 @@ class Node(ExternalModel):
                 return disk_name
 
     def get_vnc_port(self):
-        self.driver.node_get_vnc_port(node=self)
+        return self.driver.node_get_vnc_port(node=self)
 
     @property
     def disk_devices(self):
