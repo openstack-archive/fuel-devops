@@ -254,8 +254,9 @@ class Node(ExternalModel):
         if verbose or not self.driver.node_active(self):
             self.driver.node_create(self)
 
-    def destroy(self):
-        self.driver.node_destroy(self)
+    def destroy(self, verbose=True):
+        if verbose or self.driver.node_active(self):
+            self.driver.node_destroy(self)
 
     def erase(self):
         self.remove(verbose=False)
@@ -263,8 +264,7 @@ class Node(ExternalModel):
     def remove(self, verbose=True):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
-                if self.driver.node_active(self):
-                    self.driver.node_destroy(self)
+                self.destroy(verbose=False)
                 for snapshot in self.driver.node_get_snapshots(self):
                     self.driver.node_delete_snapshot(node=self, name=snapshot)
                 self.driver.node_undefine(self)
@@ -287,7 +287,7 @@ class Node(ExternalModel):
 
     def revert(self, name=None, destroy=True):
         if destroy:
-            self.destroy()
+            self.destroy(verbose=False)
         self.driver.node_revert_snapshot(node=self, name=name)
 
 
