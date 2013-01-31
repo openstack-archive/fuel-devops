@@ -121,12 +121,16 @@ class SSHClient(object):
     def __exit__(self, type, value, traceback):
         pass
 
-    def reconnect(self):
-        self._ssh = paramiko.SSHClient()
-        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    @retry(count=3,delay=3)
+    def connect(self):
         self._ssh.connect(
             self.host, port=self.port, username=self.username,
             password=self.password)
+
+    def reconnect(self):
+        self._ssh = paramiko.SSHClient()
+        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.connect()
         self._sftp = self._ssh.open_sftp()
 
     def check_call(self, command, verbose=False):
