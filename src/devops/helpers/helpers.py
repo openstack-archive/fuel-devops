@@ -141,6 +141,24 @@ class SSHClient(object):
             raise DevopsCalledProcessError(command, ret['exit_code'], ret['stdout'] + ret['stderr'])
         return ret
 
+    @classmethod
+    def execute_together(cls, remotes, command):
+        futures={}
+        errors={}
+        for remote in remotes:
+            cmd = "%s\n" % command
+            if remote.sudo_mode:
+                cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
+            chan = remote._ssh.get_transport().open_session()
+            chan.exec_command(cmd)
+            futures[remote]=chan
+        for remote, chan in futures.items():
+            ret=chan.recv_exit_status()
+            if  ret != 0:
+                errors[remote.host]=ret
+        if errors:
+            raise DevopsCalledProcessError(command, errors)
+
     def execute(self, command, verbose=False):
         chan, stdin, stderr, stdout = self.execute_async(command)
         result = {
