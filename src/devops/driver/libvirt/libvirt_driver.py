@@ -304,6 +304,13 @@ class LibvirtDriver(object):
         print domain.state(0)
 
     @retry()
+    def node_delete_all_snapshots(self, node):
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        for name in domain.snapshotListNames(libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
+            snapshot = self._get_snapshot(domain, name)
+            snapshot.delete(libvirt.VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN)
+
+    @retry()
     def node_delete_snapshot(self, node, name=None):
         """
         :type node: Node
@@ -408,3 +415,5 @@ class LibvirtDriver(object):
                         "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
             self.allocated_networks = allocated_networks
         return self.allocated_networks
+
+

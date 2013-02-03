@@ -85,8 +85,11 @@ class Environment(models.Model):
             node.snapshot(name=name, description=description, force=force)
 
     def revert(self, name=None, destroy=True):
+        if destroy:
+            for node in self.nodes:
+                node.destroy(verbose=False)
         for node in self.nodes:
-            node.revert(name, destroy=destroy)
+            node.revert(name, destroy=False)
 
 
 class ExternalModel(models.Model):
@@ -265,8 +268,7 @@ class Node(ExternalModel):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
-                for snapshot in self.driver.node_get_snapshots(self):
-                    self.driver.node_delete_snapshot(node=self, name=snapshot)
+                self.driver.node_delete_all_snapshots(node=self)
                 self.driver.node_undefine(self)
         self.delete()
 
