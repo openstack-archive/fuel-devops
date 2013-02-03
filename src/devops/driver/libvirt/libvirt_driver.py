@@ -196,7 +196,7 @@ class LibvirtDriver(object):
         xml_desc = ET.fromstring(
             self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
         vnc_element = xml_desc.find('devices/graphics[@type="vnc"][@port]')
-        if vnc_element:
+        if vnc_element is not None:
             return vnc_element.get('port')
 
     @retry()
@@ -292,10 +292,10 @@ class LibvirtDriver(object):
         :type name: String
         :rtype : None
         """
-        sleep(4) # bug
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
         domain.revertToSnapshot(snapshot, 0)
+        print domain.state(0)
 
     @retry()
     def node_delete_snapshot(self, node, name=None):

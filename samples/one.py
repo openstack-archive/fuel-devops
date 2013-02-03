@@ -18,7 +18,7 @@ def one(manager):
         forward='nat')
     private = manager.network_create(
         environment=environment, name='private', pool=private_pool)
-    for i in range(0,2):
+    for i in range(0,15):
         node = manager.node_create(name='test_node' + str(i), environment=environment)
         manager.interface_create(node=node, network=internal)
         manager.interface_create(node=node, network=external)
