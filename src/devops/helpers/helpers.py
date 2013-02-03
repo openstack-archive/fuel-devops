@@ -123,6 +123,9 @@ class SSHClient(object):
 
     @retry(count=3,delay=3)
     def connect(self):
+        logging.debug(
+            "Connect to '%s:%s' as '%s:%s'" % (
+                self.host, self.port, self.username, self.password))
         self._ssh.connect(
             self.host, port=self.port, username=self.username,
             password=self.password)
