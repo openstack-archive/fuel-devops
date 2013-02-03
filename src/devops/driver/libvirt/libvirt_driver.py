@@ -16,6 +16,9 @@ class LibvirtDriver(object):
         self.capabilities = None
         self.allocated_networks = None
 
+    def __del__(self):
+        self.conn.close()
+
     @retry()
     def get_capabilities(self):
         """
@@ -273,7 +276,10 @@ class LibvirtDriver(object):
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
         print xml
-        self.conn.lookupByUUIDString(node.uuid).snapshotCreateXML(xml, 0)
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        print domain.state(0)
+        domain.snapshotCreateXML(xml, 0)
+        print domain.state(0)
 
     def _get_snapshot(self, domain, name):
         """
