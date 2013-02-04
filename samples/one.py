@@ -1,4 +1,5 @@
 import ipaddr
+from devops.helpers.helpers import SSHClient
 
 def one(manager):
     environment = manager.environment_create('test_env7')
@@ -33,9 +34,13 @@ def one(manager):
         manager.node_attach_volume(node, v4)
     environment.define()
     environment.start()
+    remotes = []
     for node in environment.nodes:
         node.await('internal')
         node.remote('internal', 'root', 'r00tme').check_stderr('ls -la', verbose=True)
+        remotes.append(node.remote('internal', 'root', 'r00tme'))
+    SSHClient.execute_together(remotes, 'ls -la')
+
 
 
 if __name__ == '__main__':

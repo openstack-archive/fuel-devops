@@ -85,7 +85,7 @@ class LibvirtXMLBuilder(object):
     def _build_disk_device(self, device_xml, disk_device):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
             #https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
-            device_xml.driver(type=disk_device.volume.format, cache="writeback")
+            device_xml.driver(type=disk_device.volume.format, cache="unsafe")
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
