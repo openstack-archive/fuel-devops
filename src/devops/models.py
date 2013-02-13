@@ -199,7 +199,7 @@ class Node(ExternalModel):
     hypervisor = choices('kvm')
     os_type = choices('hvm')
     architecture = choices('x86_64', 'i686')
-    boot = ['hd']
+    boot = ['network', 'cdrom', 'hd']
     metadata = models.CharField(max_length=255, null=True)
     role = models.CharField(max_length=255, null=True)
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
