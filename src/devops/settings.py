@@ -1,7 +1,6 @@
 import os
 
-DRIVER = 'src.devops.driver.libvirt.libvirt_driver.LibvirtDriver'
-HOME_DIR = os.environ.get('DEVOPS_HOME') or os.environ.get('APPDATA') or os.environ['HOME']
+DRIVER = 'devops.driver.libvirt.libvirt_driver'
 INSTALLED_APPS = ['devops']
 
 DATABASES = {

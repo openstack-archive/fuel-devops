@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 import ipaddr
 
 
-class LibvirtDriver(object):
+class DevopsDriver(object):
     def __init__(self, connection_string="qemu:///system"):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)

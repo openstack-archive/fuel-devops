@@ -1,5 +1,6 @@
+from devops.settings import DRIVER
+from django.utils.importlib import import_module
 from ipaddr import IPNetwork
-from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from django.db import models
 from devops.helpers.helpers import SSHClient, wait, tcp_ping
 
@@ -98,15 +99,16 @@ class ExternalModel(models.Model):
     @classmethod
     def get_driver(cls):
         """
-        :rtype : LibvirtDriver
+        :rtype : DevopsDriver
         """
-        cls._driver = cls._driver or LibvirtDriver()
+        driver = import_module('.base', DRIVER)
+        cls._driver = cls._driver or driver.LibvirtDriver()
         return cls._driver
 
     @property
     def driver(self):
         """
-        :rtype : LibvirtDriver
+        :rtype : DevopsDriver
         """
         return self.get_driver()
 
