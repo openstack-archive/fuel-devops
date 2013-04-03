@@ -101,7 +101,7 @@ class ExternalModel(models.Model):
         """
         :rtype : DevopsDriver
         """
-        driver = import_module('.base', DRIVER)
+        driver = import_module(DRIVER)
         cls._driver = cls._driver or driver.LibvirtDriver()
         return cls._driver
 
@@ -233,14 +233,14 @@ class Node(ExternalModel):
         return Address.objects.get(
             interface__network__name=name, interface__node=self).ip_address
 
-    def remote(self, network_name, login, password):
+    def remote(self, network_name, login, password=None, private_keys=None):
         """
         :rtype : SSHClient
         """
         return SSHClient(
             self.get_ip_address_by_network_name(network_name),
             username=login,
-            password=password)
+            password=password, private_keys=private_keys)
 
     def await(self, network_name, timeout=120):
         wait(

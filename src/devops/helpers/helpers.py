@@ -100,11 +100,14 @@ class SSHClient(object):
         def __exit__(self, type, value, traceback):
             self.ssh.sudo_mode = False
 
-    def __init__(self, host, port=22, username=None, password=None):
+    def __init__(self, host, port=22, username=None, password=None,
+                 private_keys=None):
         self.host = str(host)
         self.port = int(port)
         self.username = username
         self.password = password
+        if not private_keys: private_keys = []
+        self.private_keys = private_keys
 
         self.sudo_mode = False
         self.sudo = self.get_sudo(self)
@@ -126,9 +129,16 @@ class SSHClient(object):
         logging.debug(
             "Connect to '%s:%s' as '%s:%s'" % (
                 self.host, self.port, self.username, self.password))
-        self._ssh.connect(
-            self.host, port=self.port, username=self.username,
-            password=self.password)
+        for private_key in self.private_keys:
+            try:
+                return self._ssh.connect(
+                    self.host, port=self.port, username=self.username,
+                    password=self.password, pkey=private_key)
+            except paramiko.AuthenticationException:
+                pass
+        return self._ssh.connect(
+                    self.host, port=self.port, username=self.username,
+                    password=self.password)
 
     def reconnect(self):
         self._ssh = paramiko.SSHClient()
