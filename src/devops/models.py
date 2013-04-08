@@ -242,6 +242,9 @@ class Node(ExternalModel):
             username=login,
             password=password, private_keys=private_keys)
 
+    def send_keys(self, keys):
+        self.driver.node_send_keys(self, keys)
+
     def await(self, network_name, timeout=120):
         wait(
             lambda: tcp_ping(
