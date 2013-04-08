@@ -102,7 +102,7 @@ class ExternalModel(models.Model):
         :rtype : DevopsDriver
         """
         driver = import_module(DRIVER)
-        cls._driver = cls._driver or driver.LibvirtDriver()
+        cls._driver = cls._driver or driver.DevopsDriver()
         return cls._driver
 
     @property
