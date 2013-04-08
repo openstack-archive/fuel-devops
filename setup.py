@@ -10,5 +10,5 @@ setup(
               'devops.driver.libvirt'],
     package_dir={'': 'src'},
     scripts=['src/dos.py'],
-    install_requires=['xmlbuilder', "ipaddr", "paramiko", "django", "psycopg2"]
+    install_requires=['xmlbuilder', "ipaddr", "paramiko", "django==1.4.3", "psycopg2"]
 )
