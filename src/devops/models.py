@@ -140,7 +140,7 @@ class Network(ExternalModel):
     tftp_root_dir = models.CharField(max_length=255)
     forward = choices(
         'nat', 'route', 'bridge', 'private', 'vepa',
-        'passthrough', 'hostdev')
+        'passthrough', 'hostdev', null=True)
     ip_network = models.CharField(max_length=255, unique=True)
 
     @property
