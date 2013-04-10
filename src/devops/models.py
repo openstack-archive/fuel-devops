@@ -329,6 +329,9 @@ class Volume(ExternalModel):
         self.capacity = self.get_capacity()
         self.format = self.get_format()
 
+    def upload(self, path):
+        self.driver.volume_upload(self, path)
+
 
 class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')

@@ -3,6 +3,7 @@ from time import sleep
 import libvirt
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers import scancodes
+from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
 import xml.etree.ElementTree as ET
 import ipaddr
@@ -351,25 +352,13 @@ class DevopsDriver(object):
     def volume_path(self, volume):
         return self.conn.storageVolLookupByKey(volume.uuid).path()
 
-    def _get_file_size(self, file):
-        """
-        :type file: file
-        :rtype : int
-        """
-        current = file.tell()
-        try:
-            file.seek(0, 2)
-            size = file.tell()
-        finally:
-            file.seek(current)
-        return size
-
     @retry(count=2)
     def volume_upload(self, volume, path):
+        size = _get_file_size(path)
         with open(path, 'rb') as f:
             self.conn.storageVolLookupByKey(volume.uuid).upload(
                 stream=f, offset=0,
-                length=self._get_file_size(f), flags=0)
+                length=size, flags=0)
 
     @retry()
     def volume_delete(self, volume):

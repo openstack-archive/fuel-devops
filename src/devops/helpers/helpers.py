@@ -360,3 +360,18 @@ def xmlrpcmethod(uri, method):
 def generate_mac():
     return "64:{0:02x}:{1:02x}:{2:02x}:{3:02x}:{4:02x}".format(
         *bytearray(os.urandom(5)))
+
+
+def _get_file_size(path):
+    """
+    :type file: String
+    :rtype : int
+    """
+    with open(path) as file:
+        current = file.tell()
+        try:
+            file.seek(0, 2)
+            size = file.tell()
+        finally:
+            file.seek(current)
+        return size

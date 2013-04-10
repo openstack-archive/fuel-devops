@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 import ipaddr
-from devops.helpers.helpers import generate_mac
+from devops.helpers.helpers import generate_mac, _get_file_size
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice, ExternalModel
 
@@ -107,8 +107,12 @@ class Manager(object):
             name=name, environment=environment,
             capacity=capacity, format=format)
 
-    def upload(self, path):
-        pass
+    def volume_upload(self, name, path, format='qcow2', environment=None):
+        capacity = _get_file_size(path)
+        volume = self.volume_create(
+            name=name, capacity=capacity, format=format, environment=environment)
+        volume.upload(path)
+        return volume
 
     def _generate_mac(self):
         """
