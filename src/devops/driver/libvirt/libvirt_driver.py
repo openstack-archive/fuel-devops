@@ -335,7 +335,7 @@ class DevopsDriver(object):
                     sleep(1)
                 continue
             self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0, key_codes,
-                len(key_codes), 0, 0)
+                len(key_codes), 0)
 
     @retry()
     def volume_define(self, volume, pool='default'):
