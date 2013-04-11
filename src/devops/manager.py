@@ -1,3 +1,4 @@
+import json
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
@@ -72,9 +73,8 @@ class Manager(object):
             name=name, environment=environment,
             role=role, vcpu=vcpu, memory=memory,
             has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
-            os_type=os_type, architecture=architecture,
+            os_type=os_type, architecture=architecture, boot=json.dumps(boot)
         )
-        node.boot = boot
         return node
 
     def volume_get_predefined(self, uuid):

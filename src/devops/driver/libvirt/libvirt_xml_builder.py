@@ -1,3 +1,4 @@
+import json
 from ipaddr import IPNetwork, IPAddress
 from xmlbuilder import XMLBuilder
 
@@ -113,7 +114,7 @@ class LibvirtXMLBuilder(object):
 
         with node_xml.os:
             node_xml.type(node.os_type, arch=node.architecture)
-            for boot_dev in node.boot:
+            for boot_dev in json.loads(node.boot):
                 node_xml.boot(dev=boot_dev)
 
         with node_xml.devices:
