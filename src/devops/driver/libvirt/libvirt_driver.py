@@ -328,14 +328,14 @@ class DevopsDriver(object):
         :type node: Node
         """
 
-        keys = scancodes.from_string(str(keys))
-        for key_codes in keys:
-            if isinstance(key_codes[0], str):
-                if key_codes[0] == 'wait':
+        key_codes = scancodes.from_string(str(keys))
+        for key_code in key_codes:
+            if isinstance(key_code[0], str):
+                if key_code[0] == 'wait':
                     sleep(1)
                 continue
-            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0, key_codes,
-                len(key_codes), 0)
+            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0, list(key_code),
+                len(key_code), 0)
 
     @retry()
     def volume_define(self, volume, pool='default'):

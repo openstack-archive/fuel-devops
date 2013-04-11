@@ -107,13 +107,6 @@ class Manager(object):
             name=name, environment=environment,
             capacity=capacity, format=format)
 
-    def volume_upload(self, name, path, format='qcow2', environment=None):
-        capacity = _get_file_size(path)
-        volume = self.volume_create(
-            name=name, capacity=capacity, format=format, environment=environment)
-        volume.upload(path)
-        return volume
-
     def _generate_mac(self):
         """
         :rtype : String
