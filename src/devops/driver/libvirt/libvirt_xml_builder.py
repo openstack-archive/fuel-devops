@@ -110,7 +110,7 @@ class LibvirtXMLBuilder(object):
             self._get_name(node.environment and node.environment.name or '',
                 node.name))
         node_xml.vcpu(str(node.vcpu))
-        node_xml.memory(str(node.memory), unit='MiB')
+        node_xml.memory(str(node.memory*1024), unit='KiB')
 
         with node_xml.os:
             node_xml.type(node.os_type, arch=node.architecture)
