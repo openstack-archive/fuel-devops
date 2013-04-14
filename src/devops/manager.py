@@ -82,12 +82,12 @@ class Manager(object):
         :rtype : Volume
         """
         try:
-            return Volume.objects.get(uuid=uuid)
+            volume = Volume.objects.get(uuid=uuid)
         except Volume.DoesNotExist:
             volume = Volume(uuid=uuid)
-            volume.fill_from_exist()
-            volume.save()
-            return volume
+        volume.fill_from_exist()
+        volume.save()
+        return volume
 
     def volume_create_child(self, name, backing_store, format=None,
                             environment=None):
