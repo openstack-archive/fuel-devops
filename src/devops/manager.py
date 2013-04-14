@@ -61,7 +61,7 @@ class Manager(object):
             has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server,
             forward=forward)
 
-    def node_create(self, name, environment=None, role=None, vcpu=2,
+    def node_create(self, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
         """
