@@ -352,13 +352,19 @@ class DevopsDriver(object):
     def volume_path(self, volume):
         return self.conn.storageVolLookupByKey(volume.uuid).path()
 
+    def chunk_render(self, stream, size, fd):
+        return fd.read(size)
+
     @retry(count=2)
     def volume_upload(self, volume, path):
         size = _get_file_size(path)
-        with open(path, 'rb') as f:
+        with open(path, 'rb') as fd:
+            stream = self.conn.newStream(0)
             self.conn.storageVolLookupByKey(volume.uuid).upload(
-                stream=f, offset=0,
+                stream=stream, offset=0,
                 length=size, flags=0)
+            stream.sendAll(self.chunk_render, fd)
+            stream.finish()
 
     @retry()
     def volume_delete(self, volume):
