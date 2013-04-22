@@ -74,9 +74,9 @@ class Environment(models.Model):
             volume.erase()
         self.delete()
 
-    def suspend(self):
+    def suspend(self, verbose=True):
         for node in self.nodes:
-            node.suspend()
+            node.suspend(verbose)
 
     def resume(self):
         for node in self.nodes:
@@ -278,8 +278,9 @@ class Node(ExternalModel):
                 self.driver.node_undefine(self)
         self.delete()
 
-    def suspend(self):
-        self.driver.node_suspend(self)
+    def suspend(self, verbose=True):
+        if verbose or self.driver.node_active(self):
+            self.driver.node_suspend(self)
 
     def resume(self):
         self.driver.node_resume(self)
