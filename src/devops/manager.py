@@ -113,14 +113,13 @@ class Manager(object):
         """
         return generate_mac()
 
-    def interface_create(self, network, node, type='network', target_dev=None,
+    def interface_create(self, network, node, type='network',
                          mac_address=None, model='virtio'):
         """
         :rtype : Interface
         """
         interface = Interface.objects.create(
-            network=network, node=node,
-            type=type, target_dev=target_dev,
+            network=network, node=node, type=type,
             mac_address=mac_address or self._generate_mac(), model=model)
         interface.add_address(str(network.next_ip()))
         return interface

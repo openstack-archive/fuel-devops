@@ -349,8 +349,12 @@ class Interface(models.Model):
     network = models.ForeignKey(Network)
     node = models.ForeignKey(Node)
     type = models.CharField(max_length=255, null=False)
-    target_dev = models.CharField(max_length=255, unique=True, null=True)
     model = choices('virtio')
+
+    @property
+    def target_dev(self):
+        return self.node.driver.node_get_interface_target_dev(
+            self.node, self.mac_address)
 
     @property
     def addresses(self):
