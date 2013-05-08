@@ -204,6 +204,19 @@ class DevopsDriver(object):
             return vnc_element.get('port')
 
     @retry()
+    def node_get_interface_target_dev(self, node, mac):
+        """
+        :type node: Node
+        :type mac: String
+        :rtype : String
+        """
+        xml_desc = ET.fromstring(
+            self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
+        target = xml_desc.find('.//mac[@address="%s"]/../target' % mac)
+        if target is not None:
+            return target.get('dev')
+
+    @retry()
     def node_create(self, node):
         """
         :type node: Node
