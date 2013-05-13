@@ -72,7 +72,7 @@ class DevopsDriver(object):
             self.conn.networkLookupByUUIDString(network.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message.count('not found'):
+            if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
                 return False
             else:
                 raise
@@ -87,7 +87,7 @@ class DevopsDriver(object):
             self.conn.lookupByUUIDString(node.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message.count('not found'):
+            if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
                 return False
             else:
                 raise
@@ -103,7 +103,7 @@ class DevopsDriver(object):
             ret.snapshotLookupByName(name, 0)
             return True
         except libvirt.libvirtError, e:
-            if e.message.count('not found'):
+            if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN_SNAPSHOT:
                 return False
             else:
                 raise
@@ -118,7 +118,7 @@ class DevopsDriver(object):
             self.conn.storageVolLookupByKey(volume.uuid)
             return True
         except libvirt.libvirtError, e:
-            if e.message.count('not found'):
+            if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_VOL:
                 return False
             else:
                 raise
