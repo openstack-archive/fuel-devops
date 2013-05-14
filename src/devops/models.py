@@ -3,7 +3,7 @@ from devops.settings import DRIVER
 from django.utils.importlib import import_module
 from ipaddr import IPNetwork
 from django.db import models
-from devops.helpers.helpers import SSHClient, wait, tcp_ping
+from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
 
 
 def choices(*args, **kwargs):
@@ -247,8 +247,8 @@ class Node(ExternalModel):
         self.driver.node_send_keys(self, keys)
 
     def await(self, network_name, timeout=120):
-        wait(
-            lambda: tcp_ping(
+        _wait(
+            lambda: _tcp_ping(
                 self.get_ip_address_by_network_name(network_name), 22),
             timeout=timeout)
 

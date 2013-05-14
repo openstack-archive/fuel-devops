@@ -35,17 +35,20 @@ def icmp_ping(host, timeout=1):
         "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
             'host': str(host), 'timeout': timeout}) == 0
 
+def _tcp_ping(host, port):
+    s = socket.socket()
+    s.connect((str(host), int(port)))
+    s.close()
+
 
 def tcp_ping(host, port):
     """
     tcp_ping(host, port) - returns True if TCP connection to specified host and port can be established; False - otherwise.
     """
-    s = socket.socket()
     try:
-        s.connect((str(host), int(port)))
+        _tcp_ping(host, port)
     except socket.error:
         return False
-    s.close()
     return True
 
 
@@ -69,6 +72,16 @@ def wait(predicate, interval=5, timeout=None):
         time.sleep(seconds_to_sleep)
 
     return timeout + start_time - time.time() if timeout else 0
+
+
+def _wait(raising_predicate, expected = Exception, interval=5, timeout=None):
+    start_time = time.time()
+    try:
+        return raising_predicate()
+    except expected:
+        if timeout and start_time + timeout < time.time():
+            raise
+        time.sleep(interval)
 
 
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
