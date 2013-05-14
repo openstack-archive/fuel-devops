@@ -33,7 +33,7 @@ class Shell(object):
         self.manager.environment_get(self.params.name).start()
 
     def do_destroy(self):
-        self.manager.environment_get(self.params.name).destroy()
+        self.manager.environment_get(self.params.name).destroy(verbose=False)
 
     def do_suspend(self):
         self.manager.environment_get(self.params.name).suspend()
