@@ -3,7 +3,7 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 import ipaddr
-from devops.helpers.helpers import generate_mac, _get_file_size
+from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice, ExternalModel
 

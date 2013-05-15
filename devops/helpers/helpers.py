@@ -1,4 +1,3 @@
-from devops.helpers.retry import retry
 import os
 import urllib
 import stat
@@ -6,14 +5,18 @@ import socket
 import time
 import httplib
 import xmlrpclib
-import paramiko
 import random
 from threading import Thread
 import BaseHTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import posixpath
 import logging
+
+import paramiko
+
+from devops.helpers.retry import retry
 from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, AuthenticationError
+
 
 logger = logging.getLogger(__name__)
 

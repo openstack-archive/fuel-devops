@@ -1,8 +1,10 @@
 import json
-from devops.settings import DRIVER
+
 from django.utils.importlib import import_module
 from ipaddr import IPNetwork
 from django.db import models
+
+from devops.settings import DRIVER
 from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
 
 
