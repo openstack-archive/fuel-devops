@@ -1,4 +1,5 @@
 from setuptools import setup
+from setuptools import find_packages
 
 setup(
     name='devops',
@@ -6,9 +7,17 @@ setup(
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
-    packages=['devops', 'devops.driver', 'devops.helpers', 'devops.tests',
-              'devops.driver.libvirt'],
-    package_dir={'': 'src'},
-    scripts=['src/dos.py'],
-    install_requires=['xmlbuilder', "ipaddr", "paramiko", "django==1.4.3", "psycopg2"]
+    url='http://mirantis.com',
+    keywords='devops virtual environment mirantis',
+    zip_safe=False,
+    include_package_data=True,
+    packages=find_packages(),
+    scripts=['bin/dos.py'],
+    install_requires=[
+        'xmlbuilder',
+        'ipaddr',
+        'paramiko',
+        'django==1.4.3',
+        'psycopg2'
+    ]
 )

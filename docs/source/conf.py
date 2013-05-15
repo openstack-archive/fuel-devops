@@ -19,7 +19,6 @@ import sys, os
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../../'))
-sys.path.insert(0, os.path.abspath('../../src'))
 
 from sphinx.apidoc import main as sphinx_apidoc_main
 import shutil
@@ -29,7 +28,7 @@ sphinx_apidoc_main([
     '',
     '-o',
     'modules',
-    '../../src/devops'
+    '../../devops'
 ])
 
 # -- General configuration -----------------------------------------------------
