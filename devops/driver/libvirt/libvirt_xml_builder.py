@@ -15,7 +15,7 @@ class LibvirtXMLBuilder(object):
         if len(name) > self.NAME_SIZE:
             hash_str = str(hash(name))
             name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
-        return  name
+        return name
 
     def build_network_xml(self, network):
         """
@@ -30,15 +30,13 @@ class LibvirtXMLBuilder(object):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):
             ip_network = IPNetwork(network.ip_network)
-            with network_xml.ip(
-                address=str(ip_network[1]),
-                prefix=str(ip_network.prefixlen)):
+            with network_xml.ip(address=str(ip_network[1]), prefix=str(ip_network.prefixlen)):
                 if network.has_pxe_server:
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:
                     with network_xml.dhcp:
                         network_xml.range(start=str(network.ip_pool_start),
-                            end=str(network.ip_pool_end))
+                                          end=str(network.ip_pool_end))
                         for interface in network.interfaces:
                             for address in interface.addresses:
                                 if IPAddress(address.ip_address) in ip_network:
@@ -59,7 +57,8 @@ class LibvirtXMLBuilder(object):
         """
         volume_xml = XMLBuilder('volume')
         volume_xml.name(
-            self._get_name(volume.environment and volume.environment.name or '',
+            self._get_name(
+                volume.environment and volume.environment.name or '',
                 volume.name))
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
@@ -108,9 +107,9 @@ class LibvirtXMLBuilder(object):
         node_xml = XMLBuilder("domain", type=node.hypervisor)
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
-                node.name))
+                           node.name))
         node_xml.vcpu(str(node.vcpu))
-        node_xml.memory(str(node.memory*1024), unit='KiB')
+        node_xml.memory(str(node.memory * 1024), unit='KiB')
 
         with node_xml.os:
             node_xml.type(node.os_type, arch=node.architecture)

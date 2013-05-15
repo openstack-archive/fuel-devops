@@ -16,5 +16,7 @@ def retry(count=10, delay=1):
                     if i >= count:
                         raise
                     sleep(delay)
+
         return wrapper
+
     return decorator

@@ -5,7 +5,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 import ipaddr
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
-from devops.models import Address, Interface, Node, Network, Environment, Volume, DiskDevice, ExternalModel
+from devops.models import Address, Interface, Node, Network, Environment, \
+    Volume, DiskDevice, ExternalModel
 
 
 class Manager(object):
@@ -128,7 +129,8 @@ class Manager(object):
         """
         :rtype : Address
         """
-        return Address.objects.create(ip_address=ip_address, interface=interface)
+        return Address.objects.create(ip_address=ip_address,
+                                      interface=interface)
 
     def node_attach_volume(self, node, volume, device='disk', type='file',
                            bus='virtio', target_dev=None):

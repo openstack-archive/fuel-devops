@@ -63,7 +63,6 @@ class DevopsDriver(object):
         """
         return self.conn.lookupByUUIDString(node.uuid).isActive()
 
-
     @retry()
     def network_exists(self, network):
         """
@@ -349,8 +348,9 @@ class DevopsDriver(object):
                 if key_code[0] == 'wait':
                     sleep(1)
                 continue
-            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0, list(key_code),
-                len(key_code), 0)
+            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0,
+                                                            list(key_code),
+                                                            len(key_code), 0)
 
     @retry()
     def volume_define(self, volume, pool='default'):
@@ -425,5 +425,3 @@ class DevopsDriver(object):
                         "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
             self.allocated_networks = allocated_networks
         return self.allocated_networks
-
-

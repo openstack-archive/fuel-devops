@@ -26,4 +26,3 @@ class IpNetworksPool(object):
 
     def next(self):
         return self._generator.next()
-

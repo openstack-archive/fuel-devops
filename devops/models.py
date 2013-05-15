@@ -47,7 +47,7 @@ class Environment(models.Model):
         return self.networks.get(name=name, environment=self)
 
     def has_snapshot(self, name):
-        return  all(map(lambda x:x.has_snapshot(name), self.nodes))
+        return all(map(lambda x: x.has_snapshot(name), self.nodes))
 
     def define(self):
         for network in self.networks:
@@ -63,7 +63,7 @@ class Environment(models.Model):
         for node in nodes or self.nodes:
             node.start()
 
-    def destroy(self, verbose = True):
+    def destroy(self, verbose=True):
         for node in self.nodes:
             node.destroy(verbose=verbose)
 
@@ -165,11 +165,8 @@ class Network(ExternalModel):
             ip = self._iterhosts.next()
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
                 continue
-            if not Address.objects.filter(
-                interface__network=self,
-                ip_address=str(ip)).exists():
+            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).exists():
                 return ip
-
 
     def bridge_name(self):
         return self.driver.network_bridge_name(self)
@@ -288,7 +285,7 @@ class Node(ExternalModel):
         self.driver.node_resume(self)
 
     def has_snapshot(self, name):
-        return  self.driver.node_snapshot_exists(node=self, name=name)
+        return self.driver.node_snapshot_exists(node=self, name=name)
 
     def snapshot(self, name=None, force=False, description=None):
         if force and self.has_snapshot(name):

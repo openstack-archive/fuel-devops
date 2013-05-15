@@ -1,6 +1,7 @@
 import ipaddr
 from devops.helpers.helpers import SSHClient
 
+
 def one(manager):
     environment = manager.environment_create('cdrom')
     internal_pool = manager.create_network_pool(
@@ -19,7 +20,7 @@ def one(manager):
         forward='nat')
     private = manager.network_create(
         environment=environment, name='private', pool=private_pool)
-    for i in range(1,2):
+    for i in range(1, 2):
         node = manager.node_create(name='test_node' + str(i), environment=environment)
         manager.interface_create(node=node, network=internal)
         manager.interface_create(node=node, network=external)
@@ -28,7 +29,7 @@ def one(manager):
             '/var/lib/libvirt/images/centos63-cobbler-base.qcow2')
         v3 = manager.volume_create_child('test_vp895' + str(i), backing_store=volume,
                                          environment=environment)
-        v4 = manager.volume_create_child('test_vp896'+ str(i), backing_store=volume,
+        v4 = manager.volume_create_child('test_vp896' + str(i), backing_store=volume,
                                          environment=environment)
         manager.node_attach_volume(node=node, volume=v3)
         manager.node_attach_volume(node, v4)
@@ -42,7 +43,6 @@ def one(manager):
         node.remote('internal', 'root', 'r00tme').check_stderr('ls -la', verbose=True)
         remotes.append(node.remote('internal', 'root', 'r00tme'))
     SSHClient.execute_together(remotes, 'ls -la')
-
 
 
 if __name__ == '__main__':

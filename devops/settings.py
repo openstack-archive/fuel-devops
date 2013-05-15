@@ -1,5 +1,3 @@
-import os
-
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 INSTALLED_APPS = ['devops']
 

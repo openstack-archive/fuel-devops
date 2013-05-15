@@ -15,7 +15,8 @@ import logging
 import paramiko
 
 from devops.helpers.retry import retry
-from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, AuthenticationError
+from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \
+    AuthenticationError
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def icmp_ping(host, timeout=1):
     return os.system(
         "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
             'host': str(host), 'timeout': timeout}) == 0
+
 
 def _tcp_ping(host, port):
     s = socket.socket()
@@ -77,7 +79,7 @@ def wait(predicate, interval=5, timeout=None):
     return timeout + start_time - time.time() if timeout else 0
 
 
-def _wait(raising_predicate, expected = Exception, interval=5, timeout=None):
+def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
     start_time = time.time()
     try:
         return raising_predicate()
@@ -122,7 +124,8 @@ class SSHClient(object):
         self.port = int(port)
         self.username = username
         self.password = password
-        if not private_keys: private_keys = []
+        if not private_keys:
+            private_keys = []
         self.private_keys = private_keys
 
         self.sudo_mode = False
@@ -140,7 +143,7 @@ class SSHClient(object):
     def __exit__(self, type, value, traceback):
         pass
 
-    @retry(count=3,delay=3)
+    @retry(count=3, delay=3)
     def connect(self):
         logging.debug(
             "Connect to '%s:%s' as '%s:%s'" % (
@@ -153,8 +156,8 @@ class SSHClient(object):
             except paramiko.AuthenticationException:
                 pass
         return self._ssh.connect(
-                    self.host, port=self.port, username=self.username,
-                    password=self.password)
+            self.host, port=self.port, username=self.username,
+            password=self.password)
 
     def reconnect(self):
         self._ssh = paramiko.SSHClient()
@@ -165,30 +168,32 @@ class SSHClient(object):
     def check_call(self, command, verbose=False):
         ret = self.execute(command, verbose)
         if ret['exit_code'] != 0:
-            raise DevopsCalledProcessError(command, ret['exit_code'], ret['stdout'] + ret['stderr'])
+            raise DevopsCalledProcessError(command, ret['exit_code'],
+                                           ret['stdout'] + ret['stderr'])
         return ret
 
     def check_stderr(self, command, verbose=False):
         ret = self.check_call(command, verbose)
         if ret['stderr']:
-            raise DevopsCalledProcessError(command, ret['exit_code'], ret['stdout'] + ret['stderr'])
+            raise DevopsCalledProcessError(command, ret['exit_code'],
+                                           ret['stdout'] + ret['stderr'])
         return ret
 
     @classmethod
     def execute_together(cls, remotes, command):
-        futures={}
-        errors={}
+        futures = {}
+        errors = {}
         for remote in remotes:
             cmd = "%s\n" % command
             if remote.sudo_mode:
                 cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
             chan = remote._ssh.get_transport().open_session()
             chan.exec_command(cmd)
-            futures[remote]=chan
+            futures[remote] = chan
         for remote, chan in futures.items():
-            ret=chan.recv_exit_status()
-            if  ret != 0:
-                errors[remote.host]=ret
+            ret = chan.recv_exit_status()
+            if ret != 0:
+                errors[remote.host] = ret
         if errors:
             raise DevopsCalledProcessError(command, errors)
 
