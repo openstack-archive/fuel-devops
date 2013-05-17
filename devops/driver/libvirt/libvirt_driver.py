@@ -35,7 +35,7 @@ class DevopsDriver(object):
     def network_bridge_name(self, network):
         """
         :type network: Network
-        :rtype : String
+            :rtype : String
         """
         return self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
 
@@ -43,7 +43,7 @@ class DevopsDriver(object):
     def network_name(self, network):
         """
         :type network: Network
-        :rtype : String
+            :rtype : String
         """
         return self.conn.networkLookupByUUIDString(network.uuid).name()
 
@@ -51,7 +51,7 @@ class DevopsDriver(object):
     def network_active(self, network):
         """
         :type network: Network
-        :rtype : Boolean
+            :rtype : Boolean
         """
         return self.conn.networkLookupByUUIDString(network.uuid).isActive()
 
@@ -59,7 +59,7 @@ class DevopsDriver(object):
     def node_active(self, node):
         """
         :type node: Node
-        :rtype : Boolean
+            :rtype : Boolean
         """
         return self.conn.lookupByUUIDString(node.uuid).isActive()
 
@@ -67,7 +67,7 @@ class DevopsDriver(object):
     def network_exists(self, network):
         """
         :type network: Network
-        :rtype : Boolean
+            :rtype : Boolean
         """
         try:
             self.conn.networkLookupByUUIDString(network.uuid)
@@ -82,7 +82,7 @@ class DevopsDriver(object):
     def node_exists(self, node):
         """
         :type node: Node
-        :rtype : Boolean
+            :rtype : Boolean
         """
         try:
             self.conn.lookupByUUIDString(node.uuid)
@@ -97,7 +97,7 @@ class DevopsDriver(object):
     def node_snapshot_exists(self, node, name):
         """
         :type node: Node
-        :rtype : Boolean
+            :rtype : Boolean
         """
         ret = self.conn.lookupByUUIDString(node.uuid)
         try:
@@ -113,7 +113,7 @@ class DevopsDriver(object):
     def volume_exists(self, volume):
         """
         :type volume: Volume
-        :rtype : Boolean
+            :rtype : Boolean
         """
         try:
             self.conn.storageVolLookupByKey(volume.uuid)
@@ -166,7 +166,7 @@ class DevopsDriver(object):
     def node_define(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         emulator = self.get_capabilities(
         ).find(
@@ -180,7 +180,7 @@ class DevopsDriver(object):
     def node_destroy(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).destroy()
 
@@ -188,7 +188,7 @@ class DevopsDriver(object):
     def node_undefine(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).undefine()
 
@@ -196,7 +196,7 @@ class DevopsDriver(object):
     def node_get_vnc_port(self, node):
         """
         :type node: Node
-        :rtype : String
+            :rtype : String
         """
         xml_desc = ET.fromstring(
             self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
@@ -209,7 +209,7 @@ class DevopsDriver(object):
         """
         :type node: Node
         :type mac: String
-        :rtype : String
+            :rtype : String
         """
         xml_desc = ET.fromstring(
             self.conn.lookupByUUIDString(node.uuid).XMLDesc(0))
@@ -221,7 +221,7 @@ class DevopsDriver(object):
     def node_create(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).create()
 
@@ -229,7 +229,7 @@ class DevopsDriver(object):
     def node_reset(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).reset()
 
@@ -237,7 +237,7 @@ class DevopsDriver(object):
     def node_reboot(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).reboot()
 
@@ -245,7 +245,7 @@ class DevopsDriver(object):
     def node_suspend(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).suspend()
 
@@ -253,7 +253,7 @@ class DevopsDriver(object):
     def node_resume(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).resume()
 
@@ -261,7 +261,7 @@ class DevopsDriver(object):
     def node_shutdown(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).shutdown()
 
@@ -269,7 +269,7 @@ class DevopsDriver(object):
     def node_destroy(self, node):
         """
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).destroy()
 
@@ -277,7 +277,7 @@ class DevopsDriver(object):
     def node_get_snapshots(self, node):
         """
         :rtype : List
-        :type node: Node
+            :type node: Node
         """
         return self.conn.lookupByUUIDString(node.uuid).snapshotListNames(0)
 
@@ -287,7 +287,7 @@ class DevopsDriver(object):
         :type description: String
         :type name: String
         :type node: Node
-        :rtype : None
+            :rtype : None
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
         print xml
@@ -299,7 +299,7 @@ class DevopsDriver(object):
     def _get_snapshot(self, domain, name):
         """
         :type name: String
-        :rtype : libvirt.virDomainSnapshot
+            :rtype : libvirt.virDomainSnapshot
         """
         if name is None:
             return domain.snapshotCurrent(0)
@@ -311,7 +311,7 @@ class DevopsDriver(object):
         """
         :type node: Node
         :type name: String
-        :rtype : None
+            :rtype : None
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
@@ -338,8 +338,8 @@ class DevopsDriver(object):
     @retry()
     def node_send_keys(self, node, keys):
         """
-        :rtype : None
         :type node: Node
+            :rtype : None
         """
 
         key_codes = scancodes.from_string(str(keys))
@@ -357,7 +357,7 @@ class DevopsDriver(object):
         """
         :type volume: Volume
         :type pool: String
-        :rtype : None
+            :rtype : None
         """
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume), 0)
@@ -385,7 +385,7 @@ class DevopsDriver(object):
     def volume_delete(self, volume):
         """
         :type volume: Volume
-        :rtype : None
+            :rtype : None
         """
         self.conn.storageVolLookupByKey(volume.uuid).delete(0)
 
@@ -393,7 +393,7 @@ class DevopsDriver(object):
     def volume_capacity(self, volume):
         """
         :type volume: Volume
-        :rtype : Long
+            :rtype : Long
         """
         return self.conn.storageVolLookupByKey(volume.uuid).info()[1]
 
@@ -401,7 +401,7 @@ class DevopsDriver(object):
     def volume_format(self, volume):
         """
         :type volume: Volume
-        :rtype : String
+            :rtype : String
         """
         xml_desc = ET.fromstring(
             self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
@@ -410,7 +410,7 @@ class DevopsDriver(object):
     @retry()
     def get_allocated_networks(self):
         """
-        :rtype : List
+            :rtype : List
         """
         if self.allocated_networks is None:
             allocated_networks = []

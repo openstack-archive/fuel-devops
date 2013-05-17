@@ -20,7 +20,7 @@ class LibvirtXMLBuilder(object):
     def build_network_xml(self, network):
         """
         :type network: Network
-        :rtype : String
+            :rtype : String
         """
         network_xml = XMLBuilder('network')
         network_xml.name(self._get_name(
@@ -53,7 +53,7 @@ class LibvirtXMLBuilder(object):
     def build_volume_xml(self, volume):
         """
         :type volume: Volume
-        :rtype : String
+            :rtype : String
         """
         volume_xml = XMLBuilder('volume')
         volume_xml.name(
