@@ -10,9 +10,9 @@ from devops.models import Address, Interface, Node, Network, Environment, \
 
 
 class Manager(object):
-    def __init__(self):
+    def __init__(self, default_pool=None):
         super(Manager, self).__init__()
-        self.default_pool = None
+        self.default_pool = default_pool
 
     def environment_create(self, name):
         """

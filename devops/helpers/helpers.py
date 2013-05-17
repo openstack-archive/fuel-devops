@@ -59,10 +59,15 @@ def tcp_ping(host, port):
 
 def wait(predicate, interval=5, timeout=None):
     """
-      wait(predicate, interval=5, timeout=None) - wait until predicate will become True. Returns number of seconds that is left or 0 if timeout is None.
-      Options:
-        interval - seconds between checks.
-        timeout  - raise TimeoutError if predicate won't become True after this amount of seconds. 'None' disables timeout.
+    wait(predicate, interval=5, timeout=None) - wait until predicate will 
+    become True. Returns number of seconds that is left or 0 if timeout is None.
+
+    Options:
+
+    interval - seconds between checks.
+
+    timeout  - raise TimeoutError if predicate won't become True after 
+    this amount of seconds. 'None' disables timeout.
     """
     start_time = time.time()
     while not predicate():
