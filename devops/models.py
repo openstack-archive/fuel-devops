@@ -118,9 +118,10 @@ class ExternalModel(models.Model):
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
     environment = models.ForeignKey(Environment, null=True)
+    what = models.CharField(max_length=255, unique=False, null=False)
 
     class Meta:
-        unique_together = ('name', 'environment')
+        unique_together = ('name', 'environment', 'what')
 
     @classmethod
     def get_allocated_networks(cls):
@@ -135,6 +136,10 @@ class ExternalModel(models.Model):
 
 
 class Network(ExternalModel):
+    def __init__(self, *args, **kwargs):
+        super(Network, self).__init__(*args, **kwargs)
+        self.what = 'network'
+
     _iterhosts = None
 
     has_dhcp_server = models.BooleanField()
@@ -198,6 +203,10 @@ class Network(ExternalModel):
 
 
 class Node(ExternalModel):
+    def __init__(self, *args, **kwargs):
+        super(Node, self).__init__(*args, **kwargs)
+        self.what = 'node'
+
     hypervisor = choices('kvm')
     os_type = choices('hvm')
     architecture = choices('x86_64', 'i686')
@@ -300,6 +309,10 @@ class Node(ExternalModel):
 
 
 class Volume(ExternalModel):
+    def __init__(self, *args, **kwargs):
+        super(Volume, self).__init__(*args, **kwargs)
+        self.what = 'volume'
+
     capacity = models.BigIntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
