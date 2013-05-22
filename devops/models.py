@@ -120,6 +120,7 @@ class ExternalModel(models.Model):
     environment = models.ForeignKey(Environment, null=True)
 
     class Meta:
+        abstract = True
         unique_together = ('name', 'environment')
 
     @classmethod
