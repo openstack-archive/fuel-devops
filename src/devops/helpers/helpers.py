@@ -74,14 +74,15 @@ def wait(predicate, interval=5, timeout=None):
     return timeout + start_time - time.time() if timeout else 0
 
 
-def _wait(raising_predicate, expected = Exception, interval=5, timeout=None):
+def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
     start_time = time.time()
-    try:
-        return raising_predicate()
-    except expected:
-        if timeout and start_time + timeout < time.time():
-            raise
-        time.sleep(interval)
+    while True:
+        try:
+            return raising_predicate()
+        except expected:
+            if timeout and start_time + timeout < time.time():
+                raise
+            time.sleep(interval)
 
 
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
