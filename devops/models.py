@@ -230,9 +230,10 @@ class Node(ExternalModel):
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
 
-    def get_ip_address_by_network_name(self, name):
-        return Address.objects.get(
-            interface__network__name=name, interface__node=self).ip_address
+    def get_ip_address_by_network_name(self, name, interface=None):
+        interface = interface or Interface.objects.filter(
+            network__name=name, node=self).order_by('id')[0]
+        return Address.objects.get(interface=interface).ip_address
 
     def remote(self, network_name, login, password=None, private_keys=None):
         """
