@@ -124,13 +124,6 @@ class ExternalModel(models.Model):
     def get_allocated_networks(cls):
         return cls.get_driver().get_allocated_networks()
 
-    @classmethod
-    def allocate_network(cls, pool):
-        while True:
-            ip_network = pool.next()
-            if not Network.objects.filter(ip_network=str(ip_network)).exists():
-                return ip_network
-
 
 class Network(ExternalModel):
     _iterhosts = None
