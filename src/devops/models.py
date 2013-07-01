@@ -78,9 +78,9 @@ class Environment(models.Model):
         for node in self.nodes:
             node.suspend(verbose)
 
-    def resume(self):
+    def resume(self, verbose=True):
         for node in self.nodes:
-            node.resume()
+            node.resume(verbose)
 
     def snapshot(self, name=None, description=None, force=False):
         for node in self.nodes:
@@ -276,8 +276,9 @@ class Node(ExternalModel):
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
-    def resume(self):
-        self.driver.node_resume(self)
+    def resume(self, verbose=True):
+        if verbose or self.driver.node_active(self):
+            self.driver.node_resume(self)
 
     def has_snapshot(self, name):
         return  self.driver.node_snapshot_exists(node=self, name=name)
