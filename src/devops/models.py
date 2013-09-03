@@ -74,11 +74,11 @@ class Environment(models.Model):
             volume.erase()
         self.delete()
 
-    def suspend(self, verbose=True):
+    def suspend(self, verbose=False):
         for node in self.nodes:
             node.suspend(verbose)
 
-    def resume(self, verbose=True):
+    def resume(self, verbose=False):
         for node in self.nodes:
             node.resume(verbose)
 
@@ -172,7 +172,7 @@ class Network(ExternalModel):
     def start(self):
         self.create(verbose=False)
 
-    def create(self, verbose=True):
+    def create(self, verbose=False):
         if verbose or not self.driver.network_active(self):
             self.driver.network_create(self)
 
@@ -182,7 +182,7 @@ class Network(ExternalModel):
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.network_exists(self):
                 if self.driver.network_active(self):
@@ -253,18 +253,18 @@ class Node(ExternalModel):
     def start(self):
         self.create(verbose=False)
 
-    def create(self, verbose=True):
+    def create(self, verbose=False):
         if verbose or not self.driver.node_active(self):
             self.driver.node_create(self)
 
-    def destroy(self, verbose=True):
+    def destroy(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_destroy(self)
 
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
@@ -272,11 +272,11 @@ class Node(ExternalModel):
                 self.driver.node_undefine(self)
         self.delete()
 
-    def suspend(self, verbose=True):
+    def suspend(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
-    def resume(self, verbose=True):
+    def resume(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_resume(self)
 
@@ -307,7 +307,7 @@ class Volume(ExternalModel):
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.volume_exists(self):
                 self.driver.volume_delete(self)
