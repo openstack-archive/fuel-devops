@@ -61,7 +61,7 @@ class Environment(models.Model):
         for node in nodes or self.nodes:
             node.start()
 
-    def destroy(self, verbose = True):
+    def destroy(self, verbose=False):
         for node in self.nodes:
             node.destroy(verbose=verbose)
 
