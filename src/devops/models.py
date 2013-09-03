@@ -272,7 +272,7 @@ class Node(ExternalModel):
                 self.driver.node_undefine(self)
         self.delete()
 
-    def suspend(self, verbose=True):
+    def suspend(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
