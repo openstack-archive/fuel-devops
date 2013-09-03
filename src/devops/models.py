@@ -276,7 +276,7 @@ class Node(ExternalModel):
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
-    def resume(self, verbose=True):
+    def resume(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_resume(self)
 
