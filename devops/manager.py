@@ -1,7 +1,7 @@
 import json
 import os
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+from django.db import IntegrityError, transaction
 import ipaddr
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
@@ -46,6 +46,26 @@ class Manager(object):
             prefix=24)
         return self.default_pool
 
+    @transaction.commit_on_success
+    def _safe_create_network(
+            self, name, environment=None, pool=None,
+            has_dhcp_server=True, has_pxe_server=False,
+            forward='nat'):
+        allocated_pool = pool or self._get_default_pool()
+        while True:
+            try:
+                ip_network = allocated_pool.next()
+                if not Network.objects.filter(ip_network=str(ip_network)).exists():
+                    return Network.objects.create(
+                        environment=environment,
+                        name=name,
+                        ip_network=ip_network,
+                        has_pxe_server=has_pxe_server,
+                        has_dhcp_server=has_dhcp_server,
+                        forward=forward)
+            except IntegrityError:
+                transaction.rollback()
+
     def network_create(
         self, name, environment=None, ip_network=None, pool=None,
         has_dhcp_server=True, has_pxe_server=False,
@@ -54,13 +74,22 @@ class Manager(object):
         """
         :rtype : Network
         """
-        allocated_network = ip_network or ExternalModel.allocate_network(
-            pool or self._get_default_pool())
-        return Network.objects.create(
-            environment=environment, name=name,
-            ip_network=ip_network or allocated_network,
-            has_pxe_server=has_pxe_server, has_dhcp_server=has_dhcp_server,
-            forward=forward)
+        if ip_network:
+            return Network.objects.create(
+                environment=environment,
+                name=name,
+                ip_network=ip_network,
+                has_pxe_server=has_pxe_server,
+                has_dhcp_server=has_dhcp_server,
+                forward=forward
+            )
+        return self._safe_create_network(
+            environment=environment,
+            forward=forward,
+            has_dhcp_server=has_dhcp_server,
+            has_pxe_server=has_pxe_server,
+            name=name,
+            pool=pool)
 
     def node_create(self, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',

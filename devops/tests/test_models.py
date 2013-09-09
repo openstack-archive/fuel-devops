@@ -1,5 +1,13 @@
+import random
 from django.utils import unittest
-from devops.models import double_tuple
+import threading
+from devops.manager import Manager
+from devops.models import double_tuple, Network
+
+
+class MyThread(threading.Thread):
+    def run(self):
+        Manager().network_create(str(random.randint(1, 5000)))
 
 
 class TestModels(unittest.TestCase):

@@ -63,7 +63,7 @@ class Environment(models.Model):
         for node in nodes or self.nodes:
             node.start()
 
-    def destroy(self, verbose=True):
+    def destroy(self, verbose=False):
         for node in self.nodes:
             node.destroy(verbose=verbose)
 
@@ -76,13 +76,13 @@ class Environment(models.Model):
             volume.erase()
         self.delete()
 
-    def suspend(self, verbose=True):
+    def suspend(self, verbose=False):
         for node in self.nodes:
             node.suspend(verbose)
 
-    def resume(self):
+    def resume(self, verbose=False):
         for node in self.nodes:
-            node.resume()
+            node.resume(verbose)
 
     def snapshot(self, name=None, description=None, force=False):
         for node in self.nodes:
@@ -127,13 +127,6 @@ class ExternalModel(models.Model):
     def get_allocated_networks(cls):
         return cls.get_driver().get_allocated_networks()
 
-    @classmethod
-    def allocate_network(cls, pool):
-        while True:
-            ip_network = pool.next()
-            if not Network.objects.filter(ip_network=str(ip_network)).exists():
-                return ip_network
-
 
 class Network(ExternalModel):
     _iterhosts = None
@@ -166,7 +159,9 @@ class Network(ExternalModel):
             ip = self._iterhosts.next()
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
                 continue
-            if not Address.objects.filter(interface__network=self, ip_address=str(ip)).exists():
+            if not Address.objects.filter(
+                interface__network=self,
+                ip_address=str(ip)).exists():
                 return ip
 
     def bridge_name(self):
@@ -179,7 +174,7 @@ class Network(ExternalModel):
     def start(self):
         self.create(verbose=False)
 
-    def create(self, verbose=True):
+    def create(self, verbose=False):
         if verbose or not self.driver.network_active(self):
             self.driver.network_create(self)
 
@@ -189,7 +184,7 @@ class Network(ExternalModel):
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.network_exists(self):
                 if self.driver.network_active(self):
@@ -260,18 +255,18 @@ class Node(ExternalModel):
     def start(self):
         self.create(verbose=False)
 
-    def create(self, verbose=True):
+    def create(self, verbose=False):
         if verbose or not self.driver.node_active(self):
             self.driver.node_create(self)
 
-    def destroy(self, verbose=True):
+    def destroy(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_destroy(self)
 
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
@@ -279,12 +274,13 @@ class Node(ExternalModel):
                 self.driver.node_undefine(self)
         self.delete()
 
-    def suspend(self, verbose=True):
+    def suspend(self, verbose=False):
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
-    def resume(self):
-        self.driver.node_resume(self)
+    def resume(self, verbose=False):
+        if verbose or self.driver.node_active(self):
+            self.driver.node_resume(self)
 
     def has_snapshot(self, name):
         return self.driver.node_snapshot_exists(node=self, name=name)
@@ -313,7 +309,7 @@ class Volume(ExternalModel):
     def erase(self):
         self.remove(verbose=False)
 
-    def remove(self, verbose=True):
+    def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.volume_exists(self):
                 self.driver.volume_delete(self)

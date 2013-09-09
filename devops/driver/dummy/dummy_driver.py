@@ -1,2 +1,3 @@
 class DevopsDriver(object):
-    pass
+    def get_allocated_networks(self):
+        return []

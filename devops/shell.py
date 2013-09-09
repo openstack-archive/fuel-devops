@@ -38,10 +38,10 @@ class Shell(object):
         self.manager.environment_get(self.params.name).destroy(verbose=False)
 
     def do_suspend(self):
-        self.manager.environment_get(self.params.name).suspend()
+        self.manager.environment_get(self.params.name).suspend(verbose=False)
 
     def do_resume(self):
-        self.manager.environment_get(self.params.name).resume()
+        self.manager.environment_get(self.params.name).resume(verbose=False)
 
     def do_revert(self):
         self.manager.environment_get(self.params.name).revert(
