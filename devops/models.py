@@ -294,7 +294,8 @@ class Node(ExternalModel):
     def revert(self, name=None, destroy=True):
         if destroy:
             self.destroy(verbose=False)
-        self.driver.node_revert_snapshot(node=self, name=name)
+        if self.has_snapshot(name):
+            self.driver.node_revert_snapshot(node=self, name=name)
 
 
 class Volume(ExternalModel):
