@@ -5,6 +5,10 @@ from ipaddr import IPNetwork
 from django.db import models
 
 from devops.settings import DRIVER
+try:
+    from devops.settings import DRIVER_PARAMETERS
+except ImportError:
+    DRIVER_PARAMETERS = {}
 from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
 
 
@@ -105,7 +109,7 @@ class ExternalModel(models.Model):
         :rtype : DevopsDriver
         """
         driver = import_module(DRIVER)
-        cls._driver = cls._driver or driver.DevopsDriver()
+        cls._driver = cls._driver or driver.DevopsDriver(**DRIVER_PARAMETERS)
         return cls._driver
 
     @property

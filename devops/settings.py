@@ -1,4 +1,8 @@
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
+DRIVER_PARAMETERS = {
+        'connection_string': 'qemu:///system',
+        }
+
 INSTALLED_APPS = ['devops']
 
 DATABASES = {

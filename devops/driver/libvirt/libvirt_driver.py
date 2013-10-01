@@ -12,7 +12,7 @@ from devops.helpers.retry import retry
 
 
 class DevopsDriver(object):
-    def __init__(self, connection_string="qemu:///system"):
+    def __init__(self, connection_string="qemu:///system", **driver_parameters):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
