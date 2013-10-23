@@ -13,7 +13,11 @@ class Shell(object):
         self.commands.get(self.params.command)(self)
 
     def do_list(self):
-        print self.manager.environment_list().values('name')
+        env_list = self.manager.environment_list().values('name')
+        for env in env_list:
+            print env['name']
+
+        return env_list
 
     def node_dict(self, node):
         return {'name': node.name,
