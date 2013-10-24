@@ -1,7 +1,9 @@
+import os
+
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
-        'connection_string': 'qemu:///system',
-        }
+    'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
+}
 
 INSTALLED_APPS = ['devops']
 
