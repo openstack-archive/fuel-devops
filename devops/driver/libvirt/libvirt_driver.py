@@ -12,12 +12,16 @@ from devops.helpers.retry import retry
 
 
 class DevopsDriver(object):
-    def __init__(self, connection_string="qemu:///system", **driver_parameters):
+    def __init__(self,
+                 connection_string="qemu:///system",
+                 storage_pool_name="default",
+                 **driver_parameters):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
         self.capabilities = None
         self.allocated_networks = None
+        self.storage_pool_name = storage_pool_name
 
     def __del__(self):
         self.conn.close()
@@ -353,7 +357,7 @@ class DevopsDriver(object):
                                                             len(key_code), 0)
 
     @retry()
-    def volume_define(self, volume, pool='default'):
+    def volume_define(self, volume, pool=self.storage_pool_name):
         """
         :type volume: Volume
         :type pool: String
