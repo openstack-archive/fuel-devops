@@ -160,13 +160,6 @@ class DevopsDriver(object):
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
-    def network_destroy(self, network):
-        """
-        :rtype : None
-        """
-        self.conn.networkLookupByUUIDString(network.uuid).destroy()
-
-    @retry()
     def node_define(self, node):
         """
         :type node: Node
@@ -268,14 +261,6 @@ class DevopsDriver(object):
             :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).shutdown()
-
-    @retry()
-    def node_destroy(self, node):
-        """
-        :type node: Node
-            :rtype : None
-        """
-        self.conn.lookupByUUIDString(node.uuid).destroy()
 
     @retry()
     def node_get_snapshots(self, node):
