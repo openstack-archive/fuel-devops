@@ -357,12 +357,14 @@ class DevopsDriver(object):
                                                             len(key_code), 0)
 
     @retry()
-    def volume_define(self, volume, pool=self.storage_pool_name):
+    def volume_define(self, volume, pool=None):
         """
         :type volume: Volume
         :type pool: String
             :rtype : None
         """
+        if pool is None:
+            pool = self.storage_pool_name
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume), 0)
         volume.uuid = libvirt_volume.key()
