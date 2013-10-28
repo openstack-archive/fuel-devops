@@ -160,13 +160,6 @@ class DevopsDriver(object):
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
-    def network_destroy(self, network):
-        """
-        :rtype : None
-        """
-        self.conn.networkLookupByUUIDString(network.uuid).destroy()
-
-    @retry()
     def node_define(self, node):
         """
         :type node: Node
@@ -270,14 +263,6 @@ class DevopsDriver(object):
         self.conn.lookupByUUIDString(node.uuid).shutdown()
 
     @retry()
-    def node_destroy(self, node):
-        """
-        :type node: Node
-            :rtype : None
-        """
-        self.conn.lookupByUUIDString(node.uuid).destroy()
-
-    @retry()
     def node_get_snapshots(self, node):
         """
         :rtype : List
@@ -357,12 +342,14 @@ class DevopsDriver(object):
                                                             len(key_code), 0)
 
     @retry()
-    def volume_define(self, volume, pool=self.storage_pool_name):
+    def volume_define(self, volume, pool=None):
         """
         :type volume: Volume
         :type pool: String
             :rtype : None
         """
+        if pool is None:
+            pool = self.storage_pool_name
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume), 0)
         volume.uuid = libvirt_volume.key()
