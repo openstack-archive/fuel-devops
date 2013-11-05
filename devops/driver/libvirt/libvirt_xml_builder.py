@@ -131,14 +131,17 @@ class LibvirtXMLBuilder(object):
         :param interface: Network
         """
 
-        if interface.type != 'network':
+        if interface.type not in ('network', 'bridge'):
             raise NotImplementedError(
                 message='Interface types different from network are not '
                         'implemented yet')
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
-            device_xml.source(
-                network=self.driver.network_name(interface.network))
+            if interface.type == 'network':
+                device_xml.source(
+                    network=self.driver.network_name(interface.network))
+            elif interface.type == 'bridge':
+                device_xml.source(bridge=interface.network.name)
             device_xml.target(dev="donet{0}".format(interface.id))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)
