@@ -182,12 +182,16 @@ class DevopsDriver(object):
         self.conn.lookupByUUIDString(node.uuid).destroy()
 
     @retry()
-    def node_undefine(self, node):
+    def node_undefine(self, node, undefine_snapshots=False):
         """
         :type node: Node
             :rtype : None
         """
-        self.conn.lookupByUUIDString(node.uuid).undefine()
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        if undefine_snapshots:
+            domain.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+        else:
+            domain.undefine()
 
     @retry()
     def node_get_vnc_port(self, node):
