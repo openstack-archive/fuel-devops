@@ -41,8 +41,7 @@ class Migration(SchemaMigration):
              self.gf('django.db.models.fields.CharField')(max_length=255,
                                                           null=True)),
             ('ip_network',
-             self.gf('django.db.models.fields.CharField')(unique=True,
-                                                          max_length=255)),
+             self.gf('django.db.models.fields.CharField')(max_length=255)),
         ))
         db.send_create_signal(u'devops', ['Network'])
 
@@ -273,7 +272,7 @@ class Migration(SchemaMigration):
                 'django.db.models.fields.AutoField', [],
                 {'primary_key': 'True'}),
             'ip_network': ('django.db.models.fields.CharField', [],
-                           {'unique': 'True', 'max_length': '255'}),
+                           {'max_length': '255'}),
             'name': (
                 'django.db.models.fields.CharField', [],
                 {'max_length': '255'}),
