@@ -171,10 +171,10 @@ class Manager(object):
 
         def _create(mac_addr=None):
             interface = Interface.objects.create(
-                        network=network, node=node, type=type,
-                        mac_address=mac_addr or self._generate_mac(),
-                        model=model)
-            interface.add_address(str(network.next_ip()))
+                network=network, node=node, type=type,
+                mac_address=mac_addr or self._generate_mac(), model=model)
+            if type != 'bridge':
+                interface.add_address(str(network.next_ip()))
             return interface
 
         if interface_map:
