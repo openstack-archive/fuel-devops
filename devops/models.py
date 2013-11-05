@@ -198,7 +198,7 @@ class Network(ExternalModel):
     forward = choices(
         'nat', 'route', 'bridge', 'private', 'vepa',
         'passthrough', 'hostdev', null=True)
-    ip_network = models.CharField(max_length=255, unique=True)
+    ip_network = models.CharField(max_length=255)
 
     @property
     def interfaces(self):
