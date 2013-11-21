@@ -274,8 +274,7 @@ class Node(ExternalModel):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
-                self.driver.node_delete_all_snapshots(node=self)
-                self.driver.node_undefine(self)
+                self.driver.node_undefine(self, undefine_snapshots=True)
         self.delete()
 
     def suspend(self, verbose=False):
