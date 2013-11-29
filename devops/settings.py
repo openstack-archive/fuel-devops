@@ -19,3 +19,6 @@ DATABASES = {
         'TEST_CHARSET': 'UTF8'
     }
 }
+
+SECRET_KEY = 'dummykey'
+
