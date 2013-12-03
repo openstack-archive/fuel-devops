@@ -37,6 +37,16 @@ class TestManager(TestCase):
         ip = network.next_ip()
         self.assertEquals('10.1.0.4', str(ip))
 
+    def test_network_model(self):
+        environment = manager.environment_create('test_env')
+        node = self.manager.node_create('test_node', environment)
+        network = self.manager.network_create(
+            environment=environment, name='internal', ip_network='10.1.0.0/24')
+        interface1 = self.manager.interface_create(network=network, node=node)
+        self.assertEquals('virtio', interface1.model)
+        interface2 = self.manager.interface_create(network=network, node=node, model='e1000')
+        self.assertEquals('e1000', interface2.model)
+
     def test_environment_values(self):
         environment = self.manager.environment_create('test_env')
         print environment.volumes
