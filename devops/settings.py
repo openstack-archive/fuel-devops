@@ -22,4 +22,4 @@ DATABASES = {
 
 SECRET_KEY = 'dummykey'
 
-VNC_PASSWORD = 'r00tme'
+VNC_PASSWORD = None
