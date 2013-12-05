@@ -2,6 +2,7 @@ import json
 
 from django.utils.importlib import import_module
 from ipaddr import IPNetwork
+from django.conf import settings
 from django.db import models
 
 from devops.settings import DRIVER
@@ -225,6 +226,10 @@ class Node(ExternalModel):
     @property
     def interfaces(self):
         return Interface.objects.filter(node=self).order_by('id')
+
+    @property
+    def vnc_password(self):
+        return settings.VNC_PASSWORD
 
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)

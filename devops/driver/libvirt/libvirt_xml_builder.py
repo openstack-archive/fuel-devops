@@ -119,7 +119,17 @@ class LibvirtXMLBuilder(object):
         with node_xml.devices:
             node_xml.emulator(emulator)
             if node.has_vnc:
-                node_xml.graphics(type='vnc', listen='0.0.0.0', autoport='yes')
+                if node.vnc_password:
+                    node_xml.graphics(
+                        type='vnc',
+                        listen='0.0.0.0',
+                        autoport='yes',
+                        passwd=node.vnc_password)
+                else:
+                    node_xml.graphics(
+                        type='vnc',
+                        listen='0.0.0.0',
+                        autoport='yes')
 
             for disk_device in node.disk_devices:
                 self._build_disk_device(node_xml, disk_device)
