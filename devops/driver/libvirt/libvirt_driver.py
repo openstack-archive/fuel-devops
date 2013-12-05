@@ -10,6 +10,7 @@ from devops.helpers import scancodes
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
 
+from django.conf import settings
 
 class DevopsDriver(object):
     def __init__(self,
@@ -22,6 +23,9 @@ class DevopsDriver(object):
         self.capabilities = None
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
+
+        if settings.VNC_PASSWORD:
+            self.vnc_password = settings.VNC_PASSWORD
 
     def __del__(self):
         self.conn.close()
