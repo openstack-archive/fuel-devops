@@ -355,7 +355,7 @@ class Interface(models.Model):
     network = models.ForeignKey(Network)
     node = models.ForeignKey(Node)
     type = models.CharField(max_length=255, null=False)
-    model = choices('virtio')
+    model = choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
 
     @property
     def target_dev(self):
