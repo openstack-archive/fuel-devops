@@ -135,4 +135,6 @@ class LibvirtXMLBuilder(object):
                 self._build_disk_device(node_xml, disk_device)
             for interface in node.interfaces:
                 self._build_interface_device(node_xml, interface)
+            with node_xml.video:
+                node_xml.model(type='vga', vram='9216', heads='1')
         return str(node_xml)
