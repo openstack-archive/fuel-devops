@@ -137,5 +137,4 @@ class LibvirtXMLBuilder(object):
                 self._build_interface_device(node_xml, interface)
             with node_xml.video:
                 node_xml.model(type='vga', vram='9216', heads='1')
-                node_xml.alias(name='video0')
         return str(node_xml)
