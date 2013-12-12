@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Approved+1: Mike Scherbakov <mscherbakov@mirantis.com>
+Code-Review+2: Mike Scherbakov <mscherbakov@mirantis.com>
+Code-Review+1: Nastya Urlapova <aurlapova@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 12 Dec 2013 12:12:38 +0000
+Reviewed-on: https://review.openstack.org/61627
+Project: stackforge/fuel-devops
+Branch: refs/heads/master
