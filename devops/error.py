@@ -38,6 +38,18 @@ class DevopsCalledProcessError(DevopsError):
 class DevopsNotImplementedError(DevopsError):
     pass
 
+class DevopsEnvironmentError(DevopsError):
+    def __init__(self, command):
+        self.cmd = command
+
+    def __str__(self):
+        message = "Command '{0}' is not found".format(self.cmd)
+        return message
+
+
+class TimeoutError(DevopsError):
+    pass
+
 
 class TimeoutError(DevopsError):
     pass
