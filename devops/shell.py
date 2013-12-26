@@ -21,16 +21,14 @@ class Shell(object):
 
     def node_dict(self, node):
         return {'name': node.name,
-                'vnc': node.get_vnc_port(),
-        }
+                'vnc': node.get_vnc_port()}
 
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
-        print {
-            'name': environment.name,
-            'nodes': map(lambda x: {'node': self.node_dict(x)},
-                         environment.nodes)
-        }
+
+        print '%5s %25s' % ("VNC", "NODE-NAME")
+        for item in map(lambda x: self.node_dict(x), environment.nodes):
+            print '%5s %25s' % (item['vnc'], item['name'])
 
     def do_erase(self):
         self.manager.environment_get(self.params.name).erase()
