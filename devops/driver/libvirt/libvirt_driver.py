@@ -12,11 +12,11 @@ from devops.helpers.retry import retry
 
 from django.conf import settings
 
+
 class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
-                 storage_pool_name="default",
-                 **driver_parameters):
+                 storage_pool_name="default"):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
@@ -326,7 +326,6 @@ class DevopsDriver(object):
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
         domain.revertToSnapshot(snapshot, 0)
-        print domain.state(0)
 
     @retry()
     def node_delete_all_snapshots(self, node):
@@ -379,7 +378,7 @@ class DevopsDriver(object):
     def volume_path(self, volume):
         return self.conn.storageVolLookupByKey(volume.uuid).path()
 
-    def chunk_render(self, stream, size, fd):
+    def chunk_render(self, size, fd):
         return fd.read(size)
 
     @retry(count=2)
