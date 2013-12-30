@@ -170,3 +170,6 @@ class Manager(object):
             device=device, type=type, bus=bus,
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
+
+    def synchronize_environments(self):
+        Environment().synchronize_all()

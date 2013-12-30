@@ -55,6 +55,9 @@ class Shell(object):
         self.manager.environment_get(self.params.name).snapshot(
             self.params.snapshot_name)
 
+    def do_synchronize(self):
+        self.manager.synchronize_environments()
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -64,7 +67,8 @@ class Shell(object):
         'suspend': do_suspend,
         'resume': do_resume,
         'revert': do_revert,
-        'snapshot': do_snapshot
+        'snapshot': do_snapshot,
+        'sync': do_synchronize
     }
 
     def get_params(self):
@@ -89,4 +93,5 @@ class Shell(object):
                               parents=[name_parser, snapshot_name_parser])
         subparsers.add_parser('snapshot',
                               parents=[name_parser, snapshot_name_parser])
+        subparsers.add_parser('sync')
         return parser.parse_args()

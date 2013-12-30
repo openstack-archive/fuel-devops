@@ -4,6 +4,7 @@ from django.utils.importlib import import_module
 from ipaddr import IPNetwork
 from django.conf import settings
 from django.db import models
+from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 
 from devops.settings import DRIVER
 try:
@@ -27,7 +28,30 @@ def double_tuple(*args):
     return tuple(dict)
 
 
-class Environment(models.Model):
+class LibvirtModel(models.Model):
+    _driver = None
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get_driver(cls):
+        """
+        :rtype : DevopsDriver
+        """
+        driver = import_module(DRIVER)
+        cls._driver = cls._driver or driver.DevopsDriver(**DRIVER_PARAMETERS)
+        return cls._driver
+
+    @property
+    def driver(self):
+        """
+        :rtype : DevopsDriver
+        """
+        return self.get_driver()
+
+
+class Environment(LibvirtModel):
     name = models.CharField(max_length=255, unique=True, null=False)
 
     @property
@@ -81,6 +105,12 @@ class Environment(models.Model):
             volume.erase()
         self.delete()
 
+    @staticmethod
+    def erase_empty():
+        for env in Environment.objects.all():
+            if len(env.nodes) == 0:
+                env.delete()
+
     def suspend(self, verbose=False):
         for node in self.nodes:
             node.suspend(verbose)
@@ -100,26 +130,30 @@ class Environment(models.Model):
         for node in self.nodes:
             node.revert(name, destroy=False)
 
+    def synchronize_all(self):
+        xml_builder = LibvirtXMLBuilder(self.driver)
 
-class ExternalModel(models.Model):
-    _driver = None
+        nodes = {xml_builder._get_name(e.name, n.name): n
+                 for e in Environment.objects.all()
+                 for n in e.nodes}
+        domains = set(self.driver.node_list())
 
-    @classmethod
-    def get_driver(cls):
-        """
-        :rtype : DevopsDriver
-        """
-        driver = import_module(DRIVER)
-        cls._driver = cls._driver or driver.DevopsDriver(**DRIVER_PARAMETERS)
-        return cls._driver
+        # Undefine domains without devops nodes
+        domains_to_undefine = domains - set(nodes.keys())
+        for d in domains_to_undefine:
+            self.driver.node_undefine_by_name(d)
 
-    @property
-    def driver(self):
-        """
-        :rtype : DevopsDriver
-        """
-        return self.get_driver()
+        # Remove devops nodes without domains
+        nodes_to_remove = set(nodes.keys()) - domains
+        for n in nodes_to_remove:
+            nodes[n].delete()
+        Environment.erase_empty()
 
+        print 'Undefined domains: {0}, removed nodes: {1}'\
+            .format(len(domains_to_undefine), len(nodes_to_remove))
+
+
+class ExternalModel(LibvirtModel):
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
     environment = models.ForeignKey(Environment, null=True)

@@ -198,6 +198,15 @@ class DevopsDriver(object):
             domain.undefine()
 
     @retry()
+    def node_undefine_by_name(self, node_name):
+        """
+        :type node: Node
+            :rtype : None
+        """
+        domain = self.conn.lookupByName(node_name)
+        domain.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+
+    @retry()
     def node_get_vnc_port(self, node):
         """
         :type node: Node
@@ -229,6 +238,10 @@ class DevopsDriver(object):
             :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).create()
+
+    @retry()
+    def node_list(self):
+        return self.conn.listDefinedDomains()
 
     @retry()
     def node_reset(self, node):
