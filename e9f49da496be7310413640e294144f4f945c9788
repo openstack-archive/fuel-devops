@@ -1,0 +1,10 @@
+Verified+2: Jenkins
+Approved+1: tatyana-leontovich <tleontovich@mirantis.com>
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Code-Review+1: Andrey Korolyov <akorolev@mirantis.com>
+Code-Review+1: Igor Shishkin <ishishkin@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 09 Jan 2014 13:56:52 +0000
+Reviewed-on: https://review.openstack.org/65679
+Project: stackforge/fuel-devops
+Branch: refs/heads/master
