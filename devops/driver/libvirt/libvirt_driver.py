@@ -378,7 +378,7 @@ class DevopsDriver(object):
     def volume_path(self, volume):
         return self.conn.storageVolLookupByKey(volume.uuid).path()
 
-    def chunk_render(self, size, fd):
+    def chunk_render(self, stream, size, fd):
         return fd.read(size)
 
     @retry(count=2)
