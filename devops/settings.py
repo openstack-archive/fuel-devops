@@ -22,4 +22,4 @@ DATABASES = {
 
 SECRET_KEY = 'dummykey'
 
-VNC_PASSWORD = None
+VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
