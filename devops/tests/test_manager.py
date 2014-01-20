@@ -44,7 +44,8 @@ class TestManager(TestCase):
             environment=environment, name='internal', ip_network='10.1.0.0/24')
         interface1 = self.manager.interface_create(network=network, node=node)
         self.assertEquals('virtio', interface1.model)
-        interface2 = self.manager.interface_create(network=network, node=node, model='e1000')
+        interface2 = self.manager.interface_create(
+            network=network, node=node, model='e1000')
         self.assertEquals('e1000', interface2.model)
 
     def test_environment_values(self):
@@ -69,23 +70,18 @@ class TestManager(TestCase):
 
     def test_node_creationw(self):
         environment = self.manager.environment_create('test_env55')
-        node = self.manager.node_create(name='test_node4',
-                                        environment=environment)
+        node = self.manager.node_create(
+            name='test_node4',
+            environment=environment)
         node.define()
 
     def test_node_creation(self):
         environment = self.manager.environment_create('test_env3')
         internal = self.manager.network_create(
             environment=environment, name='internal', pool=None)
-        #            external = self.manager.create_network(
-        #                environment=environment, name='external', pool=None)
-        #            private = self.manager.create_network(
-        #                environment=environment, name='private', pool=None)
-        node = self.manager.node_create(name='test_node',
-                                        environment=environment)
+        node = self.manager.node_create(
+            name='test_node', environment=environment)
         self.manager.interface_create(node=node, network=internal)
-        #            self.manager.create_interface(node=node, network=external)
-        #            self.manager.create_interface(node=node, network=private)
         environment.define()
 
     def test_create_volume(self):
@@ -99,7 +95,8 @@ class TestManager(TestCase):
     def test_create_volume(self):
         volume = self.manager.volume_get_predefined(
             '/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child('test_vp89', backing_store=volume)
+        v3 = self.manager.volume_create_child(
+            'test_vp89', backing_store=volume)
         v3.define()
 
     def test_create_node3(self):
