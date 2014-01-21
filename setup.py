@@ -17,7 +17,7 @@ setup(
         'xmlbuilder',
         'ipaddr',
         'paramiko',
-        'django==1.4.3',
+        'django>=1.4.3',
         'psycopg2'
     ]
 )
