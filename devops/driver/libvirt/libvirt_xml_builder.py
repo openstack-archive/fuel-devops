@@ -30,7 +30,9 @@ class LibvirtXMLBuilder(object):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):
             ip_network = IPNetwork(network.ip_network)
-            with network_xml.ip(address=str(ip_network[1]), prefix=str(ip_network.prefixlen)):
+            with network_xml.ip(
+                    address=str(ip_network[1]),
+                    prefix=str(ip_network.prefixlen)):
                 if network.has_pxe_server:
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:

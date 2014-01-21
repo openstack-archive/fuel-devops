@@ -55,7 +55,8 @@ class Manager(object):
         while True:
             try:
                 ip_network = allocated_pool.next()
-                if not Network.objects.filter(ip_network=str(ip_network)).exists():
+                if not Network.objects.filter(
+                        ip_network=str(ip_network)).exists():
                     return Network.objects.create(
                         environment=environment,
                         name=name,

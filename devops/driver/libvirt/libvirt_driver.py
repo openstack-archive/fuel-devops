@@ -171,7 +171,8 @@ class DevopsDriver(object):
         """
         emulator = self.get_capabilities(
         ).find(
-            'guest/arch[@name="{0:>s}"]/domain[@type="{1:>s}"]/emulator'.format(
+            'guest/arch[@name="{0:>s}"]/'
+            'domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
         print node_xml
@@ -193,7 +194,8 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         if undefine_snapshots:
-            domain.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+            domain.undefineFlags(
+                libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         else:
             domain.undefine()
 
@@ -330,7 +332,8 @@ class DevopsDriver(object):
     @retry()
     def node_delete_all_snapshots(self, node):
         domain = self.conn.lookupByUUIDString(node.uuid)
-        for name in domain.snapshotListNames(libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
+        for name in domain.snapshotListNames(
+                libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
             snapshot = self._get_snapshot(domain, name)
             snapshot.delete(libvirt.VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN)
 
