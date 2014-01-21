@@ -33,7 +33,10 @@ def get_free_port():
 
 def icmp_ping(host, timeout=1):
     """
-    icmp_ping(host, timeout=1) - returns True if host is pingable; False - otherwise.
+    icmp_ping(host, timeout=1)
+
+    returns True if host is pingable
+    False - otherwise.
     """
     return os.system(
         "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
@@ -48,7 +51,11 @@ def _tcp_ping(host, port):
 
 def tcp_ping(host, port):
     """
-    tcp_ping(host, port) - returns True if TCP connection to specified host and port can be established; False - otherwise.
+    tcp_ping(host, port)
+
+    returns True if TCP connection to specified host and port
+    can be established
+    False - otherwise.
     """
     try:
         _tcp_ping(host, port)
@@ -59,14 +66,15 @@ def tcp_ping(host, port):
 
 def wait(predicate, interval=5, timeout=None):
     """
-    wait(predicate, interval=5, timeout=None) - wait until predicate will 
-    become True. Returns number of seconds that is left or 0 if timeout is None.
+    wait(predicate, interval=5, timeout=None) - wait until predicate will
+    become True.
+    returns number of seconds that is left or 0 if timeout is None.
 
     Options:
 
     interval - seconds between checks.
 
-    timeout  - raise TimeoutError if predicate won't become True after 
+    timeout  - raise TimeoutError if predicate won't become True after
     this amount of seconds. 'None' disables timeout.
     """
     start_time = time.time()

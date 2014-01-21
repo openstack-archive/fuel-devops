@@ -199,8 +199,8 @@ class Network(ExternalModel):
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
                 continue
             if not Address.objects.filter(
-                interface__network=self,
-                ip_address=str(ip)).exists():
+                    interface__network=self,
+                    ip_address=str(ip)).exists():
                 return ip
 
     def bridge_name(self):

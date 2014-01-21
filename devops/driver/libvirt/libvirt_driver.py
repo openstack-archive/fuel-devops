@@ -169,8 +169,10 @@ class DevopsDriver(object):
         :type node: Node
             :rtype : None
         """
-        emulator = self.get_capabilities().find(
-            'guest/arch[@name="{0:>s}"]/domain[@type="{1:>s}"]/emulator'.format(
+        emulator = self.get_capabilities(
+        ).find(
+            'guest/arch[@name="{0:>s}"]/'
+            'domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
         print node_xml
@@ -192,7 +194,8 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         if undefine_snapshots:
-            domain.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+            domain.undefineFlags(
+                libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         else:
             domain.undefine()
 
