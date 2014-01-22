@@ -11,7 +11,7 @@ class LibvirtXMLBuilder(object):
     NAME_SIZE = 80
 
     def _get_name(self, *args):
-        name = '_'.join(list(args))
+        name = '_'.join(filter(None, list(args)))
         if len(name) > self.NAME_SIZE:
             hash_str = str(hash(name))
             name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
@@ -30,7 +30,9 @@ class LibvirtXMLBuilder(object):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):
             ip_network = IPNetwork(network.ip_network)
-            with network_xml.ip(address=str(ip_network[1]), prefix=str(ip_network.prefixlen)):
+            with network_xml.ip(
+                    address=str(ip_network[1]),
+                    prefix=str(ip_network.prefixlen)):
                 if network.has_pxe_server:
                     network_xml.tftp(root=network.tftp_root_dir)
                 if network.has_dhcp_server:
