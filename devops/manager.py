@@ -1,8 +1,25 @@
-import json
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
-from django.db import IntegrityError, transaction
+#    Copyright 2013 Mirantis, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import ipaddr
+import json
+
+from os import environ
+
+environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+from django.db import IntegrityError, transaction
+
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address, Interface, Node, Network, Environment, \

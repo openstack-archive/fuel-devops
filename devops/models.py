@@ -1,16 +1,26 @@
-import json
+#    Copyright 2013 Mirantis, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
-from django.utils.importlib import import_module
+import json
+import paramiko
+
 from ipaddr import IPNetwork
+
 from django.conf import settings
 from django.db import models
-from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from django.utils.importlib import import_module
 
-from devops.settings import DRIVER
-try:
-    from devops.settings import DRIVER_PARAMETERS
-except ImportError:
-    DRIVER_PARAMETERS = {}
 from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
 
 
@@ -28,7 +38,7 @@ def double_tuple(*args):
     return tuple(dict)
 
 
-class LibvirtModel(models.Model):
+class DriverModel(models.Model):
     _driver = None
 
     class Meta:
@@ -39,8 +49,9 @@ class LibvirtModel(models.Model):
         """
         :rtype : DevopsDriver
         """
-        driver = import_module(DRIVER)
-        cls._driver = cls._driver or driver.DevopsDriver(**DRIVER_PARAMETERS)
+        driver = import_module(settings.DRIVER)
+        cls._driver = cls._driver or driver.DevopsDriver(
+            **settings.DRIVER_PARAMETERS)
         return cls._driver
 
     @property
@@ -51,7 +62,7 @@ class LibvirtModel(models.Model):
         return self.get_driver()
 
 
-class Environment(LibvirtModel):
+class Environment(DriverModel):
     name = models.CharField(max_length=255, unique=True, null=False)
 
     @property
@@ -131,9 +142,7 @@ class Environment(LibvirtModel):
             node.revert(name, destroy=False)
 
     def synchronize_all(self):
-        xml_builder = LibvirtXMLBuilder(self.driver)
-
-        nodes = {xml_builder._get_name(e.name, n.name): n
+        nodes = {self.get_driver()._get_name(e.name, n.name): n
                  for e in Environment.objects.all()
                  for n in e.nodes}
         domains = set(self.driver.node_list())
@@ -149,11 +158,11 @@ class Environment(LibvirtModel):
             nodes[n].delete()
         Environment.erase_empty()
 
-        print 'Undefined domains: {0}, removed nodes: {1}'\
-            .format(len(domains_to_undefine), len(nodes_to_remove))
+        print 'Undefined domains: %s, removed nodes: %s' % (
+            len(domains_to_undefine), len(nodes_to_remove))
 
 
-class ExternalModel(LibvirtModel):
+class ExternalModel(DriverModel):
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
     environment = models.ForeignKey(Environment, null=True)
