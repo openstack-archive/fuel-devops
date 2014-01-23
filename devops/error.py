@@ -2,6 +2,10 @@ class DevopsError(Exception):
     message = "Devops Error"
 
 
+class AuthenticationError(DevopsError):
+    pass
+
+
 class DevopsCalledProcessError(DevopsError):
     def __init__(self, command, returncode, output=None):
         self.returncode = returncode
@@ -16,9 +20,9 @@ class DevopsCalledProcessError(DevopsError):
         return message
 
 
-class TimeoutError(DevopsError):
+class DevopsNotImplementedError(DevopsError):
     pass
 
 
-class AuthenticationError(DevopsError):
+class TimeoutError(DevopsError):
     pass

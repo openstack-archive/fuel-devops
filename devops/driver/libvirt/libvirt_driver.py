@@ -1,9 +1,9 @@
 # vim: ts=4 sw=4 expandtab
+import ipaddr
+import libvirt
+
 from time import sleep
 import xml.etree.ElementTree as ET
-
-import libvirt
-import ipaddr
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers import scancodes
@@ -29,6 +29,9 @@ class DevopsDriver(object):
 
     def __del__(self):
         self.conn.close()
+
+    def _get_name(self, *kwargs):
+        return self.xml_builder._get_name(*kwargs)
 
     @retry()
     def get_capabilities(self):

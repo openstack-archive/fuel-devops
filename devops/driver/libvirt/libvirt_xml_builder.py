@@ -1,4 +1,5 @@
 import json
+
 from ipaddr import IPNetwork, IPAddress
 from xmlbuilder import XMLBuilder
 
