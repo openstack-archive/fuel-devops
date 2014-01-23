@@ -1,5 +1,21 @@
+#    Copyright 2014 Mirantis, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import argparse
-import os
+
+from os import environ
+
 from devops.manager import Manager
 
 
@@ -72,11 +88,11 @@ class Shell(object):
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
         name_parser.add_argument('name', help='environment name',
-                                 default=os.getenv('ENV_NAME'))
+                                 default=environ.get('ENV_NAME'))
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
-                                          default=os.getenv('SNAPSHOT_NAME'))
+                                          default=environ.get('SNAPSHOT_NAME'))
         parser = argparse.ArgumentParser(
             description="Manage virtual environments")
         subparsers = parser.add_subparsers(help='commands', dest='command')

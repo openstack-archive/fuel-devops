@@ -1,9 +1,22 @@
-# vim: ts=4 sw=4 expandtab
+#    Copyright 2014 Mirantis, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import ipaddr
+import libvirt
+
 from time import sleep
 import xml.etree.ElementTree as ET
-
-import libvirt
-import ipaddr
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers import scancodes
@@ -29,6 +42,9 @@ class DevopsDriver(object):
 
     def __del__(self):
         self.conn.close()
+
+    def _get_name(self, *kwargs):
+        return self.xml_builder._get_name(*kwargs)
 
     @retry()
     def get_capabilities(self):
@@ -439,3 +455,5 @@ class DevopsDriver(object):
                         "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
             self.allocated_networks = allocated_networks
         return self.allocated_networks
+
+# vim: ts=4 sw=4 expandtab
