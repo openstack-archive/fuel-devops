@@ -1,9 +1,9 @@
-import os
+from os import environ
 
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
-    'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
-    'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
+    'connection_string': environ.get('CONNECTION_STRING', 'qemu:///system'),
+    'storage_pool_name': environ.get('STORAGE_POOL_NAME', 'default'),
 }
 
 INSTALLED_APPS = ['devops']
@@ -22,4 +22,4 @@ DATABASES = {
 
 SECRET_KEY = 'dummykey'
 
-VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
+VNC_PASSWORD = environ.get('VNC_PASSWORD', None)

@@ -1,18 +1,18 @@
-import os
-import urllib
-import stat
-import socket
-import time
 import httplib
-import xmlrpclib
-import random
-from threading import Thread
-import BaseHTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import posixpath
 import logging
-
+import os
 import paramiko
+import posixpath
+import random
+import socket
+import stat
+import time
+import urllib
+import xmlrpclib
+import BaseHTTPServer
+
+from threading import Thread
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 from devops.helpers.retry import retry
 from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \

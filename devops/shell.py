@@ -1,5 +1,7 @@
 import argparse
-import os
+
+from os import environ
+
 from devops.manager import Manager
 
 
@@ -72,11 +74,11 @@ class Shell(object):
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
         name_parser.add_argument('name', help='environment name',
-                                 default=os.getenv('ENV_NAME'))
+                                 default=environ.get('ENV_NAME'))
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
-                                          default=os.getenv('SNAPSHOT_NAME'))
+                                          default=environ.get('SNAPSHOT_NAME'))
         parser = argparse.ArgumentParser(
             description="Manage virtual environments")
         subparsers = parser.add_subparsers(help='commands', dest='command')
