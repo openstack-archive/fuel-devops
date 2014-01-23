@@ -1,18 +1,32 @@
-import os
-import urllib
-import stat
-import socket
-import time
-import httplib
-import xmlrpclib
-import random
-from threading import Thread
-import BaseHTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import posixpath
-import logging
+#    Copyright 2013 Mirantis, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
+import httplib
+import logging
+import os
 import paramiko
+import posixpath
+import random
+import socket
+import stat
+import time
+import urllib
+import xmlrpclib
+import BaseHTTPServer
+
+from threading import Thread
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 from devops.helpers.retry import retry
 from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \
