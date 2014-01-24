@@ -6,7 +6,7 @@ DRIVER_PARAMETERS = {
     'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
 }
 
-INSTALLED_APPS = ['devops']
+INSTALLED_APPS = ['south', 'devops']
 
 DATABASES = {
     'default': {

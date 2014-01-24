@@ -18,6 +18,7 @@ setup(
         'ipaddr',
         'paramiko',
         'django>=1.4.3',
-        'psycopg2'
+        'psycopg2',
+        'south'
     ]
 )
