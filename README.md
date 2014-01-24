@@ -21,4 +21,9 @@ Dependencies
  * python-paramiko
  * python-django (>= 1.4)
  * python-xmlbuilder
+ * python-south
 
+Installation
+------------
+	django-admin.py syncdb --settings=devops.settings
+	django-admin.py migrate devops --settings=devops.settings
