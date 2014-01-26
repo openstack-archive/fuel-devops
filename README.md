@@ -17,7 +17,6 @@ Dependencies
  * python-ipaddr
  * python-libvirt
  * python-virtualenv
- * python-ipaddr
  * python-paramiko
  * python-django (>= 1.4)
  * python-xmlbuilder
