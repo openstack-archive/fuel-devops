@@ -10,20 +10,6 @@ PXE, creating, snapshotting and resuming back the whole environment in single
 action, create virtual machines with multiple NICs, multiple hard drives and many
 other customizations with a few lines of code in system tests.
 
-Dependencies
-------------
- * postgresql
- * python-psycopg2
- * python-ipaddr
- * python-libvirt
- * python-virtualenv
- * python-ipaddr
- * python-paramiko
- * python-django (>= 1.4)
- * python-xmlbuilder
- * python-south
-
-Installation
-------------
-	django-admin.py syncdb --settings=devops.settings
-	django-admin.py migrate devops --settings=devops.settings
+Documentation
+-------------
+All documentation can be found here: http://docs.mirantis.com/fuel-dev/devops.html
