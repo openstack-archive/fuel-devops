@@ -37,3 +37,10 @@ DATABASES = {
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
+
+try:
+    from local_settings import *
+
+    print 'Using local_settings'
+except ImportError:
+    print 'Using default application settings'
