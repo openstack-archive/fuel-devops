@@ -72,15 +72,14 @@ class Manager(object):
         while True:
             try:
                 ip_network = allocated_pool.next()
-                if not Network.objects.filter(
-                        ip_network=str(ip_network)).exists():
-                    return Network.objects.create(
-                        environment=environment,
-                        name=name,
-                        ip_network=ip_network,
-                        has_pxe_server=has_pxe_server,
-                        has_dhcp_server=has_dhcp_server,
-                        forward=forward)
+                net, created = Network.objects.get_or_create(
+                    environment=environment,
+                    name=name,
+                    ip_network=ip_network,
+                    has_pxe_server=has_pxe_server,
+                    has_dhcp_server=has_dhcp_server,
+                    forward=forward)
+                return net
             except IntegrityError:
                 transaction.rollback()
 
