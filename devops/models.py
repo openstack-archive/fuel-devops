@@ -20,6 +20,7 @@ from ipaddr import IPNetwork
 from django.conf import settings
 from django.db import models
 from django.utils.importlib import import_module
+from django.core.exceptions import ObjectDoesNotExist
 
 from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
 
@@ -84,7 +85,14 @@ class Environment(DriverModel):
         return self.nodes.filter(role=role, environment=self)
 
     def network_by_name(self, name):
-        return self.networks.get(name=name, environment=self)
+        if name not in ['admin', 'public']:
+            try:
+                return self.networks.get(name=name, environment=self)
+            except ObjectDoesNotExist:
+                return self.networks.get(name='public', environment=self)
+        else:
+            return self.networks.get(name=name, environment=self)
+
 
     def has_snapshot(self, name):
         return all(map(lambda x: x.has_snapshot(name), self.nodes))
