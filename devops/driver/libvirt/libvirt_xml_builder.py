@@ -108,7 +108,9 @@ class LibvirtXMLBuilder(object):
 
     def _build_interface_device(self, device_xml, interface):
         if interface.type != 'network':
-            raise NotImplementedError()
+            raise NotImplementedError(
+                message='Interface types different from network are not '
+                        'implemented yet')
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(

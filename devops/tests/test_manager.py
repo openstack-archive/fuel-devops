@@ -52,7 +52,7 @@ class TestManager(TestCase):
         self.assertEquals('10.1.0.4', str(ip))
 
     def test_network_model(self):
-        environment = manager.environment_create('test_env')
+        environment = self.manager.environment_create('test_env')
         node = self.manager.node_create('test_node', environment)
         network = self.manager.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
@@ -104,13 +104,6 @@ class TestManager(TestCase):
             '/var/lib/libvirt/images/disk-135824657433.qcow2')
         v3 = self.manager.volume_create_child(
             'test_vp89', backing_store=volume, environment=environment)
-        v3.define()
-
-    def test_create_volume(self):
-        volume = self.manager.volume_get_predefined(
-            '/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child(
-            'test_vp89', backing_store=volume)
         v3.define()
 
     def test_create_node3(self):

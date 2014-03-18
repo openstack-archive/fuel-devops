@@ -13,7 +13,6 @@
 #    under the License.
 
 import json
-import paramiko
 
 from ipaddr import IPNetwork
 
