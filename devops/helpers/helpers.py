@@ -42,7 +42,7 @@ def get_free_port():
     for port in ports:
         if not tcp_ping('localhost', port):
             return port
-    raise DevopsError("No free ports available")
+    raise DevopsError('No free ports available')
 
 
 def icmp_ping(host, timeout=1):

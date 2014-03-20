@@ -16,7 +16,7 @@ import random
 from django.utils import unittest
 import threading
 from devops.manager import Manager
-from devops.models import double_tuple, Network
+from devops.models import double_tuple
 
 
 class MyThread(threading.Thread):

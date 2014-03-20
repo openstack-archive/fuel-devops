@@ -14,7 +14,11 @@
 
 
 class DevopsError(Exception):
-    message = "Devops Error"
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 
 class AuthenticationError(DevopsError):
@@ -38,6 +42,7 @@ class DevopsCalledProcessError(DevopsError):
 class DevopsNotImplementedError(DevopsError):
     pass
 
+
 class DevopsEnvironmentError(DevopsError):
     def __init__(self, command):
         self.cmd = command
@@ -45,10 +50,6 @@ class DevopsEnvironmentError(DevopsError):
     def __str__(self):
         message = "Command '{0}' is not found".format(self.cmd)
         return message
-
-
-class TimeoutError(DevopsError):
-    pass
 
 
 class TimeoutError(DevopsError):

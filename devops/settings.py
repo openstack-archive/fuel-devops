@@ -39,6 +39,6 @@ SECRET_KEY = 'dummykey'
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
 
 try:
-    from local_settings import *
+    from local_settings import *  # noqa
 except ImportError:
     pass
