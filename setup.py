@@ -39,5 +39,6 @@ setup(
         'psycopg2',
         'south',
         'PyYAML'
+        'mock'
     ]
 )
