@@ -33,6 +33,7 @@ setup(
         'paramiko',
         'django>=1.4.3',
         'psycopg2',
-        'south'
+        'south',
+        'mock'
     ]
 )
