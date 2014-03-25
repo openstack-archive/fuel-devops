@@ -12,11 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+from devops.driver.libvirt.libvirt_driver import \
+    DevopsDriver as LibvirtDriver
 
-class DevopsDriver(object):
 
-    def __init__(self, **driver_parameters):
-        pass
-
-    def get_allocated_networks(self):
-        return []
+DevopsDriver = mock.Mock(spec=LibvirtDriver)
