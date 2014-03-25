@@ -28,12 +28,10 @@ import BaseHTTPServer
 from threading import Thread
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
+from devops import logger
 from devops.helpers.retry import retry
 from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \
     AuthenticationError
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_free_port():
@@ -235,11 +233,11 @@ class SSHClient(object):
         for line in stdout:
             result['stdout'].append(line)
             if verbose:
-                print line
+                logger.info(line)
         for line in stderr:
             result['stderr'].append(line)
             if verbose:
-                print line
+                logger.info(line)
         result['exit_code'] = chan.recv_exit_status()
         chan.close()
         return result

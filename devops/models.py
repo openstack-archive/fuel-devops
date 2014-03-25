@@ -21,6 +21,7 @@ from django.db import models
 from django.utils.importlib import import_module
 
 from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
+from devops import logger
 
 
 def choices(*args, **kwargs):
@@ -157,8 +158,8 @@ class Environment(DriverModel):
             nodes[n].delete()
         Environment.erase_empty()
 
-        print 'Undefined domains: %s, removed nodes: %s' % (
-            len(domains_to_undefine), len(nodes_to_remove))
+        logger.info('Undefined domains: %s, removed nodes: %s',
+                    (len(domains_to_undefine), len(nodes_to_remove)))
 
 
 class ExternalModel(DriverModel):

@@ -18,6 +18,7 @@ import libvirt
 from time import sleep
 import xml.etree.ElementTree as ET
 
+from devops import logger
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers import scancodes
 from devops.helpers.helpers import _get_file_size
@@ -191,7 +192,7 @@ class DevopsDriver(object):
             'domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
         node_xml = self.xml_builder.build_node_xml(node, emulator)
-        print node_xml
+        logger.info(node_xml)
         node.uuid = self.conn.defineXML(node_xml).UUIDString()
 
     @retry()
@@ -318,11 +319,11 @@ class DevopsDriver(object):
             :rtype : None
         """
         xml = self.xml_builder.build_snapshot_xml(name, description)
-        print xml
+        logger.info(xml)
         domain = self.conn.lookupByUUIDString(node.uuid)
-        print domain.state(0)
+        logger.info(domain.state(0))
         domain.snapshotCreateXML(xml, 0)
-        print domain.state(0)
+        logger.info(domain.state(0))
 
     def _get_snapshot(self, domain, name):
         """

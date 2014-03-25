@@ -13,7 +13,6 @@
 #    under the License.
 
 
-import logging
 import os
 import shutil
 import subprocess
@@ -22,8 +21,7 @@ import time
 from contextlib import contextmanager
 from devops.helpers.retry import retry
 from devops import error
-
-LOGGER = logging.getLogger(__name__)
+from devops import logger as LOGGER
 
 
 class DevopsDriver(object):
@@ -237,7 +235,7 @@ class DevopsDriver(object):
         if os.path.isfile('/etc/exports'):
             cmd = ['sudo', 'mv', '/etc/exports', '/etc/exports-devops-last']
             output = subprocess.check_output(cmd)
-            print(output)
+            LOGGER.info(output)
         cmd = ['sudo', 'touch', '/etc/exports']
         subprocess.call(cmd)
         cmd = ['sudo', 'chown', os.getlogin(), '/etc/exports']
