@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 from setuptools import setup
 from setuptools import find_packages
 
@@ -26,6 +27,9 @@ setup(
     zip_safe=False,
     include_package_data=True,
     packages=find_packages(),
+    data_files=[
+        (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
+        (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
     install_requires=[
         'xmlbuilder',
@@ -33,6 +37,7 @@ setup(
         'paramiko',
         'django>=1.4.3',
         'psycopg2',
-        'south'
+        'south',
+        'PyYAML'
     ]
 )
