@@ -1,0 +1,35 @@
+version: 1
+formatters:
+    default:
+        format: "%(asctime)s - %(levelname)s %(filename)s:%(lineno)d -- %(message)s"
+
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: INFO
+        formatter: default
+        stream: ext://sys.stdout
+
+    notset_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: NOTSET
+        formatter: default
+        filename: /var/log/devops/all.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 10
+        encoding: utf8
+
+    error_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: ERROR
+        formatter: default
+        filename: /var/log/devops/error.log
+        maxBytes: 10485760 # 2MB
+        backupCount: 10
+        encoding: utf8
+
+loggers:
+    devops:
+        level: INFO
+        handlers: [console, notset_handler, error_handler]
+        propagate: no
