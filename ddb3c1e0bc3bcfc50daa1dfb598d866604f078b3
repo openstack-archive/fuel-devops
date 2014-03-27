@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Approved+1: Nastya Urlapova <aurlapova@mirantis.com>
+Code-Review+2: Nastya Urlapova <aurlapova@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 27 Mar 2014 18:53:45 +0000
+Reviewed-on: https://review.openstack.org/83534
+Project: stackforge/fuel-devops
+Branch: refs/heads/master
