@@ -18,7 +18,7 @@ from setuptools import find_packages
 
 setup(
     name='devops',
-    version='2.3',
+    version='2.3.1',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
