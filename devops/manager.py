@@ -161,16 +161,23 @@ class Manager(object):
         """
         return generate_mac()
 
-    def interface_create(self, network, node, type='network',
+    def interface_create(self, network, node, iface_count=1, type='network',
                          mac_address=None, model='virtio'):
         """
         :rtype : Interface
         """
-        interface = Interface.objects.create(
-            network=network, node=node, type=type,
-            mac_address=mac_address or self._generate_mac(), model=model)
-        interface.add_address(str(network.next_ip()))
-        return interface
+        interfaces = []
+        for i in xrange(iface_count):
+            interface = Interface.objects.create(
+                network=network, node=node, type=type,
+                mac_address=mac_address or self._generate_mac(),
+                model=model)
+            interface.add_address(str(network.next_ip()))
+            interfaces.append(interface)
+        if iface_count != 1:
+            return interfaces[0]
+        else:
+            return interfaces
 
     def network_create_address(self, ip_address, interface):
         """
