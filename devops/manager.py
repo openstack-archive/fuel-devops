@@ -172,6 +172,15 @@ class Manager(object):
         interface.add_address(str(network.next_ip()))
         return interface
 
+    def interfaces_create(self, network, node, iface_count, type='network',
+                          mac_address=None, model='virtio'):
+        interfaces = []
+        for i in xrange(iface_count):
+            interfaces.append(self.interface_create(
+                network, node, type='network',
+                mac_address=None, model='virtio'))
+        return interfaces
+
     def network_create_address(self, ip_address, interface):
         """
         :rtype : Address
