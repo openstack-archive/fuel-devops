@@ -162,15 +162,27 @@ class Manager(object):
         return generate_mac()
 
     def interface_create(self, network, node, type='network',
-                         mac_address=None, model='virtio'):
+                         mac_address=None, model='virtio',
+                         interface_map={}):
         """
         :rtype : Interface
         """
-        interface = Interface.objects.create(
-            network=network, node=node, type=type,
-            mac_address=mac_address or self._generate_mac(), model=model)
-        interface.add_address(str(network.next_ip()))
-        return interface
+        interfaces = []
+
+        def _create():
+            interface = Interface.objects.create(
+                        network=network, node=node, type=type,
+                        mac_address=mac_address or self._generate_mac(),
+                        model=model)
+            interface.add_address(str(network.next_ip()))
+            return interface
+
+        if interface_map:
+            for iface in interface_map[network.name]:
+                interfaces.append(_create())
+            return interfaces
+        else:
+            return _create()
 
     def network_create_address(self, ip_address, interface):
         """
