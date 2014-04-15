@@ -38,7 +38,7 @@ setup(
         'django>=1.4.3',
         'psycopg2',
         'south',
-        'PyYAML'
-        'mock'
+        'PyYAML',
+        'mock',
     ]
 )
