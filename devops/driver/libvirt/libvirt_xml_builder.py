@@ -23,24 +23,13 @@ class LibvirtXMLBuilder(object):
         super(LibvirtXMLBuilder, self).__init__()
         self.driver = driver
 
-    NAME_SIZE = 80
-
-    def _get_name(self, *args):
-        name = '_'.join(filter(None, list(args)))
-        if len(name) > self.NAME_SIZE:
-            hash_str = str(hash(name))
-            name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
-        return name
-
     def build_network_xml(self, network):
         """
         :type network: Network
             :rtype : String
         """
         network_xml = XMLBuilder('network')
-        network_xml.name(self._get_name(
-            network.environment and network.environment.name or '',
-            network.name))
+        network_xml.name(network.full_name)
         network_xml.bridge(name="dobr{0}".format(network.id),
                            stp="on", delay="0")
         if not (network.forward is None):
@@ -75,10 +64,7 @@ class LibvirtXMLBuilder(object):
             :rtype : String
         """
         volume_xml = XMLBuilder('volume')
-        volume_xml.name(
-            self._get_name(
-                volume.environment and volume.environment.name or '',
-                volume.name))
+        volume_xml.name(volume.full_name)
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
@@ -127,9 +113,7 @@ class LibvirtXMLBuilder(object):
         :type node: Node
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
-        node_xml.name(
-            self._get_name(node.environment and node.environment.name or '',
-                           node.name))
+        node_xml.name(node.full_name)
         with node_xml.cpu(mode='host-model'):
             node_xml.model(fallback='forbid')
         node_xml.vcpu(str(node.vcpu))

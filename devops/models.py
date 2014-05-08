@@ -20,7 +20,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.importlib import import_module
 
-from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
+from devops.helpers.helpers import SSHClient, composite_name, _wait, _tcp_ping
 from devops import logger
 
 
@@ -144,10 +144,8 @@ class Environment(DriverModel):
     @classmethod
     def synchronize_all(cls):
         driver = cls.get_driver()
-        nodes = {driver._get_name(e.name, n.name): n
-                 for e in cls.objects.all()
-                 for n in e.nodes}
-        domains = set(driver.node_list())
+        nodes = Node.objects.all()
+        domains = driver.node_list()
 
         # FIXME (AWoodward) This willy nilly wacks domains when you run this
         #  on domains that are outside the scope of devops, if anything this
@@ -161,13 +159,15 @@ class Environment(DriverModel):
         #    driver.node_undefine_by_name(d)
 
         # Remove devops nodes without domains
-        nodes_to_remove = set(nodes.keys()) - domains
-        for n in nodes_to_remove:
-            nodes[n].delete()
+        nodes_removed = [node.delete()
+                         for node in nodes
+                         if node.full_name not in domains]
+
+        # Remove any environments that may now be empty
         cls.erase_empty()
 
         logger.info('Undefined domains: %s, removed nodes: %s',
-                    (0, len(nodes_to_remove)))
+                    (0, len(nodes_removed)))
 
 
 class ExternalModel(DriverModel):
@@ -178,6 +178,12 @@ class ExternalModel(DriverModel):
     class Meta:
         abstract = True
         unique_together = ('name', 'environment')
+
+    @property
+    def full_name(self):
+        return composite_name(self.driver.NAME_SIZE,
+            self.environment and self.environment.name or '',
+            self.name)
 
     @classmethod
     def get_allocated_networks(cls):

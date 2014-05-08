@@ -41,11 +41,10 @@ class DevopsDriver(object):
         if settings.VNC_PASSWORD:
             self.vnc_password = settings.VNC_PASSWORD
 
+    NAME_SIZE = 80
+
     def __del__(self):
         self.conn.close()
-
-    def _get_name(self, *kwargs):
-        return self.xml_builder._get_name(*kwargs)
 
     @retry()
     def get_capabilities(self):
