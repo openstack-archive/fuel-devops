@@ -34,6 +34,14 @@ from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \
     AuthenticationError
 
 
+def composite_name(size, *args):
+    name = '_'.join(filter(None, args))
+    if len(name) > size:
+        hash_str = str(hash(name))
+        name = hash_str + name[len(name) - size + len(hash_str):]
+    return name
+
+
 def get_free_port():
     ports = range(32000, 32100)
     random.shuffle(ports)
