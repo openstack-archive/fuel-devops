@@ -260,7 +260,9 @@ class DevopsDriver(object):
 
     @retry()
     def node_list(self):
-        return self.conn.listDefinedDomains()
+        # virConnect.listDefinedDomains() only returns stopped domains
+        #   https://bugzilla.redhat.com/show_bug.cgi?id=839259
+        return [item.name() for item in self.conn.listAllDomains()]
 
     @retry()
     def node_reset(self, node):
