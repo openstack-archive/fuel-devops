@@ -38,6 +38,9 @@ SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
 
+# Default timezone for clear logging
+TIME_ZONE = 'UTC'
+
 try:
     from local_settings import *  # noqa
 except ImportError:
