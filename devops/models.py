@@ -214,6 +214,10 @@ class Network(ExternalModel):
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
 
+    @property
+    def is_active(self):
+        return self.driver.network_is_active(self)
+
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(
@@ -237,7 +241,7 @@ class Network(ExternalModel):
         self.create(verbose=False)
 
     def create(self, verbose=False):
-        if verbose or not self.driver.network_active(self):
+        if not self.is_active or verbose:
             self.driver.network_create(self)
 
     def destroy(self):
@@ -249,7 +253,7 @@ class Network(ExternalModel):
     def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.driver.network_exists(self):
-                if self.driver.network_active(self):
+                if self.is_active:
                     self.driver.network_destroy(self)
                 self.driver.network_undefine(self)
         self.delete()
@@ -288,6 +292,10 @@ class Node(ExternalModel):
     def vnc_password(self):
         return settings.VNC_PASSWORD
 
+    @property
+    def is_active(self):
+        return self.driver.node_is_active(self)
+
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
 
@@ -322,29 +330,29 @@ class Node(ExternalModel):
         self.create(verbose=False)
 
     def create(self, verbose=False):
-        if verbose or not self.driver.node_active(self):
+        if not self.is_active or verbose:
             self.driver.node_create(self)
 
     def destroy(self, verbose=False):
-        if verbose or self.driver.node_active(self):
+        if self.is_active or verbose:
             self.driver.node_destroy(self)
 
     def erase(self):
         self.remove(verbose=False)
 
     def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.driver.node_exists(self):
-                self.destroy(verbose=False)
+        if self.uuid or verbose:
+            if self.driver.node_exists(self) or verbose:
+                self.destroy(verbose=verbose)
                 self.driver.node_undefine(self, undefine_snapshots=True)
         self.delete()
 
     def suspend(self, verbose=False):
-        if verbose or self.driver.node_active(self):
+        if self.is_active or verbose:
             self.driver.node_suspend(self)
 
     def resume(self, verbose=False):
-        if verbose or self.driver.node_active(self):
+        if self.is_active or verbose:
             self.driver.node_resume(self)
 
     def has_snapshot(self, name):
@@ -367,6 +375,10 @@ class Volume(ExternalModel):
     capacity = models.BigIntegerField(null=False)
     backing_store = models.ForeignKey('self', null=True)
     format = models.CharField(max_length=255, null=False)
+
+    @property
+    def is_active(self):
+        return self.driver.network_is_active(self)
 
     def define(self):
         self.driver.volume_define(self)

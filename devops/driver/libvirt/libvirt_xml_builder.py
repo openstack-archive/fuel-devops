@@ -102,7 +102,7 @@ class LibvirtXMLBuilder(object):
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
-                network=self.driver.network_name(interface.network))
+                network=interface.network.full_name)
             device_xml.target(dev="donet{0}".format(interface.id))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)

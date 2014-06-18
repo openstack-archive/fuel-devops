@@ -72,7 +72,7 @@ class DevopsDriver(object):
         return self.conn.networkLookupByUUIDString(network.uuid).name()
 
     @retry()
-    def network_active(self, network):
+    def network_is_active(self, network):
         """
         :type network: Network
             :rtype : Boolean
@@ -80,7 +80,7 @@ class DevopsDriver(object):
         return self.conn.networkLookupByUUIDString(network.uuid).isActive()
 
     @retry()
-    def node_active(self, node):
+    def node_is_active(self, node):
         """
         :type node: Node
             :rtype : Boolean
