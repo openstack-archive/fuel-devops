@@ -302,6 +302,9 @@ class Node(ExternalModel):
     def send_keys(self, keys):
         self.driver.node_send_keys(self, keys)
 
+    def active(self):
+        return self.driver.node_active(self)
+
     def await(self, network_name, timeout=120):
         _wait(
             lambda: _tcp_ping(
