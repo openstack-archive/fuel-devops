@@ -76,7 +76,7 @@ def tcp_ping(host, port):
     return True
 
 
-def wait(predicate, interval=5, timeout=None):
+def wait(predicate, interval=5, timeout=60):
     """
     wait(predicate, interval=5, timeout=None) - wait until predicate will
     become True.
