@@ -14,13 +14,14 @@
 
 import json
 
-from ipaddr import IPNetwork
-
 from django.conf import settings
 from django.db import models
 from django.utils.importlib import import_module
+from ipaddr import IPNetwork
 
-from devops.helpers.helpers import SSHClient, _wait, _tcp_ping
+from devops.helpers.helpers import _tcp_ping
+from devops.helpers.helpers import _wait
+from devops.helpers.helpers import SSHClient
 from devops import logger
 
 
@@ -46,7 +47,8 @@ class DriverModel(models.Model):
 
     @classmethod
     def get_driver(cls):
-        """
+        """Get driver
+
         :rtype : DevopsDriver
         """
         driver = import_module(settings.DRIVER)
@@ -56,7 +58,8 @@ class DriverModel(models.Model):
 
     @property
     def driver(self):
-        """
+        """Driver object
+
         :rtype : DevopsDriver
         """
         return self.get_driver()
@@ -156,8 +159,9 @@ class Environment(DriverModel):
         #  Disabled untill a safer implmentation arrives
 
         # Undefine domains without devops nodes
-        #domains_to_undefine = domains - set(nodes.keys())
-        #for d in domains_to_undefine:
+        #
+        # domains_to_undefine = domains - set(nodes.keys())
+        # for d in domains_to_undefine:
         #    driver.node_undefine_by_name(d)
 
         # Remove devops nodes without domains
@@ -291,7 +295,8 @@ class Node(ExternalModel):
         return Address.objects.get(interface=interface).ip_address
 
     def remote(self, network_name, login, password=None, private_keys=None):
-        """
+        """Create SSH-connection to the network
+
         :rtype : SSHClient
         """
         return SSHClient(

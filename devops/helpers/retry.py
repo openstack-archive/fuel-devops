@@ -13,7 +13,6 @@
 #    under the License.
 
 import functools
-
 from time import sleep
 
 
@@ -23,10 +22,10 @@ def retry(count=10, delay=1):
         def wrapper(*args, **kwargs):
             i = 0
             while True:
-                #noinspection PyBroadException
+                # noinspection PyBroadException
                 try:
                     return func(*args, **kwargs)
-                except:
+                except Exception:
                     i += 1
                     if i >= count:
                         raise

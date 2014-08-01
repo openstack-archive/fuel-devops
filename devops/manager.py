@@ -12,18 +12,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ipaddr
 import json
-
 from os import environ
 
 environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
-from django.db import IntegrityError, transaction
+
+from django.db import IntegrityError
+from django.db import transaction
+import ipaddr
 
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
-from devops.models import Address, Interface, Node, Network, Environment, \
-    Volume, DiskDevice, ExternalModel
+from devops.models import Address
+from devops.models import DiskDevice
+from devops.models import Environment
+from devops.models import ExternalModel
+from devops.models import Interface
+from devops.models import Network
+from devops.models import Node
+from devops.models import Volume
 
 
 class Manager(object):
@@ -32,7 +39,8 @@ class Manager(object):
         self.default_pool = None
 
     def environment_create(self, name):
-        """
+        """Create environment
+
         :rtype : Environment
         """
         return Environment.objects.create(name=name)
@@ -41,13 +49,15 @@ class Manager(object):
         return Environment.objects.all()
 
     def environment_get(self, name):
-        """
+        """Get environment by name
+
         :rtype : Environment
         """
         return Environment.objects.get(name=name)
 
     def create_network_pool(self, networks, prefix):
-        """
+        """Create network pool
+
         :rtype : IpNetworksPool
         """
         pool = IpNetworksPool(networks=networks, prefix=prefix)
@@ -55,7 +65,8 @@ class Manager(object):
         return pool
 
     def _get_default_pool(self):
-        """
+        """Get default pool. If it does not exists, create 10.0.0.0/16 pool.
+
         :rtype : IpNetworksPool
         """
         self.default_pool = self.default_pool or self.create_network_pool(
@@ -89,7 +100,8 @@ class Manager(object):
         has_dhcp_server=True, has_pxe_server=False,
         forward='nat'
     ):
-        """
+        """Create network
+
         :rtype : Network
         """
         if ip_network:
@@ -112,7 +124,8 @@ class Manager(object):
     def node_create(self, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
-        """
+        """Create node
+
         :rtype : Node
         """
         if not boot:
@@ -126,7 +139,8 @@ class Manager(object):
         return node
 
     def volume_get_predefined(self, uuid):
-        """
+        """Get predefined volume
+
         :rtype : Volume
         """
         try:
@@ -139,7 +153,8 @@ class Manager(object):
 
     def volume_create_child(self, name, backing_store, format=None,
                             environment=None):
-        """
+        """Create new volume based on backing_store
+
         :rtype : Volume
         """
         return Volume.objects.create(
@@ -148,7 +163,8 @@ class Manager(object):
             format=format or backing_store.format, backing_store=backing_store)
 
     def volume_create(self, name, capacity, format='qcow2', environment=None):
-        """
+        """Create volume
+
         :rtype : Volume
         """
         return Volume.objects.create(
@@ -156,7 +172,8 @@ class Manager(object):
             capacity=capacity, format=format)
 
     def _generate_mac(self):
-        """
+        """Generate MAC-address
+
         :rtype : String
         """
         return generate_mac()
@@ -164,16 +181,17 @@ class Manager(object):
     def interface_create(self, network, node, type='network',
                          mac_address=None, model='virtio',
                          interface_map={}):
-        """
+        """Create interface
+
         :rtype : Interface
         """
         interfaces = []
 
         def _create(mac_addr=None):
             interface = Interface.objects.create(
-                        network=network, node=node, type=type,
-                        mac_address=mac_addr or self._generate_mac(),
-                        model=model)
+                network=network, node=node, type=type,
+                mac_address=mac_addr or self._generate_mac(),
+                model=model)
             interface.add_address(str(network.next_ip()))
             return interface
 
@@ -186,7 +204,8 @@ class Manager(object):
             return _create(mac_address)
 
     def network_create_address(self, ip_address, interface):
-        """
+        """Create address
+
         :rtype : Address
         """
         return Address.objects.create(ip_address=ip_address,
@@ -194,7 +213,8 @@ class Manager(object):
 
     def node_attach_volume(self, node, volume, device='disk', type='file',
                            bus='virtio', target_dev=None):
-        """
+        """Attach volume to node
+
         :rtype : DiskDevice
         """
         return DiskDevice.objects.create(

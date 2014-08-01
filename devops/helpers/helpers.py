@@ -12,26 +12,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import BaseHTTPServer
 import httplib
 import logging
 import os
-import paramiko
 import posixpath
 import random
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 import socket
 import stat
+from threading import Thread
 import time
 import urllib
 import xmlrpclib
-import BaseHTTPServer
 
-from threading import Thread
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+import paramiko
 
-from devops import logger
+from devops.error import AuthenticationError
+from devops.error import DevopsCalledProcessError
+from devops.error import DevopsError
+from devops.error import TimeoutError
 from devops.helpers.retry import retry
-from devops.error import DevopsError, DevopsCalledProcessError, TimeoutError, \
-    AuthenticationError
+from devops import logger
 
 
 def get_free_port():
@@ -44,8 +46,7 @@ def get_free_port():
 
 
 def icmp_ping(host, timeout=1):
-    """
-    icmp_ping(host, timeout=1)
+    """Run ICMP ping
 
     returns True if host is pingable
     False - otherwise.
@@ -62,8 +63,7 @@ def _tcp_ping(host, port):
 
 
 def tcp_ping(host, port):
-    """
-    tcp_ping(host, port)
+    """Run TCP ping
 
     returns True if TCP connection to specified host and port
     can be established
@@ -77,9 +77,8 @@ def tcp_ping(host, port):
 
 
 def wait(predicate, interval=5, timeout=None):
-    """
-    wait(predicate, interval=5, timeout=None) - wait until predicate will
-    become True.
+    """Wait until predicate will become True.
+
     returns number of seconds that is left or 0 if timeout is None.
 
     Options:
@@ -124,7 +123,7 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
         if res.status == waited_code:
             return True
         return False
-    except:
+    except Exception:
         return False
 
 
@@ -392,7 +391,7 @@ def xmlrpctoken(uri, login, password):
     server = xmlrpclib.Server(uri)
     try:
         return server.login(login, password)
-    except:
+    except Exception:
         raise AuthenticationError("Error occured while login process")
 
 
@@ -400,7 +399,7 @@ def xmlrpcmethod(uri, method):
     server = xmlrpclib.Server(uri)
     try:
         return getattr(server, method)
-    except:
+    except Exception:
         raise AttributeError("Error occured while getting server method")
 
 
@@ -410,7 +409,8 @@ def generate_mac():
 
 
 def _get_file_size(path):
-    """
+    """Get size of file-like object
+
     :type file: String
     :rtype : int
     """

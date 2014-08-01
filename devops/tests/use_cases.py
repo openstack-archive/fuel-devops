@@ -14,10 +14,12 @@
 
 import os
 import unittest
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
-from devops import manager
+
 from devops.driver.libvirt import libvirt_driver
 from devops.helpers.helpers import _get_file_size
+from devops import manager
 
 
 class UseCases(unittest.TestCase):

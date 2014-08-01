@@ -18,11 +18,11 @@ import libvirt
 from time import sleep
 import xml.etree.ElementTree as ET
 
-from devops import logger
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
-from devops.helpers import scancodes
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
+from devops.helpers import scancodes
+from devops import logger
 
 from django.conf import settings
 
@@ -49,7 +49,8 @@ class DevopsDriver(object):
 
     @retry()
     def get_capabilities(self):
-        """
+        """Get host capabilities
+
         :rtype : ET
         """
         if self.capabilities is None:
@@ -58,7 +59,8 @@ class DevopsDriver(object):
 
     @retry()
     def network_bridge_name(self, network):
-        """
+        """Get bridge name from UUID
+
         :type network: Network
             :rtype : String
         """
@@ -66,7 +68,8 @@ class DevopsDriver(object):
 
     @retry()
     def network_name(self, network):
-        """
+        """Get network name from UUID
+
         :type network: Network
             :rtype : String
         """
@@ -74,7 +77,8 @@ class DevopsDriver(object):
 
     @retry()
     def network_active(self, network):
-        """
+        """Check if network is active
+
         :type network: Network
             :rtype : Boolean
         """
@@ -82,7 +86,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_active(self, node):
-        """
+        """Check if node is active
+
         :type node: Node
             :rtype : Boolean
         """
@@ -90,14 +95,15 @@ class DevopsDriver(object):
 
     @retry()
     def network_exists(self, network):
-        """
+        """Check if network exists
+
         :type network: Network
             :rtype : Boolean
         """
         try:
             self.conn.networkLookupByUUIDString(network.uuid)
             return True
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
                 return False
             else:
@@ -105,14 +111,15 @@ class DevopsDriver(object):
 
     @retry()
     def node_exists(self, node):
-        """
+        """Check if node exists
+
         :type node: Node
             :rtype : Boolean
         """
         try:
             self.conn.lookupByUUIDString(node.uuid)
             return True
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
                 return False
             else:
@@ -120,7 +127,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_snapshot_exists(self, node, name):
-        """
+        """Check if snapshot exists
+
         :type node: Node
             :rtype : Boolean
         """
@@ -128,7 +136,7 @@ class DevopsDriver(object):
         try:
             ret.snapshotLookupByName(name, 0)
             return True
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN_SNAPSHOT:
                 return False
             else:
@@ -136,14 +144,15 @@ class DevopsDriver(object):
 
     @retry()
     def volume_exists(self, volume):
-        """
+        """Check if volume exists
+
         :type volume: Volume
             :rtype : Boolean
         """
         try:
             self.conn.storageVolLookupByKey(volume.uuid)
             return True
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_VOL:
                 return False
             else:
@@ -151,7 +160,8 @@ class DevopsDriver(object):
 
     @retry()
     def network_define(self, network):
-        """
+        """Define network
+
         :rtype : None
         """
         ret = self.conn.networkDefineXML(
@@ -161,28 +171,32 @@ class DevopsDriver(object):
 
     @retry()
     def network_destroy(self, network):
-        """
+        """Destroy network
+
         :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).destroy()
 
     @retry()
     def network_undefine(self, network):
-        """
+        """Undefine network
+
         :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).undefine()
 
     @retry()
     def network_create(self, network):
-        """
+        """Create network
+
         :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
     def node_define(self, node):
-        """
+        """Define node
+
         :type node: Node
             :rtype : None
         """
@@ -197,7 +211,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_destroy(self, node):
-        """
+        """Destroy node
+
         :type node: Node
             :rtype : None
         """
@@ -205,9 +220,13 @@ class DevopsDriver(object):
 
     @retry()
     def node_undefine(self, node, undefine_snapshots=False):
-        """
+        """Undefine domain.
+
+        If undefine_snapshot is set, discard all snapshots.
+
         :type node: Node
             :rtype : None
+
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         if undefine_snapshots:
@@ -218,7 +237,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_undefine_by_name(self, node_name):
-        """
+        """Undefine domain discarding all snapshots
+
         :type node: Node
             :rtype : None
         """
@@ -227,7 +247,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_get_vnc_port(self, node):
-        """
+        """Get VNC port
+
         :type node: Node
             :rtype : String
         """
@@ -239,7 +260,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_get_interface_target_dev(self, node, mac):
-        """
+        """Get target device
+
         :type node: Node
         :type mac: String
             :rtype : String
@@ -252,7 +274,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_create(self, node):
-        """
+        """Create node
+
         :type node: Node
             :rtype : None
         """
@@ -266,7 +289,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_reset(self, node):
-        """
+        """Reset node
+
         :type node: Node
             :rtype : None
         """
@@ -274,7 +298,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_reboot(self, node):
-        """
+        """Reboot node
+
         :type node: Node
             :rtype : None
         """
@@ -282,7 +307,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_suspend(self, node):
-        """
+        """Suspend node
+
         :type node: Node
             :rtype : None
         """
@@ -290,7 +316,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_resume(self, node):
-        """
+        """Resume node
+
         :type node: Node
             :rtype : None
         """
@@ -298,7 +325,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_shutdown(self, node):
-        """
+        """Shutdown node
+
         :type node: Node
             :rtype : None
         """
@@ -306,7 +334,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_get_snapshots(self, node):
-        """
+        """Get list of snapshots
+
         :rtype : List
             :type node: Node
         """
@@ -314,7 +343,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_create_snapshot(self, node, name=None, description=None):
-        """
+        """Create snapshot
+
         :type description: String
         :type name: String
         :type node: Node
@@ -328,7 +358,8 @@ class DevopsDriver(object):
         logger.info(domain.state(0))
 
     def _get_snapshot(self, domain, name):
-        """
+        """Get snapshot
+
         :type name: String
             :rtype : libvirt.virDomainSnapshot
         """
@@ -339,7 +370,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_revert_snapshot(self, node, name=None):
-        """
+        """Revert snapshot for node
+
         :type node: Node
         :type name: String
             :rtype : None
@@ -358,7 +390,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_delete_snapshot(self, node, name=None):
-        """
+        """Delete snapshot
+
         :type node: Node
         :type name: String
         """
@@ -368,7 +401,8 @@ class DevopsDriver(object):
 
     @retry()
     def node_send_keys(self, node, keys):
-        """
+        """Send keys to node
+
         :type node: Node
             :rtype : None
         """
@@ -385,7 +419,8 @@ class DevopsDriver(object):
 
     @retry()
     def volume_define(self, volume, pool=None):
-        """
+        """Define volume
+
         :type volume: Volume
         :type pool: String
             :rtype : None
@@ -416,7 +451,8 @@ class DevopsDriver(object):
 
     @retry()
     def volume_delete(self, volume):
-        """
+        """Delete volume
+
         :type volume: Volume
             :rtype : None
         """
@@ -424,7 +460,8 @@ class DevopsDriver(object):
 
     @retry()
     def volume_capacity(self, volume):
-        """
+        """Get volume capacity
+
         :type volume: Volume
             :rtype : Long
         """
@@ -432,7 +469,8 @@ class DevopsDriver(object):
 
     @retry()
     def volume_format(self, volume):
-        """
+        """Get volume format
+
         :type volume: Volume
             :rtype : String
         """
@@ -442,7 +480,8 @@ class DevopsDriver(object):
 
     @retry()
     def get_allocated_networks(self):
-        """
+        """Get list of allocated networks
+
             :rtype : List
         """
         if self.allocated_networks is None:
