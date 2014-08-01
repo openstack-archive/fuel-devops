@@ -15,17 +15,21 @@
 import json
 import random
 from unittest import TestCase
+
 from mock import Mock
+
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 
 
 class BaseTestXMLBuilder(TestCase):
     def setUp(self):
         self.xml_builder = LibvirtXMLBuilder(Mock())
-        self.xml_builder.driver.volume_path = \
-            Mock(return_value="volume_path_mock")
-        self.xml_builder.driver.network_name = \
-            Mock(return_value="network_name_mock")
+        self.xml_builder.driver.volume_path = Mock(
+            return_value="volume_path_mock"
+        )
+        self.xml_builder.driver.network_name = Mock(
+            return_value="network_name_mock"
+        )
         self.net = Mock()
         self.vol = Mock()
         self.node = Mock()
@@ -99,8 +103,10 @@ class TestVolumeXml(BaseTestXMLBuilder):
     </target>'''.format(self.vol.format), xml)
 
     def test_backing_store(self):
-        self.vol.backing_store = \
-            Mock(uuid="volume_uuid", format="raw")
+        self.vol.backing_store = Mock(
+            uuid="volume_uuid",
+            format="raw"
+        )
         xml = self.xml_builder.build_volume_xml(self.vol)
         self.assertIn(
             '''

@@ -13,6 +13,7 @@
 #    under the License.
 
 import unittest
+
 from devops.helpers import scancodes
 
 

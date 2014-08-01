@@ -12,23 +12,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
+from contextlib import contextmanager
 import os
 import shutil
 import subprocess
 import time
 
-from contextlib import contextmanager
-from devops.helpers.retry import retry
 from devops import error
+from devops.helpers.retry import retry
 from devops import logger as LOGGER
 
 
 class DevopsDriver(object):
     def __getattr__(self, name):
-        """
-        Default method for all unimplemented functions
-        """
+        """Default method for all unimplemented functions."""
         def default_method(*args, **kwargs):
             LOGGER.debug('Call of unimplemented method detected. '
                          'Method is {0}{1}{2}'.format(name, args, kwargs))
@@ -88,7 +85,8 @@ class DevopsDriver(object):
 
     @retry(20, 30)
     def set_node_boot(self, device):
-        """
+        """Set boot device
+
         Valid are:
         pxe,
         disk,
@@ -177,7 +175,7 @@ class DevopsDriver(object):
         return True
 
     def _add_self_temp_ip(self):
-        #Check all IPs
+        # Check all IPs
         cmd = ['sudo', 'ip', 'addr', 'sh']
         output = subprocess.check_output(cmd)
         if output.find(self.ip_install_server) > -1:
@@ -227,7 +225,7 @@ class DevopsDriver(object):
                     subprocess.call(cmd)
                 pid_file.close()
                 LOGGER.debug('dnsmasq killed')
-            except subprocess.CalledProcessError, e:
+            except subprocess.CalledProcessError as e:
                 LOGGER.warning("Can't stop dnsmasq: {0}".format(e.output))
         return True
 

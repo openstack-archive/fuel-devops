@@ -13,7 +13,6 @@
 #    under the License.
 
 import argparse
-
 from os import environ
 
 from devops.manager import Manager
@@ -31,7 +30,7 @@ class Shell(object):
     def do_list(self):
         env_list = self.manager.environment_list().values('name')
         for env in env_list:
-            print env['name']
+            print(env['name'])
 
         return env_list
 
@@ -42,9 +41,9 @@ class Shell(object):
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
 
-        print '%5s %25s' % ("VNC", "NODE-NAME")
+        print ('%5s %25s' % ("VNC", "NODE-NAME"))
         for item in map(lambda x: self.node_dict(x), environment.nodes):
-            print '%5s %25s' % (item['vnc'], item['name'])
+            print ('%5s %25s' % (item['vnc'], item['name']))
 
     def do_erase(self):
         self.manager.environment_get(self.params.name).erase()

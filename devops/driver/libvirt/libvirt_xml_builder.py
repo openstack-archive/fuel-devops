@@ -14,7 +14,8 @@
 
 import json
 
-from ipaddr import IPNetwork, IPAddress
+from ipaddr import IPAddress
+from ipaddr import IPNetwork
 from xmlbuilder import XMLBuilder
 
 
@@ -33,7 +34,8 @@ class LibvirtXMLBuilder(object):
         return name
 
     def build_network_xml(self, network):
-        """
+        """Generate network XML
+
         :type network: Network
             :rtype : String
         """
@@ -70,7 +72,8 @@ class LibvirtXMLBuilder(object):
         return str(network_xml)
 
     def build_volume_xml(self, volume):
-        """
+        """Generate volume XML
+
         :type volume: Volume
             :rtype : String
         """
@@ -89,7 +92,8 @@ class LibvirtXMLBuilder(object):
         return str(volume_xml)
 
     def build_snapshot_xml(self, name=None, description=None):
-        """
+        """Generate snapshot XML
+
         :rtype : String
         :type name: String
         :type description: String
@@ -102,13 +106,25 @@ class LibvirtXMLBuilder(object):
         return str(xml_builder)
 
     def _build_disk_device(self, device_xml, disk_device):
+        """Build xml for disk
+
+        :param device_xml: XMLBuilder
+        :param disk_device: DiskDevice
+        """
+
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
-            #https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
+            # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
             device_xml.driver(type=disk_device.volume.format, cache="unsafe")
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
     def _build_interface_device(self, device_xml, interface):
+        """Build xml for interface
+
+        :param device_xml: XMLBuilder
+        :param interface: Network
+        """
+
         if interface.type != 'network':
             raise NotImplementedError(
                 message='Interface types different from network are not '
@@ -122,9 +138,11 @@ class LibvirtXMLBuilder(object):
                 device_xml.model(type=interface.model)
 
     def build_node_xml(self, node, emulator):
-        """
-        :rtype : String
+        """Generate node XML
+
         :type node: Node
+        :type emulator: String
+            :rtype : String
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
         node_xml.name(

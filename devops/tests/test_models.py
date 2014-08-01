@@ -13,8 +13,10 @@
 #    under the License.
 
 import random
-from django.utils import unittest
 import threading
+
+from django.utils import unittest
+
 from devops.manager import Manager
 from devops.models import double_tuple
 

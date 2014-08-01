@@ -13,7 +13,9 @@
 #    under the License.
 
 from django.test import TestCase
-from ipaddr import IPNetwork, IPv4Network
+from ipaddr import IPNetwork
+from ipaddr import IPv4Network
+
 from devops.helpers.network import IpNetworksPool
 from devops.manager import Manager
 
@@ -64,7 +66,7 @@ class TestManager(TestCase):
 
     def test_environment_values(self):
         environment = self.manager.environment_create('test_env')
-        print environment.volumes
+        print(environment.volumes)
 
     def test_network_pool(self):
         environment = self.manager.environment_create('test_env2')

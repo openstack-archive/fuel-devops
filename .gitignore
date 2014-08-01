@@ -3,5 +3,7 @@ dist
 MANIFEST
 .idea
 *.pyc
+*~
 TAGS
 local_settings.py
+.tox
