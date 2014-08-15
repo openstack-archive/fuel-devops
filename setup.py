@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name='devops',
-    version='2.4.2',
+    version='2.4.3',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
