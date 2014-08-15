@@ -41,6 +41,9 @@ class DevopsDriver(object):
         if settings.VNC_PASSWORD:
             self.vnc_password = settings.VNC_PASSWORD
 
+        if settings.REBOOT_TIMEOUT:
+            self.reboot_timeout = settings.REBOOT_TIMEOUT
+
     def __del__(self):
         self.conn.close()
 
