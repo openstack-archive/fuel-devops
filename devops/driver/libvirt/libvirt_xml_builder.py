@@ -157,6 +157,7 @@ class LibvirtXMLBuilder(object):
             node_xml.type(node.os_type, arch=node.architecture)
             for boot_dev in json.loads(node.boot):
                 node_xml.boot(dev=boot_dev)
+            node_xml.bios(rebootTimeout='10000')
 
         with node_xml.devices:
             node_xml.emulator(emulator)
