@@ -18,6 +18,8 @@ from ipaddr import IPAddress
 from ipaddr import IPNetwork
 from xmlbuilder import XMLBuilder
 
+from devops import settings
+
 
 class LibvirtXMLBuilder(object):
     def __init__(self, driver):
@@ -157,6 +159,9 @@ class LibvirtXMLBuilder(object):
             node_xml.type(node.os_type, arch=node.architecture)
             for boot_dev in json.loads(node.boot):
                 node_xml.boot(dev=boot_dev)
+            if settings.REBOOT_TIMEOUT:
+                node_xml.bios(rebootTimeout='{0}'.format(
+                    settings.REBOOT_TIMEOUT))
 
         with node_xml.devices:
             node_xml.emulator(emulator)
