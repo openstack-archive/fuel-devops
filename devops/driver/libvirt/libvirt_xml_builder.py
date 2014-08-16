@@ -43,8 +43,14 @@ class LibvirtXMLBuilder(object):
         network_xml.name(self._get_name(
             network.environment and network.environment.name or '',
             network.name))
-        network_xml.bridge(name="dobr{0}".format(network.id),
-                           stp="on", delay="0")
+
+        stp_val = 'off'
+        if self.driver.stp:
+            stp_val = 'on'
+        network_xml.bridge(
+            name="dobr{0}".format(network.id),
+            stp=stp_val, delay="0")
+
         if not (network.forward is None):
             network_xml.forward(mode=network.forward)
         if not (network.ip_network is None):

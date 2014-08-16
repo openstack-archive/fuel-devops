@@ -18,6 +18,7 @@ DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
     'connection_string': environ.get('CONNECTION_STRING', 'qemu:///system'),
     'storage_pool_name': environ.get('STORAGE_POOL_NAME', 'default'),
+    'stp': True,
 }
 
 INSTALLED_APPS = ['south', 'devops']

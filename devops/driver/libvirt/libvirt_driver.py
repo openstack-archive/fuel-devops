@@ -30,10 +30,12 @@ from django.conf import settings
 class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
-                 storage_pool_name="default"):
+                 storage_pool_name="default",
+                 stp=True):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
+        self.stp = stp
         self.capabilities = None
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
