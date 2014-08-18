@@ -41,6 +41,8 @@ VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
 # Default timezone for clear logging
 TIME_ZONE = 'UTC'
 
+REBOOT_TIMEOUT = environ.get('REBOOT_TIMEOUT', None)
+
 try:
     from local_settings import *  # noqa
 except ImportError:
