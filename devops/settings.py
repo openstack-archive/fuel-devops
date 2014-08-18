@@ -19,6 +19,7 @@ DRIVER_PARAMETERS = {
     'connection_string': environ.get('CONNECTION_STRING', 'qemu:///system'),
     'storage_pool_name': environ.get('STORAGE_POOL_NAME', 'default'),
     'stp': True,
+    'hpet': False,
 }
 
 INSTALLED_APPS = ['south', 'devops']
@@ -38,6 +39,8 @@ DATABASES = {
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
+
+REBOOT_TIMEOUT = None
 
 # Default timezone for clear logging
 TIME_ZONE = 'UTC'

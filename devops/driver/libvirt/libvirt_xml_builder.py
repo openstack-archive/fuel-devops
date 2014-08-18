@@ -159,6 +159,11 @@ class LibvirtXMLBuilder(object):
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
+        node_xml.clock(offset='utc')
+        node_xml.clock.timer(
+            name='hpet',
+            present='yes' if self.driver.hpet else 'no')
+
         with node_xml.os:
             node_xml.type(node.os_type, arch=node.architecture)
             for boot_dev in json.loads(node.boot):

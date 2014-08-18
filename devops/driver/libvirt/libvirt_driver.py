@@ -31,14 +31,16 @@ class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
-                 stp=True):
+                 stp=True, hpet=True):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
         self.stp = stp
+        self.hpet = hpet
         self.capabilities = None
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
+        self.reboot_timeout = None
 
         if settings.VNC_PASSWORD:
             self.vnc_password = settings.VNC_PASSWORD
