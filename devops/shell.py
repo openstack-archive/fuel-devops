@@ -41,9 +41,24 @@ class Shell(object):
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
 
-        print ('%5s %25s' % ("VNC", "NODE-NAME"))
+        print('%5s %25s' % ("VNC", "NODE-NAME"))
         for item in map(lambda x: self.node_dict(x), environment.nodes):
             print ('%5s %25s' % (item['vnc'], item['name']))
+
+        snap_nodes = {}
+        for node in environment.nodes:
+            snaps = sorted(node.get_snapshots())
+            for snap in snaps:
+                if snap in snap_nodes is True:
+                    snap_nodes[snap].append(node.name)
+                else:
+                    snap_nodes[snap] = [node.name, ]
+        print("\n")
+        print('%80s' % "SNAPSHOTS")
+        print("\n")
+        print('%40s     %50s' % ("SNAPSHOT", "NODES-NAME"))
+        for snap in snap_nodes:
+            print('%40s     %50s' % (snap, ', '.join(snap_nodes[snap])))
 
     def do_erase(self):
         self.manager.environment_get(self.params.name).erase()
@@ -71,6 +86,13 @@ class Shell(object):
     def do_synchronize(self):
         self.manager.synchronize_environments()
 
+    def do_clean(self):
+        environment = self.manager.environment_get(self.params.name)
+        for node in environment.nodes:
+            snaps = sorted(node.get_snapshots())
+            if self.params.snapshot_name in snaps:
+                node.erase_snapshot(name=self.params.snapshot_name)
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -81,7 +103,8 @@ class Shell(object):
         'resume': do_resume,
         'revert': do_revert,
         'snapshot': do_snapshot,
-        'sync': do_synchronize
+        'sync': do_synchronize,
+        'clean': do_clean
     }
 
     def get_params(self):
@@ -107,4 +130,6 @@ class Shell(object):
         subparsers.add_parser('snapshot',
                               parents=[name_parser, snapshot_name_parser])
         subparsers.add_parser('sync')
+        subparsers.add_parser('clean',
+                              parents=[name_parser, snapshot_name_parser])
         return parser.parse_args()

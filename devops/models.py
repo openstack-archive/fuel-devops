@@ -361,6 +361,12 @@ class Node(ExternalModel):
         if self.has_snapshot(name):
             self.driver.node_revert_snapshot(node=self, name=name)
 
+    def get_snapshots(self):
+        return self.driver.node_get_snapshots(node=self)
+
+    def erase_snapshot(self, name):
+        self.driver.node_delete_snapshot(node=self, name=name)
+
 
 class Volume(ExternalModel):
     capacity = models.BigIntegerField(null=False)
