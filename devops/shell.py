@@ -41,7 +41,7 @@ class Shell(object):
     def do_show(self):
         environment = self.manager.environment_get(self.params.name)
 
-        print ('%5s %25s' % ("VNC", "NODE-NAME"))
+        print('%5s %25s' % ("VNC", "NODE-NAME"))
         for item in map(lambda x: self.node_dict(x), environment.nodes):
             print ('%5s %25s' % (item['vnc'], item['name']))
 
@@ -71,6 +71,40 @@ class Shell(object):
     def do_synchronize(self):
         self.manager.synchronize_environments()
 
+    def do_snapshot_list(self):
+        environment = self.manager.environment_get(self.params.name)
+
+        snap_nodes = {}
+        max_len = 0
+        for node in environment.nodes:
+            snaps = sorted(node.get_snapshots())
+            for snap in snaps:
+                if len(snap) > max_len:
+                    max_len = len(snap)
+                if snap in snap_nodes:
+                    snap_nodes[snap].append(node.name)
+                else:
+                    snap_nodes[snap] = [node.name, ]
+
+        print("%*s     %50s" % (max_len, "SNAPSHOT", "NODES-NAME"))
+        for snap in snap_nodes:
+            print("%*s     %50s" % (max_len, snap,
+                                    ', '.join(snap_nodes[snap])))
+
+    def do_snapshot_delete(self):
+        environment = self.manager.environment_get(self.params.name)
+        for node in environment.nodes:
+            snaps = sorted(node.get_snapshots())
+            if self.params.snapshot_name in snaps:
+                node.erase_snapshot(name=self.params.snapshot_name)
+
+    def do_net_list(self):
+        environment = self.manager.environment_get(self.params.name)
+        networks = environment.networks
+        print("%15s   %10s" % ("NETWORK NAME", "IP NET"))
+        for network in networks:
+            print("%15s  %10s" % (network.name, network.ip_network))
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -81,30 +115,75 @@ class Shell(object):
         'resume': do_resume,
         'revert': do_revert,
         'snapshot': do_snapshot,
-        'sync': do_synchronize
+        'sync': do_synchronize,
+        'snapshot-list': do_snapshot_list,
+        'snapshot-delete': do_snapshot_delete,
+        'net-list': do_net_list,
     }
 
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
         name_parser.add_argument('name', help='environment name',
-                                 default=environ.get('ENV_NAME'))
+                                 default=environ.get('ENV_NAME'),
+                                 metavar='ENV_NAME')
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
                                           default=environ.get('SNAPSHOT_NAME'))
         parser = argparse.ArgumentParser(
-            description="Manage virtual environments")
-        subparsers = parser.add_subparsers(help='commands', dest='command')
-        subparsers.add_parser('list')
-        subparsers.add_parser('show', parents=[name_parser])
-        subparsers.add_parser('erase', parents=[name_parser])
-        subparsers.add_parser('start', parents=[name_parser])
-        subparsers.add_parser('destroy', parents=[name_parser])
-        subparsers.add_parser('suspend', parents=[name_parser])
-        subparsers.add_parser('resume', parents=[name_parser])
+            description="Manage virtual environments. "
+                        "For addional help use command with -h/--help")
+        subparsers = parser.add_subparsers(title="Operation commands",
+                                           help='available commands',
+                                           dest='command')
+        subparsers.add_parser('list',
+                              help="Show virtual environments",
+                              description="Show virtual environments on host")
+        subparsers.add_parser('show', parents=[name_parser],
+                              help="Show VMs in environment",
+                              description="Show VMs in environment")
+        subparsers.add_parser('erase', parents=[name_parser],
+                              help="Delete environment",
+                              description="Delete environment and VMs on it")
+        subparsers.add_parser('start', parents=[name_parser],
+                              help="Start VMs",
+                              description="Start VMs in selected environment")
+        subparsers.add_parser('destroy', parents=[name_parser],
+                              help="Destroy(stop) VMs",
+                              description="Stop VMs in selected environment")
+        subparsers.add_parser('suspend', parents=[name_parser],
+                              help="Suspend VMs",
+                              description="Suspend VMs in selected "
+                              "environment")
+        subparsers.add_parser('resume', parents=[name_parser],
+                              help="Resume VMs",
+                              description="Resume VMs in selected environment")
         subparsers.add_parser('revert',
-                              parents=[name_parser, snapshot_name_parser])
+                              parents=[name_parser, snapshot_name_parser],
+                              help="Apply snapshot to environment",
+                              description="Apply selected snapshot to "
+                              "environment")
         subparsers.add_parser('snapshot',
-                              parents=[name_parser, snapshot_name_parser])
-        subparsers.add_parser('sync')
+                              parents=[name_parser, snapshot_name_parser],
+                              help="Make environment snapshot",
+                              description="Make environment snapshot")
+        subparsers.add_parser('sync',
+                              help="Synchronization environment and devops",
+                              description="Synchronization environment "
+                              "and devops"),
+        subparsers.add_parser('snapshot-list',
+                              parents=[name_parser],
+                              help="Show snapshots in environment",
+                              description="Show snapshots in selected "
+                              "environment")
+        subparsers.add_parser('snapshot-delete',
+                              parents=[name_parser, snapshot_name_parser],
+                              help="Delete snapshot from environment",
+                              description="Delete snapshot from selected "
+                              "environment")
+        subparsers.add_parser('net-list',
+                              parents=[name_parser],
+                              help="Show networks in environment",
+                              description="Display allocated networks for "
+                              "environment")
         return parser.parse_args()
