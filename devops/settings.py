@@ -36,6 +36,12 @@ DATABASES = {
     }
 }
 
+SSH_CREDENTIALS = {
+    'admin_network': 'admin',
+    'login': 'root',
+    'password': 'r00tme'
+}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
