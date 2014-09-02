@@ -34,6 +34,10 @@ from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
+from devops.settings import SSH_CREDENTIALS
+
+
+_ssh_keys = None
 
 
 def get_free_port():
@@ -126,6 +130,63 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
         return False
     except Exception:
         return False
+
+
+def get_private_keys(env, force=False):
+    global _ssh_keys
+    if force or _ssh_keys is None:
+        _ssh_keys = []
+        admin_remote = get_admin_remote(env)
+        for key_string in ['/root/.ssh/id_rsa',
+                           '/root/.ssh/bootstrap.rsa']:
+            with admin_remote.open(key_string) as f:
+                _ssh_keys.append(paramiko.RSAKey.from_private_key(f))
+    return _ssh_keys
+
+
+def get_admin_remote(env):
+    return env.node_by_name(
+        'admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
+                        login=SSH_CREDENTIALS['login'],
+                        password=SSH_CREDENTIALS['password'])
+
+
+def get_node_remote(env, node_name):
+    ip = env.node_by_name(
+        node_name).get_ip_address_by_network_name('admin')
+    return SSHClient(ip,
+                     username=SSH_CREDENTIALS['login'],
+                     password=SSH_CREDENTIALS['password'],
+                     private_keys=get_private_keys(env))
+
+
+def sync_node_time(env, node_name='admin', cmd=None):
+    if cmd is None:
+        cmd = "hwclock -s && NTPD=$(find /etc/init.d/ -regex "
+        cmd += "'/etc/init.d/ntp.?'); $NTPD stop; killall ntpd;"
+        cmd += " ntpd -qg && $NTPD start"
+
+    if node_name == 'admin':
+        try:
+            # If public NTP servers aren't accessible ntpdate will fail and
+            # ntpd daemon shouldn't be restarted to avoid 'Server has gone
+            # too long without sync' error while syncing time from slaves
+            remote = get_admin_remote(env)
+            remote.execute("ntpdate -d $(awk '/^server/{print"
+                           " $2}' /etc/ntp.conf)")
+        except AssertionError as e:
+            logger.warning('Error occurred while synchronizing time on master'
+                           ': {0}'.format(e))
+        else:
+            remote = get_node_remote(env, node_name)
+            remote.execute('service ntpd stop && ntpd -qg && '
+                           'service ntpd start')
+    else:
+        remote = get_node_remote(env, node_name)
+        remote.execute(cmd)
+    remote.execute('hwclock -w')
+    remote_date = remote.execute('date')['stdout']
+    logger.info("Node time: {0}".format(remote_date))
 
 
 class KeyPolicy(paramiko.WarningPolicy):
