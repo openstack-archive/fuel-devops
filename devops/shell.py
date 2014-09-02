@@ -17,6 +17,8 @@ from os import environ
 
 from devops.manager import Manager
 
+from helpers.helpers import sync_node_time
+
 
 class Shell(object):
     def __init__(self):
@@ -59,6 +61,9 @@ class Shell(object):
 
     def do_resume(self):
         self.manager.environment_get(self.params.name).resume(verbose=False)
+        if not self.params.no_timesync:
+            print('time synchronization is starting')
+            self.do_timesync()
 
     def do_revert(self):
         self.manager.environment_get(self.params.name).revert(
@@ -105,6 +110,16 @@ class Shell(object):
         for network in networks:
             print("%15s  %10s" % (network.name, network.ip_network))
 
+    def do_timesync(self):
+        env = self.manager.environment_get(self.params.name)
+        if not self.params.node_name:
+            _nodes = {node.name: node.get_vnc_port() for node in env.nodes}
+            for node_name in sorted(_nodes.keys()):
+                if _nodes[node_name] != '-1':
+                    sync_node_time(env, node_name)
+        else:
+            sync_node_time(env, self.params.node_name)
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -119,6 +134,7 @@ class Shell(object):
         'snapshot-list': do_snapshot_list,
         'snapshot-delete': do_snapshot_delete,
         'net-list': do_net_list,
+        'time-sync': do_timesync
     }
 
     def get_params(self):
@@ -130,6 +146,15 @@ class Shell(object):
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
                                           default=environ.get('SNAPSHOT_NAME'))
+        node_name_parser = argparse.ArgumentParser(add_help=False)
+        node_name_parser.add_argument('--node-name',
+                                      help='node name',
+                                      default=None)
+        no_timesync_parser = argparse.ArgumentParser(add_help=False)
+        no_timesync_parser.add_argument('--no-timesync', dest='no_timesync',
+                                        action='store_const', const=True,
+                                        help='revert without timesync',
+                                        default=False)
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For addional help use command with -h/--help")
@@ -155,7 +180,9 @@ class Shell(object):
                               help="Suspend VMs",
                               description="Suspend VMs in selected "
                               "environment")
-        subparsers.add_parser('resume', parents=[name_parser],
+        subparsers.add_parser('resume', parents=[name_parser,
+                                                 node_name_parser,
+                                                 no_timesync_parser],
                               help="Resume VMs",
                               description="Resume VMs in selected environment")
         subparsers.add_parser('revert',
@@ -186,4 +213,10 @@ class Shell(object):
                               help="Show networks in environment",
                               description="Display allocated networks for "
                               "environment")
+        subparsers.add_parser('time-sync',
+                              parents=[name_parser, node_name_parser],
+                              help="Sync time on all env nodes",
+                              description="Sync time on all active nodes "
+                                          "of environment starting from "
+                                          "admin")
         return parser.parse_args()
