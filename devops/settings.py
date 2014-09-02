@@ -36,6 +36,12 @@ DATABASES = {
     }
 }
 
+SSH_CREDENTIALS = {
+    'admin_network': environ.get('ENV_ADMIN_NETWORK', 'admin'),
+    'login': environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': environ.get('ENV_FUEL_PASSWORD', 'r00tme')
+}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
