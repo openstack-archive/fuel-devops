@@ -17,6 +17,7 @@ from os import environ
 
 from devops.manager import Manager
 
+from helpers.helpers import sync_node_time
 
 class Shell(object):
     def __init__(self):
@@ -105,6 +106,14 @@ class Shell(object):
         for network in networks:
             print("%15s  %10s" % (network.name, network.ip_network))
 
+    def do_timesync(self):
+        env = self.manager.environment_get(self.params.name)
+        print('nodes len: {0}'.format(len(env.nodes)))
+        _nodes = {node.name: node.get_vnc_port() for node in env.nodes}
+        for node_name in sorted(_nodes.keys()):
+            if _nodes[node_name] != '-1':
+                sync_node_time(env, node_name)
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -119,6 +128,7 @@ class Shell(object):
         'snapshot-list': do_snapshot_list,
         'snapshot-delete': do_snapshot_delete,
         'net-list': do_net_list,
+        'time-sync': do_timesync
     }
 
     def get_params(self):
