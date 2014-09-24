@@ -16,8 +16,10 @@ import ipaddr
 import libvirt
 
 from time import sleep
+import netaddr
 import xml.etree.ElementTree as ET
 
+from devops.driver import DevopsDriverBase
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
@@ -27,7 +29,7 @@ from devops import logger
 from django.conf import settings
 
 
-class DevopsDriver(object):
+class DevopsDriver(DevopsDriverBase):
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
@@ -40,6 +42,7 @@ class DevopsDriver(object):
         self.capabilities = None
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
+        self.pool = None
         self.reboot_timeout = None
 
         if settings.VNC_PASSWORD:
@@ -63,15 +66,6 @@ class DevopsDriver(object):
         if self.capabilities is None:
             self.capabilities = self.conn.getCapabilities()
         return ET.fromstring(self.capabilities)
-
-    @retry()
-    def network_bridge_name(self, network):
-        """Get bridge name from UUID
-
-        :type network: Network
-            :rtype : String
-        """
-        return self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
 
     @retry()
     def network_name(self, network):
@@ -167,6 +161,22 @@ class DevopsDriver(object):
                 raise
 
     @retry()
+    def network_list(self):
+        """List all networks by name
+
+            :rtype : list
+        """
+        networks = []
+        all_networks = self.conn.listAllNetworks()
+        devops_networks = netaddr.IPNetwork(settings.DEDICATED_SUBNET)
+        for network in all_networks:
+            root = ET.fromstring(network.XMLDesc())
+            ip = root.find('ip').get('address')
+            if netaddr.IPAddress(ip) in devops_networks:
+                networks.append(network.name())
+        return networks
+
+    @retry()
     def network_define(self, network):
         """Define network
 
@@ -195,6 +205,17 @@ class DevopsDriver(object):
             :rtype : None
         """
         self.conn.networkLookupByUUIDString(network.uuid).undefine()
+
+    @retry(count=1)
+    def network_remove(self, network_name):
+        """Undefine network
+
+        :type network: Network
+            :rtype : None
+        """
+        network = self.conn.networkLookupByName(network_name)
+        network.destroy()
+        network.undefine()
 
     @retry()
     def network_create(self, network):
@@ -231,8 +252,16 @@ class DevopsDriver(object):
         self.conn.lookupByUUIDString(node.uuid).destroy()
 
     @retry()
-    def node_undefine(self, node, undefine_snapshots=False):
-        """Undefine domain.
+    def _domain_undefine(self, domain, undefine_snapshots=False):
+        if undefine_snapshots:
+            domain.undefineFlags(
+                libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+        else:
+            domain.undefine()
+
+    @retry()
+    def node_remove_bu_uuid(self, node, undefine_snapshots=False):
+        """Undefine domain
 
         If undefine_snapshot is set, discard all snapshots.
 
@@ -241,22 +270,30 @@ class DevopsDriver(object):
             :rtype : None
 
         """
-        domain = self.conn.lookupByUUIDString(node.uuid)
-        if undefine_snapshots:
-            domain.undefineFlags(
-                libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
-        else:
-            domain.undefine()
+        domain = self.conn.lookupByUUIDString(uuid)
+        self._domain_undefine(domain, undefine_snapshots)
 
     @retry()
-    def node_undefine_by_name(self, node_name):
+    def node_remove(self, node_name, undefine_snapshots=False):
         """Undefine domain discarding all snapshots
+
+        :type node_name: String
+        :type undefine_snapshots: Boolean
+            :rtype : None
+        """
+        domain = self.conn.lookupByName(node_name)
+        self._domain_undefine(domain, undefine_snapshots)
+
+    @retry()
+    def node_remove_by_name(self, node_name):
+        """Destroy and undefine node
 
         :type node_name: String
             :rtype : None
         """
-        domain = self.conn.lookupByName(node_name)
-        domain.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+        node = self.conn.lookupByName(node_name)
+        self.node_destroy(node)
+        self.node_delete(node, undefine_snapshots=True)
 
     @retry()
     def node_get_vnc_port(self, node):

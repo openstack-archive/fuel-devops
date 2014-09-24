@@ -48,12 +48,17 @@ class Manager(object):
     def environment_list(self):
         return Environment.objects.all()
 
-    def environment_get(self, name):
+    def environment_get(self, name, raise_exception=True):
         """Get environment by name
 
         :rtype : Environment
         """
-        return Environment.objects.get(name=name)
+        try:
+            return Environment.objects.get(name=name)
+        except Environment.DoesNotExist:
+            if raise_exception:
+                raise Environment.DoesNotExist
+            return None
 
     def create_network_pool(self, networks, prefix):
         """Create network pool
@@ -138,44 +143,8 @@ class Manager(object):
         )
         return node
 
-    def volume_get_predefined(self, uuid):
-        """Get predefined volume
-
-        :rtype : Volume
-        """
-        try:
-            volume = Volume.objects.get(uuid=uuid)
-        except Volume.DoesNotExist:
-            volume = Volume(uuid=uuid)
-        volume.fill_from_exist()
-        volume.save()
-        return volume
-
-    def volume_create_child(self, name, backing_store, format=None,
-                            environment=None):
-        """Create new volume based on backing_store
-
-        :rtype : Volume
-        """
-        return Volume.objects.create(
-            name=name, environment=environment,
-            capacity=backing_store.capacity,
-            format=format or backing_store.format, backing_store=backing_store)
-
-    def volume_create(self, name, capacity, format='qcow2', environment=None):
-        """Create volume
-
-        :rtype : Volume
-        """
-        return Volume.objects.create(
-            name=name, environment=environment,
-            capacity=capacity, format=format)
-
     def _generate_mac(self):
-        """Generate MAC-address
-
-        :rtype : String
-        """
+        """Generate MAC-address"""
         return generate_mac()
 
     def interface_create(self, network, node, type='network',
@@ -211,9 +180,47 @@ class Manager(object):
         return Address.objects.create(ip_address=ip_address,
                                       interface=interface)
 
+    # Libvirt special functions
+    def libvirt_volume_get_predefined(self, uuid):
+        """LibVirt only: Get predefined volume
+
+        :rtype : Volume
+        """
+        try:
+            volume = Volume.objects.get(uuid=uuid)
+        except Volume.DoesNotExist:
+            volume = Volume(uuid=uuid)
+        volume.fill_from_exist()
+        volume.save()
+        return volume
+
+    def libvirt_volume_create_child(self, name, backing_store, format=None,
+                                    environment=None):
+        """LibVirt only: Create new volume based on predefined image
+        :type name : file path of new image
+        :type  backing_store : file path of original image
+        :type format : type of image
+        :type environment : environment
+            :rtype : Volume
+        """
+        return Volume.objects.create(
+            name=name, environment=environment,
+            capacity=backing_store.capacity,
+            format=format or backing_store.format, backing_store=backing_store)
+
+    # Rename to libvirt_volume_create
+    def volume_create(self, name, capacity, format='qcow2', environment=None):
+        """LibVirt only: Create volume
+            :rtype : Volume
+        """
+        return Volume.objects.create(
+            name=name, environment=environment,
+            capacity=capacity, format=format)
+
+    # rename to libvirt_attach_volume
     def node_attach_volume(self, node, volume, device='disk', type='file',
                            bus='virtio', target_dev=None):
-        """Attach volume to node
+        """LibVirt only: Attach volume to node
 
         :rtype : DiskDevice
         """
@@ -222,5 +229,9 @@ class Manager(object):
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
 
-    def synchronize_environments(self):
-        Environment().synchronize_all()
+    def synchronize_environments(self, remove=False):
+        """Synchronize records and system state
+        :param remove: remove Nodes if without definition in DB
+        :return: None
+        """
+        Environment().synchronize_all(remove)

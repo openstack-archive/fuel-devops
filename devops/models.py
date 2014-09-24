@@ -69,10 +69,6 @@ class Environment(DriverModel):
     name = models.CharField(max_length=255, unique=True, null=False)
 
     @property
-    def volumes(self):
-        return Volume.objects.filter(environment=self)
-
-    @property
     def networks(self):
         return Network.objects.filter(environment=self)
 
@@ -92,11 +88,10 @@ class Environment(DriverModel):
     def has_snapshot(self, name):
         return all(map(lambda x: x.has_snapshot(name), self.nodes))
 
+    # Rename to create
     def define(self):
         for network in self.networks:
             network.define()
-        for volume in self.volumes:
-            volume.define()
         for node in self.nodes:
             node.define()
 
@@ -106,24 +101,18 @@ class Environment(DriverModel):
         for node in nodes or self.nodes:
             node.start()
 
+    # Rename to stop
     def destroy(self, verbose=False):
         for node in self.nodes:
             node.destroy(verbose=verbose)
 
+    # rename to delete
     def erase(self):
         for node in self.nodes:
             node.erase()
         for network in self.networks:
             network.erase()
-        for volume in self.volumes:
-            volume.erase()
         self.delete()
-
-    @classmethod
-    def erase_empty(cls):
-        for env in cls.objects.all():
-            if len(env.nodes) == 0:
-                env.delete()
 
     def suspend(self, verbose=False):
         for node in self.nodes:
@@ -145,33 +134,50 @@ class Environment(DriverModel):
             node.revert(name, destroy=False)
 
     @classmethod
-    def synchronize_all(cls):
+    def erase_empty(cls):
+        for env in cls.objects.all():
+            if len(env.nodes) == 0:
+                env.delete()
+
+    @classmethod
+    def synchronize_all(cls, remove):
         driver = cls.get_driver()
         nodes = {driver._get_name(e.name, n.name): n
                  for e in cls.objects.all()
                  for n in e.nodes}
-        domains = set(driver.node_list())
+        networks = {driver._get_name(e.name, n.name): n
+                    for e in cls.objects.all()
+                    for n in e.networks}
 
-        # FIXME (AWoodward) This willy nilly wacks domains when you run this
-        #  on domains that are outside the scope of devops, if anything this
-        #  should cause domains to be imported into db instead of undefined.
-        #  It also leaves network and volumes around too
-        #  Disabled untill a safer implmentation arrives
+        existing_networks = set(driver.network_list())
+        existing_domains = set(driver.node_list())
 
         # Undefine domains without devops nodes
-        #
-        # domains_to_undefine = domains - set(nodes.keys())
-        # for d in domains_to_undefine:
-        #    driver.node_undefine_by_name(d)
+        if remove:
+            domains_to_undefine = existing_domains - set(nodes.keys())
+            for domain in domains_to_undefine:
+                logger.info('Undefine domain: {0}'.format(domain))
+                print 'Undefine domain: {0}'.format(domain)
+                driver.node_remove(domain, True)
+
+            networks_to_undefine = existing_networks - set(networks.keys())
+            for network in networks_to_undefine:
+                logger.info('Undefine network: {0}'.format(network))
+                print 'Undefine network: {0}'.format(network)
+                driver.network_remove(network)
 
         # Remove devops nodes without domains
-        nodes_to_remove = set(nodes.keys()) - domains
-        for n in nodes_to_remove:
-            nodes[n].delete()
-        cls.erase_empty()
+        nodes_to_remove = set(nodes.keys()) - existing_domains
+        for node in nodes_to_remove:
+            nodes[node].delete()
 
+        networks_to_undefine = set(networks.keys()) - existing_networks
+        for network in networks_to_undefine:
+            networks[network].delete()
+
+        cls.erase_empty()
         logger.info('Undefined domains: %s, removed nodes: %s',
-                    (0, len(nodes_to_remove)))
+                    0, len(nodes_to_remove))
 
 
 class ExternalModel(DriverModel):
@@ -223,9 +229,6 @@ class Network(ExternalModel):
                     interface__network=self,
                     ip_address=str(ip)).exists():
                 return ip
-
-    def bridge_name(self):
-        return self.driver.network_bridge_name(self)
 
     def define(self):
         self.driver.network_define(self)
@@ -335,7 +338,7 @@ class Node(ExternalModel):
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
-                self.driver.node_undefine(self, undefine_snapshots=True)
+                self.driver.node_remove(self, undefine_snapshots=True)
         self.delete()
 
     def suspend(self, verbose=False):
