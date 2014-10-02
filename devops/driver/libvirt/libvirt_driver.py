@@ -141,14 +141,7 @@ class DevopsDriver(object):
             :rtype : Boolean
         """
         ret = self.conn.lookupByUUIDString(node.uuid)
-        try:
-            ret.snapshotLookupByName(name, 0)
-            return True
-        except libvirt.libvirtError as e:
-            if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN_SNAPSHOT:
-                return False
-            else:
-                raise
+        return name in ret.snapshotListNames()
 
     @retry()
     def volume_exists(self, volume):
