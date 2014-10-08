@@ -190,6 +190,17 @@ class DevopsDriver(object):
         self.conn.networkLookupByUUIDString(network.uuid).undefine()
 
     @retry()
+    def network_undefine_by_name(self, network_name):
+        """Undefine network
+
+        :type network_name: String
+            :rtype : None
+        """
+        network = self.conn.networkLookupByName(network_name)
+        self.network_undefine(network)
+
+
+    @retry()
     def network_create(self, network):
         """Create network
 

@@ -36,6 +36,8 @@ DATABASES = {
     }
 }
 
+DEDICATED_SUBNET = '10.0.0.0/8'
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = environ.get('VNC_PASSWORD', None)

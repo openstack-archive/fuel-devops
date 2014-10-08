@@ -222,5 +222,10 @@ class Manager(object):
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
 
-    def synchronize_environments(self):
-        Environment().synchronize_all()
+    def synchronize_environments(self, remove=False):
+        """Synchronize records and system state
+
+        :param remove: remove Domains if without definition in DB
+        :return: None
+        """
+        Environment().synchronize_all(remove)
