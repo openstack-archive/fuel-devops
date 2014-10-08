@@ -170,7 +170,7 @@ class Environment(DriverModel):
             nodes[n].delete()
         cls.erase_empty()
 
-        logger.info('Undefined domains: %s, removed nodes: %s',
+        logger.info('Undefined domains: %s, removed nodes: %s' %
                     (0, len(nodes_to_remove)))
 
 
