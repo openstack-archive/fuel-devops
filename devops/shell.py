@@ -25,7 +25,18 @@ class Shell(object):
         self.manager = Manager()
 
     def execute(self):
-        self.commands.get(self.params.command)(self)
+        command = self.params.command
+        if command in self.commands:
+            self.commands.get(command)(self)
+        elif command in self.env_commands:
+            environment = self.manager.environment_get(
+                self.params.name,
+                raise_exception=False)
+            if environment:
+                self.env_commands.get(command)(self, environment)
+            else:
+                print ("Cannot remove '{0}': No such environment".
+                       format(self.params.name))
 
     def do_list(self):
         env_list = self.manager.environment_list().values('name')
@@ -38,42 +49,36 @@ class Shell(object):
         return {'name': node.name,
                 'vnc': node.get_vnc_port()}
 
-    def do_show(self):
-        environment = self.manager.environment_get(self.params.name)
-
+    def do_show(self, environment):
         print('%5s %25s' % ("VNC", "NODE-NAME"))
         for item in map(lambda x: self.node_dict(x), environment.nodes):
             print ('%5s %25s' % (item['vnc'], item['name']))
 
-    def do_erase(self):
-        self.manager.environment_get(self.params.name).erase()
+    def do_erase(self, environment):
+        environment.erase()
 
-    def do_start(self):
-        self.manager.environment_get(self.params.name).start()
+    def do_start(self, environment):
+        environment.start()
 
-    def do_destroy(self):
-        self.manager.environment_get(self.params.name).destroy(verbose=False)
+    def do_destroy(self, environment):
+        environment.destroy(verbose=False)
 
-    def do_suspend(self):
-        self.manager.environment_get(self.params.name).suspend(verbose=False)
+    def do_suspend(self, environment):
+        environment.suspend(verbose=False)
 
-    def do_resume(self):
-        self.manager.environment_get(self.params.name).resume(verbose=False)
+    def do_resume(self, environment):
+        environment.resume(verbose=False)
 
-    def do_revert(self):
-        self.manager.environment_get(self.params.name).revert(
-            self.params.snapshot_name)
+    def do_revert(self, environment):
+        environment.revert(self.params.snapshot_name)
 
-    def do_snapshot(self):
-        self.manager.environment_get(self.params.name).snapshot(
-            self.params.snapshot_name)
+    def do_snapshot(self, environment):
+        environment.snapshot(self.params.snapshot_name)
 
     def do_synchronize(self):
-        self.manager.synchronize_environments()
+        self.manager.synchronize_environments(self.params.remove)
 
-    def do_snapshot_list(self):
-        environment = self.manager.environment_get(self.params.name)
-
+    def do_snapshot_list(self, environment):
         snap_nodes = {}
         max_len = 0
         for node in environment.nodes:
@@ -91,15 +96,13 @@ class Shell(object):
             print("%*s     %50s" % (max_len, snap,
                                     ', '.join(snap_nodes[snap])))
 
-    def do_snapshot_delete(self):
-        environment = self.manager.environment_get(self.params.name)
+    def do_snapshot_delete(self, environment):
         for node in environment.nodes:
             snaps = sorted(node.get_snapshots())
             if self.params.snapshot_name in snaps:
                 node.erase_snapshot(name=self.params.snapshot_name)
 
-    def do_net_list(self):
-        environment = self.manager.environment_get(self.params.name)
+    def do_net_list(self, environment):
         networks = environment.networks
         print("%15s   %10s" % ("NETWORK NAME", "IP NET"))
         for network in networks:
@@ -107,6 +110,10 @@ class Shell(object):
 
     commands = {
         'list': do_list,
+        'sync': do_synchronize,
+    }
+
+    env_commands = {
         'show': do_show,
         'erase': do_erase,
         'start': do_start,
@@ -115,7 +122,6 @@ class Shell(object):
         'resume': do_resume,
         'revert': do_revert,
         'snapshot': do_snapshot,
-        'sync': do_synchronize,
         'snapshot-list': do_snapshot_list,
         'snapshot-delete': do_snapshot_delete,
         'net-list': do_net_list,
@@ -130,9 +136,14 @@ class Shell(object):
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
                                           default=environ.get('SNAPSHOT_NAME'))
+        sync_options = argparse.ArgumentParser(add_help=False)
+        sync_options.add_argument('--remove',
+                                  help='Remove undefined in devops VMs',
+                                  action='store_true',
+                                  default=False)
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
-                        "For addional help use command with -h/--help")
+                        "For additional help use command with -h/--help")
         subparsers = parser.add_subparsers(title="Operation commands",
                                            help='available commands',
                                            dest='command')
@@ -168,6 +179,7 @@ class Shell(object):
                               help="Make environment snapshot",
                               description="Make environment snapshot")
         subparsers.add_parser('sync',
+                              parents=[sync_options],
                               help="Synchronization environment and devops",
                               description="Synchronization environment "
                               "and devops"),
