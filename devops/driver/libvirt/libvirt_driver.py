@@ -327,7 +327,9 @@ class DevopsDriver(object):
         :type node: Node
             :rtype : None
         """
-        self.conn.lookupByUUIDString(node.uuid).resume()
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        if domain.state == libvirt.VIR_DOMAIN_PAUSED:
+            domain.resume()
 
     @retry()
     def node_shutdown(self, node):
