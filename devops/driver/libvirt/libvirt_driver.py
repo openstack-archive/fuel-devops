@@ -141,7 +141,7 @@ class DevopsDriver(object):
             :rtype : Boolean
         """
         ret = self.conn.lookupByUUIDString(node.uuid)
-        return name in ret.snapshotListNames()
+        return name in ret.snapshotListNames(0)
 
     @retry()
     def volume_exists(self, volume):
