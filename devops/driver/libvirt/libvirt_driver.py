@@ -328,7 +328,7 @@ class DevopsDriver(object):
             :rtype : None
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
-        if domain.state == libvirt.VIR_DOMAIN_PAUSED:
+        if domain.state(0)[0] == libvirt.VIR_DOMAIN_PAUSED:
             domain.resume()
 
     @retry()
