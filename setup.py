@@ -42,5 +42,6 @@ setup(
         'south',
         'PyYAML',
         'mock',
+        'libvirt-python',
     ]
 )
