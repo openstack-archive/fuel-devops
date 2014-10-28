@@ -196,6 +196,49 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
+def _get_file_size(path):
+    """Get size of file-like object
+
+    :type file: String
+    :rtype : int
+    """
+    with open(path) as file:
+        current = file.tell()
+        try:
+            file.seek(0, 2)
+            size = file.tell()
+        finally:
+            file.seek(current)
+        return size
+
+
+def _get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
+    params = {
+        'ip': ip,
+        'mask': mask,
+        'gw': gw,
+        'hostname': hostname,
+        'nat_interface': nat_interface,
+        'dns1': dns1,
+        'showmenu': showmenu,
+    }
+    keys = (
+        "<Wait>\n"
+        "<Esc><Enter>\n"
+        "<Wait>\n"
+        "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
+        " ip=%(ip)s\n"
+        " netmask=%(mask)s\n"
+        " gw=%(gw)s\n"
+        " dns1=%(dns1)s\n"
+        " hostname=%(hostname)s\n"
+        " dhcp_interface=%(nat_interface)s\n"
+        " showmenu=%(showmenu)s\n"
+        " <Enter>\n"
+    ) % params
+    return keys
+
+
 class KeyPolicy(paramiko.WarningPolicy):
     def missing_host_key(self, client, hostname, key):
         return
@@ -475,19 +518,3 @@ def xmlrpcmethod(uri, method):
 def generate_mac():
     return "64:{0:02x}:{1:02x}:{2:02x}:{3:02x}:{4:02x}".format(
         *bytearray(os.urandom(5)))
-
-
-def _get_file_size(path):
-    """Get size of file-like object
-
-    :type file: String
-    :rtype : int
-    """
-    with open(path) as file:
-        current = file.tell()
-        try:
-            file.seek(0, 2)
-            size = file.tell()
-        finally:
-            file.seek(current)
-        return size

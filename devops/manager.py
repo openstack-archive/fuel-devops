@@ -222,5 +222,24 @@ class Manager(object):
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
 
+    def change_node(self, node, vcpu=None, memory=None):
+        """Change node config
+
+        :rtype : Node
+        """
+        # def change_if_not_none(obj, prop, new_value):
+        #     prop = getattr(obj, prop)
+        #     if new_value is not None:
+        #         prop = new_value
+
+        if vcpu != node.vcpu:
+            node.set_vcpu(vcpu)
+        if memory != node.memory:
+            node.set_memory(memory)
+        return node
+
+    def remove_node(self, node):
+        node.remove()
+
     def synchronize_environments(self):
         Environment().synchronize_all()
