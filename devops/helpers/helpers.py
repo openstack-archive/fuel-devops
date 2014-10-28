@@ -227,15 +227,18 @@ class SSHClient(object):
 
         self.reconnect()
 
-    def __del__(self):
+    def clear(self):
         self._sftp.close()
         self._ssh.close()
+
+    def __del__(self):
+        self.clear()
 
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        pass
+    def __exit__(self, *err):
+        self.clear()
 
     @retry(count=3, delay=3)
     def connect(self):
