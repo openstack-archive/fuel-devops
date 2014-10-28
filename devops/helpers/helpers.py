@@ -196,6 +196,33 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
+def _get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
+    params = {
+        'ip': ip,
+        'mask': mask,
+        'gw': gw,
+        'hostname': hostname,
+        'nat_interface': nat_interface,
+        'dns1': dns1,
+        'showmenu': showmenu,
+    }
+    keys = (
+        "<Wait>\n"
+        "<Esc><Enter>\n"
+        "<Wait>\n"
+        "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
+        " ip=%(ip)s\n"
+        " netmask=%(mask)s\n"
+        " gw=%(gw)s\n"
+        " dns1=%(dns1)s\n"
+        " hostname=%(hostname)s\n"
+        " dhcp_interface=%(nat_interface)s\n"
+        " showmenu=%(showmenu)s\n"
+        " <Enter>\n"
+    ) % params
+    return keys
+
+
 class KeyPolicy(paramiko.WarningPolicy):
     def missing_host_key(self, client, hostname, key):
         return
