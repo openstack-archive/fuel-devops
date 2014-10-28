@@ -216,6 +216,14 @@ class Network(ExternalModel):
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
 
+    @property
+    def netmask(self):
+        return IPNetwork(self.ip_network).netmask
+
+    @property
+    def router(self):
+        return IPNetwork(self.ip_network)[1]
+
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(
@@ -375,6 +383,16 @@ class Node(ExternalModel):
     def erase_snapshot(self, name):
         self.driver.node_delete_snapshot(node=self, name=name)
 
+    def set_vcpu(self, vcpu):
+        self.vcpu = vcpu
+        self.driver.node_set_vcpu(node=self, vcpu=vcpu)
+        self.save()
+
+    def set_memory(self, memory):
+        self.memory = memory
+        self.driver.node_set_memory(node=self, memory=memory * 1024)
+        self.save()
+
 
 class Volume(ExternalModel):
     capacity = models.BigIntegerField(null=False)
@@ -396,6 +414,9 @@ class Volume(ExternalModel):
 
     def get_capacity(self):
         return self.driver.volume_capacity(self)
+
+    def get_allocation(self):
+        return self.driver.volume_allocation(self)
 
     def get_format(self):
         return self.driver.volume_format(self)
