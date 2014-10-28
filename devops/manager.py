@@ -222,5 +222,71 @@ class Manager(object):
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
 
+    def change_node(self, node, vcpu=None, memory=None):
+        """Change node config
+
+        :rtype : Node
+        """
+        if vcpu != node.vcpu:
+            node.set_vcpu(vcpu)
+        if memory != node.memory:
+            node.set_memory(memory)
+        return node
+
+    def attach_node_to_networks(self, env, node, names_list=None):
+
+        if names_list is None:
+            names_list = ('admin', 'public', 'managment',
+                          'private', 'storage')
+        for name in names_list:
+            net = env.network_by_name(name)
+            if net is not None:
+                self.interface_create(net, node)
+
+    def attach_disk(self, environment, node, name, capacity, format='qcow2',
+                    device='disk', bus='virtio'):
+        vol_name = "%s-%s" % (node.name, name)
+        new_volume = self.volume_create(name=vol_name,
+                                        capacity=capacity,
+                                        environment=environment,
+                                        format=format)
+        new_volume.define()
+        return self.node_attach_volume(node=node,
+                                       volume=new_volume,
+                                       device=device,
+                                       bus=bus)
+
+    def attach_disks_to_node(self, environment, node,
+                             disknames_capacity=None,
+                             format='qcow2', device='disk', bus='virtio'):
+        if disknames_capacity is None:
+            disknames_capacity = {
+                'system': 50 * 1024 ** 3,
+                'cinder': 50 * 1024 ** 3,
+                'swift': 50 * 1024 ** 3,
+            }
+
+        for diskname, capacity in disknames_capacity.iteritems():
+            self.attach_disk(environment=environment, node=node,
+                             name=diskname, capacity=capacity)
+
+    def create_networks_all(self, environment, names_list=None,
+                            has_dhcp=False, has_pxe=False, forward='nat',
+                            pool=None):
+        if names_list is None:
+            names_list = ('admin', 'public', 'managment',
+                          'private', 'storage')
+        for name in names_list:
+            net = self.network_create(name=name, environment=environment,
+                                      has_dhcp_server=has_dhcp,
+                                      has_pxe_server=has_pxe,
+                                      forward=forward,
+                                      pool=pool)
+            net.define()
+            net.start()
+
+    def remove_node(self, node):
+        node.remove()
+
     def synchronize_environments(self):
         Environment().synchronize_all()
