@@ -32,7 +32,13 @@ class Shell(object):
     def do_list(self):
         env_list = self.manager.environment_list().values('name')
         for env in env_list:
-            print(env['name'])
+            if self.params.list_ips:
+                cur_env = self.manager.environment_get(env['name'])
+                admin_ip = (cur_env.node_by_name('admin').
+                            get_ip_address_by_network_name('admin'))
+                print('{0}\t{1}'.format(env['name'], admin_ip))
+            else:
+                print(env['name'])
 
         return env_list
 
@@ -161,6 +167,11 @@ class Shell(object):
                                         action='store_const', const=True,
                                         help='revert without timesync',
                                         default=False)
+        list_ips_parser = argparse.ArgumentParser(add_help=False)
+        list_ips_parser.add_argument('--ips', dest='list_ips',
+                                     action='store_const', const=True,
+                                     help='list environments with admin node ip',
+                                     default=False)
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For addional help use command with -h/--help")
@@ -168,6 +179,7 @@ class Shell(object):
                                            help='available commands',
                                            dest='command')
         subparsers.add_parser('list',
+                              parents=[list_ips_parser],
                               help="Show virtual environments",
                               description="Show virtual environments on host")
         subparsers.add_parser('show', parents=[name_parser],
