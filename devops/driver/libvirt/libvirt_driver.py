@@ -433,6 +433,28 @@ class DevopsDriver(object):
                                                             len(key_code), 0)
 
     @retry()
+    def node_set_vcpu(self, node, vcpu):
+        """Set VCPU
+
+        :type volume: Volume
+            :rtype : None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain.setVcpusFlags(vcpu, 4)
+        domain.setVcpusFlags(vcpu, 2)
+
+    @retry()
+    def node_set_memory(self, node, memory):
+        """Set VCPU
+
+        :type volume: Volume
+            :rtype : None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain.setMaxMemory(memory)
+        domain.setMemoryFlags(memory, 2)
+
+    @retry()
     def volume_define(self, volume, pool=None):
         """Define volume
 
@@ -492,6 +514,15 @@ class DevopsDriver(object):
         xml_desc = ET.fromstring(
             self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
         return xml_desc.find('target/format[@type]').get('type')
+
+    @retry()
+    def volume_allocation(self, volume):
+        """Get volume allocation
+
+        :type volume: Volume
+            :rtype : Long
+        """
+        return self.conn.storageVolLookupByKey(volume.uuid).info()[2]
 
     @retry()
     def get_allocated_networks(self):
