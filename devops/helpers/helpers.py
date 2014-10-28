@@ -25,6 +25,7 @@ from threading import Thread
 import time
 import urllib
 import xmlrpclib
+import ipaddr
 
 import paramiko
 
@@ -194,6 +195,49 @@ def get_slave_ip(env, node_mac_address):
         "'END{{gsub(\" \", \"\", $5); print $5}}'".
         format(node_mac_address))['stdout']
     return ip[0].rstrip()
+
+
+def _get_file_size(path):
+    """Get size of file-like object
+
+    :type file: String
+    :rtype : int
+    """
+    with open(path) as file:
+        current = file.tell()
+        try:
+            file.seek(0, 2)
+            size = file.tell()
+        finally:
+            file.seek(current)
+        return size
+
+
+def _get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
+    params = {
+        'ip': ip,  # node.get_ip_address_by_network_name(self.admin_net),
+        'mask': mask,  # self.get_net_mask(self.admin_net),
+        'gw': gw,  # self.router(),
+        'hostname': hostname,  # 'nailgun.test.domain.local',  #  '.'.join((self.hostname, self.domain)),
+        'nat_interface': nat_interface,  # '',  # self.nat_interface,
+        'dns1': dns1,  # '8.8.8.8',  # settings.DNS,
+        'showmenu': showmenu,  # 'no',  # yes' if custom else 'no'
+    }
+    keys = (
+        "<Wait>\n"
+        "<Esc><Enter>\n"
+        "<Wait>\n"
+        "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
+        " ip=%(ip)s\n"
+        " netmask=%(mask)s\n"
+        " gw=%(gw)s\n"
+        " dns1=%(dns1)s\n"
+        " hostname=%(hostname)s\n"
+        " dhcp_interface=%(nat_interface)s\n"
+        " showmenu=%(showmenu)s\n"
+        " <Enter>\n"
+    ) % params
+    return keys
 
 
 class KeyPolicy(paramiko.WarningPolicy):
