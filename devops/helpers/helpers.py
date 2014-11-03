@@ -77,7 +77,7 @@ def tcp_ping(host, port):
     return True
 
 
-def wait(predicate, interval=5, timeout=60):
+def wait(predicate, interval=5, timeout=60, custom=None):
     """wait until predicate will become True.
 
     returns number of seconds that is left or 0 if timeout is None.
@@ -101,6 +101,9 @@ def wait(predicate, interval=5, timeout=60):
             0,
             min(interval, start_time + timeout - time.time()))
         time.sleep(seconds_to_sleep)
+        if custom:
+            if not custom():
+                raise Exception("Docker container error")
 
     return timeout + start_time - time.time()
 
