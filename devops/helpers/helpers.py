@@ -227,15 +227,24 @@ class SSHClient(object):
 
         self.reconnect()
 
+    def clear(self):
+        try:
+            self._sftp.close()
+        except Exception:
+            logger.exception("Could not close sftp connection")
+        try:
+            self._ssh.close()
+        except Exception:
+            logger.exception("Could not close ssh connection")
+
     def __del__(self):
-        self._sftp.close()
-        self._ssh.close()
+        self.clear()
 
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        pass
+    def __exit__(self, *err):
+        self.clear()
 
     @retry(count=3, delay=3)
     def connect(self):
