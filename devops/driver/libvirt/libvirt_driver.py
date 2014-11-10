@@ -199,6 +199,43 @@ class DevopsDriver(object):
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
+    def iface_define(self, name, ip=None, prefix=None, vlanid=None):
+        """Define bridge interface
+
+        :type name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : None
+        """
+        self.conn.interfaceDefineXML(
+            self.xml_builder.build_iface_xml(name, ip, prefix, vlanid))
+
+    @retry()
+    def iface_bridge_define(self, bridge_name, parent_name,
+                            ip=None, prefix=None, vlanid=None):
+        """Define bridge
+
+        :type bridge_name: String
+        :type parent_name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : None
+        """
+        self.conn.interfaceDefineXML(
+            self.xml_builder.build_iface_bridge_xml(bridge_name, parent_name,
+                                                    ip, prefix, vlanid))
+
+    def iface_create(self, iface_name):
+        """Start interface
+
+        :type iface_name: String
+            :rtype : None
+        """
+        self.conn.interfaceLookupByName(iface_name).create()
+
+    @retry()
     def node_define(self, node):
         """Define node
 

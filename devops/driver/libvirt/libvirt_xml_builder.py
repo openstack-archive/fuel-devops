@@ -33,7 +33,7 @@ class LibvirtXMLBuilder(object):
             name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
         return name
 
-    def build_network_xml(self, network):
+    def _build_network_xml(self, network):
         """Generate network XML
 
         :type network: Network
@@ -74,6 +74,38 @@ class LibvirtXMLBuilder(object):
                                     )
                         if network.has_pxe_server:
                             network_xml.bootp(file="pxelinux.0")
+
+        return network_xml
+
+    def _build_bridge_network_xml(self, network):
+        """Generate bridged network XML
+
+        :type network: Network
+            :rtype : String
+        """
+        network_xml = XMLBuilder('network')
+        network_xml.name(self._get_name(
+            network.environment and network.environment.name or '',
+            network.name))
+
+        network_xml.forward(mode=network.forward)
+        if network.target_dev is None:
+            network_xml.bridge(name="dobr{0}".format(network.id))
+        else:
+            network_xml.bridge(name=network.target_dev)
+
+        return network_xml
+
+    def build_network_xml(self, network):
+        """Generate network XML
+
+        :type network: Network
+            :rtype : String
+        """
+        if network.forward == 'bridge':
+            network_xml = self._build_bridge_network_xml(network)
+        else:
+            network_xml = self._build_network_xml(network)
 
         return str(network_xml)
 
@@ -207,3 +239,66 @@ class LibvirtXMLBuilder(object):
             with node_xml.console(type='pty'):
                 node_xml.target(type='serial', port='0')
         return str(node_xml)
+
+    def build_iface_bridge_xml(self, bridge_name, parent_name,
+                               ip=None, prefix=None, vlanid=None):
+        """Generate interface bridge XML
+
+        :type bridge_name: String
+        :type parent_name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : String
+        """
+        interface_xml = XMLBuilder('interface',
+                                   type='bridge',
+                                   name=bridge_name)
+        interface_xml.start(mode="onboot")
+
+        with interface_xml.bridge:
+            if vlanid is not None:
+                with interface_xml.interface(type="vlan",
+                                             name="{0}.{1}".format(parent_name,
+                                                                   vlanid)):
+                    with interface_xml.vlan(tag=str(vlanid)):
+                        interface_xml.start(mode="onboot")
+                        interface_xml.interface(name=parent_name)
+            else:
+                interface_xml.interface(name=parent_name)
+
+        if (ip is not None) and (prefix is not None):
+            with interface_xml.protocol(family='ipv4'):
+                interface_xml.ip(address=ip, prefix=prefix)
+        return str(interface_xml)
+
+    def build_iface_xml(self, name,
+                        ip=None, prefix=None, vlanid=None):
+        """Generate interface bridge XML
+
+        :type name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : String
+        """
+        if vlanid is not None:
+            iface_type = 'vlan'
+            iface_name = "{0}.{1}".format(name, str(vlanid))
+        else:
+            iface_type = 'ethernet'
+            iface_name = "{0}".format(name)
+
+        interface_xml = XMLBuilder('interface',
+                                   type=iface_type,
+                                   name=iface_name)
+        interface_xml.start(mode="onboot")
+
+        if vlanid is not None:
+            with interface_xml.vlan(tag=str(vlanid)):
+                interface_xml.interface(name=name)
+
+        if (ip is not None) and (prefix is not None):
+            with interface_xml.protocol(family='ipv4'):
+                interface_xml.ip(address=ip, prefix=prefix)
+        return str(interface_xml)
