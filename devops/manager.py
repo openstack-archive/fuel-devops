@@ -78,7 +78,7 @@ class Manager(object):
     def _safe_create_network(
             self, name, environment=None, pool=None,
             has_dhcp_server=True, has_pxe_server=False,
-            forward='nat'):
+            forward='nat', target_dev=None):
         allocated_pool = pool or self._get_default_pool()
         while True:
             try:
@@ -91,14 +91,15 @@ class Manager(object):
                         ip_network=ip_network,
                         has_pxe_server=has_pxe_server,
                         has_dhcp_server=has_dhcp_server,
-                        forward=forward)
+                        forward=forward,
+                        target_dev=target_dev)
             except IntegrityError:
                 transaction.rollback()
 
     def network_create(
         self, name, environment=None, ip_network=None, pool=None,
         has_dhcp_server=True, has_pxe_server=False,
-        forward='nat'
+        forward='nat', target_dev=None
     ):
         """Create network
 
@@ -111,7 +112,8 @@ class Manager(object):
                 ip_network=ip_network,
                 has_pxe_server=has_pxe_server,
                 has_dhcp_server=has_dhcp_server,
-                forward=forward
+                forward=forward,
+                target_dev=target_dev
             )
         return self._safe_create_network(
             environment=environment,
@@ -119,7 +121,8 @@ class Manager(object):
             has_dhcp_server=has_dhcp_server,
             has_pxe_server=has_pxe_server,
             name=name,
-            pool=pool)
+            pool=pool,
+            target_dev=target_dev)
 
     def node_create(self, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
