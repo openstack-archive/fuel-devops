@@ -160,6 +160,15 @@ class LibvirtXMLBuilder(object):
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
         node_xml.clock(offset='utc')
+        with node_xml.clock.timer(name='rtc',
+                                  tickpolicy='catchup', track='guest'):
+            node_xml.catchup(
+                threshold='123',
+                slew='120',
+                limit='10000')
+        node_xml.clock.timer(
+            name='pit',
+            tickpolicy='delay')
         node_xml.clock.timer(
             name='hpet',
             present='yes' if self.driver.hpet else 'no')
