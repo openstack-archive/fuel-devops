@@ -372,6 +372,25 @@ class SSHClient(object):
                     self._sftp.unlink(remote_path)
                 self._sftp.put(local_path, remote_path)
 
+    def download(self, destination, target):
+        logger.debug("Copying '%s' -> '%s' from remote to local host".format(
+            destination, target))
+
+        if os.path.isdir(target):
+            target = posixpath.join(target, os.path.basename(destination))
+
+        if not self.isdir(destination):
+            if self.exists(destination):
+                self._sftp.get(destination, target)
+            else:
+                logger.debug("Can't download {0} because it doesn't exist".
+                             format(destination))
+        else:
+            logger.debug("Can't download {0} because it is a directory".format(
+                destination
+            ))
+        return os.path.exists(target)
+
     def exists(self, path):
         try:
             self._sftp.lstat(path)
