@@ -72,7 +72,7 @@ class Shell(object):
 
     def do_revert(self):
         self.manager.environment_get(self.params.name).revert(
-            self.params.snapshot_name)
+            self.params.snapshot_name, flag=False)
 
     def do_snapshot(self):
         self.manager.environment_get(self.params.name).snapshot(
@@ -127,7 +127,7 @@ class Shell(object):
 
     def do_revert_resume(self):
         self.manager.environment_get(self.params.name).revert(
-            self.params.snapshot_name)
+            self.params.snapshot_name, flag=False)
         self.manager.environment_get(self.params.name).resume(verbose=False)
         if not self.params.no_timesync:
             print('time synchronization is starting')
