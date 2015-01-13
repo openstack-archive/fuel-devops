@@ -137,10 +137,14 @@ class Environment(DriverModel):
         for node in self.nodes:
             node.snapshot(name=name, description=description, force=force)
 
-    def revert(self, name=None, destroy=True):
+    def revert(self, name=None, destroy=True, flag=True):
         if destroy:
             for node in self.nodes:
                 node.destroy(verbose=False)
+        if flag and \
+                not all([node.has_snapshot(name) for node in self.nodes]):
+            raise Exception("some nodes miss snapshot,"
+                            " test should be interrupted")
         for node in self.nodes:
             node.revert(name, destroy=False)
 
@@ -360,6 +364,10 @@ class Node(ExternalModel):
             self.destroy(verbose=False)
         if self.has_snapshot(name):
             self.driver.node_revert_snapshot(node=self, name=name)
+        else:
+            print('Domain snapshot for {0} node not found: no domain '
+                  'snapshot with matching'
+                  ' name {1}'.format(self.name, name))
 
     def get_snapshots(self):
         return self.driver.node_get_snapshots(node=self)
