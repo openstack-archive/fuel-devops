@@ -360,6 +360,10 @@ class Node(ExternalModel):
             self.destroy(verbose=False)
         if self.has_snapshot(name):
             self.driver.node_revert_snapshot(node=self, name=name)
+        else:
+            print ('Domain snapshot for {0} node not found: no domain' \
+                   ' snapshot with matching' \
+                   ' name {1}'.format(self.name, name))
 
     def get_snapshots(self):
         return self.driver.node_get_snapshots(node=self)
