@@ -15,6 +15,8 @@
 import argparse
 from os import environ
 
+
+import devops
 from devops.manager import Manager
 
 from helpers.helpers import sync_node_time
@@ -133,6 +135,9 @@ class Shell(object):
             print('time synchronization is starting')
             self.do_timesync()
 
+    def do_show_version(self):
+        print(devops.__version__)
+
     commands = {
         'list': do_list,
         'show': do_show,
@@ -148,7 +153,8 @@ class Shell(object):
         'snapshot-delete': do_snapshot_delete,
         'net-list': do_net_list,
         'time-sync': do_timesync,
-        'revert-resume': do_revert_resume
+        'revert-resume': do_revert_resume,
+        'show-version': do_show_version
     }
 
     def get_params(self):
@@ -244,4 +250,6 @@ class Shell(object):
                               description="Revert and resume VMs in selected"
                                           "environment, then"
                                           " sync time on VMs")
+        subparsers.add_parser('show-version',
+                              help="Show devops version")
         return parser.parse_args()
