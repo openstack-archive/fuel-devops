@@ -14,13 +14,15 @@
 
 import os
 
+from devops import __version__
+
 from setuptools import find_packages
 from setuptools import setup
 
 
 setup(
     name='devops',
-    version='2.5.3',
+    version=__version__,
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',

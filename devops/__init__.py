@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,6 +17,8 @@ import yaml
 import logging
 import logging.config
 
+__version__ = '2.5.3'
+__release__ = '2.5.3'
 
 log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
