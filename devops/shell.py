@@ -13,27 +13,26 @@
 #    under the License.
 
 import argparse
-from os import environ
+import os
 
-from devops.manager import Manager
-
-from helpers.helpers import sync_node_time
+from devops.helpers.helpers import sync_node_time
+from devops.models import Environment
 
 
 class Shell(object):
     def __init__(self):
-        super(Shell, self).__init__()
         self.params = self.get_params()
-        self.manager = Manager()
+        if getattr(self.params, 'name', None):
+            self.env = Environment.get(self.params.name)
 
     def execute(self):
         self.commands.get(self.params.command)(self)
 
     def do_list(self):
-        env_list = self.manager.environment_list().values('name')
+        env_list = Environment.get().values('name')
         for env in env_list:
             if self.params.list_ips:
-                cur_env = self.manager.environment_get(env['name'])
+                cur_env = Environment.get(env['name'])
                 admin_ip = ''
                 if 'admin' in [node.name for node in cur_env.nodes]:
                     admin_ip = (cur_env.node_by_name('admin').
@@ -44,49 +43,45 @@ class Shell(object):
 
         return env_list
 
-    def node_dict(self, node):
+    @staticmethod
+    def node_dict(node):
         return {'name': node.name,
                 'vnc': node.get_vnc_port()}
 
     def do_show(self):
-        environment = self.manager.environment_get(self.params.name)
-
         print('%5s %25s' % ("VNC", "NODE-NAME"))
-        for item in map(lambda x: self.node_dict(x), environment.nodes):
+        for item in map(lambda x: self.node_dict(x), self.env.nodes):
             print ('%5s %25s' % (item['vnc'], item['name']))
 
     def do_erase(self):
-        self.manager.environment_get(self.params.name).erase()
+        self.env.erase()
 
     def do_start(self):
-        self.manager.environment_get(self.params.name).start()
+        self.env.start()
 
     def do_destroy(self):
-        self.manager.environment_get(self.params.name).destroy(verbose=False)
+        self.env.destroy(verbose=False)
 
     def do_suspend(self):
-        self.manager.environment_get(self.params.name).suspend(verbose=False)
+        self.env.suspend(verbose=False)
 
     def do_resume(self):
-        self.manager.environment_get(self.params.name).resume(verbose=False)
+        self.env.resume(verbose=False)
 
     def do_revert(self):
-        self.manager.environment_get(self.params.name).revert(
-            self.params.snapshot_name, flag=False)
+        self.env.revert(self.params.snapshot_name, flag=False)
 
     def do_snapshot(self):
-        self.manager.environment_get(self.params.name).snapshot(
-            self.params.snapshot_name)
+        self.env.snapshot(self.params.snapshot_name)
 
-    def do_synchronize(self):
-        self.manager.synchronize_environments()
+    @staticmethod
+    def do_synchronize():
+        Environment.synchronize_all()
 
     def do_snapshot_list(self):
-        environment = self.manager.environment_get(self.params.name)
-
         snap_nodes = {}
         max_len = 0
-        for node in environment.nodes:
+        for node in self.env.nodes:
             snaps = sorted(node.get_snapshots())
             for snap in snaps:
                 if len(snap) > max_len:
@@ -102,33 +97,28 @@ class Shell(object):
                                     ', '.join(snap_nodes[snap])))
 
     def do_snapshot_delete(self):
-        environment = self.manager.environment_get(self.params.name)
-        for node in environment.nodes:
+        for node in self.env.nodes:
             snaps = sorted(node.get_snapshots())
             if self.params.snapshot_name in snaps:
                 node.erase_snapshot(name=self.params.snapshot_name)
 
     def do_net_list(self):
-        environment = self.manager.environment_get(self.params.name)
-        networks = environment.networks
         print("%15s   %10s" % ("NETWORK NAME", "IP NET"))
-        for network in networks:
+        for network in self.env.networks:
             print("%15s  %10s" % (network.name, network.ip_network))
 
     def do_timesync(self):
-        env = self.manager.environment_get(self.params.name)
         if not self.params.node_name:
-            _nodes = {node.name: node.get_vnc_port() for node in env.nodes}
-            for node_name in sorted(_nodes.keys()):
-                if _nodes[node_name] != '-1':
-                    sync_node_time(env, node_name)
+            nodes = {node.name: node.get_vnc_port() for node in self.env.nodes}
+            for node_name in sorted(nodes.keys()):
+                if nodes[node_name] != '-1':
+                    sync_node_time(self.env, node_name)
         else:
-            sync_node_time(env, self.params.node_name)
+            sync_node_time(self.env, self.params.node_name)
 
     def do_revert_resume(self):
-        self.manager.environment_get(self.params.name).revert(
-            self.params.snapshot_name, flag=False)
-        self.manager.environment_get(self.params.name).resume(verbose=False)
+        self.env.revert(self.params.snapshot_name, flag=False)
+        self.env.resume(verbose=False)
         if not self.params.no_timesync:
             print('time synchronization is starting')
             self.do_timesync()
@@ -151,15 +141,17 @@ class Shell(object):
         'revert-resume': do_revert_resume
     }
 
-    def get_params(self):
+    @staticmethod
+    def get_params():
         name_parser = argparse.ArgumentParser(add_help=False)
         name_parser.add_argument('name', help='environment name',
-                                 default=environ.get('ENV_NAME'),
+                                 default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('--snapshot-name',
                                           help='snapshot name',
-                                          default=environ.get('SNAPSHOT_NAME'))
+                                          default=os.environ.get(
+                                              'SNAPSHOT_NAME'))
         node_name_parser = argparse.ArgumentParser(add_help=False)
         node_name_parser.add_argument('--node-name',
                                       help='node name',

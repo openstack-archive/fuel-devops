@@ -19,12 +19,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
 from devops.driver.libvirt import libvirt_driver
 from devops.helpers.helpers import _get_file_size
-from devops import manager
+from devops.models import Volume
 
 
 class UseCases(unittest.TestCase):
     driver = libvirt_driver.DevopsDriver()
-    manager = manager.Manager()
 
     def test_volumes_for_pptesting(self):
         images_for_upload = {
@@ -34,8 +33,7 @@ class UseCases(unittest.TestCase):
         }
 
         for name, vol in images_for_upload.iteritems():
-            v = self.manager.volume_create(name,
-                                           _get_file_size(vol))
+            v = Volume.volume_create(name, _get_file_size(vol))
             if not self.driver.volume_exists(v):
                 self.driver.volume_define(v)
                 self.driver.volume_upload(v, vol)
