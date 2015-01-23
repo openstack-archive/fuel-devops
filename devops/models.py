@@ -177,6 +177,25 @@ class Environment(DriverModel):
         logger.info('Undefined domains: %s, removed nodes: %s' %
                     (0, len(nodes_to_remove)))
 
+    @classmethod
+    def create(cls, name):
+        """Create Environment instance with given name.
+
+        :rtype: devops.models.Environment
+        """
+        return cls.objects.create(name=name)
+
+    @classmethod
+    def get(cls, name=None):
+        """Return Environment instance by given name.
+        If no name specified return all Environment instances
+
+        :rtype: devops.models.Environment
+        """
+        if name:
+            return cls.objects.get(name=name)
+        return cls.objects.all()
+
 
 class ExternalModel(DriverModel):
     name = models.CharField(max_length=255, unique=False, null=False)
