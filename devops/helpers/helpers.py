@@ -140,17 +140,18 @@ def get_private_keys(env):
 
 
 def get_admin_remote(env):
-    wait(lambda: tcp_ping(env.node_by_name(
-        'admin').get_ip_address_by_network_name('admin'), 22), timeout=180)
-    return env.node_by_name(
-        'admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
+    wait(lambda: tcp_ping(env.node(
+        name='admin').get_ip_address_by_network_name('admin'), 22), timeout=180
+    )
+    return env.node(
+        name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
                         login=SSH_CREDENTIALS['login'],
                         password=SSH_CREDENTIALS['password'])
 
 
 def get_node_remote(env, node_name):
-    ip = get_slave_ip(env, env.node_by_name(
-        node_name).interfaces[0].mac_address)
+    ip = get_slave_ip(env, env.node(
+        name=node_name).interfaces[0].mac_address)
     wait(lambda: tcp_ping(ip, 22), timeout=180)
     return SSHClient(ip,
                      username=SSH_CREDENTIALS['login'],
