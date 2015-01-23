@@ -12,12 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from os import environ
+import os
 
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
-    'connection_string': environ.get('CONNECTION_STRING', 'qemu:///system'),
-    'storage_pool_name': environ.get('STORAGE_POOL_NAME', 'default'),
+    'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
+    'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
     'stp': True,
     'hpet': False,
 }
@@ -27,7 +27,7 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
+        'NAME': 'devops',
         'USER': 'postgres',
         'PASSWORD': '',
         'HOST': '',
@@ -37,21 +37,27 @@ DATABASES = {
 }
 
 SSH_CREDENTIALS = {
-    'admin_network': environ.get('ENV_ADMIN_NETWORK', 'admin'),
-    'login': environ.get('ENV_FUEL_LOGIN', 'root'),
-    'password': environ.get('ENV_FUEL_PASSWORD', 'r00tme')
+    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
+    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
 SECRET_KEY = 'dummykey'
 
-VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
+VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
 
 # Default timezone for clear logging
 TIME_ZONE = 'UTC'
 
-REBOOT_TIMEOUT = environ.get('REBOOT_TIMEOUT', None)
+REBOOT_TIMEOUT = os.environ.get('REBOOT_TIMEOUT', None)
 
 try:
     from local_settings import *  # noqa
 except ImportError:
     pass
+
+#
+# Settings migrated from Fuel system tests
+#
+
+NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))

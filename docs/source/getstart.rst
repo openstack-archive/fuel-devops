@@ -47,18 +47,21 @@ At this point you are ready to make your first devops application.
 ::
 
    import ipaddr
-   from devops.manager import Manager
+   from devops.models import DiskDevice
+   from devops.models import Environment
+   from devops.models import Interface
+   from devops.models import Network
+   from devops.models import Node
 
-   manager = Manager()
-   environment = manager.environment_create(name='myenv')
-   node = manager.node_create(name='mynode', environment=environment)
+   environment = Environment.create(name='myenv')
+   node = Node.node_create(name='mynode', environment=environment)
 
-   network_pool = manager.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
-   network = manager.network_create(name='mynet', environment=environment, pool=network_pool)
-   manager.interface_create(network=network, node=node)
+   network_pool = Network.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)
+   network = Network.network_create(name='mynet', environment=environment, pool=network_pool)
+   Interface.interface_create(network=network, node=node)
 
-   volume = manager.volume_create(name='myvol', capacity=10737418240, environment=environment)
-   manager.node_attach_volume(node=node, volume=volume)
+   volume = Volume.volume_create(name='myvol', capacity=10737418240, environment=environment)
+   DiskDevice.node_attach_volume(node=node, volume=volume)
 
    environment.define()
 
