@@ -12,12 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from os import environ
+import os
 
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
-    'connection_string': environ.get('CONNECTION_STRING', 'qemu:///system'),
-    'storage_pool_name': environ.get('STORAGE_POOL_NAME', 'default'),
+    'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
+    'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
     'stp': True,
     'hpet': False,
 }
@@ -27,7 +27,7 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
+        'NAME': 'devops',
         'USER': 'postgres',
         'PASSWORD': '',
         'HOST': '',
@@ -37,21 +37,118 @@ DATABASES = {
 }
 
 SSH_CREDENTIALS = {
-    'admin_network': environ.get('ENV_ADMIN_NETWORK', 'admin'),
-    'login': environ.get('ENV_FUEL_LOGIN', 'root'),
-    'password': environ.get('ENV_FUEL_PASSWORD', 'r00tme')
+    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
+    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
 SECRET_KEY = 'dummykey'
 
-VNC_PASSWORD = environ.get('VNC_PASSWORD', None)
+VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
 
 # Default timezone for clear logging
 TIME_ZONE = 'UTC'
 
-REBOOT_TIMEOUT = environ.get('REBOOT_TIMEOUT', None)
+REBOOT_TIMEOUT = os.environ.get('REBOOT_TIMEOUT', None)
 
 try:
     from local_settings import *  # noqa
 except ImportError:
     pass
+
+#
+# Settings migrated from Fuel system tests
+#
+
+NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
+ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
+
+DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
+INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
+                                 DEFAULT_INTERFACE_ORDER).split(',')
+
+BONDING = os.environ.get("BONDING", 'false') == 'true'
+BONDING_INTERFACES = {
+    'admin': ['eth0'],
+    'public': ['eth1', 'eth2', 'eth3', 'eth4']
+}
+
+MULTIPLE_NETWORKS = os.environ.get('MULTIPLE_NETWORKS', False) == 'true'
+
+if MULTIPLE_NETWORKS:
+    NODEGROUPS = (
+        {
+            'name': 'default',
+            'pools': ['admin', 'public', 'management', 'private',
+                      'storage']
+        },
+        {
+            'name': 'group-custom-1',
+            'pools': ['admin2', 'public2', 'management2', 'private2',
+                      'storage2']
+        }
+    )
+    FORWARD_DEFAULT = os.environ.get('FORWARD_DEFAULT', 'route')
+    ADMIN_FORWARD = os.environ.get('ADMIN_FORWARD', 'nat')
+    PUBLIC_FORWARD = os.environ.get('PUBLIC_FORWARD', 'nat')
+else:
+    NODEGROUPS = {}
+    FORWARD_DEFAULT = os.environ.get('FORWARD_DEFAULT', None)
+    ADMIN_FORWARD = os.environ.get('ADMIN_FORWARD', FORWARD_DEFAULT or 'nat')
+    PUBLIC_FORWARD = os.environ.get('PUBLIC_FORWARD', FORWARD_DEFAULT or 'nat')
+
+POOL_DEFAULT = os.environ.get('POOL_DEFAULT', '10.108.0.0/16:24')
+POOL_ADMIN = os.environ.get('POOL_ADMIN', POOL_DEFAULT)
+POOL_PUBLIC = os.environ.get('POOL_PUBLIC', POOL_DEFAULT)
+POOL_MANAGEMENT = os.environ.get('POOL_MANAGEMENT', POOL_DEFAULT)
+POOL_PRIVATE = os.environ.get('POOL_PRIVATE', POOL_DEFAULT)
+POOL_STORAGE = os.environ.get('POOL_STORAGE', POOL_DEFAULT)
+
+DEFAULT_POOLS = {
+    'admin': POOL_ADMIN,
+    'public': POOL_PUBLIC,
+    'management': POOL_MANAGEMENT,
+    'private': POOL_PRIVATE,
+    'storage': POOL_STORAGE,
+}
+
+POOLS = {
+    'admin': os.environ.get(
+        'PUBLIC_POOL',
+        DEFAULT_POOLS.get('admin')).split(':'),
+    'public': os.environ.get(
+        'PUBLIC_POOL',
+        DEFAULT_POOLS.get('public')).split(':'),
+    'management': os.environ.get(
+        'PRIVATE_POOL',
+        DEFAULT_POOLS.get('management')).split(':'),
+    'private': os.environ.get(
+        'INTERNAL_POOL',
+        DEFAULT_POOLS.get('private')).split(':'),
+    'storage': os.environ.get(
+        'NAT_POOL',
+        DEFAULT_POOLS.get('storage')).split(':'),
+}
+
+MGMT_FORWARD = os.environ.get('MGMT_FORWARD', FORWARD_DEFAULT)
+PRIVATE_FORWARD = os.environ.get('PRIVATE_FORWARD', FORWARD_DEFAULT)
+STORAGE_FORWARD = os.environ.get('STORAGE_FORWARD', FORWARD_DEFAULT)
+
+FORWARDING = {
+    'admin': ADMIN_FORWARD,
+    'public': PUBLIC_FORWARD,
+    'management': MGMT_FORWARD,
+    'private': PRIVATE_FORWARD,
+    'storage': STORAGE_FORWARD,
+}
+
+# May be one of virtio, e1000, pcnet, rtl8139
+INTERFACE_MODEL = os.environ.get('INTERFACE_MODEL', 'virtio')
+
+DHCP = {
+    'admin': False,
+    'public': False,
+    'management': False,
+    'private': False,
+    'storage': False,
+}
