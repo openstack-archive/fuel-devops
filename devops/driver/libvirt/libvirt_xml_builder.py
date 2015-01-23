@@ -70,7 +70,7 @@ class LibvirtXMLBuilder(object):
                                     network_xml.host(
                                         mac=str(interface.mac_address),
                                         ip=str(address.ip_address),
-                                        name=interface.node.name
+                                        name=interface.get_node.name
                                     )
                         if network.has_pxe_server:
                             network_xml.bootp(file="pxelinux.0")
@@ -120,8 +120,8 @@ class LibvirtXMLBuilder(object):
 
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
             # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
-            device_xml.driver(type=disk_device.volume.format, cache="unsafe")
-            device_xml.source(file=self.driver.volume_path(disk_device.volume))
+            device_xml.driver(type=disk_device.get_volume.format, cache="unsafe")
+            device_xml.source(file=self.driver.volume_path(disk_device.get_volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
 
     def _build_interface_device(self, device_xml, interface):
@@ -138,7 +138,7 @@ class LibvirtXMLBuilder(object):
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
-                network=self.driver.network_name(interface.network))
+                network=self.driver.network_name(interface.get_network))
             device_xml.target(dev="donet{0}".format(interface.id))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)

@@ -12,54 +12,60 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ipaddr
+from ipaddr import IPNetwork
 
 from devops.helpers.helpers import SSHClient
+from devops.models import DiskDevice
+from devops.models import Environment
+from devops.models import Interface
+from devops.models import Network
+from devops.models import Node
+from devops.models import Volume
 
 
-def one(manager):
-    environment = manager.environment_create('cdrom')
-    internal_pool = manager.create_network_pool(
-        networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
+def one():
+    environment = Environment.create('cdrom')
+    internal_pool = Network.create_network_pool(
+        networks=[IPNetwork('10.108.0.0/16')], prefix=24
     )
-    private_pool = manager.create_network_pool(
-        networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
+    private_pool = Network.create_network_pool(
+        networks=[IPNetwork('10.108.0.0/16')], prefix=24
     )
-    external_pool = manager.create_network_pool(
-        networks=[ipaddr.IPNetwork('172.18.95.0/24')], prefix=27
+    external_pool = Network.create_network_pool(
+        networks=[IPNetwork('172.18.95.0/24')], prefix=27
     )
-    internal = manager.network_create(
+    internal = Network.network_create(
         environment=environment, name='internal', pool=internal_pool)
-    external = manager.network_create(
+    external = Network.network_create(
         environment=environment, name='external', pool=external_pool,
         forward='nat')
-    private = manager.network_create(
+    private = Network.network_create(
         environment=environment, name='private', pool=private_pool)
     for i in range(1, 2):
-        node = manager.node_create(
+        node = Node.node_create(
             name='test_node' + str(i), environment=environment)
-        manager.interface_create(node=node, network=internal)
-        manager.interface_create(node=node, network=external)
-        manager.interface_create(node=node, network=private)
-        volume = manager.volume_get_predefined(
+        Interface.interface_create(node=node, network=internal)
+        Interface.interface_create(node=node, network=external)
+        Interface.interface_create(node=node, network=private)
+        volume = Volume.volume_get_predefined(
             '/var/lib/libvirt/images/centos63-cobbler-base.qcow2')
-        v3 = manager.volume_create_child(
+        v3 = Volume.volume_create_child(
             'test_vp895' + str(i), backing_store=volume,
             environment=environment)
-        v4 = manager.volume_create_child(
+        v4 = Volume.volume_create_child(
             'test_vp896' + str(i), backing_store=volume,
             environment=environment)
-        manager.node_attach_volume(node=node, volume=v3)
-        manager.node_attach_volume(node, v4)
-        manager.node_attach_volume(
+        DiskDevice.node_attach_volume(node=node, volume=v3)
+        DiskDevice.node_attach_volume(node, v4)
+        DiskDevice.node_attach_volume(
             node,
-            manager.volume_get_predefined(
+            Volume.volume_get_predefined(
                 '/var/lib/libvirt/images/fuel-centos-6.3-x86_64.iso'),
             device='cdrom', bus='sata')
     environment.define()
     environment.start()
     remotes = []
-    for node in environment.nodes:
+    for node in environment.get_nodes():
         node.await('internal')
         node.remote('internal', 'root', 'r00tme').check_stderr(
             'ls -la', verbose=True)
@@ -68,6 +74,4 @@ def one(manager):
 
 
 if __name__ == '__main__':
-    from devops.manager import Manager
-
-    one(Manager())
+    one()
