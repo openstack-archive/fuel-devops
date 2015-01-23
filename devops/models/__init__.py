@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,20 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
-import threading
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
-from django.utils import unittest
-
-from devops.models import double_tuple
-from devops.models import Network
-
-
-class MyThread(threading.Thread):
-    def run(self):
-        Network.network_create(str(random.randint(1, 5000)))
-
-
-class TestModels(unittest.TestCase):
-    def test_django_choices(self):
-        self.assertEquals((('a', 'a'), ('b', 'b')), double_tuple('a', 'b'))
+from devops.models.network import DiskDevice
+from devops.models.environment import Environment
+from devops.models.network import Interface
+from devops.models.network import Network
+from devops.models.node import Node
+from devops.models.volume import Volume
