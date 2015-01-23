@@ -17,13 +17,13 @@ import threading
 
 from django.utils import unittest
 
-from devops.manager import Manager
 from devops.models import double_tuple
+from devops.models import Network
 
 
 class MyThread(threading.Thread):
     def run(self):
-        Manager().network_create(str(random.randint(1, 5000)))
+        Network.network_create(str(random.randint(1, 5000)))
 
 
 class TestModels(unittest.TestCase):
