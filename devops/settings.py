@@ -27,7 +27,7 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
+        'NAME': 'devops',
         'USER': 'postgres',
         'PASSWORD': '',
         'HOST': '',

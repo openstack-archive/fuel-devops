@@ -17,14 +17,19 @@ from ipaddr import IPNetwork
 from ipaddr import IPv4Network
 
 from devops.helpers.network import IpNetworksPool
-from devops.manager import Manager
+from devops.models import Address
+from devops.models import DiskDevice
+from devops.models import Environment
+from devops.models import Interface
+from devops.models import Network
+from devops.models import Node
+from devops.models import Volume
 
 
 class TestManager(TestCase):
-    manager = Manager()
 
     def tearDown(self):
-        for environment in self.manager.environment_list():
+        for environment in Environment.get():
             environment.erase()
 
     def test_getting_subnetworks(self):
@@ -40,95 +45,94 @@ class TestManager(TestCase):
         self.assertEquals('10.1.0.254', str(IPv4Network('10.1.0.0/24')[-2]))
 
     def test_network_iterator(self):
-        environment = self.manager.environment_create('test_env')
-        node = self.manager.node_create('test_node', environment)
-        network = self.manager.network_create(
+        environment = Environment.create('test_env')
+        node = Node.node_create('test_node', environment)
+        network = Network.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
-        interface = self.manager.interface_create(network=network, node=node)
-        self.manager.network_create_address(str('10.1.0.1'),
-                                            interface=interface)
-        ip = network.next_ip()
-        self.manager.network_create_address(str('10.1.0.3'),
-                                            interface=interface)
+        interface = Interface.interface_create(network=network, node=node)
+        Address.objects.create(str('10.1.0.1'),
+                               interface=interface)
+        network.next_ip()
+        Address.objects.create(str('10.1.0.3'),
+                               interface=interface)
         ip = network.next_ip()
         self.assertEquals('10.1.0.4', str(ip))
 
     def test_network_model(self):
-        environment = self.manager.environment_create('test_env')
-        node = self.manager.node_create('test_node', environment)
-        network = self.manager.network_create(
+        environment = Environment.create('test_env')
+        node = Node.node_create('test_node', environment)
+        network = Network.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
-        interface1 = self.manager.interface_create(network=network, node=node)
+        interface1 = Interface.interface_create(network=network, node=node)
         self.assertEquals('virtio', interface1.model)
-        interface2 = self.manager.interface_create(
+        interface2 = Interface.interface_create(
             network=network, node=node, model='e1000')
         self.assertEquals('e1000', interface2.model)
 
     def test_environment_values(self):
-        environment = self.manager.environment_create('test_env')
+        environment = Environment.create('test_env')
         print(environment.volumes)
 
     def test_network_pool(self):
-        environment = self.manager.environment_create('test_env2')
-        self.assertEqual('10.0.0.0/24', str(self.manager.network_create(
+        environment = Environment.create('test_env2')
+        self.assertEqual('10.0.0.0/24', str(Network.network_create(
             environment=environment, name='internal', pool=None).ip_network))
-        self.assertEqual('10.0.1.0/24', str(self.manager.network_create(
+        self.assertEqual('10.0.1.0/24', str(Network.network_create(
             environment=environment, name='external', pool=None).ip_network))
-        self.assertEqual('10.0.2.0/24', str(self.manager.network_create(
+        self.assertEqual('10.0.2.0/24', str(Network.network_create(
             environment=environment, name='private', pool=None).ip_network))
-        environment = self.manager.environment_create('test_env2')
-        self.assertEqual('10.0.3.0/24', str(self.manager.network_create(
+        environment = Environment.create('test_env2')
+        self.assertEqual('10.0.3.0/24', str(Network.network_create(
             environment=environment, name='internal', pool=None).ip_network))
-        self.assertEqual('10.0.4.0/24', str(self.manager.network_create(
+        self.assertEqual('10.0.4.0/24', str(Network.network_create(
             environment=environment, name='external', pool=None).ip_network))
-        self.assertEqual('10.0.5.0/24', str(self.manager.network_create(
+        self.assertEqual('10.0.5.0/24', str(Network.network_create(
             environment=environment, name='private', pool=None).ip_network))
 
     def test_node_creationw(self):
-        environment = self.manager.environment_create('test_env55')
-        node = self.manager.node_create(
+        environment = Environment.create('test_env55')
+        node = Node.node_create(
             name='test_node4',
             environment=environment)
         node.define()
 
-    def test_node_creation(self):
-        environment = self.manager.environment_create('test_env3')
-        internal = self.manager.network_create(
+    def test_node_crModeleation(self):
+        environment = Environment.create('test_env3')
+        internal = Network.network_create(
             environment=environment, name='internal', pool=None)
-        node = self.manager.node_create(
+        node = Node.node_create(
             name='test_node', environment=environment)
-        self.manager.interface_create(node=node, network=internal)
+        Interface.interface_create(node=node, network=internal)
         environment.define()
 
     def test_create_volume(self):
-        environment = self.manager.environment_create('test_env3')
-        volume = self.manager.volume_get_predefined(
+        environment = Environment.create('test_env3')
+        volume = Volume.volume_get_predefined(
             '/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child(
+        v3 = Volume.volume_create_child(
             'test_vp89', backing_store=volume, environment=environment)
         v3.define()
 
     def test_create_node3(self):
-        environment = self.manager.environment_create('test_env3')
-        internal = self.manager.network_create(
+        environment = Environment.create('test_env3')
+        internal = Network.network_create(
             environment=environment, name='internal', pool=None)
-        external = self.manager.network_create(
+        external = Network.network_create(
             environment=environment, name='external', pool=None)
-        private = self.manager.network_create(
+        private = Network.network_create(
             environment=environment, name='private', pool=None)
-        node = self.manager.node_create(name='test_node',
-                                        environment=environment)
-        self.manager.interface_create(node=node, network=internal)
-        self.manager.interface_create(node=node, network=external)
-        self.manager.interface_create(node=node, network=private)
-        volume = self.manager.volume_get_predefined(
+        node = Node.node_create(name='test_node', environment=environment)
+        Interface.interface_create(node=node, network=internal)
+        Interface.interface_create(node=node, network=external)
+        Interface.interface_create(node=node, network=private)
+        volume = Volume.volume_get_predefined(
             '/var/lib/libvirt/images/disk-135824657433.qcow2')
-        v3 = self.manager.volume_create_child('test_vp892',
-                                              backing_store=volume,
-                                              environment=environment)
-        v4 = self.manager.volume_create_child('test_vp891',
-                                              backing_store=volume,
-                                              environment=environment)
-        self.manager.node_attach_volume(node=node, volume=v3)
-        self.manager.node_attach_volume(node, v4)
+        v3 = Volume.volume_create_child('test_vp892',
+                                        backing_store=volume,
+                                        environment=environment)
+        v4 = Volume.volume_create_child('test_vp891',
+                                        backing_store=volume,
+                                        environment=environment)
+        DiskDevice.node_attach_volume(node=node, volume=v3)
+        DiskDevice.node_attach_volume(node, v4)
         environment.define()
