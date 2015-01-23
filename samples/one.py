@@ -15,10 +15,11 @@
 import ipaddr
 
 from devops.helpers.helpers import SSHClient
+from devops.models import Environment
 
 
 def one(manager):
-    environment = manager.environment_create('test_env7')
+    environment = Environment.create('test_env7')
     internal_pool = manager.create_network_pool(
         networks=[ipaddr.IPNetwork('10.108.0.0/16')], prefix=24
     )

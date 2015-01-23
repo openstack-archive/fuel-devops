@@ -48,9 +48,10 @@ At this point you are ready to make your first devops application.
 
    import ipaddr
    from devops.manager import Manager
+   from devops.models import Environment
 
    manager = Manager()
-   environment = manager.environment_create(name='myenv')
+   environment = Environment.create(name='myenv')
    node = manager.node_create(name='mynode', environment=environment)
 
    network_pool = manager.create_network_pool(networks=[ipaddr.IPNetwork('10.0.0.0/16')], prefix=24)

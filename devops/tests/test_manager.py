@@ -18,13 +18,14 @@ from ipaddr import IPv4Network
 
 from devops.helpers.network import IpNetworksPool
 from devops.manager import Manager
+from devops.models import Environment
 
 
 class TestManager(TestCase):
     manager = Manager()
 
     def tearDown(self):
-        for environment in self.manager.environment_list():
+        for environment in Environment.get():
             environment.erase()
 
     def test_getting_subnetworks(self):
@@ -40,7 +41,7 @@ class TestManager(TestCase):
         self.assertEquals('10.1.0.254', str(IPv4Network('10.1.0.0/24')[-2]))
 
     def test_network_iterator(self):
-        environment = self.manager.environment_create('test_env')
+        environment = Environment.create('test_env')
         node = self.manager.node_create('test_node', environment)
         network = self.manager.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
@@ -54,7 +55,7 @@ class TestManager(TestCase):
         self.assertEquals('10.1.0.4', str(ip))
 
     def test_network_model(self):
-        environment = self.manager.environment_create('test_env')
+        environment = Environment.create('test_env')
         node = self.manager.node_create('test_node', environment)
         network = self.manager.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
@@ -65,18 +66,18 @@ class TestManager(TestCase):
         self.assertEquals('e1000', interface2.model)
 
     def test_environment_values(self):
-        environment = self.manager.environment_create('test_env')
+        environment = Environment.create('test_env')
         print(environment.volumes)
 
     def test_network_pool(self):
-        environment = self.manager.environment_create('test_env2')
+        environment = Environment.create('test_env2')
         self.assertEqual('10.0.0.0/24', str(self.manager.network_create(
             environment=environment, name='internal', pool=None).ip_network))
         self.assertEqual('10.0.1.0/24', str(self.manager.network_create(
             environment=environment, name='external', pool=None).ip_network))
         self.assertEqual('10.0.2.0/24', str(self.manager.network_create(
             environment=environment, name='private', pool=None).ip_network))
-        environment = self.manager.environment_create('test_env2')
+        environment = Environment.create('test_env2')
         self.assertEqual('10.0.3.0/24', str(self.manager.network_create(
             environment=environment, name='internal', pool=None).ip_network))
         self.assertEqual('10.0.4.0/24', str(self.manager.network_create(
@@ -85,14 +86,14 @@ class TestManager(TestCase):
             environment=environment, name='private', pool=None).ip_network))
 
     def test_node_creationw(self):
-        environment = self.manager.environment_create('test_env55')
+        environment = Environment.create('test_env55')
         node = self.manager.node_create(
             name='test_node4',
             environment=environment)
         node.define()
 
     def test_node_creation(self):
-        environment = self.manager.environment_create('test_env3')
+        environment = Environment.create('test_env3')
         internal = self.manager.network_create(
             environment=environment, name='internal', pool=None)
         node = self.manager.node_create(
@@ -101,7 +102,7 @@ class TestManager(TestCase):
         environment.define()
 
     def test_create_volume(self):
-        environment = self.manager.environment_create('test_env3')
+        environment = Environment.create('test_env3')
         volume = self.manager.volume_get_predefined(
             '/var/lib/libvirt/images/disk-135824657433.qcow2')
         v3 = self.manager.volume_create_child(
@@ -109,7 +110,7 @@ class TestManager(TestCase):
         v3.define()
 
     def test_create_node3(self):
-        environment = self.manager.environment_create('test_env3')
+        environment = Environment.create('test_env3')
         internal = self.manager.network_create(
             environment=environment, name='internal', pool=None)
         external = self.manager.network_create(
