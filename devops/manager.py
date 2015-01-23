@@ -25,7 +25,6 @@ from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address
 from devops.models import DiskDevice
-from devops.models import Environment
 from devops.models import ExternalModel
 from devops.models import Interface
 from devops.models import Network
@@ -37,23 +36,6 @@ class Manager(object):
     def __init__(self):
         super(Manager, self).__init__()
         self.default_pool = None
-
-    def environment_create(self, name):
-        """Create environment
-
-        :rtype : Environment
-        """
-        return Environment.objects.create(name=name)
-
-    def environment_list(self):
-        return Environment.objects.all()
-
-    def environment_get(self, name):
-        """Get environment by name
-
-        :rtype : Environment
-        """
-        return Environment.objects.get(name=name)
 
     def create_network_pool(self, networks, prefix):
         """Create network pool
@@ -221,6 +203,3 @@ class Manager(object):
             device=device, type=type, bus=bus,
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)
-
-    def synchronize_environments(self):
-        Environment().synchronize_all()
