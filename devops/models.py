@@ -12,16 +12,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ipaddr
 import json
 
 from django.conf import settings
+settings.configure()
+
+from django.db import IntegrityError
 from django.db import models
+from django.db import transaction
 from django.utils.importlib import import_module
-from ipaddr import IPNetwork
 
 from devops.helpers.helpers import _tcp_ping
 from devops.helpers.helpers import _wait
+from devops.helpers.helpers import generate_mac
 from devops.helpers.helpers import SSHClient
+from devops.helpers.network import IpNetworksPool
 from devops import logger
 
 
@@ -177,6 +183,26 @@ class Environment(DriverModel):
         logger.info('Undefined domains: %s, removed nodes: %s' %
                     (0, len(nodes_to_remove)))
 
+    @classmethod
+    def create(cls, name):
+        """Create Environment instance with given name.
+
+        :rtype: devops.models.Environment
+        """
+        return cls.objects.create(name=name)
+
+    @classmethod
+    def get(cls, name=None):
+        """Return Environment instance by given name.
+
+        If no name specified return all Environment instances.
+
+        :rtype: devops.models.Environment
+        """
+        if name:
+            return cls.objects.get(name=name)
+        return cls.objects.all()
+
 
 class ExternalModel(DriverModel):
     name = models.CharField(max_length=255, unique=False, null=False)
@@ -187,13 +213,12 @@ class ExternalModel(DriverModel):
         abstract = True
         unique_together = ('name', 'environment')
 
-    @classmethod
-    def get_allocated_networks(cls):
-        return cls.get_driver().get_allocated_networks()
-
 
 class Network(ExternalModel):
     _iterhosts = None
+
+    # Dirty trick. It should be placed on instance level of Environment class.
+    default_pool = None
 
     has_dhcp_server = models.BooleanField()
     has_pxe_server = models.BooleanField()
@@ -210,15 +235,15 @@ class Network(ExternalModel):
 
     @property
     def ip_pool_start(self):
-        return IPNetwork(self.ip_network)[2]
+        return ipaddr.IPNetwork(self.ip_network)[2]
 
     @property
     def ip_pool_end(self):
-        return IPNetwork(self.ip_network)[-2]
+        return ipaddr.IPNetwork(self.ip_network)[-2]
 
     def next_ip(self):
         while True:
-            self._iterhosts = self._iterhosts or IPNetwork(
+            self._iterhosts = self._iterhosts or ipaddr.IPNetwork(
                 self.ip_network).iterhosts()
             ip = self._iterhosts.next()
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
@@ -255,6 +280,76 @@ class Network(ExternalModel):
                     self.driver.network_destroy(self)
                 self.driver.network_undefine(self)
         self.delete()
+
+    @classmethod
+    def create_network_pool(cls, networks, prefix):
+        """Create network pool
+
+        :rtype : IpNetworksPool
+        """
+        pool = IpNetworksPool(networks=networks, prefix=prefix)
+        pool.set_allocated_networks(cls.driver.get_allocated_networks())
+        return pool
+
+    @classmethod
+    def _get_default_pool(cls):
+        """Get default pool. If it does not exists, create 10.0.0.0/16 pool.
+
+        :rtype : IpNetworksPool
+        """
+        cls.default_pool = cls.default_pool or Network.create_network_pool(
+            networks=[ipaddr.IPNetwork('10.0.0.0/16')],
+            prefix=24)
+        return cls.default_pool
+
+    @transaction.commit_on_success
+    @classmethod
+    def _safe_create_network(
+            cls, name, environment=None, pool=None,
+            has_dhcp_server=True, has_pxe_server=False,
+            forward='nat'):
+        allocated_pool = pool or cls._get_default_pool()
+        while True:
+            try:
+                ip_network = allocated_pool.next()
+                if not Network.objects.filter(
+                        ip_network=str(ip_network)).exists():
+                    return Network.objects.create(
+                        environment=environment,
+                        name=name,
+                        ip_network=ip_network,
+                        has_pxe_server=has_pxe_server,
+                        has_dhcp_server=has_dhcp_server,
+                        forward=forward)
+            except IntegrityError:
+                transaction.rollback()
+
+    @classmethod
+    def network_create(
+        cls, name, environment=None, ip_network=None, pool=None,
+        has_dhcp_server=True, has_pxe_server=False,
+        forward='nat'
+    ):
+        """Create network
+
+        :rtype : Network
+        """
+        if ip_network:
+            return Network.objects.create(
+                environment=environment,
+                name=name,
+                ip_network=ip_network,
+                has_pxe_server=has_pxe_server,
+                has_dhcp_server=has_dhcp_server,
+                forward=forward
+            )
+        return cls._safe_create_network(
+            environment=environment,
+            forward=forward,
+            has_dhcp_server=has_dhcp_server,
+            has_pxe_server=has_pxe_server,
+            name=name,
+            pool=pool)
 
 
 class Node(ExternalModel):
@@ -375,6 +470,24 @@ class Node(ExternalModel):
     def erase_snapshot(self, name):
         self.driver.node_delete_snapshot(node=self, name=name)
 
+    @classmethod
+    def node_create(cls, name, environment=None, role=None, vcpu=1,
+                    memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
+                    os_type='hvm', architecture='x86_64', boot=None):
+        """Create node
+
+        :rtype : Node
+        """
+        if not boot:
+            boot = ['network', 'cdrom', 'hd']
+        node = cls.objects.create(
+            name=name, environment=environment,
+            role=role, vcpu=vcpu, memory=memory,
+            has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
+            os_type=os_type, architecture=architecture, boot=json.dumps(boot)
+        )
+        return node
+
 
 class Volume(ExternalModel):
     capacity = models.BigIntegerField(null=False)
@@ -410,6 +523,42 @@ class Volume(ExternalModel):
     def upload(self, path):
         self.driver.volume_upload(self, path)
 
+    @classmethod
+    def volume_get_predefined(cls, uuid):
+        """Get predefined volume
+
+        :rtype : Volume
+        """
+        try:
+            volume = cls.objects.get(uuid=uuid)
+        except cls.DoesNotExist:
+            volume = cls(uuid=uuid)
+        volume.fill_from_exist()
+        volume.save()
+        return volume
+
+    @classmethod
+    def volume_create_child(cls, name, backing_store, format=None,
+                            environment=None):
+        """Create new volume based on backing_store
+
+        :rtype : Volume
+        """
+        return cls.objects.create(
+            name=name, environment=environment,
+            capacity=backing_store.capacity,
+            format=format or backing_store.format, backing_store=backing_store)
+
+    @classmethod
+    def volume_create(cls, name, capacity, format='qcow2', environment=None):
+        """Create volume
+
+        :rtype : Volume
+        """
+        return cls.objects.create(
+            name=name, environment=environment,
+            capacity=capacity, format=format)
+
 
 class DiskDevice(models.Model):
     device = choices('disk', 'cdrom')
@@ -418,6 +567,18 @@ class DiskDevice(models.Model):
     target_dev = models.CharField(max_length=255, null=False)
     node = models.ForeignKey(Node, null=False)
     volume = models.ForeignKey(Volume, null=True)
+
+    @classmethod
+    def node_attach_volume(cls, node, volume, device='disk', type='file',
+                           bus='virtio', target_dev=None):
+        """Attach volume to node
+
+        :rtype : DiskDevice
+        """
+        return cls.objects.create(
+            device=device, type=type, bus=bus,
+            target_dev=target_dev or node.next_disk_name(),
+            volume=volume, node=node)
 
 
 class Interface(models.Model):
@@ -439,7 +600,41 @@ class Interface(models.Model):
     def add_address(self, address):
         Address.objects.create(ip_address=address, interface=self)
 
+    def interface_create(self, network, node, type='network',
+                         mac_address=None, model='virtio',
+                         interface_map={}):
+        """Create interface
+
+        :rtype : Interface
+        """
+        interfaces = []
+
+        def _create(mac_addr=None):
+            interface = Interface.objects.create(
+                network=network, node=node, type=type,
+                mac_address=mac_addr or generate_mac(),
+                model=model)
+            interface.add_address(str(network.next_ip()))
+            return interface
+
+        if interface_map:
+            if len(interface_map[network.name]) > 0:
+                for iface in interface_map[network.name]:
+                    interfaces.append(_create())
+                return interfaces
+        else:
+            return _create(mac_address)
+
 
 class Address(models.Model):
     ip_address = models.GenericIPAddressField()
     interface = models.ForeignKey(Interface)
+
+    @classmethod
+    def network_create_address(cls, ip_address, interface):
+        """Create address
+
+        :rtype : Address
+        """
+        return cls.objects.create(ip_address=ip_address,
+                                  interface=interface)
