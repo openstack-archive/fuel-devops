@@ -76,6 +76,12 @@ class TestNetworkXml(BaseTestXMLBuilder):
     </ip>'''.format(ip, prefix, self.net.tftp_root_dir)
         self.assertIn(str, xml)
 
+    def test_network_with_uuid(self):
+        uuid = '123456890'
+        self.net.uuid = uuid
+        xml = self.xml_builder.build_network_xml(self.net)
+        self.assertIn('<uuid>{0}</uuid>'.format(uuid), xml)
+
 
 class TestVolumeXml(BaseTestXMLBuilder):
 
@@ -114,6 +120,12 @@ class TestVolumeXml(BaseTestXMLBuilder):
         <path>volume_path_mock</path>
         <format type="{0}" />
     </backingStore>'''.format(self.vol.backing_store.format), xml)
+
+    def test_volume_with_uuid(self):
+        uuid = '123456890'
+        self.net.uuid = uuid
+        xml = self.xml_builder.build_volume_xml(self.net)
+        self.assertIn('<uuid>{0}</uuid>'.format(uuid), xml)
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
@@ -253,3 +265,9 @@ class TestNodeXml(BaseTestXMLBuilder):
             <target port="0" type="serial" />
         </console>
     </devices>''', xml)
+
+    def test_node_with_uuid(self):
+        uuid = '123456890'
+        self.net.uuid = uuid
+        xml = self.xml_builder.build_node_xml(self.net)
+        self.assertIn('<uuid>{0}</uuid>'.format(uuid), xml)
