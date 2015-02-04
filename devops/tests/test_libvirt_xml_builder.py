@@ -132,6 +132,12 @@ class TestNetworkXml(BaseTestXMLBuilder):
             ip, prefix)
         self.assertXMLIn(str, xml)
 
+    def test_network_with_uuid(self):
+        uuid = '123456890'
+        self.net.uuid = uuid
+        xml = self.xml_builder.build_network_xml(self.net)
+        self.assertIn('<uuid>{0}</uuid>'.format(uuid), xml)
+
 
 class TestVolumeXml(BaseTestXMLBuilder):
 
@@ -187,6 +193,13 @@ class TestVolumeXml(BaseTestXMLBuilder):
         <path>{path}</path>
         <format type="{format}" />
     </backingStore>'''.format(path=self.volume_path, format=format), xml)
+
+    def test_volume_with_uuid(self):
+        uuid = '123456890'
+        volume = factories.VolumeFactory()
+        volume.uuid = uuid
+        xml = self.get_xml(volume)
+        self.assertIn('<key>{0}</key>'.format(uuid), xml)
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
@@ -386,3 +399,9 @@ class TestNodeXml(BaseTestXMLBuilder):
             <target port="0" type="serial" />
         </console>
     </devices>''', xml)
+
+    def test_node_with_uuid(self):
+        uuid = '123456890'
+        self.node.uuid = uuid
+        xml = self.xml_builder.build_node_xml(self.node, "test_emulator")
+        self.assertIn('<uuid>{0}</uuid>'.format(uuid), xml)
