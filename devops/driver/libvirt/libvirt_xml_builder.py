@@ -40,6 +40,8 @@ class LibvirtXMLBuilder(object):
             :rtype : String
         """
         network_xml = XMLBuilder('network')
+        if network.uuid:
+            network_xml.uuid(network.uuid)
         network_xml.name(self._get_name(
             network.environment and network.environment.name or '',
             network.name))
@@ -84,6 +86,8 @@ class LibvirtXMLBuilder(object):
             :rtype : String
         """
         volume_xml = XMLBuilder('volume')
+        if volume.uuid:
+            volume_xml.uuid(volume.uuid)
         volume_xml.name(
             self._get_name(
                 volume.environment and volume.environment.name or '',
@@ -151,6 +155,8 @@ class LibvirtXMLBuilder(object):
             :rtype : String
         """
         node_xml = XMLBuilder("domain", type=node.hypervisor)
+        if node.uuid:
+            node_xml.uuid(node.uuid)
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
