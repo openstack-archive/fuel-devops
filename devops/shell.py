@@ -29,6 +29,14 @@ class Shell(object):
     def execute(self):
         self.commands.get(self.params.command)(self)
 
+    def do_tslist(self):
+        env_list = Environment.list().values('name', 'created')
+        for env in env_list:
+            created_text = env['created'].strftime('%Y-%m-%d_%H:%M:%S')
+            print('{0} {1}'.format(env['name'], created_text))
+
+        return env_list
+
     def do_list(self):
         env_list = Environment.list().values('name')
         for env in env_list:
@@ -129,6 +137,7 @@ class Shell(object):
 
     commands = {
         'list': do_list,
+        'tslist': do_tslist,
         'show': do_show,
         'erase': do_erase,
         'start': do_start,
@@ -179,6 +188,10 @@ class Shell(object):
         subparsers.add_parser('list',
                               parents=[list_ips_parser],
                               help="Show virtual environments",
+                              description="Show virtual environments on host")
+        subparsers.add_parser('tslist',
+                              parents=[list_ips_parser],
+                              help="Show virtual environments (w\ timestamps)",
                               description="Show virtual environments on host")
         subparsers.add_parser('show', parents=[name_parser],
                               help="Show VMs in environment",
