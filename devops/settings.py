@@ -42,6 +42,10 @@ SSH_CREDENTIALS = {
     'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
+FUEL_SSH_CREDENTIALS = {
+    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
@@ -163,3 +167,8 @@ HARDWARE = {
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
+
+# Create snapshots as last step in test-case
+MAKE_SNAPSHOT = os.environ.get('MAKE_SNAPSHOT', 'false') == 'true'
+
+FUEL_STATS_CHECK = os.environ.get('FUEL_STATS_CHECK', 'false') == 'true'
