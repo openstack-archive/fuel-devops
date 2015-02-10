@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,10 @@
 #    under the License.
 
 import functools
-from time import sleep
+import time
+
+from devops import logger
+from devops import settings
 
 
 def retry(count=10, delay=1):
@@ -29,8 +32,27 @@ def retry(count=10, delay=1):
                     i += 1
                     if i >= count:
                         raise
-                    sleep(delay)
+                    time.sleep(delay)
 
         return wrapper
 
     return decorator
+
+
+def revert_info(snapshot_name, description=""):
+    logger.info("<" * 5 + "*" * 100 + ">" * 5)
+    logger.info("{} Make snapshot: {}".format(description, snapshot_name))
+    logger.info("You could revert this snapshot using [{command}]".format(
+        command="dos.py revert {env} --snapshot-name {name} && "
+        "dos.py resume {env} && virsh net-dumpxml {env}_admin | "
+        "grep -P {pattern} -o "
+        "| awk {awk_command}".format(
+            env=settings.ENV_NAME,
+            name=snapshot_name,
+            pattern="\"(\d+\.){3}\"",
+            awk_command="'{print \"Admin node IP: \"$0\"2\"}'"
+        )
+    )
+    )
+
+    logger.info("<" * 5 + "*" * 100 + ">" * 5)

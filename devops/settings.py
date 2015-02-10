@@ -43,6 +43,10 @@ SSH_CREDENTIALS = {
     'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
+FUEL_SSH_CREDENTIALS = {
+    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
@@ -158,6 +162,14 @@ DHCP = {
     'management': False,
     'private': False,
     'storage': False,
+}
+
+INTERFACES = {
+    'admin': 'eth0',
+    'public': 'eth1',
+    'management': 'eth2',
+    'private': 'eth3',
+    'storage': 'eth4',
 }
 
 NODES_COUNT = os.environ.get('NODES_COUNT', 10)

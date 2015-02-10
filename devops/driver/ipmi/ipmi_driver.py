@@ -18,8 +18,8 @@ import shutil
 import subprocess
 import time
 
+from devops.decorators import retry
 from devops import error
-from devops.helpers.retry import retry
 from devops import logger as LOGGER
 
 
