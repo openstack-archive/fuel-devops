@@ -27,7 +27,7 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'fuel-devops',
+        'NAME': 'fuel_devops',
         'USER': 'postgres',
         'PASSWORD': '',
         'HOST': '',
@@ -97,7 +97,7 @@ else:
     ADMIN_FORWARD = os.environ.get('ADMIN_FORWARD', FORWARD_DEFAULT or 'nat')
     PUBLIC_FORWARD = os.environ.get('PUBLIC_FORWARD', FORWARD_DEFAULT or 'nat')
 
-POOL_DEFAULT = os.environ.get('POOL_DEFAULT', '10.108.0.0/16:24')
+POOL_DEFAULT = os.environ.get('POOL_DEFAULT', '10.109.0.0/16:24')
 POOL_ADMIN = os.environ.get('POOL_ADMIN', POOL_DEFAULT)
 POOL_PUBLIC = os.environ.get('POOL_PUBLIC', POOL_DEFAULT)
 POOL_MANAGEMENT = os.environ.get('POOL_MANAGEMENT', POOL_DEFAULT)
