@@ -28,10 +28,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'fuel_devops',
-        'USER': 'postgres',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
+        'USER': 'fuel_devops',
+        'PASSWORD': 'fuel_devops',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
         'TEST_CHARSET': 'UTF8'
     }
 }
