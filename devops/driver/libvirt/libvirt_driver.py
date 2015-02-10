@@ -18,9 +18,9 @@ import libvirt
 from time import sleep
 import xml.etree.ElementTree as ET
 
+from devops.decorators import retry
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
-from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
 
