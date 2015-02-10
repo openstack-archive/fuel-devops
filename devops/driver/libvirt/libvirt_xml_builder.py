@@ -13,6 +13,7 @@
 #    under the License.
 
 import json
+import uuid
 
 from ipaddr import IPAddress
 from ipaddr import IPNetwork
@@ -123,6 +124,7 @@ class LibvirtXMLBuilder(object):
             device_xml.driver(type=disk_device.volume.format, cache="unsafe")
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
             device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
+            device_xml.serial(''.join(uuid.uuid4().hex))
 
     def _build_interface_device(self, device_xml, interface):
         """Build xml for interface
