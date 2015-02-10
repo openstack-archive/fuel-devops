@@ -11,11 +11,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import time
 
 from django.conf import settings
 from django.db import models
 from ipaddr import IPNetwork
 
+from devops.decorators import revert_info
 from devops.helpers.helpers import _get_file_size
 from devops import logger
 from devops.models.base import DriverModel
@@ -281,7 +283,7 @@ class Environment(DriverModel):
             vol_child = Volume.volume_create_child(
                 name=name + '-system',
                 backing_store=volume,
-                environment=self.get_virtual_environment()
+                environment=self
             )
             DiskDevice.node_attach_volume(
                 node=node,
@@ -292,13 +294,42 @@ class Environment(DriverModel):
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
         if router_name == self.admin_net2:
-            return str(IPNetwork(self.get_virtual_environment().
-                                 get_network(name=router_name).ip_network)[2])
+            return str(IPNetwork(
+                self.get_network(name=router_name).ip_network)[2])
         return str(
             IPNetwork(self.get_network(name=router_name).ip_network)[1])
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         return Nodes(self, self.node_roles)
+
+    def make_snapshot(self, snapshot_name, is_make, fuel_stats_check,
+                      description=""):
+        if is_make:
+            self.suspend(verbose=False)
+            time.sleep(10)
+            self.snapshot(snapshot_name, force=True)
+            revert_info(snapshot_name, description)
+        if fuel_stats_check:
+            self.resume()
+            try:
+                self.nodes().admin.await(self.admin_net, timeout=60)
+            except Exception:
+                logger.error('Admin node is unavailable via SSH after '
+                             'environment resume ')
+                raise
+
+    # @logwrap
+    def get_admin_remote(self,
+                         login=settings.FUEL_SSH_CREDENTIALS['login'],
+                         password=settings.FUEL_SSH_CREDENTIALS['password']):
+        """SSH to admin node
+
+        :rtype : SSHClient
+        """
+        return self.nodes().admin.remote(
+            self.admin_net,
+            login=login,
+            password=password)
 
 
 class NodeRoles(object):
