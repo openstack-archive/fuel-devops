@@ -43,6 +43,10 @@ SSH_CREDENTIALS = {
     'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
+FUEL_SSH_CREDENTIALS = {
+    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
+    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
@@ -160,6 +164,14 @@ DHCP = {
     'storage': False,
 }
 
+INTERFACES = {
+    'admin': 'eth0',
+    'public': 'eth1',
+    'management': 'eth2',
+    'private': 'eth3',
+    'storage': 'eth4',
+}
+
 NODES_COUNT = os.environ.get('NODES_COUNT', 10)
 
 HARDWARE = {
@@ -227,3 +239,8 @@ if MULTIPLE_NETWORKS:
         'CUSTOM_INTERFACE_ORDER',
         'admin2,public2,management2,private2,storage2')
     INTERFACE_ORDER.extend(CUSTOM_INTERFACE_ORDER.split(','))
+
+# Create snapshots as last step in test-case
+MAKE_SNAPSHOT = os.environ.get('MAKE_SNAPSHOT', 'false') == 'true'
+
+FUEL_STATS_CHECK = os.environ.get('FUEL_STATS_CHECK', 'false') == 'true'
