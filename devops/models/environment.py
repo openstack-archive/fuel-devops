@@ -15,7 +15,9 @@
 from django.conf import settings
 from django.db import models
 from ipaddr import IPNetwork
+import time
 
+from devops.decorators import revert_info
 from devops.helpers.helpers import _get_file_size
 from devops import logger
 from devops.models.base import DriverModel
@@ -281,7 +283,7 @@ class Environment(DriverModel):
             vol_child = Volume.volume_create_child(
                 name=name + '-system',
                 backing_store=volume,
-                environment=self.get_virtual_environment()
+                environment=self
             )
             DiskDevice.node_attach_volume(
                 node=node,
@@ -292,13 +294,29 @@ class Environment(DriverModel):
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
         if router_name == self.admin_net2:
-            return str(IPNetwork(self.get_virtual_environment().
-                                 get_network(name=router_name).ip_network)[2])
+            return str(IPNetwork(
+                self.get_network(name=router_name).ip_network)[2])
         return str(
             IPNetwork(self.get_network(name=router_name).ip_network)[1])
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         return Nodes(self, self.node_roles)
+
+    def make_snapshot(self, snapshot_name, description="", is_make=False):
+        if settings.MAKE_SNAPSHOT or is_make:
+            self.suspend(verbose=False)
+            time.sleep(10)
+            self.snapshot(snapshot_name, force=True)
+            revert_info(snapshot_name, description)
+        if settings.FUEL_STATS_CHECK:
+            self.resume()
+            try:
+                self.nodes().admin.await(
+                    self.admin_net, timeout=60)
+            except Exception:
+                logger.error('Admin node is unavailable via SSH after '
+                             'environment resume ')
+                raise
 
 
 class NodeRoles(object):
