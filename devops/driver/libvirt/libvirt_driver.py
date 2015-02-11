@@ -433,6 +433,28 @@ class DevopsDriver(object):
                                                             len(key_code), 0)
 
     @retry()
+    def node_set_vcpu(self, node, vcpu):
+        """Set VCPU
+
+        :type volume: Volume
+            :rtype : None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain.setVcpusFlags(vcpu, 4)
+        domain.setVcpusFlags(vcpu, 2)
+
+    @retry()
+    def node_set_memory(self, node, memory):
+        """Set VCPU
+
+        :type volume: Volume
+            :rtype : None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain.setMaxMemory(memory)
+        domain.setMemoryFlags(memory, 2)
+
+    @retry()
     def volume_define(self, volume, pool=None):
         """Define volume
 
@@ -445,6 +467,15 @@ class DevopsDriver(object):
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume), 0)
         volume.uuid = libvirt_volume.key()
+
+    @retry()
+    def volume_allocation(self, volume):
+        """Get volume allocation
+
+        :type volume: Volume
+            :rtype : Long
+        """
+        return self.conn.storageVolLookupByKey(volume.uuid).info()[2]
 
     @retry()
     def volume_path(self, volume):

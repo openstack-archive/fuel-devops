@@ -22,6 +22,9 @@ from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
 from devops.models.base import choices
 from devops.models.base import DriverModel
+from devops.models.network import DiskDevice
+from devops.models.network import Interface
+from devops.models.volume import Volume
 
 
 class NodeManager(models.Manager):
@@ -156,6 +159,92 @@ class Node(DriverModel):
 
     def erase_snapshot(self, name):
         self.driver.node_delete_snapshot(node=self, name=name)
+
+    def set_vcpu(self, vcpu):
+        """Set vcpu count on node
+
+        param: vcpu: Integer
+            :rtype : None
+        """
+        if vcpu != self.vcpu:
+            self.vcpu = vcpu
+            self.driver.node_set_vcpu(node=self, vcpu=vcpu)
+            self.save()
+
+    def set_memory(self, memory):
+        """Set memory size on node
+
+        param: memory: Integer
+            :rtype : None
+        """
+        if memory != self.memory:
+            self.memory = memory
+            self.driver.node_set_memory(node=self, memory=memory * 1024)
+            self.save()
+
+    def attach_to_networks(self, network_names=None):
+        """Attache node to several networks
+
+
+        param: network_names: List
+            :rtype : None
+        """
+        if network_names is None:
+            network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
+        for name in network_names:
+            network = self.environment.get_network(name=name)
+            if network is not None:
+                Interface.interface_create(network, self)
+
+    def attach_disks(self,
+                     disknames_capacity=None,
+                     format='qcow2', device='disk', bus='virtio',
+                     force_define=False):
+        """Attach several disks to node
+
+
+        param: disknames_capacity: Dict
+        param: format: String
+        param: device: String
+        param: bus: String
+        param: force_define: Bool
+            :rtype : None
+        """
+        if disknames_capacity is None:
+            disknames_capacity = {
+                'system': 50 * 1024 ** 3,
+                'swift': 50 * 1024 ** 3,
+                'cinder': 50 * 1024 ** 3,
+            }
+
+        for diskname, capacity in disknames_capacity.iteritems():
+            self.attach_disk(name=diskname,
+                             capacity=capacity,
+                             force_define=force_define)
+
+    def attach_disk(self, name, capacity, format='qcow2',
+                    device='disk', bus='virtio', force_define=False):
+        """Attach disk to node
+
+
+        param: disknames_capacity: Dict
+        param: format: String
+        param: device: String
+        param: bus: String
+        param: force_define: Bool
+            :rtype : DiskDevice
+        """
+        vol_name = "%s-%s" % (self.name, name)
+        new_volume = Volume.volume_create(name=vol_name,
+                                          capacity=capacity,
+                                          environment=self.environment,
+                                          format=format)
+        if force_define:
+            new_volume.define()
+        return DiskDevice.node_attach_volume(node=self,
+                                             volume=new_volume,
+                                             device=device,
+                                             bus=bus)
 
     @classmethod
     def node_create(cls, name, environment=None, role=None, vcpu=1,

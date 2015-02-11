@@ -51,6 +51,16 @@ TIME_ZONE = 'UTC'
 
 REBOOT_TIMEOUT = os.environ.get('REBOOT_TIMEOUT', None)
 
+DEFAULT_DOMAIN = 'domain.local'
+DEFAULT_DNS = '8.8.8.8'
+DEFAULT_MASTER_HOSTNAME = 'nailgun'
+DEFAULT_MASTER_FQDN = "{hostname}.{domain}".format(
+    hostname=DEFAULT_MASTER_HOSTNAME,
+    domain=DEFAULT_DOMAIN)
+
+MASTER_FQDN = os.environ.get('MASTER_FQDN', DEFAULT_MASTER_FQDN)
+MASTER_DNS = os.environ.get('MASTER_DNS', DEFAULT_DNS)
+
 try:
     from local_settings import *  # noqa
 except ImportError:
