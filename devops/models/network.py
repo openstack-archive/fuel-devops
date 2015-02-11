@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
@@ -65,6 +66,14 @@ class Network(DriverModel):
     @property
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
+
+    @property
+    def netmask(self):
+        return IPNetwork(self.ip_network).netmask
+
+    @property
+    def default_gw(self):
+        return IPNetwork(self.ip_network)[1]
 
     def next_ip(self):
         while True:
@@ -175,6 +184,32 @@ class Network(DriverModel):
             has_pxe_server=has_pxe_server,
             name=name,
             pool=pool)
+
+    @classmethod
+    def create_networks(cls, environment, network_names=None,
+                        has_dhcp=False, has_pxe=False, forward='nat',
+                        pool=None):
+        """Create several networks
+
+        :param environment: Environment
+        :param network_names: List
+        :param has_dhcp: Bool
+        :param has_pxe: Bool
+        :param forward: String
+        :param pool: IpNetworksPool
+            :rtype : List
+        """
+        if network_names is None:
+            network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
+        networks = []
+        for name in network_names:
+            net = cls.network_create(name=name, environment=environment,
+                                     has_dhcp_server=has_dhcp,
+                                     has_pxe_server=has_pxe,
+                                     forward=forward,
+                                     pool=pool)
+            networks.append(net)
+        return networks
 
 
 class DiskDevice(models.Model):

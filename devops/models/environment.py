@@ -71,7 +71,7 @@ class Environment(DriverModel):
     def add_empty_volume(self, node, name,
                          capacity=settings.NODE_VOLUME_SIZE * 1024 * 1024
                          * 1024, device='disk', bus='virtio', format='qcow2'):
-        DiskDevice.node_attach_volume(
+        return DiskDevice.node_attach_volume(
             node=node,
             volume=Volume.volume_create(
                 name=name,
@@ -262,20 +262,23 @@ class Environment(DriverModel):
         return node
 
     # @logwrap
-    def describe_admin_node(self, name, networks):
+    def describe_admin_node(self, name, networks,
+                            vcpu=None, memory=None,
+                            iso_path=None):
         node = self.add_node(
-            memory=settings.HARDWARE.get("admin_node_memory", 1024),
-            vcpu=settings.HARDWARE.get("admin_node_cpu", 1),
+            memory=memory or settings.HARDWARE.get("admin_node_memory", 1024),
+            vcpu=vcpu or settings.HARDWARE.get("admin_node_cpu", 1),
             name=name,
             boot=['hd', 'cdrom'])
         self.create_interfaces(networks, node)
 
         if self.os_image is None:
+            iso = iso_path or settings.ISO_PATH
             self.add_empty_volume(node, name + '-system')
             self.add_empty_volume(
                 node,
                 name + '-iso',
-                capacity=_get_file_size(settings.ISO_PATH),
+                capacity=_get_file_size(iso),
                 format='raw',
                 device='cdrom',
                 bus='ide')
@@ -284,7 +287,7 @@ class Environment(DriverModel):
             vol_child = Volume.volume_create_child(
                 name=name + '-system',
                 backing_store=volume,
-                environment=self.get_virtual_environment()
+                environment=self
             )
             DiskDevice.node_attach_volume(
                 node=node,
@@ -296,8 +299,8 @@ class Environment(DriverModel):
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
         if router_name == self.admin_net2:
-            return str(IPNetwork(self.get_virtual_environment().
-                                 get_network(name=router_name).ip_network)[2])
+            return str(IPNetwork(self.get_network(name=router_name).
+                       ip_network)[2])
         return str(
             IPNetwork(self.get_network(name=router_name).ip_network)[1])
 
