@@ -259,20 +259,23 @@ class Environment(DriverModel):
         return node
 
     # @logwrap
-    def describe_admin_node(self, name, networks):
+    def describe_admin_node(self, name, networks,
+                            vcpu=None, memory=None,
+                            iso_path=None):
         node = self.add_node(
-            memory=settings.HARDWARE.get("admin_node_memory", 1024),
-            vcpu=settings.HARDWARE.get("admin_node_cpu", 1),
+            memory=memory or settings.HARDWARE.get("admin_node_memory", 1024),
+            vcpu=vcpu or settings.HARDWARE.get("admin_node_cpu", 1),
             name=name,
             boot=['hd', 'cdrom'])
         self.create_interfaces(networks, node)
 
         if self.os_image is None:
+            iso = iso_path or settings.ISO_PATH
             self.add_empty_volume(node, name + '-system')
             self.add_empty_volume(
                 node,
                 name + '-iso',
-                capacity=_get_file_size(settings.ISO_PATH),
+                capacity=_get_file_size(iso),
                 format='raw',
                 device='cdrom',
                 bus='ide')
@@ -281,7 +284,7 @@ class Environment(DriverModel):
             vol_child = Volume.volume_create_child(
                 name=name + '-system',
                 backing_store=volume,
-                environment=self.get_virtual_environment()
+                environment=self
             )
             DiskDevice.node_attach_volume(
                 node=node,
@@ -292,13 +295,68 @@ class Environment(DriverModel):
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
         if router_name == self.admin_net2:
-            return str(IPNetwork(self.get_virtual_environment().
-                                 get_network(name=router_name).ip_network)[2])
+            return str(IPNetwork(self.get_network(name=router_name).
+                       ip_network)[2])
         return str(
             IPNetwork(self.get_network(name=router_name).ip_network)[1])
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         return Nodes(self, self.node_roles)
+
+    def attach_node_to_networks(self, node, names_list=None):
+
+        if names_list is None:
+            names_list = ('admin', 'public', 'managment',
+                          'private', 'storage')
+        for name in names_list:
+            network = self.get_network(name=name)
+            if network is not None:
+                Interface.interface_create(network, node)
+
+    def attach_disks_to_node(self, node,
+                             disknames_capacity=None,
+                             format='qcow2', device='disk', bus='virtio'):
+        if disknames_capacity is None:
+            disknames_capacity = {
+                'system': 50 * 1024 ** 3,
+                'swift': 50 * 1024 ** 3,
+                'cinder': 50 * 1024 ** 3,
+            }
+
+        for diskname, capacity in disknames_capacity.iteritems():
+            self.attach_disk_to_node(node=node, name=diskname,
+                                     capacity=capacity)
+
+    def attach_disk_to_node(self, node, name, capacity, format='qcow2',
+                            device='disk', bus='virtio'):
+        vol_name = "%s-%s" % (node.name, name)
+        new_volume = Volume.volume_create(name=vol_name,
+                                          capacity=capacity,
+                                          environment=self,
+                                          format=format)
+        # new_volume.define()
+        return DiskDevice.node_attach_volume(node=node,
+                                             volume=new_volume,
+                                             device=device,
+                                             bus=bus)
+
+    def create_all_networks(self, names_list=None,
+                            has_dhcp=False, has_pxe=False, forward='nat',
+                            pool=None):
+        if names_list is None:
+            names_list = ('admin', 'public', 'managment',
+                          'private', 'storage')
+        networks = []
+        for name in names_list:
+            net = Network.network_create(name=name, environment=self,
+                                         has_dhcp_server=has_dhcp,
+                                         has_pxe_server=has_pxe,
+                                         forward=forward,
+                                         pool=pool)
+            networks.append(net)
+            # net.define()
+            # net.start()
+        return networks
 
 
 class NodeRoles(object):

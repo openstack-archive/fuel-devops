@@ -57,6 +57,14 @@ class Network(DriverModel):
     def ip_pool_end(self):
         return IPNetwork(self.ip_network)[-2]
 
+    @property
+    def netmask(self):
+        return IPNetwork(self.ip_network).netmask
+
+    @property
+    def router(self):
+        return IPNetwork(self.ip_network)[1]
+
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(
