@@ -17,8 +17,10 @@ import yaml
 import logging
 import logging.config
 
-__version__ = '2.9.1'
-__release__ = '2.9.1'
+from devops import version
+
+__version__ = version.__version__
+__release__ = version.__release__
 
 log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
