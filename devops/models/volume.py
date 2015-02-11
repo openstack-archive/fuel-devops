@@ -58,6 +58,9 @@ class Volume(DriverModel):
     def upload(self, path):
         self.driver.volume_upload(self, path)
 
+    def get_allocation(self):
+        return self.driver.volume_allocation(self)
+
     @classmethod
     def volume_get_predefined(cls, uuid):
         """Get predefined volume

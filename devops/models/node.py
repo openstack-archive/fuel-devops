@@ -157,6 +157,22 @@ class Node(DriverModel):
     def erase_snapshot(self, name):
         self.driver.node_delete_snapshot(node=self, name=name)
 
+    def set_vcpu(self, vcpu):
+        self.vcpu = vcpu
+        self.driver.node_set_vcpu(node=self, vcpu=vcpu)
+        self.save()
+
+    def set_memory(self, memory):
+        self.memory = memory
+        self.driver.node_set_memory(node=self, memory=memory * 1024)
+        self.save()
+
+    def change_node(self, vcpu=None, memory=None):
+        if vcpu != self.vcpu:
+            self.set_vcpu(vcpu)
+        if memory != self.memory:
+            self.set_memory(memory)
+
     @classmethod
     def node_create(cls, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
