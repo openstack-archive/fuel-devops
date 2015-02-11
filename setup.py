@@ -14,11 +14,11 @@
 
 import os
 
-from devops import __version__
-
 from setuptools import find_packages
 from setuptools import setup
 
+with open('devops/version.py') as f:
+    exec(f.read())
 
 setup(
     name='devops',
