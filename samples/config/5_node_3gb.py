@@ -1,0 +1,14 @@
+HARDWARE = {
+    "admin_node_memory": 1536,
+    "admin_node_cpu": 2,
+    "slave_node_cpu": 2,
+    "slave_node_memory": 3072,
+}
+
+NODES_COUNT = 5
+POOL_DEFAULT = '10.111.0.0/16:24'
+POOL_ADMIN = POOL_DEFAULT
+POOL_PUBLIC = POOL_DEFAULT
+POOL_MANAGEMENT = POOL_DEFAULT
+POOL_PRIVATE = POOL_DEFAULT
+POOL_STORAGE = POOL_DEFAULT
