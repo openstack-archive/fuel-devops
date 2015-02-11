@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import imp
 import os
 
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
@@ -51,6 +52,21 @@ VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
 TIME_ZONE = 'UTC'
 
 REBOOT_TIMEOUT = os.environ.get('REBOOT_TIMEOUT', None)
+
+DEFAULT_DOMAIN = 'domain.local'
+DEFAULT_DNS = '8.8.8.8'
+DEFAULT_MASTER_HOSTNAME = 'nailgun'
+DEFAULT_MASTER_FQDN = "{hostname}.{domain}".format(
+    hostname=DEFAULT_MASTER_HOSTNAME,
+    domain=DEFAULT_DOMAIN)
+
+MASTER_FQDN = os.environ.get('MASTER_FQDN', DEFAULT_MASTER_FQDN)
+MASTER_DNS = os.environ.get('MASTER_DNS', DEFAULT_DNS)
+
+DEFAULT_MASTER_BOOTSTRAP_LOG = '/var/log/puppet/bootstrap_admin_node.log'
+
+MASTER_BOOTSTRAP_LOG = os.environ.get('MASTER_BOOTSTRAP_LOG',
+                                      DEFAULT_MASTER_BOOTSTRAP_LOG)
 
 try:
     from local_settings import *  # noqa
@@ -192,7 +208,7 @@ if MULTIPLE_NETWORKS:
 
     INTERFACES['admin2'] = 'eth5'
 
-    POOL_DEFAULT2 = os.environ.get('POOL_DEFAULT2', '10.108.0.0/16:24')
+    POOL_DEFAULT2 = os.environ.get('POOL_DEFAULT2', '10.109.0.0/16:24')
     POOL_ADMIN2 = os.environ.get('POOL_ADMIN2', POOL_DEFAULT2)
     POOL_PUBLIC2 = os.environ.get('POOL_PUBLIC2', POOL_DEFAULT2)
     POOL_MANAGEMENT2 = os.environ.get('POOL_MANAGEMENT', POOL_DEFAULT2)
@@ -227,3 +243,20 @@ if MULTIPLE_NETWORKS:
         'CUSTOM_INTERFACE_ORDER',
         'admin2,public2,management2,private2,storage2')
     INTERFACE_ORDER.extend(CUSTOM_INTERFACE_ORDER.split(','))
+
+
+# Reload config from exteral file
+
+
+def reload_settings(settings_file):
+    if os.path.isfile(settings_file):
+        ns = imp.load_source('new_settings',
+                             settings_file,
+                             open(settings_file))
+        for param in [item for item in dir(ns) if not item.startswith("__")]:
+            globals()[param] = getattr(ns, param)
+
+CONFIG_FILE = os.environ.get('CONFIG_FILE', None)
+
+if CONFIG_FILE is not None:
+    reload_settings(CONFIG_FILE)
