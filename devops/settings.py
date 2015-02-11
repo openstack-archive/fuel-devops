@@ -27,11 +27,11 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
+        'NAME': 'devops',
+        'USER': 'devops',
+        'PASSWORD': 'devops',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
         'TEST_CHARSET': 'UTF8'
     }
 }
