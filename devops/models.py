@@ -13,6 +13,7 @@
 #    under the License.
 
 import json
+from datetime import datetime
 
 from django.conf import settings
 from django.db import models
@@ -41,6 +42,7 @@ def double_tuple(*args):
 
 class DriverModel(models.Model):
     _driver = None
+    created = models.DateTimeField(auto_now_add=True, default=datetime.now)
 
     class Meta:
         abstract = True
