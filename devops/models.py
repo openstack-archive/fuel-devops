@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
 import json
 
 from django.conf import settings
@@ -41,6 +42,7 @@ def double_tuple(*args):
 
 class DriverModel(models.Model):
     _driver = None
+    created = models.DateTimeField(auto_now_add=True, default=datetime.now)
 
     class Meta:
         abstract = True
