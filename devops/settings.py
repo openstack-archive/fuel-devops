@@ -60,6 +60,12 @@ except ImportError:
 # Settings migrated from Fuel system tests
 #
 
+OPENSTACK_RELEASE_CENTOS = 'centos'
+OPENSTACK_RELEASE_UBUNTU = 'ubuntu'
+OPENSTACK_RELEASE_REDHAT = 'rhos 3.0 for rhel 6.4'
+OPENSTACK_RELEASE = os.environ.get(
+    'OPENSTACK_RELEASE', OPENSTACK_RELEASE_CENTOS).lower()
+
 NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
 ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
 
@@ -160,6 +166,12 @@ HARDWARE = {
     "admin_node_cpu": os.environ.get("ADMIN_NODE_CPU", 2),
     "slave_node_cpu": os.environ.get("SLAVE_NODE_CPU", 1),
 }
+if OPENSTACK_RELEASE_UBUNTU in OPENSTACK_RELEASE:
+    slave_mem_default = 2560
+else:
+    slave_mem_default = 2048
+HARDWARE["slave_node_memory"] = int(
+    os.environ.get("SLAVE_NODE_MEMORY", slave_mem_default))
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
