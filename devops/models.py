@@ -41,6 +41,7 @@ def double_tuple(*args):
 
 class DriverModel(models.Model):
     _driver = None
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         abstract = True
