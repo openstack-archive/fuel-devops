@@ -32,7 +32,7 @@ class Shell(object):
         self.commands.get(self.params.command)(self)
 
     def do_list(self):
-        env_list = self.manager.environment_list().values('name')
+        env_list = self.manager.environment_list().values('name', 'created')
         for env in env_list:
             if self.params.list_ips:
                 cur_env = self.manager.environment_get(env['name'])
@@ -41,6 +41,9 @@ class Shell(object):
                     admin_ip = (cur_env.node_by_name('admin').
                                 get_ip_address_by_network_name('admin'))
                 print('{0}\t{1}'.format(env['name'], admin_ip))
+            elif self.params.timestamps:
+                created_text = env['created'].strftime('%Y-%m-%d_%H:%M:%S')
+                print('{0} {1}'.format(env['name'], created_text))
             else:
                 print(env['name'])
 
@@ -180,6 +183,11 @@ class Shell(object):
                                      action='store_const', const=True,
                                      help='show admin node ip addresses',
                                      default=False)
+        timestamps_parser = argparse.ArgumentParser(add_help=False)
+        timestamps_parser.add_argument('--timestamps', dest='timestamps',
+                                     action='store_const', const=True,
+                                     help='show creation timestamps',
+                                     default=False)
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For addional help use command with -h/--help")
@@ -187,7 +195,7 @@ class Shell(object):
                                            help='available commands',
                                            dest='command')
         subparsers.add_parser('list',
-                              parents=[list_ips_parser],
+                              parents=[list_ips_parser, timestamps_parser],
                               help="Show virtual environments",
                               description="Show virtual environments on host")
         subparsers.add_parser('show', parents=[name_parser],
