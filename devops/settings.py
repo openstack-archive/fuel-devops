@@ -175,3 +175,54 @@ HARDWARE["slave_node_memory"] = int(
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
+
+if MULTIPLE_NETWORKS:
+    FORWARDING['admin2'] = ADMIN_FORWARD
+    FORWARDING['public2'] = PUBLIC_FORWARD
+    FORWARDING['management2'] = MGMT_FORWARD
+    FORWARDING['private2'] = PRIVATE_FORWARD
+    FORWARDING['storage2'] = STORAGE_FORWARD
+
+    DHCP['admin2'] = False
+    DHCP['public2'] = False
+    DHCP['management2'] = False
+    DHCP['private2'] = False
+    DHCP['storage2'] = False
+
+    INTERFACES['admin2'] = 'eth5'
+
+    POOL_DEFAULT2 = os.environ.get('POOL_DEFAULT2', '10.108.0.0/16:24')
+    POOL_ADMIN2 = os.environ.get('POOL_ADMIN2', POOL_DEFAULT2)
+    POOL_PUBLIC2 = os.environ.get('POOL_PUBLIC2', POOL_DEFAULT2)
+    POOL_MANAGEMENT2 = os.environ.get('POOL_MANAGEMENT', POOL_DEFAULT2)
+    POOL_PRIVATE2 = os.environ.get('POOL_PRIVATE', POOL_DEFAULT2)
+    POOL_STORAGE2 = os.environ.get('POOL_STORAGE', POOL_DEFAULT2)
+
+    CUSTOM_POOLS = {
+        'admin2': POOL_ADMIN2,
+        'public2': POOL_PUBLIC2,
+        'management2': POOL_MANAGEMENT2,
+        'private2': POOL_PRIVATE2,
+        'storage2': POOL_STORAGE2,
+    }
+
+    POOLS['admin2'] = os.environ.get(
+        'PUBLIC_POOL2',
+        CUSTOM_POOLS.get('admin2')).split(':')
+    POOLS['public2'] = os.environ.get(
+        'PUBLIC_POOL2',
+        CUSTOM_POOLS.get('public2')).split(':')
+    POOLS['management2'] = os.environ.get(
+        'PUBLIC_POOL2',
+        CUSTOM_POOLS.get('management2')).split(':')
+    POOLS['private2'] = os.environ.get(
+        'PUBLIC_POOL2',
+        CUSTOM_POOLS.get('private2')).split(':')
+    POOLS['storage2'] = os.environ.get(
+        'PUBLIC_POOL2',
+        CUSTOM_POOLS.get('storage2')).split(':')
+
+    CUSTOM_INTERFACE_ORDER = os.environ.get(
+        'CUSTOM_INTERFACE_ORDER',
+        'admin2,public2,management2,private2,storage2')
+    INTERFACE_ORDER.extend(CUSTOM_INTERFACE_ORDER.split(','))
