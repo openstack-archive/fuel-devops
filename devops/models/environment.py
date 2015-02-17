@@ -196,7 +196,7 @@ class Environment(DriverModel):
             networks.append(environment.create_networks(name))
         for name in environment.node_roles.admin_names:
             environment.describe_admin_node(name, networks)
-        for name in environment.node_roles.other_names:
+        for num, name in enumerate(environment.node_roles.other_names):
             if settings.MULTIPLE_NETWORKS:
                 networks1 = [net for net in networks if net.name
                              in settings.NODEGROUPS[0]['pools']]
@@ -204,9 +204,9 @@ class Environment(DriverModel):
                              in settings.NODEGROUPS[1]['pools']]
                 # If slave index is even number, then attach to
                 # it virtual networks from the second network group.
-                if int(name[-2:]) % 2 == 1:
+                if int(num) % 2 == 0:
                     environment.describe_empty_node(name, networks1)
-                elif int(name[-2:]) % 2 == 0:
+                else:
                     environment.describe_empty_node(name, networks2)
             else:
                 environment.describe_empty_node(name, networks)
@@ -240,9 +240,21 @@ class Environment(DriverModel):
     def node_roles(self):
         return NodeRoles(
             admin_names=['admin'],
-            other_names=['slave-%02d' % x for x in range(1, int(
-                settings.NODES_COUNT))]
+            other_names=['slave'] * int(settings.NODES_COUNT)
         )
+
+    def _rename_with_mac(self, node):
+        name = node.name
+        mac = node.get_interface(
+            node=node,
+            network=self.get_network(
+                environment=self,
+                name__contains=self.admin_net)
+        ).mac_address[-5:].replace(':', '-')
+
+        node.name = "{0}_{1}".format(name, mac)
+        node.save()
+        return node.name
 
     def describe_empty_node(self, name, networks):
         node = self.add_node(
@@ -250,6 +262,7 @@ class Environment(DriverModel):
             memory=settings.HARDWARE.get("slave_node_memory", 1024),
             vcpu=settings.HARDWARE.get("slave_node_cpu", 1))
         self.create_interfaces(networks, node)
+        name = self._rename_with_mac(node)
         self.add_empty_volume(node, name + '-system')
 
         if settings.USE_ALL_DISKS:
@@ -315,8 +328,7 @@ class Nodes(object):
         self.others = []
         for node_name in node_roles.admin_names:
             self.admins.append(environment.get_node(name=node_name))
-        for node_name in node_roles.other_names:
-            self.others.append(environment.get_node(name=node_name))
+        self.others = list(set(environment.get_nodes()) - set(self.admins))
         self.slaves = self.others
         self.all = self.slaves + self.admins
         self.admin = self.admins[0]
