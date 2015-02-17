@@ -57,6 +57,12 @@ class Environment(DriverModel):
     def get_nodes(self, *args, **kwargs):
         return self.node_set.filter(*args, **kwargs)
 
+    def get_interface(self, *args, **kwargs):
+        return self.interface_set.get(*args, **kwargs)
+
+    def get_interfaces(self, *args, **kwargs):
+        return self.interface_set.filter(*args, **kwargs)
+
     def add_node(self, memory, name, vcpu=1, boot=None):
         return Node.node_create(
             name=name,
@@ -240,9 +246,22 @@ class Environment(DriverModel):
     def node_roles(self):
         return NodeRoles(
             admin_names=['admin'],
-            other_names=['slave-%02d' % x for x in range(1, int(
+            other_names=['slave' for x in range(1, int(
                 settings.NODES_COUNT))]
         )
+
+    def _rename_with_mac(self, node):
+        name = node.name
+        node.name = "{0}_{1}".format(
+            name,
+            self.get_interface(
+                node=node,
+                network=self.get_network(
+                    environment=self.get_virtual_environment(),
+                    name=self.admin_net)
+            ).mac_address[-5:]) or name
+        node.save()
+        return node.name
 
     def describe_empty_node(self, name, networks):
         node = self.add_node(
@@ -250,6 +269,7 @@ class Environment(DriverModel):
             memory=settings.HARDWARE.get("slave_node_memory", 1024),
             vcpu=settings.HARDWARE.get("slave_node_cpu", 1))
         self.create_interfaces(networks, node)
+        name = self._rename_with_mac(node)
         self.add_empty_volume(node, name + '-system')
 
         if settings.USE_ALL_DISKS:
@@ -315,8 +335,7 @@ class Nodes(object):
         self.others = []
         for node_name in node_roles.admin_names:
             self.admins.append(environment.get_node(name=node_name))
-        for node_name in node_roles.other_names:
-            self.others.append(environment.get_node(name=node_name))
+        self.others = set(environment.get_nodes()) - set(self.admins)
         self.slaves = self.others
         self.all = self.slaves + self.admins
         self.admin = self.admins[0]
