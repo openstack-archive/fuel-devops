@@ -73,7 +73,17 @@ class Node(DriverModel):
         return settings.VNC_PASSWORD
 
     def interface_by_name(self, name):
-        self.interfaces.filter(name=name)
+        self.interfaces.filter(
+            network=self.environment.get_network(
+                environment=self.environment,
+                name=name)
+            )
+
+    def get_interface(self, *args, **kwargs):
+        return self.interface_set.get(*args, **kwargs)
+
+    def get_interfaces(self, *args, **kwargs):
+        return self.interface_set.filter(*args, **kwargs)
 
     def get_ip_address_by_network_name(self, name, interface=None):
         interface = interface or self.interface_set.filter(
