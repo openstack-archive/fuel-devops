@@ -49,7 +49,7 @@ class LibvirtXMLBuilder(object):
         if self.driver.stp:
             stp_val = 'on'
         network_xml.bridge(
-            name="dobr{0}".format(network.id),
+            name="fuelbr{0}".format(network.id),
             stp=stp_val, delay="0")
 
         if not (network.forward is None):

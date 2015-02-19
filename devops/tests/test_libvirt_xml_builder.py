@@ -47,7 +47,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         self.net.has_dhcp_server = False
 
     def test_net_name_bridge_name(self):
-        bridge_name = 'dobr{0}'.format(self.net.id)
+        bridge_name = 'fuelbr{0}'.format(self.net.id)
         xml = self.xml_builder.build_network_xml(self.net)
         self.assertIn(
             '<name>{0}_{1}</name>'
