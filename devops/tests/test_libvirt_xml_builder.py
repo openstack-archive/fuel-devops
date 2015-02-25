@@ -228,19 +228,19 @@ class TestNodeXml(BaseTestXMLBuilder):
         <interface type="network">
             <mac address="mac0" />
             <source network="network_name_mock" />
-            <target dev="donetid0" />
+            <target dev="fuelnetid0" />
             <model type="model0" />
         </interface>
         <interface type="network">
             <mac address="mac1" />
             <source network="network_name_mock" />
-            <target dev="donetid1" />
+            <target dev="fuelnetid1" />
             <model type="model1" />
         </interface>
         <interface type="network">
             <mac address="mac2" />
             <source network="network_name_mock" />
-            <target dev="donetid2" />
+            <target dev="fuelnetid2" />
             <model type="model2" />
         </interface>
         <video>

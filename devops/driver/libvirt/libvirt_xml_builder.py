@@ -141,7 +141,7 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
                 network=self.driver.network_name(interface.network))
-            device_xml.target(dev="donet{0}".format(interface.id))
+            device_xml.target(dev="fuelnet{0}".format(interface.id))
             if not (interface.type is None):
                 device_xml.model(type=interface.model)
 
