@@ -46,6 +46,10 @@ class Network(DriverModel):
     default_pool = None
 
     @property
+    def netmask(self):
+        return IPNetwork(self.ip_network).netmask.compressed
+
+    @property
     def interfaces(self):
         return self.interface_set.all()
 
