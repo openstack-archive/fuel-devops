@@ -38,12 +38,21 @@ class Network(DriverModel):
     forward = choices(
         'nat', 'route', 'bridge', 'private', 'vepa',
         'passthrough', 'hostdev', null=True)
+    # 'ip_network' should be renamed to 'cidr'
     ip_network = models.CharField(max_length=255, unique=True)
 
     _iterhosts = None
 
     # Dirty trick. It should be placed on instance level of Environment class.
     default_pool = None
+
+    @property
+    def ip(self):
+        """Return IPNetwork representation of self.ip_network field.
+
+        :return: IPNetwork()
+        """
+        return IPNetwork(self.ip_network)
 
     @property
     def interfaces(self):
