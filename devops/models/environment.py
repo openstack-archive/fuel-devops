@@ -15,8 +15,11 @@
 from django.conf import settings
 from django.db import models
 from ipaddr import IPNetwork
+from paramiko import Agent
+from paramiko import RSAKey
 
 from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import SSHClient
 from devops import logger
 from devops.models.base import DriverModel
 from devops.models.network import DiskDevice
@@ -299,6 +302,46 @@ class Environment(DriverModel):
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         return Nodes(self, self.node_roles)
+
+    # @logwrap
+    def get_ssh_to_remote(self, ip):
+        keys = []
+        for key_string in ['/root/.ssh/id_rsa',
+                           '/root/.ssh/bootstrap.rsa']:
+            with self.get_admin_remote().open(key_string) as f:
+                keys.append(RSAKey.from_private_key(f))
+
+        return SSHClient(ip,
+                         username=settings.SSH_CREDENTIALS['login'],
+                         password=settings.SSH_CREDENTIALS['password'],
+                         private_keys=keys)
+
+    # @logwrap
+    def get_ssh_to_remote_by_key(self, ip, keyfile):
+        try:
+            with open(keyfile) as f:
+                keys = [RSAKey.from_private_key(f)]
+                return SSHClient(ip, private_keys=keys)
+        except IOError:
+            logger.warning('Loading of SSH key from file failed. Trying to use'
+                           ' SSH agent ...')
+            keys = Agent().get_keys()
+            return SSHClient(ip, private_keys=keys)
+
+    # @logwrap
+    def get_ssh_to_remote_by_name(self, node_name):
+        # node_name=>ip and get rid of self.fuel_web
+        return self.get_ssh_to_remote(
+            self.fuel_web.get_nailgun_node_by_devops_node(
+                self.d_env.get_node(name=node_name))['ip']
+        )
+
+    def _get_network(self, net_name):
+        return str(IPNetwork(self.get_network(name=net_name).ip_network))
+
+    def get_net_mask(self, net_name):
+        return str(
+            IPNetwork(self.get_network(name=net_name).ip_network).netmask)
 
 
 class NodeRoles(object):
