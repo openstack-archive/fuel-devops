@@ -12,19 +12,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ipaddr
-import libvirt
-
 from time import sleep
 import xml.etree.ElementTree as ET
 
+import ipaddr
+from django.conf import settings
+import libvirt
+
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
-from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
-
-from django.conf import settings
+from devops.utils.decorators import retry
 
 
 class DevopsDriver(object):
