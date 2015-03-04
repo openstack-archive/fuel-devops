@@ -19,6 +19,7 @@ from paramiko import Agent
 from paramiko import RSAKey
 
 from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import wait
 from devops.helpers.helpers import SSHClient
 from devops import logger
 from devops.models.base import DriverModel
@@ -312,6 +313,8 @@ class Environment(DriverModel):
 
         :rtype : SSHClient
         """
+        # TODO(ivankliuk): In fact, SSHClient instance to Fuel master node
+        # is returned. We need to provide more informative name for the method.
         return self.nodes().admin.remote(
             self.admin_net,
             login=login,
@@ -340,6 +343,23 @@ class Environment(DriverModel):
                            ' SSH agent ...')
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
+
+    def wait_bootstrap(self):
+        logger.info("Waiting while bootstrapping is in progress")
+        logger.info("Puppet timeout set in {0}".format(
+            float(settings.PUPPET_TIMEOUT)))
+        wait(
+            lambda: not
+            self.get_admin_remote().execute(
+                "grep 'Fuel node deployment' '%s'" % settings.BOOTSTRAP_LOG_PATH
+            )['exit_code'],
+            timeout=(float(settings.PUPPET_TIMEOUT))
+        )
+        result = self.get_admin_remote().execute(
+            "grep 'Fuel node deployment "
+            "complete' '%s'" % settings.BOOTSTRAP_LOG_PATH)['exit_code']
+        if result != 0:
+            raise Exception('Fuel node deployment failed.')
 
 
 class NodeRoles(object):

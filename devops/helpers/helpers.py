@@ -28,11 +28,11 @@ import xmlrpclib
 
 import paramiko
 
+from devops.decorators import retry
 from devops.error import AuthenticationError
 from devops.error import DevopsCalledProcessError
 from devops.error import DevopsError
 from devops.error import TimeoutError
-from devops.helpers.retry import retry
 from devops import logger
 from devops.settings import SSH_CREDENTIALS
 
@@ -520,3 +520,12 @@ def _get_file_size(path):
         finally:
             file.seek(current)
         return size
+
+
+# @logwrap
+def execute_remote_cmd(remote, cmd, exit_code=0):
+    result = remote.execute(cmd)
+    assert_equal(result['exit_code'], exit_code,
+                 'Failed to execute "{0}" on remote host: {1}'.
+                 format(cmd, result))
+    return result['stdout']
