@@ -32,8 +32,8 @@ from devops.error import AuthenticationError
 from devops.error import DevopsCalledProcessError
 from devops.error import DevopsError
 from devops.error import TimeoutError
-from devops.helpers.retry import retry
 from devops import logger
+from devops.utils.decorators import retry
 from devops.settings import SSH_CREDENTIALS
 
 
