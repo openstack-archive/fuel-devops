@@ -20,6 +20,7 @@ from paramiko import RSAKey
 
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.helpers import SSHClient
+from devops.helpers.helpers import wait
 from devops import logger
 from devops.models.base import DriverModel
 from devops.models.network import DiskDevice
@@ -27,6 +28,7 @@ from devops.models.network import Interface
 from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import Volume
+from devops.utils.ssh import sync_node_time
 
 
 class Environment(DriverModel):
@@ -312,6 +314,8 @@ class Environment(DriverModel):
 
         :rtype : SSHClient
         """
+        # TODO(ivankliuk): In fact, SSHClient instance to Fuel master node
+        # is returned. We need to provide more informative name for the method.
         return self.nodes().admin.remote(
             self.admin_net,
             login=login,
@@ -340,6 +344,36 @@ class Environment(DriverModel):
                            ' SSH agent ...')
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
+
+    def wait_bootstrap(self):
+        """Wait for Fuel master node is bootstrapped and then check its status.
+        """
+        logger.info("Waiting while bootstrapping is in progress")
+        logger.info("Puppet timeout set in {0}".format(
+            float(settings.PUPPET_TIMEOUT)))
+
+        master_node_ssh = self.get_admin_remote()
+        cmd = "grep 'Fuel node deployment' '{0}'".format(
+            settings.BOOTSTRAP_LOG_PATH)
+        wait(lambda: not master_node_ssh.execute(cmd)['exit_code'],
+             timeout=(float(settings.PUPPET_TIMEOUT)))
+
+        cmd_deploy_complete = ("grep 'Fuel node deployment complete' "
+                               "'{0}'".format(settings.BOOTSTRAP_LOG_PATH))
+        result = master_node_ssh.execute(cmd_deploy_complete)['exit_code']
+
+        if result != 0:
+            raise Exception('Fuel node deployment failed.')
+
+    def bootstrap_nodes(self, devops_nodes, timeout=600):
+        """Wait until nodes are registered on nailgun and sync their time.
+        """
+        wait(lambda: all(devops_nodes), 15, timeout)
+
+        for node in devops_nodes:
+            sync_node_time(self.get_ssh_to_remote(node["ip"]))
+
+        return devops_nodes
 
 
 class NodeRoles(object):

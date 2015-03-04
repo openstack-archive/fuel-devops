@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 #    under the License.
 
 import functools
-from time import sleep
+import time
 
 
 def retry(count=10, delay=1):
@@ -29,7 +29,7 @@ def retry(count=10, delay=1):
                     i += 1
                     if i >= count:
                         raise
-                    sleep(delay)
+                    time.sleep(delay)
 
         return wrapper
 
