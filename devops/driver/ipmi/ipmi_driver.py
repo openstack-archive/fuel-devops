@@ -19,8 +19,8 @@ import subprocess
 import time
 
 from devops import error
-from devops.helpers.retry import retry
 from devops import logger as LOGGER
+from devops.utils.decorators import retry
 
 
 class DevopsDriver(object):
