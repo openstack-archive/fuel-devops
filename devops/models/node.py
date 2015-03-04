@@ -13,6 +13,7 @@
 #    under the License.
 
 import json
+import time
 
 from django.conf import settings
 from django.db import models
@@ -105,6 +106,9 @@ class Node(DriverModel):
 
     def start(self):
         self.create(verbose=False)
+        # TODO(aglarendil): LP#1317213 temporary sleep
+        # remove after better fix is applied
+        time.sleep(2)
 
     def create(self, verbose=False):
         if verbose or not self.driver.node_active(self):
