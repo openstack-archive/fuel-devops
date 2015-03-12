@@ -329,10 +329,12 @@ class SSHClient(object):
         cmd = "%s\n" % command
         if self.sudo_mode:
             cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
-        chan.exec_command(cmd)
-        if stdout.channel.closed is False:
-            stdin.write('%s\n' % self.password)
-            stdin.flush()
+            chan.exec_command(cmd)
+            if stdout.channel.closed is False:
+                stdin.write('%s\n' % self.password)
+                stdin.flush()
+        else:
+            chan.exec_command(cmd)
         return chan, stdin, stderr, stdout
 
     def mkdir(self, path):
