@@ -296,10 +296,8 @@ class Environment(DriverModel):
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
         if router_name == self.admin_net2:
-            return str(IPNetwork(self.get_virtual_environment().
-                                 get_network(name=router_name).ip_network)[2])
-        return str(
-            IPNetwork(self.get_network(name=router_name).ip_network)[1])
+            return str(self.get_network(name=router_name).ip[2])
+        return str(self.get_network(name=router_name).ip[1])
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         return Nodes(self, self.node_roles)
