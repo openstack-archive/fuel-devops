@@ -17,7 +17,7 @@ import yaml
 import logging
 import logging.config
 
-__version__ = '2.5.5'
+__version__ = '2.5.6'
 
 log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
