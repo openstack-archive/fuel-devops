@@ -167,10 +167,9 @@ HARDWARE = {
     "admin_node_cpu": os.environ.get("ADMIN_NODE_CPU", 2),
     "slave_node_cpu": os.environ.get("SLAVE_NODE_CPU", 1),
 }
-if OPENSTACK_RELEASE_UBUNTU in OPENSTACK_RELEASE:
-    slave_mem_default = 2560
-else:
-    slave_mem_default = 2048
+
+slave_mem_default = 2560
+
 HARDWARE["slave_node_memory"] = int(
     os.environ.get("SLAVE_NODE_MEMORY", slave_mem_default))
 
