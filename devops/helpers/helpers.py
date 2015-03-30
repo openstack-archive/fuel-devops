@@ -161,31 +161,16 @@ def get_node_remote(env, node_name):
 
 def sync_node_time(env, node_name='admin', cmd=None):
     if cmd is None:
-        cmd = "hwclock -s && NTPD=$(find /etc/init.d/ -regex "
-        cmd += "'/etc/init.d/ntp.?'); $NTPD stop; killall ntpd;"
-        cmd += " ntpd -qg && $NTPD start"
+        cmd = "hwclock -s"
 
     if node_name == 'admin':
-        try:
-            # If public NTP servers aren't accessible ntpdate will fail and
-            # ntpd daemon shouldn't be restarted to avoid 'Server has gone
-            # too long without sync' error while syncing time from slaves
             remote = get_admin_remote(env)
-            remote.execute("ntpdate -d $(awk '/^server/{print"
-                           " $2}' /etc/ntp.conf)")
-        except AssertionError as e:
-            logger.warning('Error occurred while synchronizing time on master'
-                           ': {0}'.format(e))
-        else:
-            remote = get_admin_remote(env)
-            remote.execute('service ntpd stop && ntpd -qg && '
-                           'service ntpd start')
     else:
         remote = get_node_remote(env, node_name)
-        remote.execute(cmd)
-    remote.execute('hwclock -w')
+    remote.execute(cmd)
     remote_date = remote.execute('date')['stdout']
     logger.info("Node time: {0}".format(remote_date))
+    return remote_date
 
 
 def get_slave_ip(env, node_mac_address):
