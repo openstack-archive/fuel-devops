@@ -186,7 +186,7 @@ class Environment(DriverModel):
                     (0, len(nodes_to_remove)))
 
     @classmethod
-    def describe_environment(cls):
+    def describe_environment(cls, boot_from='cdrom'):
         environment = cls.create(settings.ENV_NAME)
         networks = []
         interfaces = settings.INTERFACE_ORDER
@@ -198,7 +198,7 @@ class Environment(DriverModel):
         for name in interfaces:
             networks.append(environment.create_networks(name))
         for name in environment.node_roles.admin_names:
-            environment.describe_admin_node(name, networks)
+            environment.describe_admin_node(name, networks, boot_from)
         for name in environment.node_roles.other_names:
             if settings.MULTIPLE_NETWORKS:
                 networks1 = [net for net in networks if net.name
@@ -262,12 +262,21 @@ class Environment(DriverModel):
         return node
 
     # @logwrap
-    def describe_admin_node(self, name, networks):
+    def describe_admin_node(self, name, networks, boot_from='cdrom'):
+        if boot_from == 'cdrom':
+            boot_device = ['hd','cdrom']
+            device='cdrom'
+            bus='ide'
+        elif boot_from == 'usb':
+            boot_device = ['hd']
+            device='disk'
+            bus='usb'
+
         node = self.add_node(
             memory=settings.HARDWARE.get("admin_node_memory", 1024),
             vcpu=settings.HARDWARE.get("admin_node_cpu", 1),
             name=name,
-            boot=['hd', 'cdrom'])
+            boot=boot_device)
         self.create_interfaces(networks, node)
 
         if self.os_image is None:
@@ -277,8 +286,8 @@ class Environment(DriverModel):
                 name + '-iso',
                 capacity=_get_file_size(settings.ISO_PATH),
                 format='raw',
-                device='cdrom',
-                bus='ide')
+                device=device,
+                bus=bus)
         else:
             volume = Volume.volume_get_predefined(self.os_image)
             vol_child = Volume.volume_create_child(
