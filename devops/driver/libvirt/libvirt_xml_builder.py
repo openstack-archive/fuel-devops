@@ -163,7 +163,7 @@ class LibvirtXMLBuilder(object):
 
         node_xml.clock(offset='utc')
         with node_xml.clock.timer(name='rtc',
-                                  tickpolicy='catchup', track='guest'):
+                                  tickpolicy='catchup', track='wall'):
             node_xml.catchup(
                 threshold='123',
                 slew='120',
