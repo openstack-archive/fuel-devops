@@ -111,14 +111,13 @@ class Shell(object):
 
     def do_timesync(self):
         if not self.params.node_name:
-            nodes = {
-                node.name: node.get_vnc_port() for node in self.env.get_nodes()
-            }
-            for node_name in sorted(nodes.keys()):
-                if nodes[node_name] != '-1':
-                    sync_node_time(self.env, node_name)
+            for node in self.env.get_nodes():
+                if node.driver.node_active(node):
+                    datetime = sync_node_time(self.env, node.name)
+                    print('Node [{0}]: {1}'.format(node.name, datetime))
         else:
-            sync_node_time(self.env, self.params.node_name)
+            datetime = sync_node_time(self.env, self.params.node_name)
+            print('Node [{0}]: {1}'.format(params.node_name, datetime))
 
     def do_revert_resume(self):
         self.env.revert(self.params.snapshot_name, flag=False)
