@@ -123,7 +123,16 @@ class LibvirtXMLBuilder(object):
             # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
             device_xml.driver(type=disk_device.volume.format, cache="unsafe")
             device_xml.source(file=self.driver.volume_path(disk_device.volume))
-            device_xml.target(dev=disk_device.target_dev, bus=disk_device.bus)
+            if disk_device.bus == 'usb':
+                device_xml.target(
+                    dev=disk_device.target_dev,
+                    bus=disk_device.bus,
+                    removable='on')
+                device_xml.readonly()
+            else:
+                device_xml.target(
+                    dev=disk_device.target_dev,
+                    bus=disk_device.bus)
             device_xml.serial(''.join(uuid.uuid4().hex))
 
     def _build_interface_device(self, device_xml, interface):
@@ -182,8 +191,11 @@ class LibvirtXMLBuilder(object):
             if self.driver.reboot_timeout:
                 node_xml.bios(rebootTimeout='{0}'.format(
                     self.driver.reboot_timeout))
+            if node.disk_devices.filter(bus='usb'):
+                node_xml.bootmenu(enable='yes', timeout='1000')
 
         with node_xml.devices:
+            node_xml.controller(type='usb', model='nec-xhci')
             node_xml.emulator(emulator)
             if node.has_vnc:
                 if node.vnc_password:
