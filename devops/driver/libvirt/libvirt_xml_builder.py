@@ -195,7 +195,7 @@ class LibvirtXMLBuilder(object):
                 node_xml.bootmenu(enable='yes', timeout='3000')
 
         with node_xml.devices:
-            node_xml.controller(type='usb', model='nec-xhci')
+            node_xml.controller(type='usb', model='nec-usb-xhci')
             node_xml.emulator(emulator)
             if node.has_vnc:
                 if node.vnc_password:
