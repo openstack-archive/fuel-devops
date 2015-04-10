@@ -15,6 +15,8 @@
 import json
 import uuid
 
+from devops import settings
+
 from ipaddr import IPAddress
 from ipaddr import IPNetwork
 from xmlbuilder import XMLBuilder
@@ -169,6 +171,10 @@ class LibvirtXMLBuilder(object):
             node_xml.model(fallback='forbid')
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
+
+        if settings.ENABLE_HUGEPAGES:
+            with node_xml.memoryBacking:
+                node_xml.hugepages
 
         node_xml.clock(offset='utc')
         with node_xml.clock.timer(name='rtc',
