@@ -41,6 +41,7 @@ class DevopsDriver(object):
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
         self.reboot_timeout = None
+        self.use_hugepages = settings.USE_HUGEPAGES
 
         if settings.VNC_PASSWORD:
             self.vnc_password = settings.VNC_PASSWORD

@@ -170,6 +170,10 @@ class LibvirtXMLBuilder(object):
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
+        if self.use_hugepages:
+            with node_xml.memoryBacking:
+                node_xml.hugepages
+
         node_xml.clock(offset='utc')
         with node_xml.clock.timer(name='rtc',
                                   tickpolicy='catchup', track='wall'):
