@@ -65,6 +65,10 @@ class Node(DriverModel):
         return self.diskdevice_set.all()
 
     @property
+    def use_hugepages(self):
+        return settings.USE_HUGEPAGES
+
+    @property
     def interfaces(self):
         return self.interface_set.order_by('id')
 
