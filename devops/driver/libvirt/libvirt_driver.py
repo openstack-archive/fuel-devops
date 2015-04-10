@@ -48,6 +48,9 @@ class DevopsDriver(object):
         if settings.REBOOT_TIMEOUT:
             self.reboot_timeout = settings.REBOOT_TIMEOUT
 
+        if settings.USE_HUGEPAGES
+            self.use_hugepages = settings.USE_HUGEPAGES
+
     def __del__(self):
         self.conn.close()
 
