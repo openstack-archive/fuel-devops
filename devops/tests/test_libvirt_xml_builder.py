@@ -38,6 +38,7 @@ class BaseTestXMLBuilder(TestCase):
         self.xml_builder.driver.reboot_timeout = None
         self.net = mock.Mock()
         self.node = mock.Mock()
+        self.xml_builder.driver.use_hugepages = None
 
     def _reformat_xml(self, xml):
         """Takes XML in string, parses it and returns pretty printted XML."""

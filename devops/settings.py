@@ -68,6 +68,8 @@ DEFAULT_MASTER_BOOTSTRAP_LOG = '/var/log/puppet/bootstrap_admin_node.log'
 MASTER_BOOTSTRAP_LOG = os.environ.get('MASTER_BOOTSTRAP_LOG',
                                       DEFAULT_MASTER_BOOTSTRAP_LOG)
 
+USE_HUGEPAGES = os.environ.get('USE_HUGEPAGES', False) == 'true'
+
 try:
     from local_settings import *  # noqa
 except ImportError:
