@@ -188,7 +188,7 @@ class Node(DriverModel):
         """
         if network_names is None:
             network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
-        networks = self.environment.get_networks(name=network_names)
+        networks = self.environment.get_networks(name__in=network_names)
         self.environment.create_interfaces(networks=networks,
                                            node=self)
 
