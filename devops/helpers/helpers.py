@@ -368,6 +368,7 @@ class SSHClient(object):
         if self.isdir(target):
             target = posixpath.join(target, os.path.basename(source))
 
+        source = os.path.expanduser(source)
         if not os.path.isdir(source):
             self._sftp.put(source, target)
             return
