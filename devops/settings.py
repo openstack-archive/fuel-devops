@@ -178,7 +178,7 @@ DHCP = {
 NODES_COUNT = os.environ.get('NODES_COUNT', 10)
 
 HARDWARE = {
-    "admin_node_memory": os.environ.get("ADMIN_NODE_MEMORY", 2048),
+    "admin_node_memory": os.environ.get("ADMIN_NODE_MEMORY", 2560),
     "admin_node_cpu": os.environ.get("ADMIN_NODE_CPU", 2),
     "slave_node_cpu": os.environ.get("SLAVE_NODE_CPU", 1),
 }
