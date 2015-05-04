@@ -83,6 +83,7 @@ OPENSTACK_RELEASE = os.environ.get(
     'OPENSTACK_RELEASE', OPENSTACK_RELEASE_CENTOS).lower()
 
 NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
+ADMIN_NODE_VOLUME_SIZE = int(os.environ.get('ADMIN_NODE_VOLUME_SIZE', 75))
 ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
 
 DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'

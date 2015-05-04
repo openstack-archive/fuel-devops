@@ -283,7 +283,9 @@ class Environment(DriverModel):
 
         if self.os_image is None:
             iso = iso_path or settings.ISO_PATH
-            self.add_empty_volume(node, name + '-system')
+            self.add_empty_volume(node, name + '-system',
+                                  capacity=settings.ADMIN_NODE_VOLUME_SIZE
+                                  * 1024 * 1024 * 1024)
             self.add_empty_volume(
                 node,
                 name + '-iso',
