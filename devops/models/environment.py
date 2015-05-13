@@ -52,7 +52,7 @@ class Environment(DriverModel):
         return self.network_set.get(*args, **kwargs)
 
     def get_networks(self, *args, **kwargs):
-        return self.network_set.filter(*args, **kwargs)
+        return self.network_set.filter(*args, **kwargs).order_by('id')
 
     def get_node(self, *args, **kwargs):
         return self.node_set.get(*args, **kwargs)
