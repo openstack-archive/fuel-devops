@@ -1,0 +1,14 @@
+Verified+2: Jenkins
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Workflow+1: tatyana-leontovich <tleontovich@mirantis.com>
+Code-Review+1: Ryan Moe <rmoe@mirantis.com>
+Code-Review+1: Dmitry Shulyak <dshulyak@mirantis.com>
+Code-Review+1: Artem Roma <aroma@mirantis.com>
+Verified+1: Fuel CI <fuel-ci-bot@mirantis.com>
+Code-Review+1: Artem Panchenko <apanchenko@mirantis.com>
+Code-Review+1: Dmitry Tyzhnenko <dtyzhnenko@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Fri, 22 May 2015 13:27:19 +0000
+Reviewed-on: https://review.openstack.org/168347
+Project: stackforge/fuel-devops
+Branch: refs/heads/master
