@@ -182,13 +182,8 @@ HARDWARE = {
     "admin_node_memory": os.environ.get("ADMIN_NODE_MEMORY", 2048),
     "admin_node_cpu": os.environ.get("ADMIN_NODE_CPU", 2),
     "slave_node_cpu": os.environ.get("SLAVE_NODE_CPU", 1),
+    "slave_node_memory": os.environ.get("SLAVE_NODE_MEMORY", 2560),
 }
-if OPENSTACK_RELEASE_UBUNTU in OPENSTACK_RELEASE:
-    slave_mem_default = 2560
-else:
-    slave_mem_default = 2048
-HARDWARE["slave_node_memory"] = int(
-    os.environ.get("SLAVE_NODE_MEMORY", slave_mem_default))
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
