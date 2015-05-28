@@ -89,7 +89,8 @@ def admin_change_config(admin_node,
         hostname=hostname,
         nat_interface='',
         dns1=dns1,
-        showmenu='no')
+        showmenu='no',
+        build_images=0)
 
     print("Waiting for admin node to start up")
     wait(lambda: admin_node.driver.node_active(admin_node), 60)

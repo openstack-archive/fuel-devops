@@ -182,7 +182,8 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
-def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
+def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
+             build_images):
     params = {
         'ip': ip,
         'mask': mask,
@@ -191,10 +192,11 @@ def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
         'nat_interface': nat_interface,
         'dns1': dns1,
         'showmenu': showmenu,
+        'build_images': build_images
     }
     keys = (
         "<Wait>\n"
-        "<Esc><Enter>\n"
+        "<Esc>\n"
         "<Wait>\n"
         "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
         " ip=%(ip)s\n"
@@ -204,6 +206,7 @@ def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu):
         " hostname=%(hostname)s\n"
         " dhcp_interface=%(nat_interface)s\n"
         " showmenu=%(showmenu)s\n"
+        " build_images=%(build_images)s\n"
         " <Enter>\n"
     ) % params
     return keys
