@@ -164,7 +164,7 @@ class Shell(object):
         node_count = self.params.node_count
 
         for node in xrange(created_nodes, created_nodes + node_count):
-            node_name = "slave-%i" % (node)
+            node_name = "slave-%02d" % (node)
             node = self.env.add_node(name=node_name, vcpu=vcpu, memory=memory)
             disknames_capacity = {
                 'system': 50 * 1024 ** 3
