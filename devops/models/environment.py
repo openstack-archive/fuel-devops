@@ -30,6 +30,8 @@ from devops.models.volume import Volume
 
 
 class Environment(DriverModel):
+    ssh_connections = set()
+
     class Meta:
         db_table = 'devops_environment'
 
@@ -329,6 +331,13 @@ class Environment(DriverModel):
             login=login,
             password=password)
 
+    @classmethod
+    def _purge_ssh_connections(cls):
+        if cls.ssh_connections:
+            for conn in cls.ssh_connections:
+                conn.close()
+            cls.ssh_connections.clear()
+
     # @logwrap
     def get_ssh_to_remote(self, ip):
         keys = []
@@ -337,10 +346,13 @@ class Environment(DriverModel):
             with self.get_admin_remote().open(key_string) as f:
                 keys.append(RSAKey.from_private_key(f))
 
-        return SSHClient(ip,
-                         username=settings.SSH_CREDENTIALS['login'],
-                         password=settings.SSH_CREDENTIALS['password'],
-                         private_keys=keys)
+        ssh_client = SSHClient(ip,
+                               username=settings.SSH_CREDENTIALS['login'],
+                               password=settings.SSH_CREDENTIALS['password'],
+                               private_keys=keys)
+
+        self.ssh_connections.add(ssh_client)
+        return ssh_client
 
     # @logwrap
     def get_ssh_to_remote_by_key(self, ip, keyfile):
@@ -351,7 +363,11 @@ class Environment(DriverModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = Agent().get_keys()
-        return SSHClient(ip, private_keys=keys)
+
+        ssh_client = SSHClient(ip, private_keys=keys)
+        self.ssh_connections.add(ssh_client)
+
+        return ssh_client
 
 
 class NodeRoles(object):
