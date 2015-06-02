@@ -14,17 +14,17 @@
 
 import ipaddr
 import libvirt
-
-from time import sleep
+import six
 import xml.etree.ElementTree as ET
 
+from devops import logger
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from devops.helpers import has_min_libvirt_version
+from devops.helpers import scancodes
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
-from devops.helpers import scancodes
-from devops import logger
-
 from django.conf import settings
+from time import sleep
 
 
 class DevopsDriver(object):
@@ -34,6 +34,7 @@ class DevopsDriver(object):
                  stp=True, hpet=True):
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
+        self.libvirt_version = self.conn.getLibVersion()
         self.xml_builder = LibvirtXMLBuilder(self)
         self.stp = stp
         self.hpet = hpet
@@ -47,6 +48,8 @@ class DevopsDriver(object):
 
         if settings.REBOOT_TIMEOUT:
             self.reboot_timeout = settings.REBOOT_TIMEOUT
+
+        self.min_libvirt_fsfreeze_version = (1, 2, 5)
 
     def __del__(self):
         self.conn.close()
@@ -362,7 +365,14 @@ class DevopsDriver(object):
         logger.info(xml)
         domain = self.conn.lookupByUUIDString(node.uuid)
         logger.info(domain.state(0))
-        domain.snapshotCreateXML(xml, 0)
+
+        if has_min_libvirt_version(self.libvirt_version, self.min_libvirt_fsfreeze_version):
+            domain.fsFreeze()
+            domain.snapshotCreateXML(xml, 0)
+            domain.fsThaw()
+        else:
+            domain.snapshotCreateXML(xml, 0)
+
         logger.info(domain.state(0))
 
     def _get_snapshot(self, domain, name):

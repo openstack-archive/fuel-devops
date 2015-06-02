@@ -15,26 +15,27 @@
 import BaseHTTPServer
 import httplib
 import logging
+import operator
 import os
+import paramiko
 import posixpath
 import random
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+import six
 import socket
 import stat
-from threading import Thread
 import time
 import urllib
 import xmlrpclib
 
-import paramiko
-
+from devops import logger
 from devops.error import AuthenticationError
 from devops.error import DevopsCalledProcessError
 from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.retry import retry
-from devops import logger
 from devops.settings import SSH_CREDENTIALS
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+from threading import Thread
 
 
 def get_free_port():
@@ -538,3 +539,39 @@ def _get_file_size(path):
         finally:
             file.seek(current)
         return size
+
+
+def convert_libvirt_version_to_int(version):
+    """Convert Libvirt version to an int value
+
+    :type version: String
+    :type version: Tuple
+    :rtype : int
+    """
+    try:
+        if isinstance(version, six.string_types):
+            version = tuple(int(part) for part in version.split('.'))
+        if isinstance(version, tuple):
+            return reduce(lambda x, y: (x * 1000) + y, version)
+    except Exception:
+        msg = _("Hypervisor version %s is invalid.") % version
+        raise DevopsError(msg)
+
+
+def has_min_libvirt_version(cur_ver, req_ver=None, op=operator.lt):
+    """Check if Libvirt version is sufficient
+
+    :type cur_ver: Int
+    :type req_ver: String
+    :type req_ver: Tuple
+    :rtype : bool
+    """
+    try:
+        if req_ver is not None:
+            if op(cur_ver, convert_libvirt_version_to_int(req_ver)):
+                return False
+
+        return True
+    except Exception:
+        return False
+
