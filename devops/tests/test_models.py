@@ -17,7 +17,7 @@ import threading
 
 from django.utils import unittest
 
-from devops.models import double_tuple
+from devops.models.base import double_tuple
 from devops.models import Network
 
 
