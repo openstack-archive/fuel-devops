@@ -85,7 +85,8 @@ OPENSTACK_RELEASE = os.environ.get(
 NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
 ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
 
-DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
+#DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
+DEFAULT_INTERFACE_ORDER = 'storage,public,private,management,admin'
 INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
                                  DEFAULT_INTERFACE_ORDER).split(',')
 

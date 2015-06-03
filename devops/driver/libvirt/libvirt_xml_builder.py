@@ -135,7 +135,7 @@ class LibvirtXMLBuilder(object):
                     bus=disk_device.bus)
             device_xml.serial(''.join(uuid.uuid4().hex))
 
-    def _build_interface_device(self, device_xml, interface):
+    def _build_interface_device(self, device_xml, interface, node = None):
         """Build xml for interface
 
         :param device_xml: XMLBuilder
@@ -148,6 +148,8 @@ class LibvirtXMLBuilder(object):
                         'implemented yet')
         with device_xml.interface(type=interface.type):
             device_xml.mac(address=interface.mac_address)
+            if node != None and node.name != 'admin' and 'admin' in self.driver.network_name(interface.network):
+                device_xml.boot(order='1')
             device_xml.source(
                 network=self.driver.network_name(interface.network))
             device_xml.target(dev="fuelnet{0}".format(interface.id))
@@ -186,13 +188,15 @@ class LibvirtXMLBuilder(object):
 
         with node_xml.os:
             node_xml.type(node.os_type, arch=node.architecture)
-            for boot_dev in json.loads(node.boot):
-                node_xml.boot(dev=boot_dev)
+            if node.name == 'admin':
+                for boot_dev in json.loads(node.boot):
+                    node_xml.boot(dev=boot_dev)
             if self.driver.reboot_timeout:
                 node_xml.bios(rebootTimeout='{0}'.format(
                     self.driver.reboot_timeout))
-            if node.disk_devices.filter(bus='usb'):
-                node_xml.bootmenu(enable='yes', timeout='3000')
+            #if node.disk_devices.filter(bus='usb'):
+            #if node.name != 'admin':
+            #    node_xml.bootmenu(enable='yes', timeout='1')
 
         with node_xml.devices:
             node_xml.controller(type='usb', model='nec-xhci')
@@ -213,7 +217,7 @@ class LibvirtXMLBuilder(object):
             for disk_device in node.disk_devices:
                 self._build_disk_device(node_xml, disk_device)
             for interface in node.interfaces:
-                self._build_interface_device(node_xml, interface)
+                self._build_interface_device(node_xml, interface, node=node)
             with node_xml.video:
                 node_xml.model(type='vga', vram='9216', heads='1')
             with node_xml.serial(type='pty'):
