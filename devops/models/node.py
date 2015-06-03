@@ -72,6 +72,73 @@ class Node(DriverModel):
     def vnc_password(self):
         return settings.VNC_PASSWORD
 
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
+    @property
+    def should_enable_boot_menu(self):
+        """Method of node to decide if it should enable boot menu.
+
+        Boot menu is necessary in cases when boot device is other than first
+        network or disk on kvm. Such cases are: master node usb boot and slave
+        node boot via network not on eth0.
+        Depending on return value of that method libvirt xml builder should
+        add to domain xml element bootmenu with attributes enabled=yes and
+        timeout = 3000.
+
+        :returns: Boolean
+        """
+        return (self.is_admin and self.disk_devices.filter(bus='usb')) or \
+            ((not self.is_admin) and not self.pxe_boot_interface_is_eth0)
+
+    @property
+    def on_second_admin_network(self):
+        """Method to get information about node if it is on second admin net.
+
+        :returns: Boolean
+        """
+        if self.is_admin:
+            return True
+        network = self.environment.get_network(name='admin2')
+        if network:
+            return self.interface_set.filter(network_id=network.id,
+                                             node_id=self.id).exists()
+        else:
+            return False
+
+    @property
+    def pxe_boot_interface_is_eth0(self):
+        """This method checks if admin interface is on eth0.
+
+        It assumes that we are assigning interfaces with 'for node' in
+        self.environment.create_interfaces in which we run on all networks with
+        'for network in networks: Interface.interface_create'.
+        Which is called in
+        'environment.describe_empty_node(name, networks_to_describe)'.
+        And networks in 'devops.environment.describe_environment' are got from:
+        in usual case 'interfaces = settings.INTERFACE_ORDER'
+        or with bonding 'settings.BONDING_INTERFACES.keys()'
+        Later interfaces are used with 'self.interface_set.order_by("id")' in
+        _build_interface_device.
+        So in current state of devops interfaces are ordered as networks in
+        settings.INTERFACE_ORDER or settings.BONDING_INTERFACES.keys().
+        Based on that information we decide if admin net for that node group
+        on that node is on first interface.
+        That method does not apply to admin node because it does not matter
+        from which interface to provide pxe.
+
+        :returns: Boolean
+        """
+        first_net_name = self.environment.get_networks().order_by('id')[0].name
+
+        if self.is_admin:
+            return False
+        elif self.on_second_admin_network:
+            return first_net_name == 'admin2'
+        else:
+            return first_net_name == 'admin'
+
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
 
