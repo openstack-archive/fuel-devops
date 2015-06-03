@@ -219,6 +219,9 @@ class Node(DriverModel):
             self.attach_disk(name=diskname,
                              capacity=capacity,
                              force_define=force_define)
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
 
     def attach_disk(self, name, capacity, format='qcow2',
                     device='disk', bus='virtio', force_define=False):
