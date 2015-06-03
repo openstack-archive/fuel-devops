@@ -16,23 +16,24 @@ import json
 import random
 from unittest import TestCase
 
-from mock import Mock
+import mock
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 
 
 class BaseTestXMLBuilder(TestCase):
     def setUp(self):
-        self.xml_builder = LibvirtXMLBuilder(Mock())
-        self.xml_builder.driver.volume_path = Mock(
+        self.xml_builder = LibvirtXMLBuilder(mock.Mock())
+        self.xml_builder.driver.volume_path = mock.Mock(
             return_value="volume_path_mock"
         )
-        self.xml_builder.driver.network_name = Mock(
+        self.xml_builder.driver.network_name = mock.Mock(
             return_value="network_name_mock"
         )
-        self.net = Mock()
-        self.vol = Mock()
-        self.node = Mock()
+        self.xml_builder.driver.reboot_timeout = None
+        self.net = mock.Mock()
+        self.vol = mock.Mock()
+        self.node = mock.Mock()
 
 
 class TestNetworkXml(BaseTestXMLBuilder):
@@ -68,12 +69,11 @@ class TestNetworkXml(BaseTestXMLBuilder):
         ip = '172.0.1.1'
         prefix = '24'
         self.net.ip_network = "{0}/{1}".format(ip, prefix)
-        self.net.has_pxe_server = True
+        self.net.has_pxe_server = False
         self.net.tftp_root_dir = '/tmp'
         xml = self.xml_builder.build_network_xml(self.net)
-        str = '''
-    <ip address="{0}" prefix="{1}">
-    </ip>'''.format(ip, prefix, self.net.tftp_root_dir)
+        str = '<ip address="{0}" prefix="{1}" />'.format(
+            ip, prefix, self.net.tftp_root_dir)
         self.assertIn(str, xml)
 
 
@@ -103,7 +103,7 @@ class TestVolumeXml(BaseTestXMLBuilder):
     </target>'''.format(self.vol.format), xml)
 
     def test_backing_store(self):
-        self.vol.backing_store = Mock(
+        self.vol.backing_store = mock.Mock(
             uuid="volume_uuid",
             format="raw"
         )
@@ -144,13 +144,15 @@ class TestNodeXml(BaseTestXMLBuilder):
         self.node.architecture = 'test_architecture'
         self.node.boot = '["dev1", "dev2"]'
         self.node.has_vnc = None
-        self.node.disk_devices = []
+        disk_devices = mock.MagicMock()
+        disk_devices.filter.return_value = []
+        self.node.disk_devices = disk_devices
         self.node.interfaces = []
 
     def test_node(self):
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
         boot = json.loads(self.node.boot)
-        self.assertIn('''
+        expected = '''
 <domain type="test_hypervisor">
     <name>test_env_name_test_name</name>
     <cpu mode="host-model">
@@ -158,12 +160,25 @@ class TestNodeXml(BaseTestXMLBuilder):
     </cpu>
     <vcpu>{0}</vcpu>
     <memory unit="KiB">{1}</memory>
+    <clock offset="utc" />
+    <clock>
+        <timer name="rtc" tickpolicy="catchup" track="wall">
+            <catchup limit="10000" slew="120" threshold="123" />
+        </timer>
+    </clock>
+    <clock>
+        <timer name="pit" tickpolicy="delay" />
+    </clock>
+    <clock>
+        <timer name="hpet" present="yes" />
+    </clock>
     <os>
         <type arch="{2}">{3}</type>
         <boot dev="{4}" />
         <boot dev="{5}" />
     </os>
     <devices>
+        <controller model="nec-xhci" type="usb" />
         <emulator>test_emulator</emulator>
         <video>
             <model heads="1" type="vga" vram="9216" />
@@ -177,32 +192,48 @@ class TestNodeXml(BaseTestXMLBuilder):
     </devices>
 </domain>'''.format(self.node.vcpu, str(self.node.memory * 1024),
                     self.node.architecture, self.node.os_type,
-                    boot[0], boot[1]), xml)
+                    boot[0], boot[1])
+        self.assertIn(expected, xml)
 
-    def test_node_devices(self):
-        volumes = [Mock(uuid=i, format='frmt{0}'.format(i)) for i in range(3)]
-        self.node.disk_devices = [
-            Mock(type='type{0}'.format(i), device='device{0}'.format(i),
-                 volume=volumes[i], target_dev='tdev{0}'.format(i),
-                 bus='bus{0}'.format(i)) for i in range(3)]
+    @mock.patch('devops.driver.libvirt.libvirt_xml_builder.uuid')
+    def test_node_devices(self, mock_uuid):
+        mock_uuid.uuid4.return_value.hex = 'disk-serial'
+        volumes = [mock.Mock(uuid=i, format='frmt{0}'.format(i))
+                   for i in range(3)]
+
+        disk_devices = [
+            mock.Mock(
+                type='type{0}'.format(i),
+                device='device{0}'.format(i),
+                volume=volumes[i],
+                target_dev='tdev{0}'.format(i),
+                bus='bus{0}'.format(i)
+            ) for i in range(3)
+        ]
+        self.node.disk_devices = mock.MagicMock()
+        self.node.disk_devices.__iter__.return_value = iter(disk_devices)
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
-        self.assertIn('''
+        expected = '''
     <devices>
+        <controller model="nec-xhci" type="usb" />
         <emulator>test_emulator</emulator>
         <disk device="device0" type="type0">
             <driver cache="unsafe" type="frmt0" />
             <source file="volume_path_mock" />
             <target bus="bus0" dev="tdev0" />
+            <serial>disk-serial</serial>
         </disk>
         <disk device="device1" type="type1">
             <driver cache="unsafe" type="frmt1" />
             <source file="volume_path_mock" />
             <target bus="bus1" dev="tdev1" />
+            <serial>disk-serial</serial>
         </disk>
         <disk device="device2" type="type2">
             <driver cache="unsafe" type="frmt2" />
             <source file="volume_path_mock" />
             <target bus="bus2" dev="tdev2" />
+            <serial>disk-serial</serial>
         </disk>
         <video>
             <model heads="1" type="vga" vram="9216" />
@@ -213,17 +244,19 @@ class TestNodeXml(BaseTestXMLBuilder):
         <console type="pty">
             <target port="0" type="serial" />
         </console>
-    </devices>''', xml)
+    </devices>'''
+        self.assertIn(expected, xml)
 
     def test_node_interfaces(self):
-        networks = [Mock(uuid=i) for i in range(3)]
+        networks = [mock.Mock(uuid=i) for i in range(3)]
         self.node.interfaces = [
-            Mock(type='network'.format(i), mac_address='mac{0}'.format(i),
-                 network=networks[i], id='id{0}'.format(i),
-                 model='model{0}'.format(i)) for i in range(3)]
+            mock.Mock(type='network'.format(i), mac_address='mac{0}'.format(i),
+                      network=networks[i], id='id{0}'.format(i),
+                      model='model{0}'.format(i)) for i in range(3)]
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
         self.assertIn('''
     <devices>
+        <controller model="nec-xhci" type="usb" />
         <emulator>test_emulator</emulator>
         <interface type="network">
             <mac address="mac0" />
