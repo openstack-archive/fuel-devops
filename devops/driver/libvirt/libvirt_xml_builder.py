@@ -196,7 +196,7 @@ class LibvirtXMLBuilder(object):
             if self.driver.reboot_timeout:
                 node_xml.bios(rebootTimeout='{0}'.format(
                     self.driver.reboot_timeout))
-            if node.disk_devices.filter(bus='usb'):
+            if not node.should_enable_boot_menu:
                 node_xml.bootmenu(enable='yes', timeout='3000')
 
         with node_xml.devices:
