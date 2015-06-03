@@ -244,6 +244,7 @@ class TestNodeXml(BaseTestXMLBuilder):
         self.node.architecture = 'test_architecture'
         self.node.boot = '["dev1", "dev2"]'
         self.node.has_vnc = None
+        self.node.should_enable_boot_menu = False
         disk_devices = mock.MagicMock()
         disk_devices.filter.return_value = []
         self.node.disk_devices = disk_devices
