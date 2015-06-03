@@ -62,12 +62,13 @@ class Environment(DriverModel):
     def get_nodes(self, *args, **kwargs):
         return self.node_set.filter(*args, **kwargs)
 
-    def add_node(self, memory, name, vcpu=1, boot=None):
+    def add_node(self, memory, name, vcpu=1, boot=None, role='slave'):
         return Node.node_create(
             name=name,
             memory=memory,
             vcpu=vcpu,
             environment=self,
+            role=role,
             boot=boot)
 
     def add_empty_volume(self, node, name,
@@ -258,8 +259,8 @@ class Environment(DriverModel):
         node = self.add_node(
             name=name,
             memory=settings.HARDWARE["slave_node_memory"],
-            vcpu=settings.HARDWARE["slave_node_cpu"]
-        )
+            vcpu=settings.HARDWARE["slave_node_cpu"],
+            role='slave')
         self.create_interfaces(networks, node)
         self.add_empty_volume(node, name + '-system')
 
@@ -286,6 +287,7 @@ class Environment(DriverModel):
             memory=memory or settings.HARDWARE["admin_node_memory"],
             vcpu=vcpu or settings.HARDWARE["admin_node_cpu"],
             name=name,
+            role='admin',
             boot=boot_device)
         self.create_interfaces(networks, node)
 
