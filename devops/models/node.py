@@ -72,6 +72,10 @@ class Node(DriverModel):
     def vnc_password(self):
         return settings.VNC_PASSWORD
 
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
     def interface_by_name(self, name):
         self.interfaces.filter(name=name)
 
