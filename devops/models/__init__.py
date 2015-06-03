@@ -15,8 +15,9 @@
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
-from devops.models.network import DiskDevice
 from devops.models.environment import Environment
+from devops.models.network import Address
+from devops.models.network import DiskDevice
 from devops.models.network import Interface
 from devops.models.network import Network
 from devops.models.node import Node
