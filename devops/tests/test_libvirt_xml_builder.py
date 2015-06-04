@@ -24,16 +24,17 @@ from devops.tests import factories
 
 class BaseTestXMLBuilder(TestCase):
     def setUp(self):
+        # TODO(prmtl): make it fuzzy
+        self.volume_path = "volume_path_mock"
         self.xml_builder = LibvirtXMLBuilder(mock.Mock())
         self.xml_builder.driver.volume_path = mock.Mock(
-            return_value="volume_path_mock"
+            return_value=self.volume_path
         )
         self.xml_builder.driver.network_name = mock.Mock(
             return_value="network_name_mock"
         )
         self.xml_builder.driver.reboot_timeout = None
         self.net = mock.Mock()
-        self.vol = mock.Mock()
         self.node = mock.Mock()
 
 
@@ -82,39 +83,57 @@ class TestVolumeXml(BaseTestXMLBuilder):
 
     def setUp(self):
         super(TestVolumeXml, self).setUp()
-        self.vol.name = 'test_name'
-        self.vol.environment.name = 'test_env_name'
-        self.vol.id = random.randint(1, 100)
-        self.vol.format = "qcow2"
-        self.vol.backing_store = None
 
-    def test_general_properties(self):
-        self.vol.capacity = random.randint(50, 100)
-        xml = self.xml_builder.build_volume_xml(self.vol)
-        self.assertIn(
-            '<name>{0}_{1}</name>'
-            ''.format(self.vol.environment.name, self.vol.name),
-            xml)
-        self.assertIn(
-            '<capacity>{0}</capacity>'.format(self.vol.capacity), xml)
-        self.assertIn(
-            '''
+    def get_xml(self, volume):
+        """Generate XML from volume"""
+        return self.xml_builder.build_volume_xml(volume)
+
+    def test_full_volume_xml(self):
+        volume = factories.VolumeFactory()
+        expected = '''<?xml version="1.0" encoding="utf-8" ?>
+<volume>
+    <name>{env_name}_{name}</name>
+    <capacity>{capacity}</capacity>
     <target>
-        <format type="{0}" />
-    </target>'''.format(self.vol.format), xml)
+        <format type="{format}" />
+    </target>
+    <backingStore>
+        <path>{path}</path>
+        <format type="{store_format}" />
+    </backingStore>
+</volume>'''.format(
+            env_name=volume.environment.name,
+            name=volume.name,
+            capacity=volume.capacity,
+            format=volume.format,
+            path=self.volume_path,
+            store_format=volume.backing_store.format,
+        )
+        xml = self.get_xml(volume)
+        # NOTE(prmtl): this assert provide better reporting (diff) in py.test
+        assert expected == xml
+        self.xml_builder.driver.volume_path.assert_called_with(
+            volume.backing_store)
+
+    def test_name_without_env(self):
+        volume = factories.VolumeFactory(environment=None)
+        xml = self.get_xml(volume)
+        self.assertIn('<name>{0}</name>'.format(volume.name), xml)
+
+    def test_no_backing_store(self):
+        volume = factories.VolumeFactory(backing_store=None)
+        xml = self.get_xml(volume)
+        self.assertNotIn("<backingStore>", xml)
 
     def test_backing_store(self):
-        self.vol.backing_store = mock.Mock(
-            uuid="volume_uuid",
-            format="raw"
-        )
-        xml = self.xml_builder.build_volume_xml(self.vol)
-        self.assertIn(
-            '''
+        format = "raw"
+        volume = factories.VolumeFactory(backing_store__format=format)
+        xml = self.get_xml(volume)
+        self.assertIn('''
     <backingStore>
-        <path>volume_path_mock</path>
-        <format type="{0}" />
-    </backingStore>'''.format(self.vol.backing_store.format), xml)
+        <path>{path}</path>
+        <format type="{format}" />
+    </backingStore>'''.format(path=self.volume_path, format=format), xml)
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
