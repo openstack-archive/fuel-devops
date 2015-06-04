@@ -13,7 +13,41 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import uuid
+
+import factory
 from factory import fuzzy
+
+from devops import models
+
+
+class FuzzyUuid(fuzzy.BaseFuzzyAttribute):
+
+    def fuzz(self):
+        return str(uuid.uuid4())
+
+
+@factory.use_strategy(factory.BUILD_STRATEGY)
+class EnvironmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Environment
+
+    name = fuzzy.FuzzyText('test_env_')
+
+
+@factory.use_strategy(factory.BUILD_STRATEGY)
+class VolumeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Volume
+
+    environment = factory.SubFactory(EnvironmentFactory)
+    backing_store = factory.SubFactory('devops.tests.factories.VolumeFactory',
+                                       backing_store=None)
+    name = fuzzy.FuzzyText('test_volume_')
+    uuid = FuzzyUuid()
+    capacity = fuzzy.FuzzyInteger(50, 100)
+    format = fuzzy.FuzzyText('qcow2_')
 
 
 def fuzzy_string(*args, **kwargs):
