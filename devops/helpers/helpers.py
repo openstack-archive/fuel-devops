@@ -217,8 +217,22 @@ class KeyPolicy(paramiko.WarningPolicy):
         return
 
 
+def single_instance(cls):
+    instances = {}
+
+    def get_instance(host, *args, **kwargs):
+        if host not in instances:
+            instances[host] = cls(host, *args, **kwargs)
+        return instances[host]
+
+    return get_instance
+
+
+@single_instance
 class SSHClient(object):
+
     class get_sudo(object):
+
         def __init__(self, ssh):
             self.ssh = ssh
 
@@ -253,9 +267,6 @@ class SSHClient(object):
         except Exception:
             logger.exception("Could not close ssh connection")
 
-    def __del__(self):
-        self.clear()
-
     def __enter__(self):
         return self
 
@@ -278,9 +289,16 @@ class SSHClient(object):
             self.host, port=self.port, username=self.username,
             password=self.password)
 
+    @property
+    def _ssh(self):
+        if not hasattr(self, '_ssh_client'):
+            self._ssh_client = paramiko.SSHClient()
+            self._ssh_client.set_missing_host_key_policy(
+                paramiko.AutoAddPolicy())
+
+        return self._ssh_client
+
     def reconnect(self):
-        self._ssh = paramiko.SSHClient()
-        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.connect()
         self._sftp = self._ssh.open_sftp()
 
