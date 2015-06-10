@@ -152,6 +152,7 @@ class Node(DriverModel):
                   ' name {1}'.format(self.name, name))
 
     def get_snapshots(self):
+        """Return full snapshots objects"""
         return self.driver.node_get_snapshots(node=self)
 
     def erase_snapshot(self, name):
