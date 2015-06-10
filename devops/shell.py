@@ -13,10 +13,12 @@
 #    under the License.
 
 import argparse
+import collections
 import os
 import sys
 
 import ipaddr
+import tabulate
 
 import devops
 from devops.helpers.helpers import _get_file_size
@@ -28,7 +30,8 @@ from devops import settings
 
 
 class Shell(object):
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         self.params = self.get_params()
         if (getattr(self.params, 'name', None) and
                 getattr(self.params, 'command', None) != 'create'):
@@ -89,26 +92,35 @@ class Shell(object):
         Environment.synchronize_all()
 
     def do_snapshot_list(self):
-        snap_nodes = {}
-        max_len = 0
-        for node in self.env.get_nodes():
-            snaps = sorted(node.get_snapshots())
-            for snap in snaps:
-                if len(snap) > max_len:
-                    max_len = len(snap)
-                if snap in snap_nodes:
-                    snap_nodes[snap].append(node.name)
-                else:
-                    snap_nodes[snap] = [node.name, ]
+        snapshots = collections.OrderedDict()
 
-        print("%*s     %50s" % (max_len, "SNAPSHOT", "NODES-NAME"))
-        for snap in snap_nodes:
-            print("%*s     %50s" % (max_len, snap,
-                                    ', '.join(snap_nodes[snap])))
+        Snap = collections.namedtuple('Snap', ['info', 'nodes'])
+
+        for node in self.env.get_nodes():
+            for snap in node.get_snapshots():
+                if snap.name in snapshots:
+                    snapshots[snap.name].nodes.append(node.name)
+                else:
+                    snapshots[snap.name] = Snap(snap, [node.name, ])
+
+        snapshots = sorted(snapshots.values(), key=lambda x: x.info.created)
+
+        headers = ('SNAPSHOT', 'CREATED', 'NODES-NAMES')
+        columns = []
+        for info, nodes in snapshots:
+            nodes.sort()
+            columns.append((
+                info.name,
+                info.created.strftime('%Y-%m-%d %H:%M:%S'),
+                ', '.join(nodes),
+            ))
+
+        print(tabulate.tabulate(columns, headers=headers,
+                                tablefmt="simple"))
 
     def do_snapshot_delete(self):
         for node in self.env.get_nodes():
-            snaps = sorted(node.get_snapshots())
+            snaps = map(lambda x: x.name, node.get_snapshots())
             if self.params.snapshot_name in snaps:
                 node.erase_snapshot(name=self.params.snapshot_name)
 
@@ -472,6 +484,12 @@ class Shell(object):
                               help="Reset (restart) node in environment",
                               description="Reset a separate node in "
                                           "environment")
-        if len(sys.argv) == 1:
-            sys.argv.append("-h")
-        return parser.parse_args()
+        if len(self.args) == 0:
+            self.args = ['-h']
+        return parser.parse_args(self.args)
+
+
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+    Shell(args).execute()
