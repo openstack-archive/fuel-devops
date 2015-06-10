@@ -42,5 +42,7 @@ setup(
         'south',
         'PyYAML',
         'libvirt-python',
+        'lxml',
+        'tabulate',
     ]
 )
