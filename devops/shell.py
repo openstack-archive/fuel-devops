@@ -46,21 +46,22 @@ class Shell(object):
 
     def do_list(self):
         env_list = Environment.list().values('name', 'created')
+        columns = []
         for env in env_list:
+            column = collections.OrderedDict({'NAME': env['name']})
             if self.params.list_ips:
                 cur_env = Environment.get(name=env['name'])
                 admin_ip = ''
                 if 'admin' in [node.name for node in cur_env.get_nodes()]:
                     admin_ip = (cur_env.get_node(name='admin').
                                 get_ip_address_by_network_name('admin'))
-                print('{0}\t{1}'.format(env['name'], admin_ip))
-            elif self.params.timestamps:
-                created_text = env['created'].strftime('%Y-%m-%d_%H:%M:%S')
-                print('{0} {1}'.format(env['name'], created_text))
-            else:
-                print(env['name'])
+                column['ADMIN IP'] = admin_ip
+            if self.params.timestamps:
+                column['CREATED'] = env['created'].strftime(
+                    '%Y-%m-%d_%H:%M:%S')
+            columns.append(column)
 
-        return env_list
+        self.print_table(headers="keys", columns=columns)
 
     def node_dict(self, node):
         return {'name': node.name,
@@ -128,9 +129,10 @@ class Shell(object):
                 node.erase_snapshot(name=self.params.snapshot_name)
 
     def do_net_list(self):
-        print("%15s   %10s" % ("NETWORK NAME", "IP NET"))
-        for network in self.env.get_networks():
-            print("%15s  %10s" % (network.name, network.ip_network))
+        headers = ("NETWORK NAME", "IP NET")
+        columns = [(net.name, net.ip_network)
+                   for net in self.env.get_networks()]
+        self.print_table(headers=headers, columns=columns)
 
     def do_timesync(self):
         if not self.params.node_name:
