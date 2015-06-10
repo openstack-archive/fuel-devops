@@ -60,3 +60,23 @@ class TestSnaphotList(BaseShellTestCase):
             ],
             headers=('SNAPSHOT', 'CREATED', 'NODES-NAMES')
         )
+
+
+class TestDoSnapshot(BaseShellTestCase):
+
+    @mock.patch('devops.models.environment.time.time')
+    @mock.patch.object(models.Environment, 'get_nodes')
+    @mock.patch.object(models.Environment, 'get')
+    def test_same_snaphot_name_if_not_provided(self, mock_get_env,
+                                               mock_get_nodes, mock_time):
+        mock_get_env.return_value = models.Environment()
+        mock_time.return_value = 123456.789
+
+        nodes = (mock.Mock(), mock.Mock())
+        mock_get_nodes.return_value = nodes
+
+        self.execute('snapshot', 'some-env')
+
+        for node in nodes:
+            node.snapshot.assert_called_once_with(
+                force=mock.ANY, description=mock.ANY, name="123456")
