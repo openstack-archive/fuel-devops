@@ -31,7 +31,13 @@ class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
-                 stp=True, hpet=True):
+                 stp=True, hpet=True, use_host_cpu=True):
+        """libvirt driver
+
+        :param use_host_cpu: When creating nodes, should libvirt's
+            CPU "host-model" mode be used to set CPU settings. If set to False,
+            default mode ("custom") will be used.  (default: True)
+        """
         libvirt.virInitialize()
         self.conn = libvirt.open(connection_string)
         self.xml_builder = LibvirtXMLBuilder(self)
@@ -41,6 +47,7 @@ class DevopsDriver(object):
         self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
         self.reboot_timeout = None
+        self.use_host_cpu = use_host_cpu
 
         if settings.VNC_PASSWORD:
             self.vnc_password = settings.VNC_PASSWORD
