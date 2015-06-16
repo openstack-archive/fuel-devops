@@ -12,4 +12,4 @@ other customizations with a few lines of code in system tests.
 
 Documentation
 -------------
-All documentation can be found here: http://docs.mirantis.com/fuel-dev/devops.html
+All documentation can be found here: https://docs.fuel-infra.org/fuel-dev/devops.html
