@@ -22,15 +22,8 @@ from django.utils.importlib import import_module
 def choices(*args, **kwargs):
     defaults = {'max_length': 255, 'null': False}
     defaults.update(kwargs)
-    defaults.update(choices=double_tuple(*args))
+    defaults.update(choices=zip(args, args))
     return models.CharField(**defaults)
-
-
-def double_tuple(*args):
-    dict = []
-    for arg in args:
-        dict.append((arg, arg))
-    return tuple(dict)
 
 
 class DriverModel(models.Model):
