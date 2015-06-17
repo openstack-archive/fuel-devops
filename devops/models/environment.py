@@ -71,8 +71,8 @@ class Environment(DriverModel):
             boot=boot)
 
     def add_empty_volume(self, node, name,
-                         capacity=settings.NODE_VOLUME_SIZE * 1024 * 1024
-                         * 1024, device='disk', bus='virtio', format='qcow2'):
+                         capacity=settings.NODE_VOLUME_SIZE * 1024 ** 3,
+                         device='disk', bus='virtio', format='qcow2'):
         return DiskDevice.node_attach_volume(
             node=node,
             volume=Volume.volume_create(
@@ -96,11 +96,11 @@ class Environment(DriverModel):
         return cls.objects.get(*args, **kwargs)
 
     @classmethod
-    def list(cls):
+    def list_all(cls):
         return cls.objects.all()
 
     def has_snapshot(self, name):
-        return all(map(lambda x: x.has_snapshot(name), self.get_nodes()))
+        return all(n.has_snapshot(name) for n in self.get_nodes())
 
     def define(self):
         for network in self.get_networks():
@@ -131,9 +131,9 @@ class Environment(DriverModel):
 
     @classmethod
     def erase_empty(cls):
-        for env in cls.objects.all():
-            if len(env.get_nodes()) == 0:
-                env.delete()
+        for env in cls.list_all():
+            if env.get_nodes().count() == 0:
+                env.erase()
 
     def suspend(self, verbose=False):
         for node in self.get_nodes():
@@ -153,8 +153,7 @@ class Environment(DriverModel):
         if destroy:
             for node in self.get_nodes():
                 node.destroy(verbose=False)
-        if (flag and not all(
-                [node.has_snapshot(name) for node in self.get_nodes()])):
+        if (flag and not self.has_snapshot(name)):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
         for node in self.get_nodes():
@@ -164,7 +163,7 @@ class Environment(DriverModel):
     def synchronize_all(cls):
         driver = cls.get_driver()
         nodes = {driver._get_name(e.name, n.name): n
-                 for e in cls.objects.all()
+                 for e in cls.list_all()
                  for n in e.get_nodes()}
         domains = set(driver.node_list())
 
@@ -204,27 +203,27 @@ class Environment(DriverModel):
         for name in environment.node_roles.admin_names:
             environment.describe_admin_node(name, networks, boot_from)
         for name in environment.node_roles.other_names:
+            networks_to_describe = networks
             if settings.MULTIPLE_NETWORKS:
-                networks1 = [net for net in networks if net.name
-                             in settings.NODEGROUPS[0]['pools']]
-                networks2 = [net for net in networks if net.name
-                             in settings.NODEGROUPS[1]['pools']]
                 # If slave index is even number, then attach to
-                # it virtual networks from the second network group.
-                if int(name[-2:]) % 2 == 1:
-                    environment.describe_empty_node(name, networks1)
-                elif int(name[-2:]) % 2 == 0:
-                    environment.describe_empty_node(name, networks2)
-            else:
-                environment.describe_empty_node(name, networks)
+                # it virtual networks from the second network group,
+                # if it is odd, then attach from the first network group.
+                nodegroups_idx = 1 - int(name[-2:]) % 2
+                networks_to_describe = [
+                    net for net in networks if net.name
+                    in settings.NODEGROUPS[nodegroups_idx]['pools']
+                ]
+
+            environment.describe_empty_node(name, networks_to_describe)
         return environment
 
     def create_networks(self, name):
-        ip_networks = [
-            IPNetwork(x) for x in settings.POOLS.get(name)[0].split(',')]
-        new_prefix = int(settings.POOLS.get(name)[1])
+        networks, prefix = settings.POOLS[name]
+
+        ip_networks = [IPNetwork(x) for x in networks.split(',')]
+        new_prefix = int(prefix)
         pool = Network.create_network_pool(networks=ip_networks,
-                                           prefix=int(new_prefix))
+                                           prefix=new_prefix)
         return Network.network_create(
             name=name,
             environment=self,
@@ -234,28 +233,33 @@ class Environment(DriverModel):
 
     def create_interfaces(self, networks, node,
                           model=settings.INTERFACE_MODEL):
+        interface_map = {}
         if settings.BONDING:
-            for network in networks:
-                Interface.interface_create(
-                    network, node=node, model=model,
-                    interface_map=settings.BONDING_INTERFACES)
-        else:
-            for network in networks:
-                Interface.interface_create(network, node=node, model=model)
+            interface_map = settings.BONDING_INTERFACES
+
+        for network in networks:
+            Interface.interface_create(
+                network,
+                node=node,
+                model=model,
+                interface_map=interface_map
+            )
 
     @property
     def node_roles(self):
         return NodeRoles(
             admin_names=['admin'],
-            other_names=['slave-%02d' % x for x in range(1, int(
-                settings.NODES_COUNT))]
+            other_names=[
+                'slave-%02d' % x for x in range(1, settings.NODES_COUNT)
+            ]
         )
 
     def describe_empty_node(self, name, networks):
         node = self.add_node(
             name=name,
-            memory=settings.HARDWARE.get("slave_node_memory", 1024),
-            vcpu=settings.HARDWARE.get("slave_node_cpu", 1))
+            memory=settings.HARDWARE["slave_node_memory"],
+            vcpu=settings.HARDWARE["slave_node_cpu"]
+        )
         self.create_interfaces(networks, node)
         self.add_empty_volume(node, name + '-system')
 
@@ -279,8 +283,8 @@ class Environment(DriverModel):
             bus = 'usb'
 
         node = self.add_node(
-            memory=memory or settings.HARDWARE.get("admin_node_memory", 1024),
-            vcpu=vcpu or settings.HARDWARE.get("admin_node_cpu", 1),
+            memory=memory or settings.HARDWARE["admin_node_memory"],
+            vcpu=vcpu or settings.HARDWARE["admin_node_cpu"],
             name=name,
             boot=boot_device)
         self.create_interfaces(networks, node)
@@ -289,7 +293,7 @@ class Environment(DriverModel):
             iso = iso_path or settings.ISO_PATH
             self.add_empty_volume(node, name + '-system',
                                   capacity=settings.ADMIN_NODE_VOLUME_SIZE
-                                  * 1024 * 1024 * 1024)
+                                  * 1024 ** 3)
             self.add_empty_volume(
                 node,
                 name + '-iso',
@@ -368,12 +372,12 @@ class NodeRoles(object):
 
 class Nodes(object):
     def __init__(self, environment, node_roles):
-        self.admins = []
-        self.others = []
-        for node_name in node_roles.admin_names:
-            self.admins.append(environment.get_node(name=node_name))
-        for node_name in node_roles.other_names:
-            self.others.append(environment.get_node(name=node_name))
+        self.admins = list(
+            environment.get_nodes(name__in=node_roles.admin_names)
+        )
+        self.others = list(
+            environment.get_nodes(name__in=node_roles.other_names)
+        )
         self.slaves = self.others
         self.all = self.slaves + self.admins
         self.admin = self.admins[0]
