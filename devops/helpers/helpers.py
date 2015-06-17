@@ -77,8 +77,8 @@ def tcp_ping(host, port):
     return True
 
 
-def wait(predicate, interval=5, timeout=60):
-    """wait until predicate will become True.
+def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
+    """Wait until predicate will become True.
 
     returns number of seconds that is left or 0 if timeout is None.
 
@@ -89,13 +89,15 @@ def wait(predicate, interval=5, timeout=60):
     timeout  - raise TimeoutError if predicate won't become True after
     this amount of seconds. 'None' disables timeout.
 
+    timeout_msg - text of the TimeoutError
+
     """
     start_time = time.time()
     if not timeout:
         return predicate()
     while not predicate():
         if start_time + timeout < time.time():
-            raise TimeoutError("Waiting timed out")
+            raise TimeoutError(timeout_msg)
 
         seconds_to_sleep = max(
             0,
