@@ -1,0 +1,12 @@
+Verified+2: Jenkins
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Workflow+1: tatyana-leontovich <tleontovich@mirantis.com>
+Verified+1: Fuel CI <fuel-ci-bot@mirantis.com>
+Code-Review+1: Kamil Sambor <ksambor@mirantis.com>
+Code-Review+1: Ivan Kliuk <ikliuk@mirantis.com>
+Code-Review+1: Przemyslaw Kaminski <pkaminski@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 23 Jun 2015 08:49:09 +0000
+Reviewed-on: https://review.openstack.org/188697
+Project: stackforge/fuel-devops
+Branch: refs/heads/master
