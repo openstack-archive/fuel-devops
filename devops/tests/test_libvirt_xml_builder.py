@@ -19,6 +19,7 @@ from unittest import TestCase
 import mock
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from devops.tests import factories
 
 
 class BaseTestXMLBuilder(TestCase):
@@ -118,16 +119,43 @@ class TestVolumeXml(BaseTestXMLBuilder):
 
 class TestSnapshotXml(BaseTestXMLBuilder):
 
+    def check_snaphot_xml(self, name, description, expected):
+        result = self.xml_builder.build_snapshot_xml(name, description)
+        self.assertIn(expected, result)
+
+    def test_no_name(self):
+        name = None
+        description = factories.fuzzy_string('test_description_')
+        expected = '''
+<domainsnapshot>
+    <description>{0}</description>
+</domainsnapshot>'''.format(description)
+        self.check_snaphot_xml(name, description, expected)
+
+    def test_no_description(self):
+        name = factories.fuzzy_string('test_snapshot_')
+        description = None
+        expected = '''
+<domainsnapshot>
+    <name>{0}</name>
+</domainsnapshot>'''.format(name)
+        self.check_snaphot_xml(name, description, expected)
+
+    def test_nothing_there(self):
+        name = None
+        description = None
+        expected = '<domainsnapshot />'
+        self.check_snaphot_xml(name, description, expected)
+
     def test_snapshot(self):
-        name = 'test_snapshot'
-        description = 'test_description'
-        xml = self.xml_builder.build_snapshot_xml(name, description)
-        self.assertIn(
-            '''
+        name = factories.fuzzy_string('test_snapshot_')
+        description = factories.fuzzy_string('test_description_')
+        expected = '''
 <domainsnapshot>
     <name>{0}</name>
     <description>{1}</description>
-</domainsnapshot>'''.format(name, description), xml)
+</domainsnapshot>'''.format(name, description)
+        self.check_snaphot_xml(name, description, expected)
 
 
 class TestNodeXml(BaseTestXMLBuilder):
