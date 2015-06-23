@@ -12,11 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ipaddr
-import libvirt
-
+import datetime
 from time import sleep
 import xml.etree.ElementTree as ET
+
+import ipaddr
+import libvirt
+from lxml import etree
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
@@ -25,6 +27,31 @@ from devops.helpers import scancodes
 from devops import logger
 
 from django.conf import settings
+
+
+class Snapshot(object):
+
+    def __init__(self, snapshot):
+        self._snapshot = snapshot
+        self._xml = snapshot.getXMLDesc(0)
+        self._repr = ""
+
+    @property
+    def created(self):
+        xml_tree = etree.fromstring(self._xml)
+
+        timestamp = xml_tree.xpath('/domainsnapshot/creationTime/text()')[0]
+        return datetime.datetime.utcfromtimestamp(float(timestamp))
+
+    @property
+    def name(self):
+        return self._snapshot.getName()
+
+    def __repr__(self):
+        if not self._repr:
+            self._repr = "<{0} {1}/{2}>".format(
+                self.__class__.__name__, self.name, self.created)
+        return self._repr
 
 
 class DevopsDriver(object):
@@ -347,7 +374,9 @@ class DevopsDriver(object):
         :rtype : List
             :type node: Node
         """
-        return self.conn.lookupByUUIDString(node.uuid).snapshotListNames(0)
+
+        snapshots = self.conn.lookupByUUIDString(node.uuid).listAllSnapshots(0)
+        return [Snapshot(snap) for snap in snapshots]
 
     @retry()
     def node_create_snapshot(self, node, name=None, description=None):

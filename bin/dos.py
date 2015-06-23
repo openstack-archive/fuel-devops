@@ -17,6 +17,6 @@ from os import environ
 
 if __name__ == "__main__":
     environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
-    from devops.shell import Shell
+    from devops.shell import main
 
-    Shell().execute()
+    main()
