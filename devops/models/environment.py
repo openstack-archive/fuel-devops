@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 from django.conf import settings
 from django.db import models
 from ipaddr import IPNetwork
@@ -142,6 +144,8 @@ class Environment(DriverModel):
             node.resume(verbose)
 
     def snapshot(self, name=None, description=None, force=False):
+        if name is None:
+            name = str(int(time.time()))
         for node in self.get_nodes():
             node.snapshot(name=name, description=description, force=force)
 
