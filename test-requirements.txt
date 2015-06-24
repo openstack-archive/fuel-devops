@@ -1,5 +1,4 @@
 mock >= 1.0.1
 pytest >= 2.7.1
 pytest-django >= 2.8.0
-py == 1.4.26 # https://bitbucket.org/pytest-dev/pytest/issue/752/internalerror-indexerror-list-index-out-of
 factory_boy == 2.5.2
