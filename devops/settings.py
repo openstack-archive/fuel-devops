@@ -81,7 +81,6 @@ except ImportError:
 
 OPENSTACK_RELEASE_CENTOS = 'centos'
 OPENSTACK_RELEASE_UBUNTU = 'ubuntu'
-OPENSTACK_RELEASE_REDHAT = 'rhos 3.0 for rhel 6.4'
 OPENSTACK_RELEASE = os.environ.get(
     'OPENSTACK_RELEASE', OPENSTACK_RELEASE_CENTOS).lower()
 
