@@ -292,12 +292,12 @@ class Shell(object):
                                  default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
-        snapshot_name_parser.add_argument('--snapshot-name',
+        snapshot_name_parser.add_argument('--snapshot-name', '-S',
                                           help='snapshot name',
                                           default=os.environ.get(
                                               'SNAPSHOT_NAME'))
         node_name_parser = argparse.ArgumentParser(add_help=False)
-        node_name_parser.add_argument('--node-name',
+        node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
                                       default=None)
         no_timesync_parser = argparse.ArgumentParser(add_help=False)
@@ -316,7 +316,7 @@ class Shell(object):
                                        help='show creation timestamps',
                                        default=False)
         iso_path_parser = argparse.ArgumentParser(add_help=False)
-        iso_path_parser.add_argument('--iso-path', dest='iso_path',
+        iso_path_parser.add_argument('--iso-path', '-I', dest='iso_path',
                                      help='Set Fuel ISO path',
                                      required=True)
         admin_ram_parser = argparse.ArgumentParser(add_help=False)
@@ -342,11 +342,11 @@ class Shell(object):
                                  help='Set node VCPU count',
                                  default=1, type=int)
         node_count = argparse.ArgumentParser(add_help=False)
-        node_count.add_argument('--node-count', dest='node_count',
+        node_count.add_argument('--node-count', '-C', dest='node_count',
                                 help='How many nodes will be created',
                                 default=1, type=int)
         net_pool = argparse.ArgumentParser(add_help=False)
-        net_pool.add_argument('--net-pool', dest='net_pool',
+        net_pool.add_argument('--net-pool', '-P', dest='net_pool',
                               help='Set ip network pool (cidr)',
                               default="10.21.0.0/16:24", type=str)
         second_disk_size = argparse.ArgumentParser(add_help=False)
