@@ -52,9 +52,9 @@ class LibvirtXMLBuilder(object):
             name="fuelbr{0}".format(network.id),
             stp=stp_val, delay="0")
 
-        if not (network.forward is None):
+        if network.forward is not None:
             network_xml.forward(mode=network.forward)
-        if not (network.ip_network is None):
+        if network.ip_network is not None:
             ip_network = IPNetwork(network.ip_network)
             with network_xml.ip(
                     address=str(ip_network[1]),
@@ -106,9 +106,9 @@ class LibvirtXMLBuilder(object):
         :type description: String
         """
         xml_builder = XMLBuilder('domainsnapshot')
-        if not (name is None):
+        if name is not None:
             xml_builder.name(name)
-        if not (description is None):
+        if description is not None:
             xml_builder.description(description)
         return str(xml_builder)
 
@@ -151,7 +151,7 @@ class LibvirtXMLBuilder(object):
             device_xml.source(
                 network=self.driver.network_name(interface.network))
             device_xml.target(dev="fuelnet{0}".format(interface.id))
-            if not (interface.type is None):
+            if interface.type is not None:
                 device_xml.model(type=interface.model)
 
     def build_node_xml(self, node, emulator):

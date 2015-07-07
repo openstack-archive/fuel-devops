@@ -12,18 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import BaseHTTPServer
 import httplib
 import logging
 import os
 import posixpath
-import random
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import socket
 import stat
-from threading import Thread
 import time
-import urllib
 import xmlrpclib
 
 import paramiko
@@ -39,7 +34,6 @@ from devops.settings import SSH_CREDENTIALS
 
 def get_free_port():
     ports = range(32000, 32100)
-    random.shuffle(ports)
     for port in ports:
         if not tcp_ping('localhost', port):
             return port
@@ -54,7 +48,7 @@ def icmp_ping(host, timeout=1):
     """
     return os.system(
         "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
-            'host': str(host), 'timeout': timeout}) == 0
+            'host': host, 'timeout': timeout}) == 0
 
 
 def _tcp_ping(host, port):
@@ -124,9 +118,7 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
         conn.request(method, url)
         res = conn.getresponse()
 
-        if res.status == waited_code:
-            return True
-        return False
+        return res.status == waited_code
     except Exception:
         return False
 
@@ -161,17 +153,14 @@ def get_node_remote(env, node_name):
                      private_keys=get_private_keys(env))
 
 
-def sync_node_time(env, node_name='admin', cmd=None):
-    if cmd is None:
-        cmd = "hwclock -s"
-
+def sync_node_time(env, node_name='admin', cmd='hwclock -s'):
     if node_name == 'admin':
-            remote = get_admin_remote(env)
+        remote = get_admin_remote(env)
     else:
         remote = get_node_remote(env, node_name)
     remote.execute(cmd)
     remote_date = remote.execute('date')['stdout']
-    logger.info("Node time: {0}".format(remote_date))
+    logger.info("Node time: %s", remote_date)
     return remote_date
 
 
@@ -186,32 +175,31 @@ def get_slave_ip(env, node_mac_address):
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
              build_images):
-    params = {
-        'ip': ip,
-        'mask': mask,
-        'gw': gw,
-        'hostname': hostname,
-        'nat_interface': nat_interface,
-        'dns1': dns1,
-        'showmenu': showmenu,
-        'build_images': build_images
-    }
-    keys = (
-        "<Wait>\n"
-        "<Esc>\n"
-        "<Wait>\n"
-        "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
-        " ip=%(ip)s\n"
-        " netmask=%(mask)s\n"
-        " gw=%(gw)s\n"
-        " dns1=%(dns1)s\n"
-        " hostname=%(hostname)s\n"
-        " dhcp_interface=%(nat_interface)s\n"
-        " showmenu=%(showmenu)s\n"
-        " build_images=%(build_images)s\n"
-        " <Enter>\n"
-    ) % params
-    return keys
+    return '\n'.join([
+        '<Wait>',
+        '<Esc>',
+        '<Wait>',
+        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
+        ' ip={ip}',
+        ' netmask={mask}',
+        ' gw={gw}',
+        ' dns1={dns1}',
+        ' hostname={hostname}',
+        ' dhcp_interface={nat_interface}',
+        ' showmenu={showmenu}',
+        ' build_images={build_images}',
+        ' <Enter>',
+        ''
+    ]).format(
+        ip=ip,
+        mask=mask,
+        gw=gw,
+        hostname=hostname,
+        nat_interface=nat_interface,
+        dns1=dns1,
+        showmenu=showmenu,
+        build_images=build_images
+    )
 
 
 class KeyPolicy(paramiko.WarningPolicy):
@@ -274,8 +262,9 @@ class SSHClient(object):
                 return self._ssh.connect(
                     self.host, port=self.port, username=self.username,
                     password=self.password, pkey=private_key)
-            except paramiko.AuthenticationException:
-                pass
+            except paramiko.AuthenticationException as e:
+                logging.error("Authentication failed")
+                logging.exception(e)
         return self._ssh.connect(
             self.host, port=self.port, username=self.username,
             password=self.password)
@@ -357,18 +346,18 @@ class SSHClient(object):
     def mkdir(self, path):
         if self.exists(path):
             return
-        logger.debug("Creating directory: %s" % path)
+        logger.debug("Creating directory: %s", path)
         self.execute("mkdir -p %s\n" % path)
 
     def rm_rf(self, path):
-        logger.debug("Removing directory: %s" % path)
+        logger.debug("Removing directory: %s", path)
         self.execute("rm -rf %s" % path)
 
     def open(self, path, mode='r'):
         return self._sftp.open(path, mode)
 
     def upload(self, source, target):
-        logger.debug("Copying '%s' -> '%s'" % (source, target))
+        logger.debug("Copying '%s' -> '%s'", source, target)
 
         if self.isdir(target):
             target = posixpath.join(target, os.path.basename(source))
@@ -394,8 +383,10 @@ class SSHClient(object):
                 self._sftp.put(local_path, remote_path)
 
     def download(self, destination, target):
-        logger.debug("Copying '%s' -> '%s' from remote to local host".format(
-            destination, target))
+        logger.debug(
+            "Copying '%s' -> '%s' from remote to local host",
+            destination, target
+        )
 
         if os.path.isdir(target):
             target = posixpath.join(target, os.path.basename(destination))
@@ -404,12 +395,13 @@ class SSHClient(object):
             if self.exists(destination):
                 self._sftp.get(destination, target)
             else:
-                logger.debug("Can't download {0} because it doesn't exist".
-                             format(destination))
+                logger.debug(
+                    "Can't download %s because it doesn't exist", destination
+                )
         else:
-            logger.debug("Can't download {0} because it is a directory".format(
-                destination
-            ))
+            logger.debug(
+                "Can't download %s because it is a directory", destination
+            )
         return os.path.exists(target)
 
     def exists(self, path):
@@ -438,73 +430,6 @@ def ssh(*args, **kwargs):
     return SSHClient(*args, **kwargs)
 
 
-class HttpServer:
-    class Handler(SimpleHTTPRequestHandler):
-        logger = logging.getLogger('devops.helpers.http_server')
-
-        def __init__(self, docroot, *args, **kwargs):
-            self.docroot = docroot
-            SimpleHTTPRequestHandler.__init__(self, *args, **kwargs)
-
-        # Suppress reverse DNS lookups to speed up processing
-        def address_string(self):
-            return self.client_address[0]
-
-        # Handle docroot
-        def translate_path(self, path):
-            """Translate a /-separated PATH to the local filename syntax.
-
-            Components that mean special things to the local file system
-            (e.g. drive or directory names) are ignored.  (XXX They should
-            probably be diagnosed.)
-
-            """
-            # abandon query parameters
-            path = path.split('?', 1)[0]
-            path = path.split('#', 1)[0]
-            path = posixpath.normpath(urllib.unquote(path))
-            words = path.split('/')
-            words = filter(None, words)
-            path = self.docroot
-            for word in words:
-                drive, word = os.path.splitdrive(word)
-                head, word = os.path.split(word)
-                path = os.path.join(path, word)
-            return path
-
-        def log_message(self, format, *args):
-            self.logger.info(format % args)
-
-    def __init__(self, document_root):
-        self.port = get_free_port()
-        self.document_root = document_root
-
-        def handler_factory(*args, **kwargs):
-            return HttpServer.Handler(document_root, *args, **kwargs)
-
-        self._server = BaseHTTPServer.HTTPServer(
-            ('', self.port),
-            handler_factory)
-        self._thread = Thread(target=self._server.serve_forever)
-        self._thread.daemon = True
-
-    def start(self):
-        self._thread.start()
-
-    def run(self):
-        self._thread.join()
-
-    def stop(self):
-        self._server.shutdown()
-        self._thread.join()
-
-
-def http_server(document_root):
-    server = HttpServer(document_root)
-    server.start()
-    return server
-
-
 def xmlrpctoken(uri, login, password):
     server = xmlrpclib.Server(uri)
     try:
@@ -529,14 +454,8 @@ def generate_mac():
 def _get_file_size(path):
     """Get size of file-like object
 
-    :type file: String
+    :type path: str
     :rtype : int
     """
-    with open(path) as file:
-        current = file.tell()
-        try:
-            file.seek(0, 2)
-            size = file.tell()
-        finally:
-            file.seek(current)
-        return size
+
+    return os.stat(path).st_size
