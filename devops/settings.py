@@ -20,6 +20,7 @@ DRIVER_PARAMETERS = {
     'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
     'stp': True,
     'hpet': False,
+    'use_host_cpu': os.environ.get('DRIVER_USE_HOST_CPU', 'true') == 'true',
 }
 
 INSTALLED_APPS = ['south', 'devops']
