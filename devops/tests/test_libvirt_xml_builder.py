@@ -16,6 +16,7 @@ import json
 import random
 from unittest import TestCase
 
+from lxml import etree
 import mock
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
@@ -23,6 +24,7 @@ from devops.tests import factories
 
 
 class BaseTestXMLBuilder(TestCase):
+
     def setUp(self):
         # TODO(prmtl): make it fuzzy
         self.volume_path = "volume_path_mock"
@@ -36,6 +38,57 @@ class BaseTestXMLBuilder(TestCase):
         self.xml_builder.driver.reboot_timeout = None
         self.net = mock.Mock()
         self.node = mock.Mock()
+
+    def _reformat_xml(self, xml):
+        """Takes XML in string, parses it and returns pretty printted XML."""
+        return etree.tostring(etree.fromstring(xml), pretty_print=True)
+
+    def assertXMLEqual(self, first, second):
+        """Compare if two XMLs are equal.
+
+        It parses provided XMLs and converts back to string to minimalise
+        errors caused by whitespaces.
+        """
+        first = self._reformat_xml(first)
+        second = self._reformat_xml(second)
+        # NOTE(prmtl): this assert provide better reporting (diff) in py.test
+        assert first == second
+
+    def assertXMLIn(self, member, container):
+        """Checks if one XML is included in another XML, dummy way.
+
+        If check fail, it pretty prints both elements
+        """
+        member = self._reformat_xml(member)
+        container = self._reformat_xml(container)
+
+        if member not in container:
+            msg = "\n{0}\n\nnot found in\n\n{1}".format(member, container)
+            self.fail(msg)
+
+    def assertXMLNotIn(self, member, container):
+        """Checks if one XML is not included in another XML, dummy way.
+
+        If check fail, it pretty prints both elements
+        """
+        member = self._reformat_xml(member)
+        container = self._reformat_xml(container)
+
+        if member in container:
+            msg = "\n{0}\n\nunexpectedly found in\n\n{1}".format(member,
+                                                                 container)
+            self.fail(msg)
+
+    def assertXpath(self, xpath, xml):
+        """Asserts XPath is valid for given XML."""
+        xml = etree.fromstring(xml)
+        if not xml.xpath(xpath):
+            self.fail('No result for XPath on element\n'
+                      'XPath: {xpath}\n'
+                      'Element:\n'
+                      '{xml}'.format(
+                          xpath=xpath,
+                          xml=etree.tostring(xml, pretty_print=True)))
 
 
 class TestNetworkXml(BaseTestXMLBuilder):
@@ -52,18 +105,18 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_net_name_bridge_name(self):
         bridge_name = 'fuelbr{0}'.format(self.net.id)
         xml = self.xml_builder.build_network_xml(self.net)
-        self.assertIn(
+        self.assertXMLIn(
             '<name>{0}_{1}</name>'
             ''.format(self.net.environment.name, self.net.name),
             xml)
-        self.assertIn(
+        self.assertXMLIn(
             '<bridge delay="0" name="{0}" stp="on" />'
             ''.format(bridge_name), xml)
 
     def test_forward(self):
         self.net.forward = "nat"
         xml = self.xml_builder.build_network_xml(self.net)
-        self.assertIn(
+        self.assertXMLIn(
             '<forward mode="{0}" />'
             ''.format(self.net.forward), xml)
 
@@ -76,7 +129,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         xml = self.xml_builder.build_network_xml(self.net)
         str = '<ip address="{0}" prefix="{1}" />'.format(
             ip, prefix)
-        self.assertIn(str, xml)
+        self.assertXMLIn(str, xml)
 
 
 class TestVolumeXml(BaseTestXMLBuilder):
@@ -110,26 +163,25 @@ class TestVolumeXml(BaseTestXMLBuilder):
             store_format=volume.backing_store.format,
         )
         xml = self.get_xml(volume)
-        # NOTE(prmtl): this assert provide better reporting (diff) in py.test
-        assert expected == xml
+        self.assertXMLEqual(expected, xml)
         self.xml_builder.driver.volume_path.assert_called_with(
             volume.backing_store)
 
     def test_name_without_env(self):
         volume = factories.VolumeFactory(environment=None)
         xml = self.get_xml(volume)
-        self.assertIn('<name>{0}</name>'.format(volume.name), xml)
+        self.assertXMLIn('<name>{0}</name>'.format(volume.name), xml)
 
     def test_no_backing_store(self):
         volume = factories.VolumeFactory(backing_store=None)
         xml = self.get_xml(volume)
-        self.assertNotIn("<backingStore>", xml)
+        self.assertXpath("not(//backingStore)", xml)
 
     def test_backing_store(self):
         format = "raw"
         volume = factories.VolumeFactory(backing_store__format=format)
         xml = self.get_xml(volume)
-        self.assertIn('''
+        self.assertXMLIn('''
     <backingStore>
         <path>{path}</path>
         <format type="{format}" />
@@ -140,7 +192,7 @@ class TestSnapshotXml(BaseTestXMLBuilder):
 
     def check_snaphot_xml(self, name, description, expected):
         result = self.xml_builder.build_snapshot_xml(name, description)
-        self.assertIn(expected, result)
+        self.assertXMLIn(expected, result)
 
     def test_no_name(self):
         name = None
@@ -240,7 +292,7 @@ class TestNodeXml(BaseTestXMLBuilder):
 </domain>'''.format(self.node.vcpu, str(self.node.memory * 1024),
                     self.node.architecture, self.node.os_type,
                     boot[0], boot[1])
-        self.assertIn(expected, xml)
+        self.assertXMLIn(expected, xml)
 
     @mock.patch('devops.driver.libvirt.libvirt_xml_builder.uuid')
     def test_node_devices(self, mock_uuid):
@@ -292,7 +344,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             <target port="0" type="serial" />
         </console>
     </devices>'''
-        self.assertIn(expected, xml)
+        self.assertXMLIn(expected, xml)
 
     def test_node_interfaces(self):
         networks = [mock.Mock(uuid=i) for i in range(3)]
@@ -301,7 +353,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                       network=networks[i], id='id{0}'.format(i),
                       model='model{0}'.format(i)) for i in range(3)]
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
-        self.assertIn('''
+        self.assertXMLIn('''
     <devices>
         <controller model="nec-xhci" type="usb" />
         <emulator>test_emulator</emulator>
