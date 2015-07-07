@@ -45,7 +45,7 @@ class Shell(object):
                                 tablefmt="simple"))
 
     def do_list(self):
-        env_list = Environment.list().values('name', 'created')
+        env_list = Environment.list_all().values('name', 'created')
         columns = []
         for env in env_list:
             column = collections.OrderedDict({'NAME': env['name']})
@@ -157,7 +157,7 @@ class Shell(object):
 
     def do_create(self):
         env_name = self.params.name
-        for env in Environment.list():
+        for env in Environment.list_all():
             if env.name == env_name:
                 print("Please, set another environment name")
                 raise SystemExit()

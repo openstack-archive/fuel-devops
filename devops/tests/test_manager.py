@@ -32,7 +32,7 @@ from devops.models import Volume
 class TestManager(TestCase):
 
     def tearDown(self):
-        for environment in Environment.list():
+        for environment in Environment.list_all():
             environment.erase()
 
     def test_getting_subnetworks(self):
