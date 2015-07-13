@@ -51,7 +51,7 @@ class TestSnaphotList(BaseShellTestCase):
 
         self.execute('snapshot-list', 'some-env')
 
-        mock_print.assert_called(
+        mock_print.assert_called_once_with(
             columns=[
                 ('snap_3', '2015-11-28 00:00:00', 'node, node'),
                 ('snap_2', '2015-11-29 00:00:00', 'node, node'),
