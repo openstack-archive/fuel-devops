@@ -164,7 +164,7 @@ class Node(DriverModel):
         param: vcpu: Integer
             :rtype : None
         """
-        if vcpu != self.vcpu:
+        if vcpu is not None and vcpu != self.vcpu:
             self.vcpu = vcpu
             self.driver.node_set_vcpu(node=self, vcpu=vcpu)
             self.save()
@@ -175,7 +175,7 @@ class Node(DriverModel):
         param: memory: Integer
             :rtype : None
         """
-        if memory != self.memory:
+        if memory is not None and memory != self.memory:
             self.memory = memory
             self.driver.node_set_memory(node=self, memory=memory * 1024)
             self.save()

@@ -216,8 +216,8 @@ class Shell(object):
 
     def do_admin_change(self):
         node = self.env.get_node(name="admin")
-        node.set_vcpu(vcpu=self.params.vcpu_count)
-        node.set_memory(memory=self.params.ram_size)
+        node.set_vcpu(vcpu=self.params.admin_vcpu_count)
+        node.set_memory(memory=self.params.admin_ram_size)
 
     def do_admin_setup(self):
         admin_node = self.env.get_node(name='admin')
@@ -327,6 +327,18 @@ class Shell(object):
         admin_vcpu_parser.add_argument('--admin-vcpu', dest='admin_vcpu_count',
                                        help='Select admin node VCPU count',
                                        default=2, type=int)
+        change_admin_ram_parser = argparse.ArgumentParser(add_help=False)
+        change_admin_ram_parser.add_argument('--admin-ram',
+                                             dest='admin_ram_size',
+                                             help='Select admin node RAM '
+                                             'size (MB)',
+                                             default=None, type=int)
+        change_admin_vcpu_parser = argparse.ArgumentParser(add_help=False)
+        change_admin_vcpu_parser.add_argument('--admin-vcpu',
+                                              dest='admin_vcpu_count',
+                                              help='Select admin node VCPU '
+                                              'count',
+                                              default=None, type=int)
         admin_disk_size_parser = argparse.ArgumentParser(add_help=False)
         admin_disk_size_parser.add_argument('--admin-disk-size',
                                             dest='admin_disk_size',
@@ -341,6 +353,14 @@ class Shell(object):
         vcpu_parser.add_argument('--vcpu', dest='vcpu_count',
                                  help='Set node VCPU count',
                                  default=1, type=int)
+        change_ram_parser = argparse.ArgumentParser(add_help=False)
+        change_ram_parser.add_argument('--ram', dest='ram_size',
+                                       help='Set node RAM size',
+                                       default=None, type=int)
+        change_vcpu_parser = argparse.ArgumentParser(add_help=False)
+        change_vcpu_parser.add_argument('--vcpu', dest='vcpu_count',
+                                        help='Set node VCPU count',
+                                        default=None, type=int)
         node_count = argparse.ArgumentParser(add_help=False)
         node_count.add_argument('--node-count', '-C', dest='node_count',
                                 help='How many nodes will be created',
@@ -457,7 +477,7 @@ class Shell(object):
                               description="Add a new node to environment")
         subparsers.add_parser('slave-change',
                               parents=[name_parser, node_name_parser,
-                                       ram_parser, vcpu_parser],
+                                       change_ram_parser, change_vcpu_parser],
                               help="Change node VCPU and memory config",
                               description="Change count of VCPUs and memory")
         subparsers.add_parser('slave-remove',
@@ -470,8 +490,8 @@ class Shell(object):
                               help="Setup admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',
-                              parents=[name_parser, admin_ram_parser,
-                                       admin_vcpu_parser],
+                              parents=[name_parser, change_admin_ram_parser,
+                                       change_admin_vcpu_parser],
                               help="Change admin node VCPU and memory config",
                               description="Change count of VCPUs and memory "
                                           "for admin node")
