@@ -179,6 +179,7 @@ DHCP = {
 }
 
 NODES_COUNT = int(os.environ.get('NODES_COUNT', 10))
+IRONIC_NODES_COUNT = int(os.environ.get('IRONIC_NODES_COUNT', 0))
 
 HARDWARE = {
     "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 2048)),
@@ -189,6 +190,16 @@ HARDWARE = {
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
+
+IRONIC_ENABLED = os.environ.get('IRONIC_ENABLED', False) == 'true'
+
+if IRONIC_ENABLED or IRONIC_NODES_COUNT > 0:
+    POOL_BAREMETAL = os.environ.get('POOL_BAREMETAL', POOL_DEFAULT)
+    BAREMETAL_FORWARD = os.environ.get('BAREMETAL_FORWARD', FORWARD_DEFAULT)
+    FORWARDING['baremetal'] = BAREMETAL_FORWARD
+    DHCP['baremetal'] = False
+    POOLS['baremetal'] = POOL_BAREMETAL.split(':')
+    INTERFACE_ORDER.append('baremetal')
 
 if MULTIPLE_NETWORKS:
     FORWARDING['admin2'] = ADMIN_FORWARD
