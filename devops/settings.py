@@ -87,14 +87,15 @@ NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
 ADMIN_NODE_VOLUME_SIZE = int(os.environ.get('ADMIN_NODE_VOLUME_SIZE', 75))
 ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
 
-DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
+DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage,baremetal'
 INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
                                  DEFAULT_INTERFACE_ORDER).split(',')
 
 BONDING = os.environ.get("BONDING", 'false') == 'true'
 BONDING_INTERFACES = {
     'admin': ['eth0'],
-    'public': ['eth1', 'eth2', 'eth3', 'eth4']
+    'public': ['eth1', 'eth2', 'eth3', 'eth4'],
+    'baremetal': ['eth5']
 }
 
 MULTIPLE_NETWORKS = os.environ.get('MULTIPLE_NETWORKS', False) == 'true'
@@ -104,7 +105,7 @@ if MULTIPLE_NETWORKS:
         {
             'name': 'default',
             'pools': ['admin', 'public', 'management', 'private',
-                      'storage']
+                      'storage','baremetal']
         },
         {
             'name': 'group-custom-1',
@@ -127,6 +128,7 @@ POOL_PUBLIC = os.environ.get('POOL_PUBLIC', POOL_DEFAULT)
 POOL_MANAGEMENT = os.environ.get('POOL_MANAGEMENT', POOL_DEFAULT)
 POOL_PRIVATE = os.environ.get('POOL_PRIVATE', POOL_DEFAULT)
 POOL_STORAGE = os.environ.get('POOL_STORAGE', POOL_DEFAULT)
+POOL_BAREMETAL = os.environ.get('POOL_BAREMETAL', POOL_DEFAULT)
 
 DEFAULT_POOLS = {
     'admin': POOL_ADMIN,
@@ -134,6 +136,7 @@ DEFAULT_POOLS = {
     'management': POOL_MANAGEMENT,
     'private': POOL_PRIVATE,
     'storage': POOL_STORAGE,
+    'baremetal': POOL_BAREMETAL,
 }
 
 POOLS = {
@@ -152,11 +155,15 @@ POOLS = {
     'storage': os.environ.get(
         'NAT_POOL',
         DEFAULT_POOLS.get('storage')).split(':'),
+    'baremetal': os.environ.get(
+        'INTERNAL_POOL',
+        DEFAULT_POOLS.get('baremetal')).split(':'),
 }
 
 MGMT_FORWARD = os.environ.get('MGMT_FORWARD', FORWARD_DEFAULT)
 PRIVATE_FORWARD = os.environ.get('PRIVATE_FORWARD', FORWARD_DEFAULT)
 STORAGE_FORWARD = os.environ.get('STORAGE_FORWARD', FORWARD_DEFAULT)
+BAREMETAL_FORWARD = os.environ.get('BAREMETAL_FORWARD', FORWARD_DEFAULT)
 
 FORWARDING = {
     'admin': ADMIN_FORWARD,
@@ -164,6 +171,7 @@ FORWARDING = {
     'management': MGMT_FORWARD,
     'private': PRIVATE_FORWARD,
     'storage': STORAGE_FORWARD,
+    'baremetal': BAREMETAL_FORWARD,
 }
 
 # May be one of virtio, e1000, pcnet, rtl8139
@@ -175,6 +183,7 @@ DHCP = {
     'management': False,
     'private': False,
     'storage': False,
+    'baremetal': False,
 }
 
 NODES_COUNT = int(os.environ.get('NODES_COUNT', 10))
