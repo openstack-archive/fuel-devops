@@ -372,11 +372,13 @@ class NodeRoles(object):
 
 class Nodes(object):
     def __init__(self, environment, node_roles):
-        self.admins = list(
-            environment.get_nodes(name__in=node_roles.admin_names)
+        self.admins = sorted(
+            list(environment.get_nodes(name__in=node_roles.admin_names)),
+            key=lambda node: node.name
         )
-        self.others = list(
-            environment.get_nodes(name__in=node_roles.other_names)
+        self.others = sorted(
+            list(environment.get_nodes(name__in=node_roles.other_names)),
+            key=lambda node: node.name
         )
         self.slaves = self.others
         self.all = self.slaves + self.admins
