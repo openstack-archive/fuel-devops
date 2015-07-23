@@ -41,6 +41,7 @@ class Network(DriverModel):
         'passthrough', 'hostdev', null=True)
     # 'ip_network' should be renamed to 'cidr'
     ip_network = models.CharField(max_length=255, unique=True)
+    target_dev = models.CharField(max_length=255, null=True, default=None)
 
     _iterhosts = None
 
@@ -141,7 +142,7 @@ class Network(DriverModel):
     def _safe_create_network(
             cls, name, environment=None, pool=None,
             has_dhcp_server=True, has_pxe_server=False,
-            forward='nat'):
+            forward='nat', target_dev=None):
         allocated_pool = pool or cls._get_default_pool()
         while True:
             try:
@@ -154,7 +155,8 @@ class Network(DriverModel):
                         ip_network=ip_network,
                         has_pxe_server=has_pxe_server,
                         has_dhcp_server=has_dhcp_server,
-                        forward=forward)
+                        forward=forward,
+                        target_dev=target_dev)
             except IntegrityError:
                 transaction.rollback()
 
@@ -162,7 +164,7 @@ class Network(DriverModel):
     def network_create(
         cls, name, environment=None, ip_network=None, pool=None,
         has_dhcp_server=True, has_pxe_server=False,
-        forward='nat'
+        forward='nat', target_dev=None
     ):
         """Create network
 
@@ -175,7 +177,8 @@ class Network(DriverModel):
                 ip_network=ip_network,
                 has_pxe_server=has_pxe_server,
                 has_dhcp_server=has_dhcp_server,
-                forward=forward
+                forward=forward,
+                target_dev=target_dev
             )
         return cls._safe_create_network(
             environment=environment,
@@ -183,7 +186,8 @@ class Network(DriverModel):
             has_dhcp_server=has_dhcp_server,
             has_pxe_server=has_pxe_server,
             name=name,
-            pool=pool)
+            pool=pool,
+            target_dev=target_dev)
 
     @classmethod
     def create_networks(cls, environment, network_names=None,

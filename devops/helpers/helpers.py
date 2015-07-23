@@ -135,7 +135,7 @@ def get_private_keys(env):
 
 def get_admin_remote(env):
     wait(lambda: tcp_ping(env.get_node(
-        name='admin').get_ip_address_by_network_name('admin'), 22), timeout=180
+        name='admin').get_ip_address_by_network_name('admin'), 22), timeout=360
     )
     return env.get_node(
         name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
@@ -175,31 +175,30 @@ def get_slave_ip(env, node_mac_address):
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
              build_images):
-    return '\n'.join([
-        '<Wait>',
-        '<Esc>',
-        '<Wait>',
-        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
-        ' ip={ip}',
-        ' netmask={mask}',
-        ' gw={gw}',
-        ' dns1={dns1}',
-        ' hostname={hostname}',
-        ' dhcp_interface={nat_interface}',
-        ' showmenu={showmenu}',
-        ' build_images={build_images}',
-        ' <Enter>',
-        ''
-    ]).format(
-        ip=ip,
-        mask=mask,
-        gw=gw,
-        hostname=hostname,
-        nat_interface=nat_interface,
-        dns1=dns1,
-        showmenu=showmenu,
-        build_images=build_images
-    )
+    return ("<Wait>\n"
+            "<Wait>\n"
+            "<Wait>\n"
+            "<Esc>\n"
+            "<Wait>\n"
+            "vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n"
+            " ip={ip}\n"
+            " netmask={mask}\n"
+            " gw={gw}\n"
+            " dns1={dns1}\n"
+            " hostname={hostname}\n"
+            " dhcp_interface={nat_interface}\n"
+            " showmenu={showmenu}\n"
+            " build_images={build_images}\n"
+            " <Enter>\n".format(
+                ip=ip,
+                mask=mask,
+                gw=gw,
+                hostname=hostname,
+                nat_interface=nat_interface,
+                dns1=dns1,
+                showmenu=showmenu,
+                build_images=build_images
+            ))
 
 
 class KeyPolicy(paramiko.WarningPolicy):
