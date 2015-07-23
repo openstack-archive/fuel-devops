@@ -36,6 +36,7 @@ class Environment(DriverModel):
         db_table = 'devops_environment'
 
     name = models.CharField(max_length=255, unique=True, null=False)
+    # libvirt_uri = models.CharField(max_length=255, unique=True, null=False)
 
     hostname = 'nailgun'
     domain = 'test.domain.local'
@@ -62,13 +63,18 @@ class Environment(DriverModel):
     def get_nodes(self, *args, **kwargs):
         return self.node_set.filter(*args, **kwargs)
 
-    def add_node(self, memory, name, vcpu=1, boot=None):
+    def add_node(self, memory, name, vcpu=1, boot=None,
+                 node_type='virtual', ipmi_uri=None,
+                 role=None):
         return Node.node_create(
             name=name,
             memory=memory,
             vcpu=vcpu,
             environment=self,
-            boot=boot)
+            boot=boot,
+            node_type=node_type,
+            ipmi_uri=ipmi_uri,
+            role=None)
 
     def add_empty_volume(self, node, name,
                          capacity=settings.NODE_VOLUME_SIZE * 1024 ** 3,
@@ -190,6 +196,25 @@ class Environment(DriverModel):
 
     @classmethod
     def describe_environment(cls, boot_from='cdrom'):
+        # TODO:
+        # Baremetal slave nodes in yaml(csv)
+        # name,ipmi,admin_net_vlan
+        # slave-01,ipmi,vlanid
+        # slave-02,ipmi,vlanid
+        # slave-03,ipmi,vlanid
+        # slave-04,ipmi,vlanid
+        # - name: admin
+        #     eth0: fuel_admin
+        #         vlan:256
+        # - name: slave-01
+        #     type: virtual
+        #     memory: 4026
+        #     cpu: 4
+        # - name: slave-05
+        #     type: ipmi
+        #     ipmi_user: 
+        #     ipmi
+
         environment = cls.create(settings.ENV_NAME)
         networks = []
         interfaces = settings.INTERFACE_ORDER
