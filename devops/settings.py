@@ -95,8 +95,8 @@ INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
 
 BONDING = os.environ.get("BONDING", 'false') == 'true'
 BONDING_INTERFACES = {
-    'admin': ['eth0'],
-    'public': ['eth1', 'eth2', 'eth3', 'eth4']
+    'admin': ['eth0', 'eth1'],
+    'public': ['eth2', 'eth3', 'eth4', 'eth5']
 }
 
 MULTIPLE_NETWORKS = os.environ.get('MULTIPLE_NETWORKS', False) == 'true'
