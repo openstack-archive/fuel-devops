@@ -18,7 +18,6 @@ import xml.etree.ElementTree as ET
 
 import ipaddr
 import libvirt
-from lxml import etree
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
@@ -38,9 +37,9 @@ class Snapshot(object):
 
     @property
     def created(self):
-        xml_tree = etree.fromstring(self._xml)
+        xml_tree = ET.fromstring(self._xml)
 
-        timestamp = xml_tree.xpath('/domainsnapshot/creationTime/text()')[0]
+        timestamp = xml_tree.findall('./creationTime')[0].text
         return datetime.datetime.utcfromtimestamp(float(timestamp))
 
     @property
