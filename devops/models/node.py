@@ -16,6 +16,7 @@ import json
 
 from django.conf import settings
 from django.db import models
+from django.utils.importlib import import_module
 
 from devops.helpers.helpers import _tcp_ping
 from devops.helpers.helpers import _wait
@@ -36,6 +37,7 @@ class Node(DriverModel):
     class Meta:
         unique_together = ('name', 'environment')
         db_table = 'devops_node'
+        _ipmi_driver = None
 
     environment = models.ForeignKey('Environment', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
@@ -45,10 +47,32 @@ class Node(DriverModel):
     architecture = choices('x86_64', 'i686')
     boot = models.CharField(max_length=255, null=False, default=json.dumps([]))
     metadata = models.CharField(max_length=255, null=True)
-    role = models.CharField(max_length=255, null=True)
+    role = models.CharField(max_length=255, null=True)  # admin, slave, host
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
+    node_type = choices('real', 'virtual', default='virtual')
+    ipmi_uri = models.CharField(max_length=255, null=True)  # ipmi://user:password@hostip # noqa
+    # libvirt_uri = models.CharField(max_length=255, null=True)  # ssh+qemu://user:password@hostip/system # noqa
+    # mac = models.CharField(max_length=18, null=True)  # admin iface mac address # noqa
+
+    @property
+    def driver(self):
+        """Driver object
+
+        :rtype : DevopsDriver
+        """
+        if self.node_type == 'real':
+            DRIVER_PARAMETERS = {
+                'ipmi_cmd': '/usr/bin/ipmitool -I lan'
+            }
+            DRIVER = 'devops.driver.ipmi2.ipmi2_driver'
+            ipmi2_driver = import_module(DRIVER)
+            self._ipmi_driver = self._ipmi_driver or ipmi2_driver.DevopsDriver(
+                **DRIVER_PARAMETERS)
+            return self._ipmi_driver
+        else:
+            return self.get_driver()
 
     def next_disk_name(self):
         disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
@@ -59,6 +83,10 @@ class Node(DriverModel):
 
     def get_vnc_port(self):
         return self.driver.node_get_vnc_port(node=self)
+
+    @property
+    def is_active(self):
+        return bool(self.driver.node_active(self))
 
     @property
     def disk_devices(self):
@@ -325,7 +353,8 @@ class Node(DriverModel):
     @classmethod
     def node_create(cls, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
-                    os_type='hvm', architecture='x86_64', boot=None):
+                    os_type='hvm', architecture='x86_64', boot=None,
+                    node_type='virtual', ipmi_uri=None):
         """Create node
 
         :rtype : Node
@@ -336,6 +365,7 @@ class Node(DriverModel):
             name=name, environment=environment,
             role=role, vcpu=vcpu, memory=memory,
             has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
-            os_type=os_type, architecture=architecture, boot=json.dumps(boot)
+            os_type=os_type, architecture=architecture, boot=json.dumps(boot),
+            node_type=node_type, ipmi_uri=ipmi_uri
         )
         return node
