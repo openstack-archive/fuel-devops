@@ -134,9 +134,11 @@ def get_private_keys(env):
 
 
 def get_admin_remote(env):
-    wait(lambda: tcp_ping(env.get_node(
-        name='admin').get_ip_address_by_network_name('admin'), 22), timeout=180
-    )
+    admin_ip = get_admin_ip(env)
+    wait(lambda: tcp_ping(admin_ip, 22),
+         timeout=180,
+         timeout_msg=("Admin node {ip} is not accessible by SSH."
+                      .format(ip=admin_ip)))
     return env.get_node(
         name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
                              login=SSH_CREDENTIALS['login'],
@@ -146,30 +148,24 @@ def get_admin_remote(env):
 def get_node_remote(env, node_name):
     ip = get_slave_ip(env, env.get_node(
         name=node_name).interfaces[0].mac_address)
-    wait(lambda: tcp_ping(ip, 22), timeout=180)
+    wait(lambda: tcp_ping(ip, 22), timeout=180,
+         timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
     return SSHClient(ip,
                      username=SSH_CREDENTIALS['login'],
                      password=SSH_CREDENTIALS['password'],
                      private_keys=get_private_keys(env))
 
 
-def sync_node_time(env, node_name='admin', cmd='hwclock -s'):
-    if node_name == 'admin':
-        remote = get_admin_remote(env)
-    else:
-        remote = get_node_remote(env, node_name)
-    remote.execute(cmd)
-    remote_date = remote.execute('date')['stdout']
-    logger.info("Node time: %s", remote_date)
-    return remote_date
+def get_admin_ip(env):
+    return env.get_node(name='admin').get_ip_address_by_network_name('admin')
 
 
 def get_slave_ip(env, node_mac_address):
-    remote = get_admin_remote(env)
-    ip = remote.execute(
-        "fuel nodes --node-id {0} | awk -F'|' "
-        "'END{{gsub(\" \", \"\", $5); print $5}}'".
-        format(node_mac_address))['stdout']
+    with get_admin_remote(env) as remote:
+        ip = remote.execute(
+            "fuel nodes --node-id {0} | awk -F'|' "
+            "'END{{gsub(\" \", \"\", $5); print $5}}'".
+            format(node_mac_address))['stdout']
     return ip[0].rstrip()
 
 
