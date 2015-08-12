@@ -22,8 +22,8 @@ import tabulate
 
 import devops
 from devops.helpers.helpers import _get_file_size
-from devops.helpers.helpers import sync_node_time
 from devops.helpers import node_manager
+from devops.helpers.ntp import sync_time
 from devops.models import Environment
 from devops.models.network import Network
 from devops import settings
@@ -137,13 +137,19 @@ class Shell(object):
 
     def do_timesync(self):
         if not self.params.node_name:
-            for node in self.env.get_nodes():
-                if node.driver.node_active(node):
-                    datetime = sync_node_time(self.env, node.name)
-                    print('Node [{0}]: {1}'.format(node.name, datetime))
+            nodes = [node.name for node in self.env.get_nodes()
+                     if node.driver.node_active(node)]
         else:
-            datetime = sync_node_time(self.env, self.params.node_name)
-            print('Node [{0}]: {1}'.format(self.params.node_name, datetime))
+            nodes = [self.params.node_name]
+        cur_time = sync_time(self.env, nodes, skip_sync=True)
+        for name in sorted(cur_time):
+            print("Current time on '{0}' = {1}".format(name, cur_time[name]))
+
+        print("Please wait for a few minutes while time is synchronized...")
+
+        new_time = sync_time(self.env, nodes, skip_sync=False)
+        for name in sorted(new_time):
+            print("New time on '{0}' = {1}".format(name, new_time[name]))
 
     def do_revert_resume(self):
         self.env.revert(self.params.snapshot_name, flag=False)
