@@ -132,6 +132,9 @@ class Node(DriverModel):
         if verbose or self.driver.node_active(self):
             self.driver.node_resume(self)
 
+    def reset(self):
+        self.driver.node_reset(self)
+
     def has_snapshot(self, name):
         return self.driver.node_snapshot_exists(node=self, name=name)
 

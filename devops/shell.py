@@ -262,7 +262,7 @@ class Shell(object):
         self.env.get_node(name=self.params.node_name).destroy()
 
     def do_node_reset(self):
-        self.env.get_node(name=self.params.node_name).node_reset()
+        self.env.get_node(name=self.params.node_name).reset()
 
     commands = {
         'list': do_list,
