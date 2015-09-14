@@ -258,9 +258,11 @@ class SSHClient(object):
                 return self._ssh.connect(
                     self.host, port=self.port, username=self.username,
                     password=self.password, pkey=private_key)
-            except paramiko.AuthenticationException as e:
-                logging.error("Authentication failed")
-                logging.exception(e)
+            except paramiko.AuthenticationException:
+                continue
+        if self.private_keys:
+            logging.error("Authentication with keys failed")
+
         return self._ssh.connect(
             self.host, port=self.port, username=self.username,
             password=self.password)
