@@ -183,8 +183,8 @@ NODES_COUNT = int(os.environ.get('NODES_COUNT', 10))
 HARDWARE = {
     "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 2048)),
     "admin_node_cpu": int(os.environ.get("ADMIN_NODE_CPU", 2)),
-    "slave_node_cpu": int(os.environ.get("SLAVE_NODE_CPU", 1)),
-    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 2560)),
+    "slave_node_cpu": int(os.environ.get("SLAVE_NODE_CPU", 2)),
+    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3027)),
 }
 
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
