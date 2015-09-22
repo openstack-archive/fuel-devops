@@ -215,6 +215,12 @@ class Environment(DriverModel):
                 ]
 
             environment.describe_empty_node(name, networks_to_describe)
+        for name in environment.node_roles.ironic_names:
+            ironic_net = []
+            for net in networks:
+                if net.name == 'ironic':
+                    ironic_net.append(net)
+            environment.describe_empty_node(name, ironic_net)
         return environment
 
     def create_networks(self, name):
@@ -251,6 +257,10 @@ class Environment(DriverModel):
             admin_names=['admin'],
             other_names=[
                 'slave-%02d' % x for x in range(1, settings.NODES_COUNT)
+            ],
+            ironic_names=[
+                'ironic-slave-%02d' % x for x in range(
+                    1, settings.IRONIC_NODES_COUNT + 1)
             ]
         )
 
@@ -365,9 +375,11 @@ class Environment(DriverModel):
 class NodeRoles(object):
     def __init__(self,
                  admin_names=None,
-                 other_names=None):
+                 other_names=None,
+                 ironic_names=None):
         self.admin_names = admin_names or []
         self.other_names = other_names or []
+        self.ironic_names = ironic_names or []
 
 
 class Nodes(object):
@@ -380,8 +392,12 @@ class Nodes(object):
             list(environment.get_nodes(name__in=node_roles.other_names)),
             key=lambda node: node.name
         )
+        self.ironics = sorted(
+            list(environment.get_nodes(name__in=node_roles.ironic_names)),
+            key=lambda node: node.name
+        )
         self.slaves = self.others
-        self.all = self.slaves + self.admins
+        self.all = self.slaves + self.admins + self.ironics
         self.admin = self.admins[0]
 
     def __iter__(self):
