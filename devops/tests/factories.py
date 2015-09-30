@@ -28,12 +28,23 @@ class FuzzyUuid(fuzzy.BaseFuzzyAttribute):
         return str(uuid.uuid4())
 
 
-@factory.use_strategy(factory.BUILD_STRATEGY)
 class EnvironmentFactory(factory.django.DjangoModelFactory):
+    """Create Environment with randomized name."""
     class Meta:
         model = models.Environment
+        django_get_or_create = ('name',)
 
     name = fuzzy.FuzzyText('test_env_')
+
+
+class SingleEnvironmentFactory(EnvironmentFactory):
+    """Create Environment with 'test_env' name, without randomization."""
+    name = 'test_env'
+
+
+@factory.use_strategy(factory.BUILD_STRATEGY)
+class NoDBEnvironmentFactory(EnvironmentFactory):
+    pass
 
 
 @factory.use_strategy(factory.BUILD_STRATEGY)
@@ -48,6 +59,60 @@ class VolumeFactory(factory.django.DjangoModelFactory):
     uuid = FuzzyUuid()
     capacity = fuzzy.FuzzyInteger(50, 100)
     format = fuzzy.FuzzyText('qcow2_')
+
+
+class NodeFactory(factory.django.DjangoModelFactory):
+    """Create Node with Enviroment having randomized name."""
+    class Meta:
+        model = models.Node
+
+    environment = factory.SubFactory(EnvironmentFactory)
+
+
+class SingleNodeFactory(NodeFactory):
+    """Create Node with Environment having 'test_env' name."""
+    environment = factory.SubFactory(SingleEnvironmentFactory)
+
+
+class NetworkFactory(factory.django.DjangoModelFactory):
+    """Create Network with Environment having randomized name."""
+    class Meta:
+        model = models.Network
+
+    environment = factory.SubFactory(EnvironmentFactory)
+    ip_network = '10.21.0.0/24'
+    has_dhcp_server = False
+    has_pxe_server = False
+
+
+class SingleNetworkFactory(NetworkFactory):
+    """Create Network with Environment having 'test_env' name."""
+    environment = factory.SubFactory(SingleEnvironmentFactory)
+
+
+class InterfaceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Interface
+
+    node = factory.SubFactory(NodeFactory)
+    network = factory.SubFactory(NetworkFactory)
+
+
+class SingleInterfaceFactory(InterfaceFactory):
+    node = factory.SubFactory(SingleNodeFactory)
+    network = factory.SubFactory(SingleNetworkFactory)
+
+
+class AddressFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.Address
+
+    interface = factory.SubFactory(InterfaceFactory)
+    ip_address = '10.21.0.2'
+
+
+class SingleAddressFactory(AddressFactory):
+    interface = factory.SubFactory(SingleInterfaceFactory)
 
 
 def fuzzy_string(*args, **kwargs):
