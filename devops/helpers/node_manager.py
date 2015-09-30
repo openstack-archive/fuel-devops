@@ -71,6 +71,7 @@ def admin_prepare_disks(node, disk_size):
 
 
 def admin_change_config(admin_node,
+                        showmenu,
                         hostname=MASTER_FQDN,
                         dns1=MASTER_DNS
                         ):
@@ -82,6 +83,7 @@ def admin_change_config(admin_node,
         :rtype : None
     """
     admin_net = admin_node.environment.get_network(name='admin')
+    showmenu = 'yes' if showmenu else 'no'
     keys = get_keys(
         ip=admin_node.get_ip_address_by_network_name('admin'),
         mask=admin_net.netmask,
@@ -89,7 +91,7 @@ def admin_change_config(admin_node,
         hostname=hostname,
         nat_interface='',
         dns1=dns1,
-        showmenu='no',
+        showmenu=showmenu,
         build_images=0)
 
     print("Waiting for admin node to start up")

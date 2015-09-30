@@ -15,15 +15,15 @@
 #    under the License.
 
 import datetime
-import unittest
 
 import mock
+import pytest
 
 from devops import models
 from devops import shell
 
 
-class BaseShellTestCase(unittest.TestCase):
+class BaseShellTestCase(object):
 
     def execute(self, *args):
         return shell.main(args)
@@ -80,3 +80,31 @@ class TestDoSnapshot(BaseShellTestCase):
         for node in nodes:
             node.snapshot.assert_called_once_with(
                 force=mock.ANY, description=mock.ANY, name="123456")
+
+
+class TestAdminSetup(BaseShellTestCase):
+
+    @staticmethod
+    def _test_admin_setup(mock_libvirt, expected_keys):
+        """Check parameters in libvirt's sendKey method"""
+        expected_calls = (mock.call().lookupByUUIDString().sendKey(0, 0, [key],
+                                                                   1, 0)
+                          for key in expected_keys)
+        for expected_call in expected_calls:
+            assert expected_call in mock_libvirt.mock_calls
+
+    @pytest.mark.django_db
+    @pytest.mark.usefixtures('single_admin_node')
+    def test_admin_setup_with_fuelmenu(self, mock_libvirt):
+        self.execute('admin-setup', '--show-menu', 'test_env')
+        # Keys for "showmenu=yes"
+        expected_keys = [31, 35, 24, 17, 50, 18, 49, 22, 13, 21, 18, 31]
+        self._test_admin_setup(mock_libvirt, expected_keys)
+
+    @pytest.mark.django_db
+    @pytest.mark.usefixtures('single_admin_node')
+    def test_admin_setup_without_fuelmenu(self, mock_libvirt):
+        self.execute('admin-setup', 'test_env')
+        # Keys for "showmenu=no"
+        expected_keys = [31, 35, 24, 17, 50, 18, 49, 22, 13, 49, 24]
+        self._test_admin_setup(mock_libvirt, expected_keys)
