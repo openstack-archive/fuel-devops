@@ -231,7 +231,8 @@ class Shell(object):
         node_manager.admin_prepare_disks(node=admin_node,
                                          disk_size=self.params.admin_disk_size)
         admin_node.start()
-        node_manager.admin_change_config(admin_node)
+        showmenu = self.params.showmenu
+        node_manager.admin_change_config(admin_node, showmenu)
         admin_node.await("admin", timeout=10 * 60)
         node_manager.admin_wait_bootstrap(3000, self.env)
 
@@ -391,6 +392,11 @@ class Shell(object):
                                           'If set to 0, the disk will not be '
                                           'allocated',
                                      default=50, type=int)
+        show_menu_parser = argparse.ArgumentParser(add_help=False)
+        show_menu_parser.add_argument('--show-menu',
+                                      dest='showmenu',
+                                      help='Run and show fuelmenu',
+                                      action='store_true')
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For additional help, use with -h/--help option")
@@ -492,7 +498,8 @@ class Shell(object):
                               description="Remove selected node from "
                               "environment")
         subparsers.add_parser('admin-setup',
-                              parents=[name_parser, admin_disk_size_parser],
+                              parents=[name_parser, admin_disk_size_parser,
+                                       show_menu_parser],
                               help="Setup admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',
