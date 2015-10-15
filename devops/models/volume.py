@@ -29,6 +29,9 @@ class Volume(DriverModel):
     capacity = models.BigIntegerField(null=False)
     format = models.CharField(max_length=255, null=False)
 
+    def __unicode__(self):
+        return "Volume_%s_%sG" % (self.name, self.capacity/1024/1024/1024)
+
     def define(self):
         self.driver.volume_define(self)
         self.save()
