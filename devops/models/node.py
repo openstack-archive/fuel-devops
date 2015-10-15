@@ -215,16 +215,17 @@ class Node(DriverModel):
     def has_snapshot(self, name):
         return self.driver.node_snapshot_exists(node=self, name=name)
 
-    def snapshot(self, name=None, force=False, description=None):
+    def snapshot(self, name=None, force=False, description=None, external=False):
         if force and self.has_snapshot(name):
             self.driver.node_delete_snapshot(node=self, name=name)
         self.driver.node_create_snapshot(
-            node=self, name=name, description=description)
+            node=self, name=name, description=description, external=external)
 
     def revert(self, name=None, destroy=True):
         if destroy:
             self.destroy(verbose=False)
         if self.has_snapshot(name):
+            print "NODE revert"
             self.driver.node_revert_snapshot(node=self, name=name)
         else:
             print('Domain snapshot for {0} node not found: no domain '

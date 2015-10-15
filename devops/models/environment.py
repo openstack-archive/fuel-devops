@@ -147,11 +147,11 @@ class Environment(DriverModel):
         for node in self.get_nodes():
             node.resume(verbose)
 
-    def snapshot(self, name=None, description=None, force=False):
+    def snapshot(self, name=None, description=None, force=False, external=False):
         if name is None:
             name = str(int(time.time()))
         for node in self.get_nodes():
-            node.snapshot(name=name, description=description, force=force)
+            node.snapshot(name=name, description=description, force=force, external=external)
 
     def revert(self, name=None, destroy=True, flag=True):
         if destroy:
@@ -161,6 +161,7 @@ class Environment(DriverModel):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
         for node in self.get_nodes():
+            print "ENV revert for %s" % node.name
             node.revert(name, destroy=False)
 
     @classmethod

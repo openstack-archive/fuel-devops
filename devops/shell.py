@@ -92,7 +92,7 @@ class Shell(object):
         self.env.revert(self.params.snapshot_name, flag=False)
 
     def do_snapshot(self):
-        self.env.snapshot(self.params.snapshot_name)
+        self.env.snapshot(self.params.snapshot_name, external=self.params.snapshot_external)
 
     def do_synchronize(self):
         Environment.synchronize_all()
@@ -302,6 +302,11 @@ class Shell(object):
                                           help='snapshot name',
                                           default=os.environ.get(
                                               'SNAPSHOT_NAME'))
+        snapshot_external_parser = argparse.ArgumentParser(add_help=False)
+        snapshot_external_parser.add_argument('--snapshot-external', dest='snapshot_external',
+                                        action='store_const', const=True,
+                                        help='enable external snapshots',
+                                        default=False)
         node_name_parser = argparse.ArgumentParser(add_help=False)
         node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
@@ -426,7 +431,7 @@ class Shell(object):
                               description="Apply selected snapshot to "
                               "environment")
         subparsers.add_parser('snapshot',
-                              parents=[name_parser, snapshot_name_parser],
+                              parents=[name_parser, snapshot_name_parser, snapshot_external_parser],
                               help="Make environment snapshot",
                               description="Make environment snapshot")
         subparsers.add_parser('sync',
