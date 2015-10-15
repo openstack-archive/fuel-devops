@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import datetime
 from time import sleep
 import xml.etree.ElementTree as ET
@@ -45,6 +46,10 @@ class Snapshot(object):
     @property
     def name(self):
         return self._snapshot.getName()
+
+    @property
+    def parent(self):
+        return self._snapshot.getParent()
 
     def __repr__(self):
         if not self._repr:
@@ -386,7 +391,7 @@ class DevopsDriver(object):
         return [Snapshot(snap) for snap in snapshots]
 
     @retry()
-    def node_create_snapshot(self, node, name=None, description=None):
+    def node_create_snapshot(self, node, name=None, description=None, disk_only=False, external=False):
         """Create snapshot
 
         :type description: String
@@ -394,11 +399,33 @@ class DevopsDriver(object):
         :type node: Node
             :rtype : None
         """
-        xml = self.xml_builder.build_snapshot_xml(name, description)
-        logger.info(xml)
         domain = self.conn.lookupByUUIDString(node.uuid)
+
+        # Check wether domain has snapshots
+        # If has we must to check snapshot type and use the same
+        snap_list = domain.listAllSnapshots(0)
+        if len(snap_list) > 0:
+            snap_type = self._get_snapshot_type(snap_list[0])
+            if external and snap_type == 'internal':
+                logger.error("Cannot create external snapshot when internal exists")
+                return
+            if not external and snap_type == 'external':
+                logger.error("Cannot create internal snapshot when external exists")
+                return
+
+        if name is not None:
+            for snap in snap_list:
+                if name == snap.getName():
+                    logger.error("Snapshot with name %s already exists" % name)
+                    return
+
         logger.info(domain.state(0))
-        domain.snapshotCreateXML(xml, 0)
+        xml = self.xml_builder.build_snapshot_xml(name, description, node, domain, disk_only, external)
+        logger.info(xml)
+        if external and not domain.isActive():
+            domain.snapshotCreateXML(xml, 16)
+        else:
+            domain.snapshotCreateXML(xml)
         logger.info(domain.state(0))
 
     def _get_snapshot(self, domain, name):
@@ -413,6 +440,34 @@ class DevopsDriver(object):
         else:
             return domain.snapshotLookupByName(name, 0)
 
+    def _get_snapshot_type(self, snapshot):
+        """Return snapshot type
+        """
+        xml_tree = ET.fromstring(snapshot.getXMLDesc())
+        snap_state = xml_tree.findall('./state')[0].text
+        snap_memory = xml_tree.findall('./memory')[0]
+        snap_type = 'internal'
+        snap_saved = False
+        if snap_memory.get('snapshot') == 'external':
+            snap_type = 'external'
+        for disk in xml_tree.iter('disk'):
+            if disk.get('snapshot') == 'external':
+                snap_type = 'external'
+        return snap_type
+
+    def _get_snapshot_files(self, snapshot):
+        """Return snapshot files
+        """
+        xml_tree = ET.fromstring(snapshot.getXMLDesc())
+        snap_files = []
+        for disk in xml_tree.findall('./disks')[0]:
+            if disk.get('snapshot') == 'external':
+                snap_files.append(disk.findall('source')[0].get('file'))
+        snap_memory = xml_tree.findall('./memory')[0]
+        if snap_memory.get('file') is not None:
+            snap_files.append(snap_memory.get('file'))
+        return snap_files
+
     @retry()
     def node_revert_snapshot(self, node, name=None):
         """Revert snapshot for node
@@ -423,7 +478,29 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
-        domain.revertToSnapshot(snapshot, 0)
+        #print dir(snapshot)
+        #print snapshot.isCurrent()
+        #print snapshot.getXMLDesc()
+        xml_tree = ET.fromstring(snapshot.getXMLDesc())
+        snap_state = xml_tree.findall('state')[0].text
+        snap_memory = xml_tree.findall('memory')[0]
+
+        snap_type = self._get_snapshot_type(snapshot)
+        if snap_type == 'external':
+            snap_saved = True
+        else:
+            snap_saved = False
+
+#        if snap_type == 'external' and snap_state == 'paused':
+        if snap_type == 'external':
+            logger.info("Revert external %s %s" % (node.name, snap_state))
+            self.conn.restoreFlags(snap_memory.get('file'), flags=4)
+            logger.info("Create snapshot disk for changes")
+#            self.node_create_snapshot(node, name='revert1', disk_only=True)
+            self.node_create_snapshot(node, name='%s-revert' % name, external=True)
+
+        if snap_type == 'internal':
+            domain.revertToSnapshot(snapshot, 0)
 
     @retry()
     def node_delete_all_snapshots(self, node):
@@ -433,6 +510,16 @@ class DevopsDriver(object):
         """
 
         domain = self.conn.lookupByUUIDString(node.uuid)
+
+        # Delete all external snapshots end return
+        snap_list = domain.listAllSnapshots(0)
+        if len(snap_list) > 0:
+            snap_type = self._get_snapshot_type(snap_list[0])
+            if snap_type == 'external':
+                for snapshot in snap_list:
+                    snapshot.delete(2)
+                return
+
         for name in domain.snapshotListNames(
                 libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
             snapshot = self._get_snapshot(domain, name)
@@ -447,7 +534,30 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
-        snapshot.delete(0)
+        snap_type = self._get_snapshot_type(snapshot)
+        #print snapshot.getXMLDesc()
+        if snap_type == 'external':
+            if snapshot.numChildren() > 0:
+                logger.error("With external snapshots you cannot delete snapshot with childrens")
+                return
+
+            if domain.isActive():
+                logger.error("Cannot delete external snapshot on active domain")
+                return
+
+            # Update domain to snapshot state
+            xml_tree = ET.fromstring(snapshot.getXMLDesc())
+            xml_domain = xml_tree.find('domain')
+            self.conn.defineXML(ET.tostring(xml_domain))
+
+            # Delete snapshot files
+            for snap_file in self._get_snapshot_files(snapshot):
+                print "Delete external snapshot file %s" % snap_file
+                if os.path.isfile(snap_file):
+                    os.remove(snap_file)
+            snapshot.delete(2)
+        else:
+            snapshot.delete(0)
 
     @retry()
     def node_send_keys(self, node, keys):

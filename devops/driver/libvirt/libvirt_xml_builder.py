@@ -98,7 +98,7 @@ class LibvirtXMLBuilder(object):
                 volume_xml.format(type=volume.backing_store.format)
         return str(volume_xml)
 
-    def build_snapshot_xml(self, name=None, description=None):
+    def build_snapshot_xml(self, name=None, description=None, node=None, domain=None, disk_only=False, external=False):
         """Generate snapshot XML
 
         :rtype : String
@@ -110,6 +110,27 @@ class LibvirtXMLBuilder(object):
             xml_builder.name(name)
         if description is not None:
             xml_builder.description(description)
+        if external:
+#            print "Add to XML parts for external snapshots"
+            # Add memory file for active machines
+            # TODO: Check all state
+            if domain.state(0)[0] != 5 and disk_only == False:
+                xml_builder.memory(file='/home/ubuntu/.devops/snap/%s_%s.%s-mem' % (node.environment.name, node.name, name), snapshot='external')
+            else:
+#            xml_builder.memory(file='/home/ubuntu/.devops/snap/%s_%s.%s-mem' % (node.environment.name, node.name, name), snapshot='no')
+                xml_builder.memory(snapshot='no')
+            for disk in node.disk_devices:
+#                print dir(disk)
+#                print disk.device
+#                print disk.target_dev
+#               print disk.volume.name
+#                print disk.volume.get_path()
+#                print dir(disk.volume)
+                if disk.device == 'disk':
+                    with xml_builder.disks:
+                        with xml_builder.disk(name=disk.target_dev, snapshot='external'):
+                            xml_builder.source(file='/home/ubuntu/.devops/snap/%s_%s.%s-snap' % (node.environment.name, disk.volume.name, name))
+        print str(xml_builder)
         return str(xml_builder)
 
     def _build_disk_device(self, device_xml, disk_device):
