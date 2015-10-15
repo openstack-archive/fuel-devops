@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 
 import ipaddr
 import libvirt
+import os
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
@@ -36,15 +37,55 @@ class Snapshot(object):
         self._repr = ""
 
     @property
-    def created(self):
-        xml_tree = ET.fromstring(self._xml)
+    def _xml_tree(self):
+        return ET.fromstring(self._xml)
 
-        timestamp = xml_tree.findall('./creationTime')[0].text
+    @property
+    def childrens_num(self):
+        return self._snapshot.numChildren()
+
+    @property
+    def created(self):
+        timestamp = self._xml_tree.findall('./creationTime')[0].text
         return datetime.datetime.utcfromtimestamp(float(timestamp))
+
+    @property
+    def disks(self):
+        disks = {}
+        xml_snapshot_disks = self._xml_tree.find('./disks')
+        for xml_disk in xml_snapshot_disks:
+            if xml_disk.get('snapshot') == 'external':
+                disks[xml_disk.get('name')] = xml_disk.find(
+                    'source').get('file')
+        return disks
+
+    @property
+    def get_type(self):
+        """Return snapshot type"""
+        snap_memory = self._xml_tree.findall('./memory')[0]
+        snap_type = 'internal'
+        if snap_memory.get('snapshot') == 'external':
+            snap_type = 'external'
+        for disk in self._xml_tree.iter('disk'):
+            if disk.get('snapshot') == 'external':
+                snap_type = 'external'
+        return snap_type
+
+    @property
+    def memory_file(self):
+        return self._xml_tree.findall('./memory')[0].get('file')
 
     @property
     def name(self):
         return self._snapshot.getName()
+
+    @property
+    def parent(self):
+        return self._snapshot.getParent()
+
+    @property
+    def state(self):
+        return self._xml_tree.findall('state')[0].text
 
     def __repr__(self):
         if not self._repr:
@@ -87,6 +128,9 @@ class DevopsDriver(object):
 
     def _get_name(self, *kwargs):
         return self.xml_builder._get_name(*kwargs)
+
+    def get_libvirt_version(self):
+        return self.conn.getLibVersion()
 
     @retry()
     def get_capabilities(self):
@@ -270,6 +314,10 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         if undefine_snapshots:
+            # Delete external snapshots
+            snap_list = domain.listAllSnapshots(0)
+            for snapshot in snap_list:
+                self._delete_snapshot_files(snapshot)
             domain.undefineFlags(
                 libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         else:
@@ -382,11 +430,34 @@ class DevopsDriver(object):
             :type node: Node
         """
 
-        snapshots = self.conn.lookupByUUIDString(node.uuid).listAllSnapshots(0)
+        snapshots = self.conn.lookupByUUIDString(
+            node.uuid).listAllSnapshots(0)
         return [Snapshot(snap) for snap in snapshots]
 
+    def node_get_snapshot(self, node, name):
+        """Get snapshot with name
+
+        :rtype : Snapshot
+            :type node: Node
+            :type name: Snapshot name
+        """
+
+        snap = self.conn.lookupByUUIDString(
+            node.uuid).snapshotLookupByName(name)
+        return Snapshot(snap)
+
+    def node_set_snapshot_current(self, node, name):
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        snapshot = self._get_snapshot(domain, name)
+        snapshot_xml = snapshot.getXMLDesc()
+        domain.snapshotCreateXML(
+            snapshot_xml,
+            libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE |
+            libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_CURRENT)
+
     @retry()
-    def node_create_snapshot(self, node, name=None, description=None):
+    def node_create_snapshot(self, node, name=None, description=None,
+                             disk_only=False, external=False):
         """Create snapshot
 
         :type description: String
@@ -394,12 +465,64 @@ class DevopsDriver(object):
         :type node: Node
             :rtype : None
         """
-        xml = self.xml_builder.build_snapshot_xml(name, description)
-        logger.info(xml)
+        if self.node_snapshot_exists(node, name):
+            logger.error("Snapshot with name %s already exists" % name)
+            return
+
         domain = self.conn.lookupByUUIDString(node.uuid)
+
+        # If domain has snapshots we must check their type
+        snap_list = self.node_get_snapshots(node)
+        if len(snap_list) > 0:
+            snap_type = snap_list[0].get_type
+            if external and snap_type == 'internal':
+                logger.error(
+                    "Cannot create external snapshot when internal exists")
+                return
+            if not external and snap_type == 'external':
+                logger.error(
+                    "Cannot create internal snapshot when external exists")
+                return
+
         logger.info(domain.state(0))
-        domain.snapshotCreateXML(xml, 0)
+        xml = self.xml_builder.build_snapshot_xml(
+            name, description, node, disk_only, external,
+            settings.SNAPSHOTS_EXTERNAL_DIR)
+        logger.info(xml)
+        if external:
+            # Check whether we have directory for snapshots, if not
+            # create it
+            if not os.path.exists(settings.SNAPSHOTS_EXTERNAL_DIR):
+                os.makedirs(settings.SNAPSHOTS_EXTERNAL_DIR)
+
+            if domain.isActive() and not disk_only:
+                domain.snapshotCreateXML(
+                    xml,
+                    libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REUSE_EXT)
+            else:
+                domain.snapshotCreateXML(
+                    xml,
+                    libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_DISK_ONLY |
+                    libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REUSE_EXT)
+            self.node_set_snapshot_current(node, name)
+        else:
+            domain.snapshotCreateXML(xml)
         logger.info(domain.state(0))
+
+    def _delete_snapshot_files(self, snapshot):
+        """Delete snapshot external files"""
+        snap_type = self._get_snapshot_type(snapshot)
+        if snap_type == 'external':
+            for snap_file in self._get_snapshot_files(snapshot):
+                if os.path.isfile(snap_file):
+                    try:
+                        os.remove(snap_file)
+                        logger.info(
+                            "Delete external snapshot file %s" % snap_file)
+                    except:
+                        logger.info(
+                            "Cannot delete external snapshot file %s"
+                            " must be deleted from cron script" % snap_file)
 
     def _get_snapshot(self, domain, name):
         """Get snapshot
@@ -413,6 +536,45 @@ class DevopsDriver(object):
         else:
             return domain.snapshotLookupByName(name, 0)
 
+    def _get_snapshot_type(self, snapshot):
+        """Return snapshot type"""
+        xml_tree = ET.fromstring(snapshot.getXMLDesc())
+        snap_memory = xml_tree.findall('./memory')[0]
+        snap_type = 'internal'
+        if snap_memory.get('snapshot') == 'external':
+            snap_type = 'external'
+        for disk in xml_tree.iter('disk'):
+            if disk.get('snapshot') == 'external':
+                snap_type = 'external'
+        return snap_type
+
+    def _get_snapshot_files(self, snapshot):
+        """Return snapshot files"""
+        xml_tree = ET.fromstring(snapshot.getXMLDesc())
+        snap_files = []
+        snap_memory = xml_tree.findall('./memory')[0]
+        if snap_memory.get('file') is not None:
+            snap_files.append(snap_memory.get('file'))
+        return snap_files
+
+    @retry()
+    def node_revert_snapshot_recreate_disks(self, node, name):
+        """Recreate snapshot disks."""
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        snapshot = Snapshot(self._get_snapshot(domain, name))
+
+        if snapshot.childrens_num == 0:
+            for s_disk, s_disk_data in snapshot.disks.items():
+                logger.info("Recreate %s" % s_disk_data)
+
+                # Save actual volume XML, delete volume and create
+                # new from saved XML
+                volume = self.conn.storageVolLookupByKey(s_disk_data)
+                volume_xml = volume.XMLDesc()
+                volume_pool = volume.storagePoolLookupByVolume()
+                volume.delete()
+                volume_pool.createXML(volume_xml)
+
     @retry()
     def node_revert_snapshot(self, node, name=None):
         """Revert snapshot for node
@@ -422,8 +584,49 @@ class DevopsDriver(object):
             :rtype : None
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
-        snapshot = self._get_snapshot(domain, name)
-        domain.revertToSnapshot(snapshot, 0)
+        snapshot = Snapshot(self._get_snapshot(domain, name))
+
+        if snapshot.get_type == 'external':
+            logger.info("Revert %s (%s) from external snapshot %s" % (
+                node.name, snapshot.state, name))
+
+            if self.node_active(node):
+                self.node_destroy(node)
+
+            # When snapshot dont have childrens we need to update disks in XML
+            # used for reverting, standard revert function will restore links
+            # to original disks, but we need to use disks with snapshot point,
+            # we dont want to change original data
+            #
+            # For snapshot with childrens we need to create new snapshot chain
+            # and we need to start from original disks, this disks will get new
+            # snapshot point in node class
+            xml_domain = snapshot._xml_tree.find('domain')
+            if snapshot.childrens_num == 0:
+                domain_disks = xml_domain.findall('./devices/disk')
+                for s_disk, s_disk_data in snapshot.disks.items():
+                    for d_disk in domain_disks:
+                        d_disk_dev = d_disk.find('target').get('dev')
+                        d_disk_device = d_disk.get('device')
+                        if d_disk_dev == s_disk and d_disk_device == 'disk':
+                            d_disk.find('source').set('file', s_disk_data)
+
+            if snapshot.state == 'shutoff':
+                # Redefine domain for snapshot without memory save
+                self.conn.defineXML(ET.tostring(xml_domain))
+            else:
+                self.conn.restoreFlags(
+                    snapshot.memory_file,
+                    dxml=ET.tostring(xml_domain),
+                    flags=libvirt.VIR_DOMAIN_SAVE_PAUSED)
+
+            # set snapshot as current
+            self.node_set_snapshot_current(node, name)
+
+        else:
+            logger.info("Revert %s (%s) to internal snapshot %s" % (
+                node.name, snapshot.state, name))
+            domain.revertToSnapshot(snapshot._snapshot, 0)
 
     @retry()
     def node_delete_all_snapshots(self, node):
@@ -433,6 +636,16 @@ class DevopsDriver(object):
         """
 
         domain = self.conn.lookupByUUIDString(node.uuid)
+
+        # Delete all external snapshots end return
+        snap_list = domain.listAllSnapshots(0)
+        if len(snap_list) > 0:
+            snap_type = self._get_snapshot_type(snap_list[0])
+            if snap_type == 'external':
+                for snapshot in snap_list:
+                    snapshot.delete(2)
+                return
+
         for name in domain.snapshotListNames(
                 libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
             snapshot = self._get_snapshot(domain, name)
@@ -447,7 +660,23 @@ class DevopsDriver(object):
         """
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
-        snapshot.delete(0)
+        snap_type = self._get_snapshot_type(snapshot)
+        if snap_type == 'external':
+            if snapshot.numChildren() > 0:
+                logger.error("Cannot delete external snapshots with childrens")
+                return
+
+            if domain.isActive():
+                domain.destroy()
+
+            # Update domain to snapshot state
+            xml_tree = ET.fromstring(snapshot.getXMLDesc())
+            xml_domain = xml_tree.find('domain')
+            self.conn.defineXML(ET.tostring(xml_domain))
+            self._delete_snapshot_files(snapshot)
+            snapshot.delete(2)
+        else:
+            snapshot.delete(0)
 
     @retry()
     def node_send_keys(self, node, keys):
@@ -503,6 +732,12 @@ class DevopsDriver(object):
         libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
             self.xml_builder.build_volume_xml(volume), 0)
         volume.uuid = libvirt_volume.key()
+
+    @retry()
+    def volume_list(self, pool=None):
+        if pool is None:
+            pool = self.storage_pool_name
+        return self.conn.storagePoolLookupByName(pool).listAllVolumes()
 
     @retry()
     def volume_allocation(self, volume):
