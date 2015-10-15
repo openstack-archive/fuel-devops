@@ -98,7 +98,8 @@ class LibvirtXMLBuilder(object):
                 volume_xml.format(type=volume.backing_store.format)
         return str(volume_xml)
 
-    def build_snapshot_xml(self, name=None, description=None):
+    def build_snapshot_xml(self, name=None, description=None, node=None,
+                           domain=None, disk_only=False, external=False):
         """Generate snapshot XML
 
         :rtype : String
@@ -110,6 +111,23 @@ class LibvirtXMLBuilder(object):
             xml_builder.name(name)
         if description is not None:
             xml_builder.description(description)
+        if external:
+            # Add memory file for active machines
+            if domain.isActive() and not disk_only:
+                xml_builder.memory(
+                    file='/home/ubuntu/.devops/snap/%s_%s.%s-mem' % (
+                        node.environment.name,
+                        node.name,
+                        name
+                    ),
+                    snapshot='external')
+            else:
+                xml_builder.memory(snapshot='no')
+            for disk in node.disk_devices:
+                if disk.device == 'disk':
+                    with xml_builder.disks:
+                        xml_builder.disk(name=disk.target_dev,
+                                         snapshot='external')
         return str(xml_builder)
 
     def _build_disk_device(self, device_xml, disk_device):
