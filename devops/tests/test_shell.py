@@ -79,4 +79,5 @@ class TestDoSnapshot(BaseShellTestCase):
 
         for node in nodes:
             node.snapshot.assert_called_once_with(
-                force=mock.ANY, description=mock.ANY, name="123456")
+                force=mock.ANY, description=mock.ANY, name="123456",
+                external=False)
