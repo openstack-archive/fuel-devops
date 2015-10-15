@@ -17,11 +17,15 @@ import json
 from django.conf import settings
 from django.db import models
 
+from devops import logger
 from devops.helpers.helpers import _tcp_ping
 from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
 from devops.models.base import choices
 from devops.models.base import DriverModel
+from devops.models.volume import Volume
+
+import xml.etree.ElementTree as ET
 
 
 class NodeManager(models.Manager):
@@ -215,17 +219,105 @@ class Node(DriverModel):
     def has_snapshot(self, name):
         return self.driver.node_snapshot_exists(node=self, name=name)
 
-    def snapshot(self, name=None, force=False, description=None):
+    def snapshot_create_volume(self, name):
+        """Create volume child for snapshot
+        """
+        for disk in self.disk_devices:
+            if disk.device == 'disk':
+
+                # Find main disk name, it is used for external disk
+                back_vol_name = disk.volume.name
+                back_count = 0
+                disk_test = disk.volume.backing_store
+                while disk_test != None:
+                    back_count += 1
+                    back_vol_name = disk_test.name
+                    disk_test = disk_test.backing_store
+                    if back_count > 500:
+                        logger.error("More then 500 snapshots in chain, or infinitie loop")
+                        return
+
+                # Create new volume for snapshot
+                vol_child = Volume.volume_create_child(
+                    name='%s.%s' % (back_vol_name, name),
+                    backing_store=disk.volume,
+                    environment=self.environment
+                )
+                vol_child.define()
+
+                # update disk node to new snapshot
+                disk.volume = vol_child
+                disk.save()
+
+    def snapshot(self, name=None, force=False, description=None, disk_only=False, external=False):
         if force and self.has_snapshot(name):
             self.driver.node_delete_snapshot(node=self, name=name)
+        if self.driver.node_snapshot_exists(self, name):
+            logger.error("Snapshot with name %s already exists" % name)
+            return
+        if external:
+            # create new volume which will be used as
+            # disk for snapshot changes
+            self.snapshot_create_volume(name)
         self.driver.node_create_snapshot(
-            node=self, name=name, description=description)
+            node=self, name=name, description=description, disk_only=disk_only, external=external)
+
+    def _snapshot_disk_update(self, name):
+        snapshot=self.driver.node_get_snapshot(self, name)
+        xml_snapshot = ET.fromstring(snapshot._snapshot.getXMLDesc())
+        xml_snapshot_disks = xml_snapshot.find('./disks')
+        for xml_disk in xml_snapshot_disks:
+            if xml_disk.get('snapshot') == 'external':
+                vol_file = xml_disk.find('source').get('file')
+
+                # Set actual node disks to disks from snapshot
+                for disk in self.disk_devices:
+                    if disk.device == 'disk':
+                        if xml_disk.get('name') == disk.target_dev:
+                            if snapshot.childrens_num == 0:
+                                disk.volume = Volume.objects.get(uuid=vol_file)
+                            else:
+                                disk.volume = Volume.objects.get(uuid=vol_file).backing_store
+                            disk.save()
 
     def revert(self, name=None, destroy=True):
         if destroy:
             self.destroy(verbose=False)
         if self.has_snapshot(name):
-            self.driver.node_revert_snapshot(node=self, name=name)
+            # For external snapshots we use restore for revert, after reverting
+            # we get original disk as default, it must be changed to new disk.
+            # For snapshot without childs we clean its disk and use it again.
+            # For snapshot with child we create additional snapshot for debuging
+            snapshot=self.driver.node_get_snapshot(self, name)
+            if snapshot.get_type == 'external':
+                if snapshot.childrens_num == 0:
+                    logger.info("Reuse last snapshot")
+                    self._snapshot_disk_update(name)
+                    self.driver.node_revert_snapshot(node=self, name=name)
+                else:
+                    revert_name = name + '-revert'
+                    revert_count = 0
+                    create_new = True
+                    # Looking for empty snapshot or create new
+                    while self.has_snapshot(revert_name):
+                        # Check wheter revert snapshot has children
+                        snapshot_revert = self.driver.node_get_snapshot(self, revert_name)
+                        if snapshot_revert.childrens_num == 0:
+                            logger.info("Revert already exists, clean and reuse it")
+                            self._snapshot_disk_update(revert_name)
+                            self.driver.node_revert_snapshot(node=self, name=revert_name)
+                            create_new = False
+                            break
+                        else:
+                            revert_name = name  + '-revert' + str(revert_count)
+                            revert_count += 1
+                    if create_new:
+                        logger.info("Create new revert snapshot")
+                        self._snapshot_disk_update(name)
+                        self.driver.node_revert_snapshot(node=self, name=name)
+                        self.snapshot(name=revert_name, external=True)
+            else:
+                self.driver.node_revert_snapshot(node=self, name=name)
         else:
             print('Domain snapshot for {0} node not found: no domain '
                   'snapshot with matching'
@@ -237,6 +329,11 @@ class Node(DriverModel):
 
     def erase_snapshot(self, name):
         self.driver.node_delete_snapshot(node=self, name=name)
+        for disk in self.disk_devices:
+            if disk.device == 'disk':
+                # update disk on node
+                disk.volume = disk.volume.backing_store
+                disk.save()
 
     def set_vcpu(self, vcpu):
         """Set vcpu count on node

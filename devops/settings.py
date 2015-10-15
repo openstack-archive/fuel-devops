@@ -249,3 +249,5 @@ if MULTIPLE_NETWORKS:
         'CUSTOM_INTERFACE_ORDER',
         'admin2,public2,management2,private2,storage2')
     INTERFACE_ORDER.extend(CUSTOM_INTERFACE_ORDER.split(','))
+
+SNAPSHOTS_EXTERNAL = os.environ.get("SNAPSHOTS_EXTERNAL", 'false') == 'true'
