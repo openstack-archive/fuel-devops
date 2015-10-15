@@ -80,4 +80,4 @@ class TestDoSnapshot(BaseShellTestCase):
         for node in nodes:
             node.snapshot.assert_called_once_with(
                 force=mock.ANY, description=mock.ANY,
-                name="test-snapshot-name")
+                name="test-snapshot-name", external=False)

@@ -156,7 +156,8 @@ class Environment(DriverModel):
         if name is None:
             name = str(int(time.time()))
         for node in self.get_nodes():
-            node.snapshot(name=name, description=description, force=force)
+            node.snapshot(name=name, description=description, force=force,
+                          external=settings.SNAPSHOTS_EXTERNAL)
 
     def revert(self, name=None, destroy=True, flag=True):
         if destroy:

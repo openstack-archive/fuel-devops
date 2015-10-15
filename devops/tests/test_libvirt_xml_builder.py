@@ -190,8 +190,30 @@ class TestVolumeXml(BaseTestXMLBuilder):
 
 class TestSnapshotXml(BaseTestXMLBuilder):
 
-    def check_snaphot_xml(self, name, description, expected):
-        result = self.xml_builder.build_snapshot_xml(name, description)
+    def setUp(self):
+        super(TestSnapshotXml, self).setUp()
+        self.node.name = factories.fuzzy_string('testname_')
+        self.node.environment.name = factories.fuzzy_string('testenv_')
+        self.disk1_volume_path = factories.fuzzy_string('/volumes/')
+        self.disk1 = mock.Mock()
+        self.disk1.device = 'disk'
+        self.disk1.target_dev = factories.fuzzy_string()
+        self.disk1.volume.get_path.return_value = self.disk1_volume_path
+        self.node.disk_devices = [self.disk1]
+
+    def domain_set_active(self, active=True):
+        self.domain = mock.Mock()
+        self.domain.isActive.return_value = active
+        self.xml_builder.driver.conn.lookupByUUIDString.return_value = \
+            self.domain
+
+    def check_snaphot_xml(self, name, description, expected, disk_only=False,
+                          external=False, external_dir=None):
+        result = self.xml_builder.build_snapshot_xml(name, description,
+                                                     node=self.node,
+                                                     disk_only=disk_only,
+                                                     external=external,
+                                                     external_dir=external_dir)
         self.assertXMLIn(expected, result)
 
     def test_no_name(self):
@@ -202,6 +224,86 @@ class TestSnapshotXml(BaseTestXMLBuilder):
     <description>{0}</description>
 </domainsnapshot>'''.format(description)
         self.check_snaphot_xml(name, description, expected)
+
+    def test_external_domain_not_active(self):
+        self.domain_set_active(False)
+        name = factories.fuzzy_string('snapshot_')
+        external_dir = factories.fuzzy_string('/extsnap/')
+        description = None
+        expected = '''
+<domainsnapshot>
+    <name>{0}</name>
+    <memory snapshot="no"/>
+    <disks>
+        <disk file="{1}" name="{2}" snapshot="external"/>
+    </disks>
+</domainsnapshot>'''.format(name, self.disk1_volume_path,
+                            self.disk1.target_dev)
+        self.check_snaphot_xml(name, description, expected, disk_only=False,
+                               external=True, external_dir=external_dir)
+
+    def test_external_disk_only(self):
+        self.domain_set_active(True)
+        name = factories.fuzzy_string('snapshot_')
+        external_dir = factories.fuzzy_string('/extsnap/')
+        description = None
+        expected = '''
+<domainsnapshot>
+    <name>{0}</name>
+    <memory snapshot="no"/>
+    <disks>
+        <disk file="{1}" name="{2}" snapshot="external"/>
+    </disks>
+</domainsnapshot>'''.format(name, self.disk1_volume_path,
+                            self.disk1.target_dev)
+        self.check_snaphot_xml(name, description, expected, disk_only=True,
+                               external=True, external_dir=external_dir)
+
+    def test_external_snapshot(self):
+        self.domain_set_active(True)
+        name = factories.fuzzy_string('snapshot_')
+        external_dir = factories.fuzzy_string('/extsnap/')
+        description = factories.fuzzy_string('test_description_')
+        expected = '''
+<domainsnapshot>
+    <name>{0}</name>
+    <description>{1}</description>
+    <memory file="{2}/snapshot-memory-{3}_{4}.{5}" snapshot="external"/>
+    <disks>
+        <disk file="{6}" name="{7}" snapshot="external"/>
+    </disks>
+</domainsnapshot>'''.format(name, description, external_dir,
+                            self.node.environment.name, self.node.name, name,
+                            self.disk1_volume_path, self.disk1.target_dev)
+        self.check_snaphot_xml(name, description, expected, disk_only=False,
+                               external=True, external_dir=external_dir)
+
+    @mock.patch('devops.driver.libvirt.libvirt_xml_builder.os')
+    def test_external_snapshot_memory_snapshot_exists(self, mock_os):
+        self.domain_set_active(True)
+        name = factories.fuzzy_string('snapshot_')
+        external_dir = factories.fuzzy_string('/extsnap/')
+        description = factories.fuzzy_string('test_description_')
+        mem_filename = "{0}/snapshot-memory-{1}_{2}.{3}".format(
+            external_dir, self.node.environment.name,
+            self.node.name, name)
+
+        def mock_exists(*args):
+            return True if args[0] == mem_filename else False
+        mock_os.path.exists = mock_exists
+        expected = '''
+<domainsnapshot>
+    <name>{0}</name>
+    <description>{1}</description>
+    <memory file="{2}/snapshot-memory-{3}_{4}.{5}-0" snapshot="external"/>
+    <disks>
+        <disk file="{6}" name="{7}" snapshot="external"/>
+    </disks>
+</domainsnapshot>'''.format(name, description, external_dir,
+                            self.node.environment.name, self.node.name, name,
+                            self.disk1_volume_path, self.disk1.target_dev)
+        self.check_snaphot_xml(name, description, expected, disk_only=False,
+                               external=True, external_dir=external_dir)
 
     def test_no_description(self):
         name = factories.fuzzy_string('test_snapshot_')
