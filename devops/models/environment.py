@@ -22,6 +22,8 @@ from paramiko import RSAKey
 
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.helpers import SSHClient
+from devops.helpers.templates import create_devops_config
+from devops.helpers.templates import get_devops_config
 from devops import logger
 from devops.models.base import DriverModel
 from devops.models.network import DiskDevice
@@ -74,8 +76,7 @@ class Environment(DriverModel):
             role=role,
             boot=boot)
 
-    def add_empty_volume(self, node, name,
-                         capacity=settings.NODE_VOLUME_SIZE * 1024 ** 3,
+    def add_empty_volume(self, node, name, capacity,
                          device='disk', bus='virtio', format='qcow2'):
         return DiskDevice.node_attach_volume(
             node=node,
@@ -106,13 +107,20 @@ class Environment(DriverModel):
     def has_snapshot(self, name):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
-    def define(self):
-        for network in self.get_networks():
-            network.define()
-        for volume in self.get_volumes():
-            volume.define()
-        for node in self.get_nodes():
-            node.define()
+    def define(self, skip=True):
+        """Define resources
+
+           Method deprecated, it should be used
+           only with describe_environment()
+           Left here for back compatibility with fuel-qa.
+        """
+        if not skip:
+            for network in self.get_networks():
+                network.define()
+            for volume in self.get_volumes():
+                volume.define()
+            for node in self.get_nodes():
+                node.define()
 
     def start(self, nodes=None):
         for network in self.get_networks():
@@ -194,139 +202,158 @@ class Environment(DriverModel):
 
     @classmethod
     def describe_environment(cls, boot_from='cdrom'):
-        environment = cls.create(settings.ENV_NAME)
-        networks = []
-        interfaces = settings.INTERFACE_ORDER
-        if settings.MULTIPLE_NETWORKS:
-            logger.info('Multiple cluster networks feature is enabled!')
-        if settings.BONDING:
-            interfaces = settings.BONDING_INTERFACES.keys()
+        """This method is DEPRECATED.
 
-        for name in interfaces:
-            networks.append(environment.create_networks(name))
-        for name in environment.node_roles.admin_names:
-            environment.describe_admin_node(name, networks, boot_from)
-        for name in environment.node_roles.other_names:
-            networks_to_describe = networks
-            if settings.MULTIPLE_NETWORKS:
-                # If slave index is even number, then attach to
-                # it virtual networks from the second network group,
-                # if it is odd, then attach from the first network group.
-                nodegroups_idx = 1 - int(name[-2:]) % 2
-                networks_to_describe = [
-                    net for net in networks if net.name
-                    in settings.NODEGROUPS[nodegroups_idx]['pools']
-                ]
+           Reserved for backward compatibility only.
+           Please use self.create_environment() instead.
+        """
+        if settings.DEVOPS_SETTINGS_TEMPLATE:
+            config = get_devops_config(
+                settings.DEVOPS_SETTINGS_TEMPLATE)
+        else:
+            config = create_devops_config(
+                boot_from=boot_from,
+                env_name=settings.ENV_NAME,
+                admin_vcpu=settings.HARDWARE["admin_node_cpu"],
+                admin_memory=settings.HARDWARE["admin_node_memory"],
+                admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
+                admin_iso_path=settings.ISO_PATH,
+                nodes_count=settings.NODES_COUNT,
+                slave_vcpu=settings.HARDWARE["slave_node_cpu"],
+                slave_memory=settings.HARDWARE["slave_node_memory"],
+                slave_volume_capacity=settings.NODE_VOLUME_SIZE,
+                use_all_disks=settings.USE_ALL_DISKS,
+                ironic_nodes_count=settings.IRONIC_NODES_COUNT,
+                networks_bonding=settings.BONDING,
+                networks_bondinginterfaces=settings.BONDING_INTERFACES,
+                networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
+                networks_nodegroups=settings.NODEGROUPS,
+                networks_interfaceorder=settings.INTERFACE_ORDER,
+                networks_pools=settings.POOLS,
+                networks_forwarding=settings.FORWARDING,
+                networks_dhcp=settings.DHCP,
+            )
 
-            environment.describe_empty_node(name, networks_to_describe)
-        for name in environment.node_roles.ironic_names:
-            ironic_net = []
-            for net in networks:
-                if net.name == 'ironic':
-                    ironic_net.append(net)
-            environment.describe_empty_node(name, ironic_net)
+        environment = cls.create_environment(config)
         return environment
 
-    def create_networks(self, name):
-        networks, prefix = settings.POOLS[name]
+    @classmethod
+    def create_environment(cls, full_config):
+        config = full_config['template']['devops_settings']
+        environment = cls.create(config['env_name'])
 
-        ip_networks = [IPNetwork(x) for x in networks.split(',')]
-        new_prefix = int(prefix)
-        pool = Network.create_network_pool(networks=ip_networks,
-                                           prefix=new_prefix)
-        return Network.network_create(
+        # TODO(ddmitriev): link the dict config['address_pools'] to the
+        # 'environment' object.
+        address_pools = config['address_pools']
+
+        # Create networks:
+        for group in config['groups']:
+            # TODO(ddmitriev): use group['driver'] as a driver for
+            # manage networks and nodes in the group
+
+            # TODO(ddmitriev): link the dict group['network_pools'] to 'group'
+            # object.
+
+            for l2_device_name in group['l2_network_devices']:
+                l2_device_config = group['l2_network_devices'][l2_device_name]
+                environment.create_networks(
+                    name=l2_device_name,
+                    l2_device_config=l2_device_config,
+                    address_pools=address_pools)
+
+        # Create nodes:
+        for group in config['groups']:
+            # TODO(ddmitriev): use group['driver'] as a driver for
+            # manage networks and nodes in the group
+            for config_node in group['nodes']:
+                environment.create_node(config_node)
+
+        return environment
+
+    def create_networks(self, name, l2_device_config, address_pools):
+
+        # TODO(ddmitriev): use 'address_pool' attribute to get the address_pool
+        # for 'l2_device' as an object
+
+        # Get address_pool from 'address_pools' object
+        if 'address_pool' in l2_device_config:
+            address_pool = address_pools[l2_device_config['address_pool']]
+
+            networks, prefix = address_pool['net'].split(':')
+            ip_networks = [IPNetwork(x) for x in networks.split(',')]
+            new_prefix = int(prefix)
+            pool = Network.create_network_pool(networks=ip_networks,
+                                               prefix=new_prefix)
+        else:
+            pool = None
+
+        if 'forward' in l2_device_config:
+            forward = l2_device_config['forward']['mode']
+        else:
+            forward = None
+
+        has_dhcp_server = (l2_device_config.get('dhcp', 'false') == 'true')
+
+        net = Network.network_create(
             name=name,
             environment=self,
             pool=pool,
-            forward=settings.FORWARDING.get(name),
-            has_dhcp_server=settings.DHCP.get(name))
+            forward=forward,
+            has_dhcp_server=has_dhcp_server)
+        net.define()
+        return net
 
-    def create_interfaces(self, networks, node,
+    def create_interfaces(self, interfaces, node,
                           model=settings.INTERFACE_MODEL):
-        interface_map = {}
-        if settings.BONDING:
-            interface_map = settings.BONDING_INTERFACES
+        for interface in interfaces:
 
-        for network in networks:
+            # TODO(ddmitriev): use l2_network_devices object to get
+            # the network device
+            network_name = interface['l2_network_device']
+            network = self.get_network(name=network_name)
+
             Interface.interface_create(
                 network,
                 node=node,
                 model=model,
-                interface_map=interface_map
             )
 
-    @property
-    def node_roles(self):
-        return NodeRoles(
-            admin_names=['admin'],
-            other_names=[
-                'slave-%02d' % x for x in range(1, settings.NODES_COUNT)
-            ],
-            ironic_names=[
-                'ironic-slave-%02d' % x for x in range(
-                    1, settings.IRONIC_NODES_COUNT + 1)
-            ]
-        )
-
-    def describe_empty_node(self, name, networks):
+    def create_node(self, config_node):
+        node_params = config_node['params']
         node = self.add_node(
-            name=name,
-            memory=settings.HARDWARE["slave_node_memory"],
-            vcpu=settings.HARDWARE["slave_node_cpu"],
-            role='slave')
-        self.create_interfaces(networks, node)
-        self.add_empty_volume(node, name + '-system')
+            name=config_node['name'],
+            role=config_node['role'],
+            memory=int(node_params['memory']),
+            vcpu=int(node_params['vcpu']),
+            boot=node_params['boot'])
 
-        if settings.USE_ALL_DISKS:
-            self.add_empty_volume(node, name + '-cinder')
-            self.add_empty_volume(node, name + '-swift')
+        self.create_interfaces(node_params['interfaces'], node)
 
-        return node
+        for volume in node_params.get('volumes', None):
+            volume_name = config_node['name'] + '-' + volume['name']
+            if 'source_image' in volume:
+                disk = self.add_empty_volume(
+                    node,
+                    volume_name,
+                    capacity=_get_file_size(volume['source_image']),
+                    format=volume.get('format', 'qcow2'),
+                    device=volume.get('device', 'disk'),
+                    bus=volume.get('bus', 'virtio')
+                )
+                disk.volume.define()
+                disk.volume.upload(volume['source_image'])
+            else:
+                disk = self.add_empty_volume(
+                    node,
+                    volume_name,
+                    capacity=int(volume['capacity']) * 1024 ** 3,
+                    format=volume.get('format', 'qcow2'),
+                    device=volume.get('device', 'disk'),
+                    bus=volume.get('bus', 'virtio')
+                )
+                disk.volume.define()
 
-    # @logwrap
-    def describe_admin_node(self, name, networks, boot_from='cdrom',
-                            vcpu=None, memory=None,
-                            iso_path=None):
-        if boot_from == 'cdrom':
-            boot_device = ['hd', 'cdrom']
-            device = 'cdrom'
-            bus = 'ide'
-        elif boot_from == 'usb':
-            boot_device = ['hd']
-            device = 'disk'
-            bus = 'usb'
-
-        node = self.add_node(
-            memory=memory or settings.HARDWARE["admin_node_memory"],
-            vcpu=vcpu or settings.HARDWARE["admin_node_cpu"],
-            name=name,
-            role='admin',
-            boot=boot_device)
-        self.create_interfaces(networks, node)
-
-        if self.os_image is None:
-            iso = iso_path or settings.ISO_PATH
-            self.add_empty_volume(node, name + '-system',
-                                  capacity=settings.ADMIN_NODE_VOLUME_SIZE
-                                  * 1024 ** 3)
-            self.add_empty_volume(
-                node,
-                name + '-iso',
-                capacity=_get_file_size(iso),
-                format='raw',
-                device=device,
-                bus=bus)
-        else:
-            volume = Volume.volume_get_predefined(self.os_image)
-            vol_child = Volume.volume_create_child(
-                name=name + '-system',
-                backing_store=volume,
-                environment=self
-            )
-            DiskDevice.node_attach_volume(
-                node=node,
-                volume=vol_child
-            )
+        node.define()
         return node
 
     # Rename it to default_gw and move to models.Network class
@@ -335,9 +362,6 @@ class Environment(DriverModel):
         if router_name == self.admin_net2:
             return str(self.get_network(name=router_name).ip[2])
         return str(self.get_network(name=router_name).ip[1])
-
-    def nodes(self):  # migrated from EnvironmentModel.nodes()
-        return Nodes(self, self.node_roles)
 
     # @logwrap
     def get_admin_remote(self,
@@ -376,29 +400,23 @@ class Environment(DriverModel):
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
 
-
-class NodeRoles(object):
-    def __init__(self,
-                 admin_names=None,
-                 other_names=None,
-                 ironic_names=None):
-        self.admin_names = admin_names or []
-        self.other_names = other_names or []
-        self.ironic_names = ironic_names or []
+    def nodes(self):  # migrated from EnvironmentModel.nodes()
+        # DEPRECATED. Please use environment.get_nodes() instead.
+        return Nodes(self)
 
 
 class Nodes(object):
-    def __init__(self, environment, node_roles):
+    def __init__(self, environment):
         self.admins = sorted(
-            list(environment.get_nodes(name__in=node_roles.admin_names)),
+            list(environment.get_nodes(role='fuel_admin')),
             key=lambda node: node.name
         )
         self.others = sorted(
-            list(environment.get_nodes(name__in=node_roles.other_names)),
+            list(environment.get_nodes(role='fuel_slave')),
             key=lambda node: node.name
         )
         self.ironics = sorted(
-            list(environment.get_nodes(name__in=node_roles.ironic_names)),
+            list(environment.get_nodes(role='ironic')),
             key=lambda node: node.name
         )
         self.slaves = self.others
