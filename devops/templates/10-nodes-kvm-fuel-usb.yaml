@@ -1,0 +1,139 @@
+---
+template:
+  devops_settings:
+    env_name: !os_env_get ENV_NAME 
+
+    nodes:
+     - name: admin       # Custom name of VM for Fuel admin node
+       role: fuel_admin  # Fixed role that implies (Fuel admin) node properties
+       vcpu: !os_env_get ADMIN_NODE_CPU, 2 
+       memory: !os_env_get ADMIN_NODE_MEMORY, 3072 
+       boot:
+         - hd
+       volumes:
+        - name: admin_system
+          capacity: !os_env_get ADMIN_NODE_VOLUME_SIZE, 75 
+          format: qcow2
+        - name: admin_iso
+          source_image: !os_env_get ISO_PATH     # if 'source_image' set, then volume capacity is calculated from it's size
+          format: raw
+          device: disk
+          bus: usb
+       networks: admin #TODO(ddmitriev): use correct network model
+
+     - name: slave-01
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-01_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-02
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-02_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-03
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-03_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-04
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-04_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-05
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-05_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-06
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-06_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-07
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-07_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-08
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-08_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
+
+     - name: slave-09
+       role: slave
+       vcpu: !os_env_get SLAVE_NODE_CPU, 2
+       memory: !os_env_get SLAVE_NODE_MEMORY, 3072 
+       boot:
+         - network
+         - hd
+       volumes:
+        - name: slave-09_system
+          capacity: !os_env_get NODE_VOLUME_SIZE, 50
+          format: qcow2
+       networks: slave #TODO(ddmitriev): use correct network model
