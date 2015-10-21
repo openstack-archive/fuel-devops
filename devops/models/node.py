@@ -124,7 +124,7 @@ class Node(DriverModel):
         self.environment.create_interfaces in which we run on all networks with
         'for network in networks: Interface.interface_create'.
         Which is called in
-        'environment.describe_empty_node(name, networks_to_describe)'.
+        'environment.describe_empty_node(name, networks_to_describe, volumes)'.
         And networks in 'devops.environment.describe_environment' are got from:
         in usual case 'interfaces = settings.INTERFACE_ORDER'
         or with bonding 'settings.BONDING_INTERFACES.keys()'

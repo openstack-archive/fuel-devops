@@ -1,0 +1,334 @@
+---
+aliases:
+
+  network_pools_aliases:
+   - &pool_default !os_env_get POOL_DEFAULT, 10.109.0.0/16:24
+  # Network pools used by the environment
+   - &fuelweb_admin-pool01
+     net: *pool_default   # can be 10.109.0.0:16/24 for dynamic allocation from address pools
+     tag: 0
+   - &public-pool01
+     net: *pool_default
+     tag: 100
+   - &public-pool02
+     net: 209.30.42.64/25   # in case of using an existing network with pre-allocated addresses
+     gateway: 209.30.42.65                  # not required if dynamic allocation is used
+     ip_ranges:         # should be inside the network
+      - [209.30.42.66, 209.30.42.94]        # not required if dynamic allocation is used
+      - [209.30.42.98, 209.30.42.121]       # not required if dynamic allocation is used
+     tag: 200
+   - &storage-pool01
+     net: *pool_default
+     tag: 101
+   - &management-pool01
+     net: *pool_default
+     tag: 102
+   - &private-pool01
+     net: *pool_default
+     tag: 103
+
+  rack-01-slave-interfaces: &rack-01-slave-interfaces
+   - label: eth0
+     l2_network_device: admin01
+   - label: eth1
+     l2_network_device: public01
+   - label: eth2
+     l2_network_device: bond01
+   - label: eth3
+     l2_network_device: bond01
+   - label: eth4
+     l2_network_device: bond01
+   - label: eth5
+     l2_network_device: bond01
+
+  rack-01-slave-network_config: &rack-01-slave-network_config
+    eth0:
+      networks:
+       - fuelweb_admin
+    eth1:
+      networks:
+       - public
+    bond0:
+      networks:
+       - management
+       - storage
+       - private
+      aggregation: active-backup
+      parents:
+       - eth2
+       - eth3
+       - eth4
+       - eth5
+
+template:
+  devops_settings:
+    env_name: !os_env_get ENV_NAME
+
+    groups:
+     - name: rack-01
+       driver:
+         name: devops.driver.libvirt.libvirt_driver
+         connection_string: !os_env_get CONNECTION_STRING, qemu:///system
+         storage_pool_name: !os_env_get STORAGE_POOL_NAME, default
+         stp: True
+         hpet: False
+         use_host_cpu: !os_env_get DRIVER_USE_HOST_CPU, true
+
+       network_pools:  # Address pools for OpenStack networks.
+         fuelweb_admin:      # Actual names should be used (the same as in Nailgun, for example)
+          - *fuelweb_admin-pool01
+         public:       # two pools in case of two floating ranges
+          - *public-pool01
+          - *public-pool02
+         storage:
+          - *storage-pool01
+         management:
+          - *management-pool01
+         private:
+          - *private-pool01
+
+       l2_network_devices:  # Libvirt bridges
+         admin01:
+           network_pool: fuelweb_admin
+           dhcp: false
+           forward:
+             mode: nat
+
+         public01:
+           network_pool: public
+           dhcp: false
+           forward:
+             mode: nat
+
+         bond01:
+           dhcp: false
+           forward:
+             mode: hostonly
+
+#         storage01:
+#           network_pool: storage
+#           dhcp: false
+#           # Forward data structure to reflect xml structure
+#           forward:
+#              mode: bridge
+#              dev: eth0   #not implemented in libvirt_xml_builder.py yet
+#              params:
+#                bridge:
+#                  name: !os_env_get BR_STORAGE   #optional
+#                virtualport:
+#                  type: openvswitch         #optional
+
+       nodes:
+        - name: admin       # Custom name of VM for Fuel admin node
+          role: fuel_admin  # Fixed role that implies (Fuel admin) node properties
+          vcpu: !os_env_get ADMIN_NODE_CPU, 2
+          memory: !os_env_get ADMIN_NODE_MEMORY, 3072
+          boot:
+            - hd
+            - cdrom  # for boot from usb - without 'cdrom'
+          volumes:
+           - name: admin_system
+             capacity: !os_env_get ADMIN_NODE_VOLUME_SIZE, 75
+             format: qcow2
+           - name: admin_iso
+             source_image: !os_env_get ISO_PATH    # if 'source_image' set, then volume capacity is calculated from it's size
+             format: raw
+             device: cdrom   # for boot from usb - 'disk'
+             bus: ide        # for boot from usb - 'usb'
+          networks: admin #TODO(ddmitriev): use correct network model
+          interfaces:
+           - label: eth0
+             l2_network_device: admin01
+          network_config:
+            eth0:
+              networks:
+               - fuelweb_admin
+
+        - name: slave-01
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-01_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-01_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-01_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-02
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-02_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-02_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-02_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-03
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-03_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-03_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-03_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-04
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-04_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-04_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-04_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-05
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-05_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-05_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-05_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-06
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-06_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-06_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-06_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-07
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-07_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-07_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-07_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-08
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-08_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-08_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-08_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
+
+        - name: slave-09
+          role: fuel_slave
+          vcpu: !os_env_get SLAVE_NODE_CPU, 2
+          memory: !os_env_get SLAVE_NODE_MEMORY, 3072
+          boot:
+            - network
+            - hd
+          volumes:
+           - name: slave-09_system
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-09_cinder
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+           - name: slave-09_swift
+             capacity: !os_env_get NODE_VOLUME_SIZE, 50
+             format: qcow2
+          networks: slave #TODO(ddmitriev): use correct network model
+          interfaces: *rack-01-slave-interfaces
+          network_config: *rack-01-slave-network_config
