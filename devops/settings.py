@@ -249,3 +249,9 @@ if MULTIPLE_NETWORKS:
         'CUSTOM_INTERFACE_ORDER',
         'admin2,public2,management2,private2,storage2')
     INTERFACE_ORDER.extend(CUSTOM_INTERFACE_ORDER.split(','))
+
+OVS_USE_IMAGE = os.environ.get('OVS_USE_IMAGE', None)
+
+# Path to the YAML file with 'devops_settings' template
+# export DEVOPS_SETTINGS_TEMPLATE = /.../10-nodes-3-disks-kvm-fuel-iso.yaml
+DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
