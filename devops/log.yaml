@@ -33,3 +33,6 @@ loggers:
         level: INFO
         handlers: [console, notset_handler, error_handler]
         propagate: no
+
+disable_existing_loggers: False
+
