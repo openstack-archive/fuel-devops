@@ -92,6 +92,7 @@ class Shell(object):
         self.env.revert(self.params.snapshot_name, flag=False)
 
     def do_snapshot(self):
+        print self.params
         self.env.snapshot(self.params.snapshot_name)
 
     def do_synchronize(self):
@@ -294,14 +295,16 @@ class Shell(object):
 
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
+
         name_parser.add_argument('name', help='environment name',
                                  default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
-        snapshot_name_parser.add_argument('--snapshot-name', '-S',
+        snapshot_name_parser.add_argument('snapshot_name',
                                           help='snapshot name',
                                           default=os.environ.get(
                                               'SNAPSHOT_NAME'))
+
         node_name_parser = argparse.ArgumentParser(add_help=False)
         node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
@@ -311,6 +314,7 @@ class Shell(object):
                                         action='store_const', const=True,
                                         help='revert without timesync',
                                         default=False)
+
         list_ips_parser = argparse.ArgumentParser(add_help=False)
         list_ips_parser.add_argument('--ips', dest='list_ips',
                                      action='store_const', const=True,
@@ -359,6 +363,7 @@ class Shell(object):
         vcpu_parser.add_argument('--vcpu', dest='vcpu_count',
                                  help='Set node VCPU count',
                                  default=1, type=int)
+
         change_ram_parser = argparse.ArgumentParser(add_help=False)
         change_ram_parser.add_argument('--ram', dest='ram_size',
                                        help='Set node RAM size',
