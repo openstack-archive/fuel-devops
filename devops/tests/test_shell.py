@@ -63,20 +63,36 @@ class TestSnaphotList(BaseShellTestCase):
 
 
 class TestDoSnapshot(BaseShellTestCase):
-
     @mock.patch('devops.models.environment.time.time')
     @mock.patch.object(models.Environment, 'get_nodes')
     @mock.patch.object(models.Environment, 'get')
-    def test_same_snaphot_name_if_not_provided(self, mock_get_env,
-                                               mock_get_nodes, mock_time):
+    def test_create_snaphot_with_mandatory_snapshot_name(self, mock_get_env,
+                                                         mock_get_nodes,
+                                                         mock_time):
         mock_get_env.return_value = models.Environment()
         mock_time.return_value = 123456.789
 
         nodes = (mock.Mock(), mock.Mock())
         mock_get_nodes.return_value = nodes
 
-        self.execute('snapshot', 'some-env')
+        self.execute('snapshot', 'some-env', 'test-snapshot-name')
 
         for node in nodes:
             node.snapshot.assert_called_once_with(
-                force=mock.ANY, description=mock.ANY, name="123456")
+                force=mock.ANY, description=mock.ANY,
+                name="test-snapshot-name")
+
+    @mock.patch('devops.models.environment.time.time')
+    @mock.patch.object(models.Environment, 'get_nodes')
+    @mock.patch.object(models.Environment, 'get')
+    def test_create_snapshot_without_name_fail(self, mock_get_env,
+                                               mock_get_nodes,
+                                               mock_time):
+        mock_get_env.return_value = models.Environment()
+        mock_time.return_value = 123456.789
+
+        nodes = (mock.Mock(), mock.Mock())
+        mock_get_nodes.return_value = nodes
+        with mock.patch('sys.exit') as exit_mock:
+            self.execute('snapshot', 'some-env')
+            assert exit_mock.called
