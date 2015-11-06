@@ -12,20 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from datetime import datetime
-
-from django.db import models
+import functools
 
 
-def choices(*args, **kwargs):
-    defaults = {'max_length': 255, 'null': False}
-    defaults.update(kwargs)
-    defaults.update(choices=zip(args, args))
-    return models.CharField(**defaults)
+def lazy_property(fn):
+    attr_name = '_lazy_' + fn.__name__
 
+    @property
+    @functools.wraps(fn)
+    def _lazy_property(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
 
-class BaseModel(models.Model):
-    class Meta:
-        abstract = True
-
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
+    return _lazy_property
