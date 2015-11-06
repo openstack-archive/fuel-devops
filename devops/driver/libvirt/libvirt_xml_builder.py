@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -180,6 +180,43 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev="fuelnet{0}".format(interface.id))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
+            device_xml.filterref(filter='{}_{}_{}'.format(
+                interface.network.environment.name,
+                interface.network.name,
+                interface.mac_address))
+
+    def build_network_filter(self, network):
+        """Generate nwfilter XML for network
+
+        :type network: Network
+        :type state: String accept | drop
+            :rtype : String
+        """
+        filter_xml = XMLBuilder(
+            'filter',
+            name="{}_{}".format(network.environment.name, network.name))
+
+        return str(filter_xml)
+
+    def build_interface_filter(self, interface):
+        """Generate nwfilter XML for interface
+
+        :type network: Interface
+        :type state: String accept | drop
+            :rtype : String
+        """
+        filter_xml = XMLBuilder(
+            'filter',
+            name="{}_{}_{}".format(
+                interface.network.environment.name,
+                interface.network.name,
+                interface.mac_address))
+
+        filter_xml.filterref(filter="{}_{}".format(
+            interface.network.environment.name,
+            interface.network.name))
+
+        return str(filter_xml)
 
     def build_node_xml(self, node, emulator):
         """Generate node XML
