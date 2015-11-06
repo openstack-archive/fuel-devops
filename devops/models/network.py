@@ -75,6 +75,19 @@ class Network(DriverModel):
     def default_gw(self):
         return IPNetwork(self.ip_network)[1]
 
+    @property
+    def is_blocked(self):
+        """Show state of network"""
+        return self.driver.network_block_status(self)
+
+    def block(self):
+        """Block all traffic in network"""
+        return self.driver.network_block(self)
+
+    def unblock(self):
+        """All all traffic in network"""
+        return self.driver.network_unblock(self)
+
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(
@@ -91,8 +104,15 @@ class Network(DriverModel):
         return self.driver.network_bridge_name(self)
 
     def define(self):
+        self.define_filter()
         self.driver.network_define(self)
         self.save()
+
+    def define_filter(self):
+        self.driver.network_filter_define(self)
+
+    def undefine_filter(self):
+        self.driver.network_filter_undefine(self)
 
     def start(self):
         self.create(verbose=False)
@@ -113,6 +133,7 @@ class Network(DriverModel):
                 if self.driver.network_active(self):
                     self.driver.network_destroy(self)
                 self.driver.network_undefine(self)
+                self.undefine_filter()
         self.delete()
 
     @classmethod
@@ -254,6 +275,27 @@ class Interface(models.Model):
     @property
     def addresses(self):
         return self.address_set.all()
+
+    @property
+    def is_blocked(self):
+        """Show state of interface"""
+        return self.network.driver.interface_block_status(self)
+
+    def block(self):
+        """Block traffic on interface"""
+        return self.network.driver.interface_block(self)
+
+    def unblock(self):
+        """Block traffic on interface"""
+        return self.network.driver.interface_unblock(self)
+
+    def define_filter(self):
+        """Define filter for interface"""
+        return self.network.driver.interface_filter_define(self)
+
+    def undefine_filter(self):
+        """Undefine interface filter"""
+        return self.network.driver.interface_filter_undefine(self)
 
     @staticmethod
     def interface_create(network, node, type='network',
