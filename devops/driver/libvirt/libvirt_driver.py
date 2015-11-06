@@ -300,6 +300,103 @@ class DevopsDriver(object):
         self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
+    def network_filter_define(self, network):
+        """Define network filter"""
+        return self.conn.nwfilterDefineXML(
+            self.xml_builder.build_network_filter(network))
+
+    @retry()
+    def network_filter_undefine(self, network):
+        """Undefine network filter"""
+        return self.conn.nwfilterLookupByName(
+            "{}_{}".format(network.environment.name, network.name)).undefine()
+
+    @retry()
+    def network_block_status(self, network):
+        """Return network block status"""
+        filter_xml = self.conn.nwfilterLookupByName(
+            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        return filter_xml.find('./rule') is not None
+
+    @retry()
+    def network_block(self, network):
+        """Block all traffic in network"""
+        filter_xml = self.conn.nwfilterLookupByName(
+            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        rule = ET.Element(
+            'rule',
+            {'action': 'drop', 'direction': "inout", 'priority': '-1000'})
+        rule.append(ET.Element('all'))
+        filter_xml.find('.').append(rule)
+        self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
+
+    @retry()
+    def network_unblock(self, network):
+        """Unblock all traffic in network"""
+        filter_xml = self.conn.nwfilterLookupByName(
+            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        filter_xml.find('.').remove(filter_xml.find('./rule'))
+        self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
+
+    @retry()
+    def interface_filter_define(self, interface):
+        self.conn.nwfilterDefineXML(
+            self.xml_builder.build_interface_filter(interface))
+
+    @retry()
+    def interface_filter_undefine(self, interface):
+        """Undefine interface filter"""
+        self.conn.nwfilterLookupByName(
+            "{}_{}_{}".format(
+                interface.network.environment.name,
+                interface.network.name,
+                interface.mac_address)).undefine()
+
+    @retry()
+    def interface_block_status(self, interface):
+        """Return block status of interface"""
+        filter_xml = self.conn.nwfilterLookupByName(
+            "{}_{}_{}".format(
+                interface.network.environment.name,
+                interface.network.name,
+                interface.mac_address)).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        return filter_xml.find('./rule') is not None
+
+    @retry()
+    def interface_block(self, interface):
+        """Block traffic on interface"""
+        net_filter_name = "{}_{}".format(interface.network.environment.name,
+                                         interface.network.name)
+        iface_filter_name = "{}_{}".format(net_filter_name,
+                                           interface.mac_address)
+        filter_xml = self.conn.nwfilterLookupByName(
+            iface_filter_name).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        rule = ET.Element(
+            'rule',
+            {'action': 'drop', 'direction': "inout", 'priority': '-950'})
+        rule.append(ET.Element('all'))
+        filter_xml.find('.').append(rule)
+        self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
+
+    @retry()
+    def interface_unblock(self, interface):
+        """Unblock traffic on interface"""
+        net_filter_name = "{}_{}".format(interface.network.environment.name,
+                                         interface.network.name)
+        iface_filter_name = "{}_{}".format(net_filter_name,
+                                           interface.mac_address)
+        filter_xml = self.conn.nwfilterLookupByName(
+            iface_filter_name).XMLDesc()
+        filter_xml = ET.fromstring(filter_xml)
+        filter_xml.find('.').remove(filter_xml.find('./rule'))
+        self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
+
+    @retry()
     def node_define(self, node):
         """Define node
 
