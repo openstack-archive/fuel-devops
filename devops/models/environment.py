@@ -168,6 +168,9 @@ class Environment(DriverModel):
                             " test should be interrupted")
         for node in self.get_nodes():
             node.revert(name, destroy=False)
+        for network in self.get_networks():
+            if network.is_blocked:
+                network.unblock()
 
     @classmethod
     def synchronize_all(cls):
