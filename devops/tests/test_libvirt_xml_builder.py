@@ -448,9 +448,12 @@ class TestNodeXml(BaseTestXMLBuilder):
         self.assertXMLIn(expected, xml)
 
     def test_node_interfaces(self):
-        networks = [mock.Mock(uuid=i) for i in range(3)]
+        networks = [mock.Mock(uuid=i,
+                    environment=self.node.environment) for i in range(3)]
+        for num, net in enumerate(networks):
+            net.configure_mock(**{'name': 'network_name_mock_{0}'.format(num)})
         self.node.interfaces = [
-            mock.Mock(type='network'.format(i), mac_address='mac{0}'.format(i),
+            mock.Mock(type='network', mac_address='mac{0}'.format(i),
                       network=networks[i], id='id{0}'.format(i),
                       model='model{0}'.format(i)) for i in range(3)]
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
@@ -463,18 +466,21 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source network="network_name_mock" />
             <target dev="fuelnetid0" />
             <model type="model0" />
+            <filterref filter="test_env_name_network_name_mock_0"/>
         </interface>
         <interface type="network">
             <mac address="mac1" />
             <source network="network_name_mock" />
             <target dev="fuelnetid1" />
             <model type="model1" />
+            <filterref filter="test_env_name_network_name_mock_1"/>
         </interface>
         <interface type="network">
             <mac address="mac2" />
             <source network="network_name_mock" />
             <target dev="fuelnetid2" />
             <model type="model2" />
+            <filterref filter="test_env_name_network_name_mock_2"/>
         </interface>
         <video>
             <model heads="1" type="vga" vram="9216" />
