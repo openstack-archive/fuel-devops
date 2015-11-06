@@ -177,6 +177,10 @@ class Node(DriverModel):
             timeout=timeout)
 
     def define(self):
+        """Define node and interface filter"""
+        for iface in self.interfaces:
+            iface.define_filter()
+            iface.network.add_filter_ref(iface)
         self.driver.node_define(self)
         self.save()
 
@@ -195,10 +199,13 @@ class Node(DriverModel):
         self.remove(verbose=False)
 
     def remove(self, verbose=False):
+        """Remove node and filters for interfaces"""
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
                 self.driver.node_undefine(self, undefine_snapshots=True)
+                for iface in self.interfaces:
+                    iface.undefine_filter()
         self.delete()
 
     def suspend(self, verbose=False):

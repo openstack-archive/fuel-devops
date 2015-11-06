@@ -153,6 +153,53 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev="fuelnet{0}".format(interface.id))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
+            device_xml.filterref(filter='{}_{}'.format(
+                interface.network.environment.name,
+                interface.network.name))
+
+    def build_network_filter(self, network, state='accept'):
+        """Generate nwfilter XML for network
+
+        :type network: Network
+        :type state: String accept | drop
+            :rtype : String
+        """
+        filter_xml = XMLBuilder(
+            'filter',
+            name="{}_{}".format(network.environment.name, network.name),
+            chain='root')
+
+        filter_xml.rule(action=state,
+                        direction='inout',
+                        priority='-1000').all()
+
+        return str(filter_xml)
+
+    def build_interface_filter(self, interface, state='accept'):
+        """Generate nwfilter XML for interface
+
+        :type network: Interface
+        :type state: String accept | drop
+            :rtype : String
+        """
+        filter_xml = XMLBuilder(
+            'filter',
+            name="{}_{}_{}".format(
+                interface.network.environment.name,
+                interface.network.name,
+                interface.mac_address),
+            chain='root')
+
+        with filter_xml.rule(action=state,
+                             direction='in',
+                             priority='-950'):
+            filter_xml.mac(dstmacaddr=interface.mac_address)
+        with filter_xml.rule(action=state,
+                             direction='out',
+                             priority='-950'):
+            filter_xml.mac(srcmacaddr=interface.mac_address)
+
+        return str(filter_xml)
 
     def build_node_xml(self, node, emulator):
         """Generate node XML
