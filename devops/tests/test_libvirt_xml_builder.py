@@ -448,9 +448,12 @@ class TestNodeXml(BaseTestXMLBuilder):
         self.assertXMLIn(expected, xml)
 
     def test_node_interfaces(self):
-        networks = [mock.Mock(uuid=i) for i in range(3)]
+        environment = mock.Mock(name="mock_env_name")
+        networks = [mock.Mock(uuid=i,
+                    name="network_name{0}.format(i)",
+                    environment=environment) for i in range(3)]
         self.node.interfaces = [
-            mock.Mock(type='network'.format(i), mac_address='mac{0}'.format(i),
+            mock.Mock(type='network', mac_address='mac{0}'.format(i),
                       network=networks[i], id='id{0}'.format(i),
                       model='model{0}'.format(i)) for i in range(3)]
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
