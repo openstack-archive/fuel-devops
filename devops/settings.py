@@ -27,14 +27,16 @@ INSTALLED_APPS = ['south', 'devops']
 
 DATABASES = {
     'default': {
-        'ENGINE': os.environ.get('DEVOPS_DB_ENGINE',
-                                 'django.db.backends.postgresql_psycopg2'),
-        'NAME': os.environ.get('DEVOPS_DB_NAME', 'fuel_devops'),
-        'USER': os.environ.get('DEVOPS_DB_USER', 'fuel_devops'),
-        'PASSWORD': os.environ.get('DEVOPS_DB_PASSWORD', 'fuel_devops'),
-        'HOST': os.environ.get('DEVOPS_DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DEVOPS_DB_PORT', '5432'),
-        'TEST_CHARSET': os.environ.get('DEVOPS_DB_CHARSET', 'UTF8')
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'my.db',
+        # 'ENGINE': os.environ.get('DEVOPS_DB_ENGINE',
+        #                          'django.db.backends.postgresql_psycopg2'),
+        # 'NAME': os.environ.get('DEVOPS_DB_NAME', 'fuel_devops'),
+        # 'USER': os.environ.get('DEVOPS_DB_USER', 'fuel_devops'),
+        # 'PASSWORD': os.environ.get('DEVOPS_DB_PASSWORD', 'fuel_devops'),
+        # 'HOST': os.environ.get('DEVOPS_DB_HOST', '127.0.0.1'),
+        # 'PORT': os.environ.get('DEVOPS_DB_PORT', '5432'),
+        # 'TEST_CHARSET': os.environ.get('DEVOPS_DB_CHARSET', 'UTF8')
     }
 }
 
