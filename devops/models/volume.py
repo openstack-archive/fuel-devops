@@ -14,20 +14,24 @@
 
 from django.db import models
 
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
 
 
-class Volume(DriverModel):
+class Volume(BaseModel):
     class Meta:
-        unique_together = ('name', 'environment')
+        unique_together = ('name', 'group')
         db_table = 'devops_volume'
 
-    environment = models.ForeignKey('Environment', null=True)
+    group = models.ForeignKey('Group', null=True)
     backing_store = models.ForeignKey('self', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
     capacity = models.BigIntegerField(null=False)
     format = models.CharField(max_length=255, null=False)
+
+    @property
+    def driver(self):
+        self.group.driver
 
     def define(self):
         self.driver.volume_define(self)
@@ -81,22 +85,22 @@ class Volume(DriverModel):
 
     @classmethod
     def volume_create_child(cls, name, backing_store, format=None,
-                            environment=None):
+                            group=None):
         """Create new volume based on backing_store
 
         :rtype : Volume
         """
         return cls.objects.create(
-            name=name, environment=environment,
+            name=name, group=group,
             capacity=backing_store.capacity,
             format=format or backing_store.format, backing_store=backing_store)
 
     @classmethod
-    def volume_create(cls, name, capacity, format='qcow2', environment=None):
+    def volume_create(cls, name, capacity, format='qcow2', group=None):
         """Create volume
 
         :rtype : Volume
         """
         return cls.objects.create(
-            name=name, environment=environment,
+            name=name, group=group,
             capacity=capacity, format=format)

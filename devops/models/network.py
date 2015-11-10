@@ -21,10 +21,10 @@ from ipaddr import IPNetwork
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models.base import choices
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
 
 
-class Network(DriverModel):
+class Network(BaseModel):
     class Meta:
         unique_together = ('name', 'environment')
         db_table = 'devops_network'
@@ -46,6 +46,10 @@ class Network(DriverModel):
 
     # Dirty trick. It should be placed on instance level of Environment class.
     default_pool = None
+
+    @property
+    def driver(self):
+        self.group.driver
 
     @property
     def ip(self):
@@ -139,7 +143,7 @@ class Network(DriverModel):
     @classmethod
     @transaction.commit_on_success
     def _safe_create_network(
-            cls, name, environment=None, pool=None,
+            cls, name, group=None, pool=None,
             has_dhcp_server=True, has_pxe_server=False,
             forward='nat'):
         allocated_pool = pool or cls._get_default_pool()
@@ -149,7 +153,7 @@ class Network(DriverModel):
                 if not cls.objects.filter(
                         ip_network=str(ip_network)).exists():
                     return cls.objects.create(
-                        environment=environment,
+                        group=group,
                         name=name,
                         ip_network=ip_network,
                         has_pxe_server=has_pxe_server,
@@ -160,7 +164,7 @@ class Network(DriverModel):
 
     @classmethod
     def network_create(
-        cls, name, environment=None, ip_network=None, pool=None,
+        cls, name, group=None, ip_network=None, pool=None,
         has_dhcp_server=True, has_pxe_server=False,
         forward='nat'
     ):
@@ -170,7 +174,7 @@ class Network(DriverModel):
         """
         if ip_network:
             return cls.objects.create(
-                environment=environment,
+                group=group,
                 name=name,
                 ip_network=ip_network,
                 has_pxe_server=has_pxe_server,
@@ -178,7 +182,7 @@ class Network(DriverModel):
                 forward=forward
             )
         return cls._safe_create_network(
-            environment=environment,
+            group=group,
             forward=forward,
             has_dhcp_server=has_dhcp_server,
             has_pxe_server=has_pxe_server,
@@ -186,12 +190,12 @@ class Network(DriverModel):
             pool=pool)
 
     @classmethod
-    def create_networks(cls, environment, network_names=None,
+    def create_networks(cls, group, network_names=None,
                         has_dhcp=False, has_pxe=False, forward='nat',
                         pool=None):
         """Create several networks
 
-        :param environment: Environment
+        :param group: Group
         :param network_names: List
         :param has_dhcp: Bool
         :param has_pxe: Bool
@@ -203,7 +207,7 @@ class Network(DriverModel):
             network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
         networks = []
         for name in network_names:
-            net = cls.network_create(name=name, environment=environment,
+            net = cls.network_create(name=name, group=group,
                                      has_dhcp_server=has_dhcp,
                                      has_pxe_server=has_pxe,
                                      forward=forward,

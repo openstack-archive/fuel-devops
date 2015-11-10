@@ -21,7 +21,7 @@ from devops.helpers.helpers import _tcp_ping
 from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
 from devops.models.base import choices
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
 
 
 class NodeManager(models.Manager):
@@ -32,12 +32,12 @@ class NodeManager(models.Manager):
         Node.objects.all()
 
 
-class Node(DriverModel):
+class Node(BaseModel):
     class Meta:
-        unique_together = ('name', 'environment')
+        unique_together = ('name', 'group')
         db_table = 'devops_node'
 
-    environment = models.ForeignKey('Environment', null=True)
+    group = models.ForeignKey('Group', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
     uuid = models.CharField(max_length=255)
     hypervisor = choices('kvm')
@@ -49,6 +49,10 @@ class Node(DriverModel):
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
     memory = models.IntegerField(null=False, default=1024)
     has_vnc = models.BooleanField(null=False, default=True)
+
+    @property
+    def driver(self):
+        self.group.driver
 
     def next_disk_name(self):
         disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
@@ -106,7 +110,7 @@ class Node(DriverModel):
             return True
         if settings.MULTIPLE_NETWORKS:
             # TODO(akostrikov) 'admin2' as environment property or constant.
-            network = self.environment.get_network(name='admin2')
+            network = self.group.get_network(name='admin2')
         else:
             network = None
 
@@ -121,11 +125,11 @@ class Node(DriverModel):
         """This method checks if admin interface is on eth0.
 
         It assumes that we are assigning interfaces with 'for node' in
-        self.environment.create_interfaces in which we run on all networks with
+        self.group.create_interfaces in which we run on all networks with
         'for network in networks: Interface.interface_create'.
         Which is called in
-        'environment.describe_empty_node(name, networks_to_describe)'.
-        And networks in 'devops.environment.describe_environment' are got from:
+        'group.describe_empty_node(name, networks_to_describe)'.
+        And networks in 'devops.group.describe_group' are got from:
         in usual case 'interfaces = settings.INTERFACE_ORDER'
         or with bonding 'settings.BONDING_INTERFACES.keys()'
         Later interfaces are used with 'self.interface_set.order_by("id")' in
@@ -139,7 +143,7 @@ class Node(DriverModel):
 
         :returns: Boolean
         """
-        first_net_name = self.environment.get_networks().order_by('id')[0].name
+        first_net_name = self.group.get_networks().order_by('id')[0].name
 
         if self.is_admin:
             return False
@@ -270,9 +274,9 @@ class Node(DriverModel):
         if network_names is None:
             network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
         networks = [
-            self.environment.get_network(name=n) for n in network_names]
-        self.environment.create_interfaces(networks=networks,
-                                           node=self)
+            self.group.get_network(name=n) for n in network_names]
+        self.group.create_interfaces(networks=networks,
+                                     node=self)
 
     def attach_disks(self,
                      disknames_capacity=None,
@@ -313,17 +317,17 @@ class Node(DriverModel):
             :rtype : DiskDevice
         """
         vol_name = "%s-%s" % (self.name, name)
-        disk = self.environment.add_empty_volume(node=self,
-                                                 name=vol_name,
-                                                 capacity=capacity,
-                                                 device=device,
-                                                 bus=bus)
+        disk = self.group.add_empty_volume(node=self,
+                                           name=vol_name,
+                                           capacity=capacity,
+                                           device=device,
+                                           bus=bus)
         if force_define:
             disk.volume.define()
         return disk
 
     @classmethod
-    def node_create(cls, name, environment=None, role=None, vcpu=1,
+    def node_create(cls, name, group=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
                     os_type='hvm', architecture='x86_64', boot=None):
         """Create node
@@ -333,7 +337,7 @@ class Node(DriverModel):
         if not boot:
             boot = ['network', 'cdrom', 'hd']
         node = cls.objects.create(
-            name=name, environment=environment,
+            name=name, group=group,
             role=role, vcpu=vcpu, memory=memory,
             has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
             os_type=os_type, architecture=architecture, boot=json.dumps(boot)
