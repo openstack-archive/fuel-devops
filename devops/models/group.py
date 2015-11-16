@@ -19,21 +19,22 @@ from paramiko import Agent
 from paramiko import RSAKey
 from django.db import models
 from django.conf import settings
-from django.utils.importlib import import_module
+
 
 from devops import logger
+from devops.error import DevopsError
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.helpers import SSHClient
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
 from devops.models.node import Node
 from devops.models.network import DiskDevice
 from devops.models.network import Interface
 from devops.models.network import Network
 from devops.models.volume import Volume
-from devops.utils.lazy import lazy_property
+# from devops.models.driver import Driver
 
 
-class Group(DriverModel):
+class Group(BaseModel):
     """Groups nodes controlled by a specific driver
     """
 
@@ -42,30 +43,15 @@ class Group(DriverModel):
 
     environment = models.ForeignKey('Environment', null=True)
     name = models.CharField(max_length=255)
-    driver_name = models.CharField(
-        max_length=255,
-        default='devops.driver.libvirt.libvirt_driver')
-    connection_string = models.CharField(max_length=512,
-                                         default='qemu:///system')
-    storage_pool_name = models.CharField(max_length=255, default='default')
-    stp = models.BooleanField(default=True)
-    hpet = models.BooleanField(default=False)
-    use_host_cpu = models.BooleanField(default=True)
+    driver = models.OneToOneField('Driver', primary_key=True)
 
-    @lazy_property
-    def driver(self):
-        """Driver object
-
-        :rtype : DevopsDriver
-        """
-        driver = import_module(self.driver_name)
-        return driver.DevopsDriver(
-            connection_string=self.connection_string,
-            storage_pool_name=self.storage_pool_name,
-            stp=self.stp,
-            hpet=self.hpet,
-            use_host_cpu=self.use_host_cpu,
-        )
+    # def set_driver(self, name, params):
+    #     if self.driver is None:
+    #         self.driver = Driver.create(
+    #             name=name,
+    #             params=params)
+    #     else:
+    #         raise DevopsError('Driver already set')
 
     def get_volume(self, *args, **kwargs):
         return self.volume_set.get(*args, **kwargs)
@@ -107,7 +93,6 @@ class Group(DriverModel):
             device=device,
             bus=bus)
 
-    # optional
     @classmethod
     def create(cls, *args, **kwargs):
         """Create Group instance
@@ -116,12 +101,10 @@ class Group(DriverModel):
         """
         return cls.objects.create(*args, **kwargs)
 
-    # optional
     @classmethod
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    # optional
     @classmethod
     def list_all(cls):
         return cls.objects.all()
@@ -130,6 +113,7 @@ class Group(DriverModel):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
     def define(self):
+        # TODO:
         for network in self.get_networks():
             network.define()
         for volume in self.get_volumes():
@@ -138,6 +122,7 @@ class Group(DriverModel):
             node.define()
 
     def start(self, nodes=None):
+        # TODO:
         for network in self.get_networks():
             network.start()
         for node in nodes or self.get_nodes():
@@ -150,6 +135,7 @@ class Group(DriverModel):
     def erase(self):
         for node in self.get_nodes():
             node.erase()
+        # TODO:
         for network in self.get_networks():
             network.erase()
         for volume in self.get_volumes():
@@ -216,6 +202,7 @@ class Group(DriverModel):
                     (0, len(nodes_to_remove)))
 
     def create_networks(self, name):
+        # TODO:
         networks, prefix = settings.POOLS[name]
 
         ip_networks = [IPNetwork(x) for x in networks.split(',')]
@@ -231,6 +218,7 @@ class Group(DriverModel):
 
     def create_interfaces(self, networks, node,
                           model=settings.INTERFACE_MODEL):
+        # TODO:
         interface_map = {}
         if settings.BONDING:
             interface_map = settings.BONDING_INTERFACES
@@ -243,18 +231,18 @@ class Group(DriverModel):
                 interface_map=interface_map
             )
 
-    @property
-    def node_roles(self):
-        return NodeRoles(
-            admin_names=['admin'],
-            other_names=[
-                'slave-%02d' % x for x in range(1, settings.NODES_COUNT)
-            ],
-            ironic_names=[
-                'ironic-slave-%02d' % x for x in range(
-                    1, settings.IRONIC_NODES_COUNT + 1)
-            ]
-        )
+    # @property
+    # def node_roles(self):
+    #     return NodeRoles(
+    #         admin_names=['admin'],
+    #         other_names=[
+    #             'slave-%02d' % x for x in range(1, settings.NODES_COUNT)
+    #         ],
+    #         ironic_names=[
+    #             'ironic-slave-%02d' % x for x in range(
+    #                 1, settings.IRONIC_NODES_COUNT + 1)
+    #         ]
+    #     )
 
     def describe_empty_node(self, name, networks):
         node = self.add_node(
@@ -325,7 +313,7 @@ class Group(DriverModel):
         return str(self.get_network(name=router_name).ip[1])
 
     def nodes(self):
-        return Nodes(self, self.node_roles)
+        return Nodes(self)  # TODO
 
     # @logwrap
     def get_admin_remote(self,
@@ -363,35 +351,3 @@ class Group(DriverModel):
                            ' SSH agent ...')
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
-
-
-class NodeRoles(object):
-    def __init__(self,
-                 admin_names=None,
-                 other_names=None,
-                 ironic_names=None):
-        self.admin_names = admin_names or []
-        self.other_names = other_names or []
-        self.ironic_names = ironic_names or []
-
-
-class Nodes(object):
-    def __init__(self, group, node_roles):
-        self.admins = sorted(
-            list(group.get_nodes(name__in=node_roles.admin_names)),
-            key=lambda node: node.name
-        )
-        self.others = sorted(
-            list(group.get_nodes(name__in=node_roles.other_names)),
-            key=lambda node: node.name
-        )
-        self.ironics = sorted(
-            list(group.get_nodes(name__in=node_roles.ironic_names)),
-            key=lambda node: node.name
-        )
-        self.slaves = self.others
-        self.all = self.slaves + self.admins + self.ironics
-        self.admin = self.admins[0]
-
-    def __iter__(self):
-        return self.all.__iter__()

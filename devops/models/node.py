@@ -24,12 +24,12 @@ from devops.models.base import choices
 from devops.models.base import BaseModel
 
 
-class NodeManager(models.Manager):
-    def create(self, *args, **kwargs):
-        Node.node_create(*args, **kwargs)
+# class NodeManager(models.Manager):
+#     def create(self, *args, **kwargs):
+#         Node.node_create(*args, **kwargs)
 
-    def all(self, *args, **kwargs):
-        Node.objects.all()
+#     def all(self, *args, **kwargs):
+#         Node.objects.all()
 
 
 class Node(BaseModel):

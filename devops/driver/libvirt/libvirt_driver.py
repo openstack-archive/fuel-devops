@@ -18,14 +18,40 @@ import xml.etree.ElementTree as ET
 
 import ipaddr
 import libvirt
+# from django.conf import settings
+from ipaddr import IPAddress
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
+from devops.helpers.lazy import lazy_property
 from devops.helpers import scancodes
 from devops import logger
+from devops.models.base import ParamField
+from devops.models.driver import Driver
+from devops.models.network import L2NetworkDevice
 
-from django.conf import settings
+
+class _LibvirtManagerBase(object):
+
+    def __init__(self):
+        libvirt.virInitialize()
+        self.connections = {}
+
+    def _create_conn(self, connection_string):
+        conn = libvirt.open(connection_string)
+        self.connections[connection_string] = conn
+
+    def get_connection(self, connection_string):
+        if connection_string not in self.connections:
+            conn = libvirt.open(connection_string)
+            self.connections[connection_string] = conn
+        else:
+            conn = self.connections[connection_string]
+        return conn
+
+
+LibvirtManager = _LibvirtManagerBase()
 
 
 class Snapshot(object):
@@ -53,37 +79,26 @@ class Snapshot(object):
         return self._repr
 
 
-class DevopsDriver(object):
-    def __init__(self,
-                 connection_string="qemu:///system",
-                 storage_pool_name="default",
-                 stp=True, hpet=True, use_host_cpu=True):
-        """libvirt driver
+class LibvirtDriver(Driver):
+    """libvirt driver
 
-        :param use_host_cpu: When creating nodes, should libvirt's
-            CPU "host-model" mode be used to set CPU settings. If set to False,
-            default mode ("custom") will be used.  (default: True)
-        """
-        libvirt.virInitialize()
-        self.conn = libvirt.open(connection_string)
-        self.xml_builder = LibvirtXMLBuilder(self)
-        self.stp = stp
-        self.hpet = hpet
-        self.capabilities = None
-        self.allocated_networks = None
-        self.storage_pool_name = storage_pool_name
-        self.reboot_timeout = None
-        self.use_host_cpu = use_host_cpu
-        self.use_hugepages = settings.USE_HUGEPAGES
+    :param use_host_cpu: When creating nodes, should libvirt's
+        CPU "host-model" mode be used to set CPU settings. If set to False,
+        default mode ("custom") will be used.  (default: True)
+    """
 
-        if settings.VNC_PASSWORD:
-            self.vnc_password = settings.VNC_PASSWORD
+    connection_string = ParamField(default="qemu:///system")
+    storage_pool_name = ParamField(default="default")
+    stp = ParamField(default=True)
+    hpet = ParamField(default=True)
+    use_host_cpu = ParamField(default=True)
+    reboot_timeout = ParamField()
+    use_hugepages = ParamField()
+    vnc_password = ParamField()
 
-        if settings.REBOOT_TIMEOUT:
-            self.reboot_timeout = settings.REBOOT_TIMEOUT
-
-    def __del__(self):
-        self.conn.close()
+    @lazy_property
+    def conn(self):
+        return LibvirtManager.get_connection(self.connection_string)
 
     def _get_name(self, *kwargs):
         return self.xml_builder._get_name(*kwargs)
@@ -98,32 +113,33 @@ class DevopsDriver(object):
             self.capabilities = self.conn.getCapabilities()
         return ET.fromstring(self.capabilities)
 
-    @retry()
-    def network_bridge_name(self, network):
-        """Get bridge name from UUID
 
-        :type network: Network
-            :rtype : String
-        """
-        return self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
+    # @retry()
+    # def network_bridge_name(self, network_uuid):
+    #     """Get bridge name from UUID
+
+    #     :type network_uuid: str
+    #         :rtype : String
+    #     """
+    #     return self.conn.networkLookupByUUIDString(network_uuid).bridgeName()
 
     @retry()
-    def network_name(self, network):
+    def network_name(self, network_uuid):
         """Get network name from UUID
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : String
         """
-        return self.conn.networkLookupByUUIDString(network.uuid).name()
+        return self.conn.networkLookupByUUIDString(network_uuid).name()
 
     @retry()
-    def network_active(self, network):
+    def network_active(self, network_uuid):
         """Check if network is active
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : Boolean
         """
-        return self.conn.networkLookupByUUIDString(network.uuid).isActive()
+        return self.conn.networkLookupByUUIDString(network_uuid).isActive()
 
     @retry()
     def node_active(self, node):
@@ -135,14 +151,14 @@ class DevopsDriver(object):
         return self.conn.lookupByUUIDString(node.uuid).isActive()
 
     @retry()
-    def network_exists(self, network):
+    def network_exists(self, network_uuid):
         """Check if network exists
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : Boolean
         """
         try:
-            self.conn.networkLookupByUUIDString(network.uuid)
+            self.conn.networkLookupByUUIDString(network_uuid)
             return True
         except libvirt.libvirtError as e:
             if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
@@ -193,44 +209,48 @@ class DevopsDriver(object):
             else:
                 raise
 
-    @retry()
-    def network_define(self, network):
-        """Define network
+    # @retry()
+    # def network_define(self, **params):
+    #     """Define network
 
-        :type network: Network
-            :rtype : None
-        """
-        ret = self.conn.networkDefineXML(
-            self.xml_builder.build_network_xml(network))
-        ret.setAutostart(True)
-        network.uuid = ret.UUIDString()
+    #     :type network_name: name of network
+    #     :type params: Network options and parameters
+    #         :return: uuid of network
+    #         :rtype : str
+    #     """
+    #     ret = self.conn.networkDefineXML(
+    #         self.xml_builder.build_network_xml(
+    #             stp=self.stp,
+    #             **params))
+    #     ret.setAutostart(True)
+    #     return ret.UUIDString()
 
     @retry()
-    def network_destroy(self, network):
+    def network_destroy(self, network_uuid):
         """Destroy network
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : None
         """
-        self.conn.networkLookupByUUIDString(network.uuid).destroy()
+        self.conn.networkLookupByUUIDString(network_uuid).destroy()
 
     @retry()
-    def network_undefine(self, network):
+    def network_undefine(self, network_uuid):
         """Undefine network
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : None
         """
-        self.conn.networkLookupByUUIDString(network.uuid).undefine()
+        self.conn.networkLookupByUUIDString(network_uuid).undefine()
 
     @retry()
-    def network_create(self, network):
+    def network_create(self, network_uuid):
         """Create network
 
-        :type network: Network
+        :type network_uuid: str
             :rtype : None
         """
-        self.conn.networkLookupByUUIDString(network.uuid).create()
+        self.conn.networkLookupByUUIDString(network_uuid).create()
 
     @retry()
     def node_define(self, node):
@@ -579,3 +599,69 @@ class DevopsDriver(object):
                         "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
             self.allocated_networks = allocated_networks
         return self.allocated_networks
+
+
+class LibvirtL2NetworkDevice(L2NetworkDevice):
+
+    uuid = ParamField()
+    forward = ParamField(
+        default='nat',
+        choises=('nat', 'route', 'bridge', 'private',
+                 'vepa', 'passthrough', 'hostdev'))
+    has_pxe_server = ParamField(default=False)
+    has_dhcp_server = ParamField(default=False)
+    tftp_root_dir = ParamField(default='')
+
+    @retry()
+    def bridge_name(self):
+        return self.driver.conn.networkLookupByUUIDString(
+            self.uuid).bridgeName()
+
+    @retry()
+    def define(self):
+        network_name = '_'.join((
+            self.group.environment.name,
+            self.name,
+        ))
+
+        addresses = []
+        for interface in self.interfaces:
+            for address in interface.addresses:
+                ip_addr = IPAddress(address.ip_address)
+                if ip_addr in self.address_pool.ip_network:
+                    address.append(dict(
+                        mac=str(interface.mac_address),
+                        ip=str(address.ip_address),
+                        name=interface.node.name
+                    ))
+
+        xml = LibvirtXMLBuilder.build_network_xml(
+            stp=self.driver.stp,
+            ip_network=self.address_pool.ip_network,
+            addresses=addresses,
+            bridge_id=self.id,
+            network_name=network_name,
+        )
+        ret = self.driver.conn.networkDefineXML(xml)
+        ret.setAutostart(True)
+        self.uuid = ret.UUIDString()
+
+        self.save()
+
+    @retry()
+    def create(self, verbose=False):
+        if verbose or not self.driver.network_active(self.uuid):
+            self.driver.network_create(self.uuid)
+
+    @retry()
+    def destroy(self):
+        self.driver.network_destroy(self.uuid)
+
+    @retry()
+    def remove(self, verbose=False):
+        if verbose or self.uuid:
+            if verbose or self.driver.network_exists(self.uuid):
+                if self.driver.network_active(self.uuid):
+                    self.driver.network_destroy(self.uuid)
+                self.driver.network_undefine(self.uuid)
+        self.delete()

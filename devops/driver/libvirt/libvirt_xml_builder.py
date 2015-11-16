@@ -15,66 +15,68 @@
 import json
 import uuid
 
-from ipaddr import IPAddress
-from ipaddr import IPNetwork
 from xmlbuilder import XMLBuilder
+
+# from devops.error import DevopsError
 
 
 class LibvirtXMLBuilder(object):
-    def __init__(self, driver):
-        super(LibvirtXMLBuilder, self).__init__()
-        self.driver = driver
 
     NAME_SIZE = 80
 
-    def _get_name(self, *args):
+    @classmethod
+    def _get_name(cls, *args):
         name = '_'.join(filter(None, list(args)))
-        if len(name) > self.NAME_SIZE:
+        return cls._crop_name(name)
+
+    @classmethod
+    def _crop_name(cls, name):
+        if len(name) > cls.NAME_SIZE:
             hash_str = str(hash(name))
-            name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
+            name = hash_str + name[len(name) - cls.NAME_SIZE + len(hash_str):]
         return name
 
-    def build_network_xml(self, network):
+    @classmethod
+    def build_network_xml(cls, network_name, bridge_id, addresses,
+                          forward='nat', ip_network=None, stp=True,
+                          has_pxe_server=False, has_dhcp_server=False,
+                          tftp_root_dir=None):
         """Generate network XML
 
         :type network: Network
             :rtype : String
         """
         network_xml = XMLBuilder('network')
-        network_xml.name(self._get_name(
-            network.environment and network.environment.name or '',
-            network.name))
+        network_xml.name(cls._crop_name(network_name))
 
-        stp_val = 'off'
-        if self.driver.stp:
-            stp_val = 'on'
         network_xml.bridge(
-            name="fuelbr{0}".format(network.id),
-            stp=stp_val, delay="0")
+            name='fuelbr{0}'.format(bridge_id),
+            stp='on' if stp else 'off',
+            delay='0')
 
-        if network.forward is not None:
-            network_xml.forward(mode=network.forward)
-        if network.ip_network is not None:
-            ip_network = IPNetwork(network.ip_network)
-            with network_xml.ip(
-                    address=str(ip_network[1]),
-                    prefix=str(ip_network.prefixlen)):
-                if network.has_pxe_server:
-                    network_xml.tftp(root=network.tftp_root_dir)
-                if network.has_dhcp_server:
-                    with network_xml.dhcp:
-                        network_xml.range(start=str(network.ip_pool_start),
-                                          end=str(network.ip_pool_end))
-                        for interface in network.interfaces:
-                            for address in interface.addresses:
-                                if IPAddress(address.ip_address) in ip_network:
-                                    network_xml.host(
-                                        mac=str(interface.mac_address),
-                                        ip=str(address.ip_address),
-                                        name=interface.node.name
-                                    )
-                        if network.has_pxe_server:
-                            network_xml.bootp(file="pxelinux.0")
+        network_xml.forward(mode=forward)
+
+        if ip_network is None:
+            return str(network_xml)
+
+        with network_xml.ip(
+                address=str(ip_network[1]),
+                prefix=str(ip_network.prefixlen)):
+            if has_pxe_server:
+                network_xml.tftp(root=tftp_root_dir)
+            if has_dhcp_server:
+                with network_xml.dhcp:
+                    network_xml.range(
+                        start=str(ip_network.ip_start),
+                        end=str(ip_network.ip_end))
+                    for address in addresses:
+                        network_xml.host(
+                            mac=address['mac'],
+                            ip=address['ip'],
+                            name=address['name'],
+                        )
+                    if has_pxe_server:
+                        network_xml.bootp(file='pxelinux.0')
 
         return str(network_xml)
 
