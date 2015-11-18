@@ -159,7 +159,7 @@ def iterable(a):
 
 
 def from_string(s):
-    "from_string(s) - Convert string of chars into string of scancodes."
+    """from_string(s) - Convert string of chars into string of scancodes."""
 
     scancodes = []
 

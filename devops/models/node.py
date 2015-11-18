@@ -33,7 +33,7 @@ class NodeManager(models.Manager):
 
 
 class Node(DriverModel):
-    class Meta:
+    class Meta(object):
         unique_together = ('name', 'environment')
         db_table = 'devops_node'
 

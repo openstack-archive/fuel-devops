@@ -25,7 +25,7 @@ from devops.models.base import DriverModel
 
 
 class Network(DriverModel):
-    class Meta:
+    class Meta(object):
         unique_together = ('name', 'environment')
         db_table = 'devops_network'
 
@@ -213,7 +213,7 @@ class Network(DriverModel):
 
 
 class DiskDevice(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_diskdevice'
 
     node = models.ForeignKey('Node', null=False)
@@ -237,7 +237,7 @@ class DiskDevice(models.Model):
 
 
 class Interface(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_interface'
 
     network = models.ForeignKey('Network')
@@ -258,11 +258,13 @@ class Interface(models.Model):
     @staticmethod
     def interface_create(network, node, type='network',
                          mac_address=None, model='virtio',
-                         interface_map={}):
+                         interface_map=None):
         """Create interface
 
         :rtype : Interface
         """
+        if interface_map is None:
+            interface_map = {}
         interfaces = []
 
         def _create(mac_addr=None):
@@ -284,7 +286,7 @@ class Interface(models.Model):
 
 
 class Address(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_address'
 
     interface = models.ForeignKey('Interface')
