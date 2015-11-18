@@ -34,7 +34,7 @@ Now it is time to configure it. You can edit default configuration file devops/s
 
 Once database parameters configured it is needed to install corresponding database and configure database itself to make devops applications possible to access to it. For example, to configure Postgresql you need to edit pg_hba.conf file and create configured user and database.
 
-All virtual machines names and virtual networks names will be prepended with environment name avoiding name clashes. As long as different devops applications use not overlaped network ranges and evironments names it is possible to use differnt database for every application. If you are not absolutely sure just use the same database configuration for all devops instances. Once database and devops configured you need to create database schema.
+All virtual machines names and virtual networks names will be prepended with environment name avoiding name clashes. As long as different devops applications use not overlapped network ranges and environments names it is possible to use different database for every application. If you are not absolutely sure just use the same database configuration for all devops instances. Once database and devops configured you need to create database schema.
 
 ::
 
