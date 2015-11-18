@@ -25,7 +25,7 @@ from devops.models.base import DriverModel
 
 
 class Network(DriverModel):
-    class Meta:
+    class Meta(object):
         unique_together = ('name', 'environment')
         db_table = 'devops_network'
 
@@ -213,7 +213,7 @@ class Network(DriverModel):
 
 
 class DiskDevice(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_diskdevice'
 
     node = models.ForeignKey('Node', null=False)
@@ -237,7 +237,7 @@ class DiskDevice(models.Model):
 
 
 class Interface(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_interface'
 
     network = models.ForeignKey('Network')
@@ -284,7 +284,7 @@ class Interface(models.Model):
 
 
 class Address(models.Model):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_address'
 
     interface = models.ForeignKey('Interface')

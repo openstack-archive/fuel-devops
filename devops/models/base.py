@@ -30,7 +30,7 @@ class DriverModel(models.Model):
     _driver = None
     created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
 
-    class Meta:
+    class Meta(object):
         abstract = True
 
     @classmethod
