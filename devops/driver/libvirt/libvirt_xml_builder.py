@@ -173,7 +173,7 @@ class LibvirtXMLBuilder(object):
 
         if self.driver.use_hugepages:
             with node_xml.memoryBacking:
-                node_xml.hugepages
+                _ = node_xml.hugepages
 
         node_xml.clock(offset='utc')
         with node_xml.clock.timer(name='rtc',

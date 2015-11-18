@@ -172,7 +172,7 @@ class Ntp(object):
         cls.node_name = node_name
         cls.peers = []
 
-        # Get IP of a server from which the time will be syncronized.
+        # Get IP of a server from which the time will be synchronized.
         cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
         cls.server = remote.execute(cmd)['stdout'][0]
 
@@ -222,12 +222,12 @@ class Ntp(object):
                 if (abs(offset) > 500) or (abs(jitter) > 500):
                     return self.is_connected
 
-                # 2. remote should be marked whith tally  '*'
+                # 2. remote should be marked with tally  '*'
                 if remote[0] != '*':
                     continue
 
                 # 3. reachability bit array should have '1' at least in
-                # two lower bits as the last two sussesful checks
+                # two lower bits as the last two successful checks
                 if reach & 3 == 3:
                     self.is_connected = True
                     return self.is_connected

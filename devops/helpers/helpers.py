@@ -211,7 +211,7 @@ class SSHClient(object):
         def __enter__(self):
             self.ssh.sudo_mode = True
 
-        def __exit__(self, type, value, traceback):
+        def __exit__(self, exc_type, value, traceback):
             self.ssh.sudo_mode = False
 
     def __init__(self, host, port=22, username=None, password=None,
@@ -433,7 +433,7 @@ def xmlrpctoken(uri, login, password):
     try:
         return server.login(login, password)
     except Exception:
-        raise AuthenticationError("Error occured while login process")
+        raise AuthenticationError("Error occurred while login process")
 
 
 def xmlrpcmethod(uri, method):
@@ -441,7 +441,7 @@ def xmlrpcmethod(uri, method):
     try:
         return getattr(server, method)
     except Exception:
-        raise AttributeError("Error occured while getting server method")
+        raise AttributeError("Error occurred while getting server method")
 
 
 def generate_mac():

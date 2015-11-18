@@ -31,7 +31,7 @@ def admin_wait_bootstrap(puppet_timeout, env):
     """
 
     print("Waiting while bootstrapping is in progress")
-    print("Puppet timeout set in {0}").format(puppet_timeout)
+    print("Puppet timeout set in {0}".format(puppet_timeout))
     wait(
         lambda: not
         get_admin_remote(env).execute(

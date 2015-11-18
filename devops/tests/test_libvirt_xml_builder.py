@@ -41,13 +41,13 @@ class BaseTestXMLBuilder(TestCase):
         self.xml_builder.driver.use_hugepages = None
 
     def _reformat_xml(self, xml):
-        """Takes XML in string, parses it and returns pretty printted XML."""
+        """Takes XML in string, parses it and returns pretty printed XML."""
         return etree.tostring(etree.fromstring(xml), pretty_print=True)
 
     def assertXMLEqual(self, first, second):
         """Compare if two XMLs are equal.
 
-        It parses provided XMLs and converts back to string to minimalise
+        It parses provided XMLs and converts back to string to minimise
         errors caused by whitespaces.
         """
         first = self._reformat_xml(first)
@@ -128,9 +128,8 @@ class TestNetworkXml(BaseTestXMLBuilder):
         self.net.has_pxe_server = False
         self.net.tftp_root_dir = '/tmp'
         xml = self.xml_builder.build_network_xml(self.net)
-        str = '<ip address="{0}" prefix="{1}" />'.format(
-            ip, prefix)
-        self.assertXMLIn(str, xml)
+        string = '<ip address="{0}" prefix="{1}" />'.format(ip, prefix)
+        self.assertXMLIn(string, xml)
 
 
 class TestVolumeXml(BaseTestXMLBuilder):
@@ -179,14 +178,14 @@ class TestVolumeXml(BaseTestXMLBuilder):
         self.assertXpath("not(//backingStore)", xml)
 
     def test_backing_store(self):
-        format = "raw"
-        volume = factories.VolumeFactory(backing_store__format=format)
+        store_format = "raw"
+        volume = factories.VolumeFactory(backing_store__format=store_format)
         xml = self.get_xml(volume)
         self.assertXMLIn('''
     <backingStore>
         <path>{path}</path>
         <format type="{format}" />
-    </backingStore>'''.format(path=self.volume_path, format=format), xml)
+    </backingStore>'''.format(path=self.volume_path, format=store_format), xml)
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
