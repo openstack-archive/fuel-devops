@@ -43,5 +43,10 @@ setup(
         'PyYAML',
         'libvirt-python',
         'tabulate',
+        'pytest',
+        'mock',
+        'factory',
+        'sphinx',  # required for doc
+        # lxml - do not add, use system!
     ]
 )

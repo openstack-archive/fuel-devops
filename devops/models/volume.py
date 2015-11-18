@@ -18,7 +18,7 @@ from devops.models.base import DriverModel
 
 
 class Volume(DriverModel):
-    class Meta:
+    class Meta(object):
         unique_together = ('name', 'environment')
         db_table = 'devops_volume'
 

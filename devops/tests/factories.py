@@ -30,7 +30,7 @@ class FuzzyUuid(fuzzy.BaseFuzzyAttribute):
 
 @factory.use_strategy(factory.BUILD_STRATEGY)
 class EnvironmentFactory(factory.django.DjangoModelFactory):
-    class Meta:
+    class Meta(object):
         model = models.Environment
 
     name = fuzzy.FuzzyText('test_env_')
@@ -38,7 +38,7 @@ class EnvironmentFactory(factory.django.DjangoModelFactory):
 
 @factory.use_strategy(factory.BUILD_STRATEGY)
 class VolumeFactory(factory.django.DjangoModelFactory):
-    class Meta:
+    class Meta(object):
         model = models.Volume
 
     environment = factory.SubFactory(EnvironmentFactory)
