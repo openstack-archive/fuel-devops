@@ -24,6 +24,7 @@ import devops
 from devops.helpers.helpers import _get_file_size
 from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
+from devops.helpers.templates import create_admin_config
 from devops.models import Environment
 from devops.models.network import Network
 from devops import settings
@@ -254,11 +255,16 @@ class Shell(object):
             interfaces = settings.INTERFACE_ORDER
             for name in interfaces:
                 networks.append(self.env.create_networks(name))
-        return self.env.describe_admin_node(name="admin",
-                                            vcpu=vcpu,
-                                            networks=networks,
-                                            memory=ram,
-                                            iso_path=iso_path)
+
+        admin_node = create_admin_config(
+            admin_vcpu=vcpu,
+            admin_memory=ram,
+            admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
+            admin_iso_path=iso_path,
+            boot_from='cdrom',
+            interfaceorder=settings.INTERFACE_ORDER)
+
+        return self.env.create_node(admin_node)
 
     def do_node_start(self):
         self.env.get_node(name=self.params.node_name).start()
