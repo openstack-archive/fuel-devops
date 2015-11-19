@@ -35,7 +35,12 @@ class Shell(object):
         self.params = self.get_params()
         if (getattr(self.params, 'name', None) and
                 getattr(self.params, 'command', None) != 'create'):
-            self.env = Environment.get(name=self.params.name)
+            try:
+                self.env = Environment.get(name=self.params.name)
+            except Environment.DoesNotExist:
+                self.env = None
+                sys.exit("Enviroment with name {} doesn't exist."
+                         "".format(self.params.name))
 
     def execute(self):
         self.commands.get(self.params.command)(self)
