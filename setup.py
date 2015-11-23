@@ -43,5 +43,10 @@ setup(
         'PyYAML',
         'libvirt-python',
         'tabulate',
+        'factory_boy>=2.4.1',
+        'pytest>=2.7.1',
+        'pytest-django >= 2.8.0',
+        'mock>=1.0.1',
+        'sphinx',
     ]
 )
