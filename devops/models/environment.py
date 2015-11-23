@@ -32,7 +32,7 @@ from devops.models.volume import Volume
 
 
 class Environment(DriverModel):
-    class Meta:
+    class Meta(object):
         db_table = 'devops_environment'
 
     name = models.CharField(max_length=255, unique=True, null=False)
@@ -157,7 +157,7 @@ class Environment(DriverModel):
         if destroy:
             for node in self.get_nodes():
                 node.destroy(verbose=False)
-        if (flag and not self.has_snapshot(name)):
+        if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
         for node in self.get_nodes():
@@ -175,7 +175,7 @@ class Environment(DriverModel):
         #  on domains that are outside the scope of devops, if anything this
         #  should cause domains to be imported into db instead of undefined.
         #  It also leaves network and volumes around too
-        #  Disabled untill a safer implmentation arrives
+        #  Disabled until a safer implementation arrives
 
         # Undefine domains without devops nodes
         #
@@ -306,9 +306,9 @@ class Environment(DriverModel):
 
         if self.os_image is None:
             iso = iso_path or settings.ISO_PATH
-            self.add_empty_volume(node, name + '-system',
-                                  capacity=settings.ADMIN_NODE_VOLUME_SIZE
-                                  * 1024 ** 3)
+            self.add_empty_volume(
+                node, name + '-system',
+                capacity=settings.ADMIN_NODE_VOLUME_SIZE * 1024 ** 3)
             self.add_empty_volume(
                 node,
                 name + '-iso',
