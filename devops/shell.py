@@ -34,6 +34,8 @@ class Shell(object):
     def __init__(self, args):
         self.args = args
         self.params = self.get_params()
+        if getattr(self.params, 'snapshot-name', None):
+            self.snapshot_name = getattr(self.params, 'snapshot-name')
         if (getattr(self.params, 'name', None) and
                 getattr(self.params, 'command', None) != 'create'):
             try:
@@ -95,10 +97,10 @@ class Shell(object):
         self.env.resume(verbose=False)
 
     def do_revert(self):
-        self.env.revert(self.params.snapshot_name, flag=False)
+        self.env.revert(self.snapshot_name, flag=False)
 
     def do_snapshot(self):
-        self.env.snapshot(self.params.snapshot_name)
+        self.env.snapshot(self.snapshot_name)
 
     def do_synchronize(self):
         Environment.synchronize_all()
@@ -132,8 +134,8 @@ class Shell(object):
     def do_snapshot_delete(self):
         for node in self.env.get_nodes():
             snaps = map(lambda x: x.name, node.get_snapshots())
-            if self.params.snapshot_name in snaps:
-                node.erase_snapshot(name=self.params.snapshot_name)
+            if self.snapshot_name in snaps:
+                node.erase_snapshot(name=self.snapshot_name)
 
     def do_net_list(self):
         headers = ("NETWORK NAME", "IP NET")
@@ -158,7 +160,7 @@ class Shell(object):
             print("New time on '{0}' = {1}".format(name, new_time[name]))
 
     def do_revert_resume(self):
-        self.env.revert(self.params.snapshot_name, flag=False)
+        self.env.revert(self.snapshot_name, flag=False)
         self.env.resume(verbose=False)
         if not self.params.no_timesync:
             print('Time synchronization is starting')
@@ -305,14 +307,16 @@ class Shell(object):
 
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
+
         name_parser.add_argument('name', help='environment name',
                                  default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
-        snapshot_name_parser.add_argument('--snapshot-name', '-S',
+        snapshot_name_parser.add_argument('snapshot-name',
                                           help='snapshot name',
                                           default=os.environ.get(
                                               'SNAPSHOT_NAME'))
+
         node_name_parser = argparse.ArgumentParser(add_help=False)
         node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
@@ -322,6 +326,7 @@ class Shell(object):
                                         action='store_const', const=True,
                                         help='revert without timesync',
                                         default=False)
+
         list_ips_parser = argparse.ArgumentParser(add_help=False)
         list_ips_parser.add_argument('--ips', dest='list_ips',
                                      action='store_const', const=True,
@@ -370,6 +375,7 @@ class Shell(object):
         vcpu_parser.add_argument('--vcpu', dest='vcpu_count',
                                  help='Set node VCPU count',
                                  default=1, type=int)
+
         change_ram_parser = argparse.ArgumentParser(add_help=False)
         change_ram_parser.add_argument('--ram', dest='ram_size',
                                        help='Set node RAM size',
