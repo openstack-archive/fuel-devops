@@ -14,6 +14,14 @@
 
 import os
 
+_boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
+                   '0': False, 'no': False, 'false': False, 'off': False}
+
+
+def get_var_as_bool(name, default):
+    value = os.environ.get(name, '')
+    return _boolean_states.get(value.lower(), default)
+
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
     'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
@@ -68,7 +76,7 @@ DEFAULT_MASTER_BOOTSTRAP_LOG = '/var/log/puppet/bootstrap_admin_node.log'
 MASTER_BOOTSTRAP_LOG = os.environ.get('MASTER_BOOTSTRAP_LOG',
                                       DEFAULT_MASTER_BOOTSTRAP_LOG)
 
-USE_HUGEPAGES = os.environ.get('USE_HUGEPAGES', False) == 'true'
+USE_HUGEPAGES = get_var_as_bool('USE_HUGEPAGES', False)
 
 try:
     from local_settings import *  # noqa
@@ -98,7 +106,7 @@ BONDING_INTERFACES = {
     'public': ['eth2', 'eth3', 'eth4', 'eth5']
 }
 
-MULTIPLE_NETWORKS = os.environ.get('MULTIPLE_NETWORKS', False) == 'true'
+MULTIPLE_NETWORKS = get_var_as_bool('MULTIPLE_NETWORKS', False)
 
 if MULTIPLE_NETWORKS:
     NODEGROUPS = (
@@ -191,7 +199,7 @@ HARDWARE = {
 USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
 ISO_PATH = os.environ.get('ISO_PATH')
 
-IRONIC_ENABLED = os.environ.get('IRONIC_ENABLED', False) == 'true'
+IRONIC_ENABLED = get_var_as_bool('IRONIC_ENABLED', False)
 
 if IRONIC_ENABLED:
     POOL_IRONIC = os.environ.get('POOL_IRONIC', POOL_DEFAULT)
