@@ -14,13 +14,21 @@
 
 import os
 
+_boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
+                   '0': False, 'no': False, 'false': False, 'off': False}
+
+
+def get_var_as_bool(name, default):
+    value = os.environ.get(name, '')
+    return _boolean_states.get(value.lower(), default)
+
 DRIVER = 'devops.driver.libvirt.libvirt_driver'
 DRIVER_PARAMETERS = {
     'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
     'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
     'stp': True,
     'hpet': False,
-    'use_host_cpu': os.environ.get('DRIVER_USE_HOST_CPU', 'true') == 'true',
+    'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
 }
 
 INSTALLED_APPS = ['south', 'devops']
@@ -68,7 +76,7 @@ DEFAULT_MASTER_BOOTSTRAP_LOG = '/var/log/puppet/bootstrap_admin_node.log'
 MASTER_BOOTSTRAP_LOG = os.environ.get('MASTER_BOOTSTRAP_LOG',
                                       DEFAULT_MASTER_BOOTSTRAP_LOG)
 
-USE_HUGEPAGES = os.environ.get('USE_HUGEPAGES', False) == 'true'
+USE_HUGEPAGES = get_var_as_bool('USE_HUGEPAGES', False)
 
 try:
     from local_settings import *  # noqa
@@ -92,13 +100,13 @@ DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
 INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
                                  DEFAULT_INTERFACE_ORDER).split(',')
 
-BONDING = os.environ.get("BONDING", 'false') == 'true'
+BONDING = get_var_as_bool("BONDING", False)
 BONDING_INTERFACES = {
     'admin': ['eth0', 'eth1'],
     'public': ['eth2', 'eth3', 'eth4', 'eth5']
 }
 
-MULTIPLE_NETWORKS = os.environ.get('MULTIPLE_NETWORKS', False) == 'true'
+MULTIPLE_NETWORKS = get_var_as_bool('MULTIPLE_NETWORKS', False)
 
 if MULTIPLE_NETWORKS:
     NODEGROUPS = (
@@ -188,10 +196,10 @@ HARDWARE = {
     "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3027)),
 }
 
-USE_ALL_DISKS = os.environ.get('USE_ALL_DISKS', 'true') == 'true'
+USE_ALL_DISKS = get_var_as_bool('USE_ALL_DISKS', True)
 ISO_PATH = os.environ.get('ISO_PATH')
 
-IRONIC_ENABLED = os.environ.get('IRONIC_ENABLED', False) == 'true'
+IRONIC_ENABLED = get_var_as_bool('IRONIC_ENABLED', False)
 
 if IRONIC_ENABLED:
     POOL_IRONIC = os.environ.get('POOL_IRONIC', POOL_DEFAULT)
