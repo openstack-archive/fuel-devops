@@ -25,17 +25,18 @@ from devops.helpers.helpers import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
-from devops.models.base import DriverModel
-from devops.models.network import DiskDevice
+from devops.models.base import BaseModel
 from devops.models.network import Interface
-from devops.models.network import Network
+# from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import Volume
+from devops.models.volume import DiskDevice
 
 
-class Environment(DriverModel):
+class Environment(BaseModel):
     class Meta(object):
         db_table = 'devops_environment'
+        app_label = 'devops'
 
     name = models.CharField(max_length=255, unique=True, null=False)
 
