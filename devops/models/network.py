@@ -258,11 +258,13 @@ class Interface(models.Model):
     @staticmethod
     def interface_create(network, node, type='network',
                          mac_address=None, model='virtio',
-                         interface_map={}):
+                         interface_map=None):
         """Create interface
 
         :rtype : Interface
         """
+        if interface_map is None:
+            interface_map = {}
         interfaces = []
 
         def _create(mac_addr=None):
