@@ -255,9 +255,7 @@ class TestNodeXml(BaseTestXMLBuilder):
         expected = '''
 <domain type="test_hypervisor">
     <name>test_env_name_test_name</name>
-    <cpu mode="host-model">
-        <model fallback="forbid" />
-    </cpu>
+    <cpu mode="host-passthrough" />
     <vcpu>{0}</vcpu>
     <memory unit="KiB">{1}</memory>
     <clock offset="utc" />
