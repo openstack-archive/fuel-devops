@@ -166,8 +166,7 @@ class LibvirtXMLBuilder(object):
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
         if self.driver.use_host_cpu:
-            with node_xml.cpu(mode='host-model'):
-                node_xml.model(fallback='forbid')
+            node_xml.cpu(mode='host-passthrough')
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
