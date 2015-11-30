@@ -4,55 +4,6 @@ aliases:
   dynamic_address_pool:
    - &pool_default !os_env POOL_DEFAULT, 10.109.0.0/16:24
 
-  rack-01-slave-interfaces: &rack-01-slave-interfaces
-   - label: eth0
-     l2_network_device: admin      # Libvirt bridge name. It is *NOT* Nailgun networks
-   - label: eth1
-     l2_network_device: public
-   - label: eth2
-     l2_network_device: storage
-   - label: eth3
-     l2_network_device: management
-   - label: eth4
-     l2_network_device: private
-
-  rack-01-slave-network_config: &rack-01-slave-network_config
-    eth0:
-      networks:
-       - fuelweb_admin
-    eth1:
-      networks:
-       - public
-    eth2:
-      networks:
-       - storage
-    eth3:
-      networks:
-       - management
-    eth4:
-      networks:
-       - private
-
-  rack-01-slave-node-params: &rack-01-slave-node-params
-    vcpu: !os_env SLAVE_NODE_CPU, 2
-    memory: !os_env SLAVE_NODE_MEMORY, 3072
-    boot:
-      - network
-      - hd
-    volumes:
-     - name: system
-       capacity: !os_env NODE_VOLUME_SIZE, 50
-       format: qcow2
-     - name: cinder
-       capacity: !os_env NODE_VOLUME_SIZE, 50
-       format: qcow2
-     - name: swift
-       capacity: !os_env NODE_VOLUME_SIZE, 50
-       format: qcow2
-    interfaces: *rack-01-slave-interfaces
-    network_config: *rack-01-slave-network_config
-
-
 template:
   devops_settings:
     env_name: !os_env ENV_NAME
@@ -152,9 +103,59 @@ template:
                 networks:
                  - fuelweb_admin
 
+          # Slave nodes
+
         - name: slave-01
           role: fuel_slave
-          params: *rack-01-slave-node-params
+          params:  &rack-01-slave-node-params
+            vcpu: !os_env SLAVE_NODE_CPU, 2
+            memory: !os_env SLAVE_NODE_MEMORY, 3072
+            boot:
+              - network
+              - hd
+            volumes:
+             - name: system
+               capacity: !os_env NODE_VOLUME_SIZE, 50
+               format: qcow2
+             - name: cinder
+               capacity: !os_env NODE_VOLUME_SIZE, 50
+               format: qcow2
+             - name: swift
+               capacity: !os_env NODE_VOLUME_SIZE, 50
+               format: qcow2
+
+            # List of node interfaces
+            interfaces:
+             - label: eth0
+               l2_network_device: admin      # Libvirt bridge name. It is *NOT* Nailgun networks
+             - label: eth1
+               l2_network_device: public
+             - label: eth2
+               l2_network_device: storage
+             - label: eth3
+               l2_network_device: management
+             - label: eth4
+               l2_network_device: private
+
+            # How Nailgun/OpenStack networks should assigned for interfaces
+            network_config:
+              eth0:
+                networks:
+                 - fuelweb_admin  # Nailgun/OpenStack network name
+              eth1:
+                networks:
+                 - public
+              eth2:
+                networks:
+                 - storage
+              eth3:
+                networks:
+                 - management
+              eth4:
+                networks:
+                 - private
+
+
         - name: slave-02
           role: fuel_slave
           params: *rack-01-slave-node-params

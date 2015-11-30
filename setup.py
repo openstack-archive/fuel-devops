@@ -38,6 +38,7 @@ setup(
         'ipaddr',
         'paramiko',
         'django<1.7',
+        'jsonfield',
         'psycopg2',
         'south',
         'PyYAML',
