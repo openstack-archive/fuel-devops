@@ -20,22 +20,27 @@ from ipaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
+from devops.helpers.network import IpNetworksPool
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.helpers import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
-from devops.models.base import DriverModel
-from devops.models.network import DiskDevice
+from devops.models.base import BaseModel
+from devops.models.network import Address_Pool
 from devops.models.network import Interface
-from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import Volume
+from devops.models.volume import DiskDevice
+from devops.models.driver import Driver
+from devops.models.group import Group
 
 
-class Environment(DriverModel):
+
+class Environment(BaseModel):
     class Meta(object):
         db_table = 'devops_environment'
+        app_label = 'devops'
 
     name = models.CharField(max_length=255, unique=True, null=False)
 
@@ -47,47 +52,81 @@ class Environment(DriverModel):
     # pass admin net names to Environment from fuel-qa.
     admin_net = 'admin'
     admin_net2 = 'admin2'
-    os_image = None  # Dirty hack. Check for os_image attribute for relevancy.
 
-    def get_volume(self, *args, **kwargs):
-        return self.volume_set.get(*args, **kwargs)
+    # NEW
+    def get_allocated_networks(self):
+        allocated_networks = []
+        for group in self.get_groups():
+            allocated_networks += group.get_allocated_networks()
+        return allocated_networks
 
-    def get_volumes(self, *args, **kwargs):
-        return self.volume_set.filter(*args, **kwargs)
+    # NEW
+    def get_address_pool(self, *args, **kwargs):
+        return self.address_pool_set.get(*args, **kwargs)
 
-    def get_network(self, *args, **kwargs):
-        return self.network_set.get(*args, **kwargs)
+    # NEW
+    def get_address_pools(self, *args, **kwargs):
+        return self.address_pool_set.filter(*args, **kwargs)
 
-    def get_networks(self, *args, **kwargs):
-        return self.network_set.filter(*args, **kwargs)
+    # NEW
+    def get_group(self, *args, **kwargs):
+        return self.group_set.get(*args, **kwargs)
 
-    def get_node(self, *args, **kwargs):
-        return self.node_set.get(*args, **kwargs)
+    # NEW
+    def get_groups(self, *args, **kwargs):
+        return self.group_set.filter(*args, **kwargs)
 
-    def get_nodes(self, *args, **kwargs):
-        return self.node_set.filter(*args, **kwargs)
 
-    def add_node(self, memory, name, vcpu=1, boot=None, role='slave'):
-        return Node.node_create(
-            name=name,
-            memory=memory,
-            vcpu=vcpu,
+    # NEW
+    def add_groups(self, groups):
+        for group_data in groups:
+            driver_data = group_data['driver']
+            self.add_group(
+                group_name=group_data['name'],
+                driver_name=driver_data['name'],
+                **driver_data.get('params', {})
+            )
+
+    # NEW
+    def add_group(self, group_name, driver_name, **driver_params):
+        driver = Driver.driver_create(
+            name=driver_name,
+            **driver_params
+        )
+        return Group.group_create(
+            name=group_name,
             environment=self,
-            role=role,
-            boot=boot)
+            driver=driver,
+        )
 
-    def add_empty_volume(self, node, name, capacity,
-                         device='disk', bus='virtio', format='qcow2'):
-        return DiskDevice.node_attach_volume(
-            node=node,
-            volume=Volume.volume_create(
+    # NEW
+    def add_address_pools(self, address_pools):
+        for name, data in address_pools.items():
+            self.add_address_pool(
                 name=name,
-                capacity=capacity,
-                environment=self,
-                format=format),
-            device=device,
-            bus=bus)
+                net=data['net'],
+                **data.get('params', {})
+            )
 
+    # NEW
+    def add_address_pool(self, name, net, **params):
+
+        networks, prefix = net.split(':')
+        ip_networks = [IPNetwork(x) for x in networks.split(',')]
+
+        pool = IpNetworksPool(
+            networks=ip_networks,
+            prefix=int(prefix),
+            allocated_networks=self.get_allocated_networks())
+
+        Address_Pool.address_pool_create(
+            environment=self,
+            name=name,
+            pool=pool,
+            **params
+        )
+
+    # OLD
     @classmethod
     def create(cls, name):
         """Create Environment instance with given name.
@@ -96,53 +135,40 @@ class Environment(DriverModel):
         """
         return cls.objects.create(name=name)
 
+    # OLD
     @classmethod
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
+    # OLD
     @classmethod
     def list_all(cls):
         return cls.objects.all()
 
+    # LEGACY
     def has_snapshot(self, name):
-        return all(n.has_snapshot(name) for n in self.get_nodes())
+        if self.get_nodes():
+            return all(n.has_snapshot(name) for n in self.get_nodes())
+        else:
+            return False
 
-    def define(self, skip=True):
-        # 'skip' param is a temporary workaround.
-        # It will be removed with introducing the new database schema
-        # See the task QA-239 for details.
-        if not skip:
-            for network in self.get_networks():
-                network.define()
-            for volume in self.get_volumes():
-                volume.define()
-            for node in self.get_nodes():
-                node.define()
+    def define(self):
+        for group in self.get_groups():
+            group.define()
 
     def start(self, nodes=None):
-        for network in self.get_networks():
-            network.start()
-        for node in nodes or self.get_nodes():
-            node.start()
+        for group in self.get_groups():
+            group.start(nodes)
 
-    def destroy(self, verbose=False):
-        for node in self.get_nodes():
-            node.destroy(verbose=verbose)
+    def destroy(self):
+        for group in self.get_groups():
+            group.destroy()
 
     def erase(self):
-        for node in self.get_nodes():
-            node.erase()
-        for network in self.get_networks():
-            network.erase()
-        for volume in self.get_volumes():
-            volume.erase()
+        for group in self.get_groups():
+            group.erase()
         self.delete()
 
-    @classmethod
-    def erase_empty(cls):
-        for env in cls.list_all():
-            if env.get_nodes().count() == 0:
-                env.erase()
 
     def suspend(self, verbose=False):
         for node in self.get_nodes():
@@ -168,6 +194,7 @@ class Environment(DriverModel):
         for node in self.get_nodes():
             node.revert(name, destroy=False)
 
+    # TO REWRITE FOR LIBVIRT DRIVER ONLY
     @classmethod
     def synchronize_all(cls):
         driver = cls.get_driver()
@@ -197,6 +224,7 @@ class Environment(DriverModel):
         logger.info('Undefined domains: %s, removed nodes: %s' %
                     (0, len(nodes_to_remove)))
 
+    # LEGACY
     @classmethod
     def describe_environment(cls, boot_from='cdrom'):
         """This method is DEPRECATED.
@@ -234,6 +262,7 @@ class Environment(DriverModel):
         environment = cls.create_environment(config)
         return environment
 
+    # NEW
     @classmethod
     def create_environment(cls, full_config):
         """Create a new environment using full_config object
@@ -246,120 +275,40 @@ class Environment(DriverModel):
         config = full_config['template']['devops_settings']
         environment = cls.create(config['env_name'])
 
-        # TODO(ddmitriev): link the dict config['address_pools'] to the
-        # 'environment' object.
+        # create groups and drivers
+        groups = config['groups']
+        environment.add_groups(groups)
+
+        # create address pools
         address_pools = config['address_pools']
+        environment.add_address_pools(address_pools)
 
-        # Create networks:
-        for group in config['groups']:
-            # TODO(ddmitriev): use group['driver'] as a driver for
-            # manage networks and nodes in the group
+        # process group items
+        for group_data in groups:
+            group = environment.get_group(name=group_data['name'])
 
-            # TODO(ddmitriev): link the dict group['network_pools'] to 'group'
-            # object.
+            # add l2_network_devices
+            group.add_l2_network_devices(
+                group_data.get('l2_network_devices', {}))
 
-            for l2_device_name in group['l2_network_devices']:
-                l2_device_config = group['l2_network_devices'][l2_device_name]
-                environment.create_networks(
-                    name=l2_device_name,
-                    l2_device_config=l2_device_config,
-                    address_pools=address_pools)
+            # add network_pools
+            group.add_network_pools(
+                group_data.get('network_pools', {}))
 
-        # Create nodes:
-        for group in config['groups']:
-            # TODO(ddmitriev): use group['driver'] as a driver for
-            # manage networks and nodes in the group
-            for config_node in group['nodes']:
-                environment.create_node(config_node)
+            # add nodes
+            group.add_nodes(
+                group_data.get('nodes', []))
 
         return environment
 
-    def create_networks(self, name, l2_device_config, address_pools):
+    # LEGACY - TO MODIFY BY GROUPS
+    @classmethod
+    def erase_empty(cls):
+        for env in cls.list_all():
+            if env.get_nodes().count() == 0:
+                env.erase()
 
-        # TODO(ddmitriev): use 'address_pool' attribute to get the address_pool
-        # for 'l2_device' as an object
-
-        # Get address_pool from 'address_pools' object
-        if 'address_pool' in l2_device_config:
-            address_pool = address_pools[l2_device_config['address_pool']]
-
-            networks, prefix = address_pool['net'].split(':')
-            ip_networks = [IPNetwork(x) for x in networks.split(',')]
-            new_prefix = int(prefix)
-            pool = Network.create_network_pool(networks=ip_networks,
-                                               prefix=new_prefix)
-        else:
-            pool = None
-
-        if 'forward' in l2_device_config:
-            forward = l2_device_config['forward']['mode']
-        else:
-            forward = None
-
-        has_dhcp_server = (l2_device_config.get('dhcp', 'false') == 'true')
-
-        net = Network.network_create(
-            name=name,
-            environment=self,
-            pool=pool,
-            forward=forward,
-            has_dhcp_server=has_dhcp_server)
-        net.define()
-        return net
-
-    def create_interfaces(self, interfaces, node,
-                          model=settings.INTERFACE_MODEL):
-        for interface in interfaces:
-
-            # TODO(ddmitriev): use l2_network_devices object to get
-            # the network device
-            network_name = interface['l2_network_device']
-            network = self.get_network(name=network_name)
-
-            Interface.interface_create(
-                network,
-                node=node,
-                model=model,
-            )
-
-    def create_node(self, config_node):
-        node_params = config_node['params']
-        node = self.add_node(
-            name=config_node['name'],
-            role=config_node['role'],
-            memory=int(node_params['memory']),
-            vcpu=int(node_params['vcpu']),
-            boot=node_params['boot'])
-
-        self.create_interfaces(node_params['interfaces'], node)
-
-        for volume in node_params.get('volumes', None):
-            volume_name = config_node['name'] + '-' + volume['name']
-            if 'source_image' in volume:
-                disk = self.add_empty_volume(
-                    node,
-                    volume_name,
-                    capacity=_get_file_size(volume['source_image']),
-                    format=volume.get('format', 'qcow2'),
-                    device=volume.get('device', 'disk'),
-                    bus=volume.get('bus', 'virtio')
-                )
-                disk.volume.define()
-                disk.volume.upload(volume['source_image'])
-            else:
-                disk = self.add_empty_volume(
-                    node,
-                    volume_name,
-                    capacity=int(volume['capacity']) * 1024 ** 3,
-                    format=volume.get('format', 'qcow2'),
-                    device=volume.get('device', 'disk'),
-                    bus=volume.get('bus', 'virtio')
-                )
-                disk.volume.define()
-
-        node.define()
-        return node
-
+    # TO L2_NETWORK_device, LEGACY
     # Rename it to default_gw and move to models.Network class
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
@@ -367,6 +316,7 @@ class Environment(DriverModel):
             return str(self.get_network(name=router_name).ip[2])
         return str(self.get_network(name=router_name).ip[1])
 
+    # LEGACY, for fuel-qa compatibility
     # @logwrap
     def get_admin_remote(self,
                          login=settings.SSH_CREDENTIALS['login'],
@@ -380,6 +330,7 @@ class Environment(DriverModel):
             login=login,
             password=password)
 
+    # LEGACY,  for fuel-qa compatibility
     # @logwrap
     def get_ssh_to_remote(self, ip):
         keys = []
@@ -393,6 +344,7 @@ class Environment(DriverModel):
                          password=settings.SSH_CREDENTIALS['password'],
                          private_keys=keys)
 
+    # LEGACY,  for fuel-qa compatibility
     # @logwrap
     def get_ssh_to_remote_by_key(self, ip, keyfile):
         try:
@@ -404,28 +356,75 @@ class Environment(DriverModel):
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
 
+    # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         # DEPRECATED. Please use environment.get_nodes() instead.
+        class Nodes(object):
+            def __init__(self, environment):
+                self.admins = sorted(
+                    list(environment.get_nodes(role='fuel_master')),
+                    key=lambda node: node.name
+                )
+                self.others = sorted(
+                    list(environment.get_nodes(role='fuel_slave')),
+                    key=lambda node: node.name
+                )
+                self.ironics = sorted(
+                    list(environment.get_nodes(role='ironic')),
+                    key=lambda node: node.name
+                )
+                self.slaves = self.others
+                self.all = self.slaves + self.admins + self.ironics
+                self.admin = self.admins[0]
+
+            def __iter__(self):
+                return self.all.__iter__()
+
         return Nodes(self)
 
+    # BACKWARD COMPATIBILITY LAYER
+    def _create_network_object(self, l2_network_device):
+        class LegacyNetwork(object):
+            def __init__(self):
+                self.id = l2_network_device.id,
+                self.name = l2_network_device.name,
+                self.uuid = l2_network_device.uuid,
+                self.environment = self,
+                self.has_dhcp_server = l2_network_device.has_dhcp_server,
+                self.has_pxe_server = l2_network_device.has_pxe_server,
+                self.has_reserved_ips = True,
+                self.tftp_root_dir = '',
+                self.forward = l2_network_device.forward_mode,
+                self.net = l2_network_device.address_pool.net
+                self.ip_network = l2_network_device.address_pool.net
+                self.ip = l2_network_device.address_pool.ip_network
+                self.ip_pool_start = l2_network_device.address_pool.ip_network[2]
+                self.ip_pool_end = l2_network_device.address_pool.ip_network[-2]
+                self.netmask = l2_network_device.address_pool.ip_network.netmask
+                self.default_gw = l2_network_device.address_pool.ip_network[1]
 
-class Nodes(object):
-    def __init__(self, environment):
-        self.admins = sorted(
-            list(environment.get_nodes(role='fuel_master')),
-            key=lambda node: node.name
-        )
-        self.others = sorted(
-            list(environment.get_nodes(role='fuel_slave')),
-            key=lambda node: node.name
-        )
-        self.ironics = sorted(
-            list(environment.get_nodes(role='ironic')),
-            key=lambda node: node.name
-        )
-        self.slaves = self.others
-        self.all = self.slaves + self.admins + self.ironics
-        self.admin = self.admins[0]
+        return LegacyNetwork()
 
-    def __iter__(self):
-        return self.all.__iter__()
+    # LEGACY, TO CHECK IN fuel-qa / PROXY
+    def get_network(self, *args, **kwargs):
+        for group in self.get_groups():
+            l2_network_device = group.l2_network_device_set.get(*args, **kwargs)
+            if l2_network_device:
+                network = self._create_network_object(l2_network_device)
+                return network
+
+    # LEGACY, TO CHECK IN fuel-qa / PROXY
+    def get_networks(self, *args, **kwargs):
+        l2_network_devices = []
+        for group in self.get_groups():
+            l2_network_devices.extend(group.l2_network_device_set.filter(*args, **kwargs))
+        networks = [self._create_network_object(x) for x in l2_network_devices]
+        return networks
+
+    # LEGACY, for fuel-qa compatibility
+    def get_node(self, *args, **kwargs):
+        return Node.objects.get(*args, **kwargs)
+
+    # LEGACY, for fuel-qa compatibility
+    def get_nodes(self, *args, **kwargs):
+        return Node.objects.filter(*args, group__environment=self, **kwargs)
