@@ -12,16 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+import importlib
 
-from devops.models.environment import Environment
-from devops.models.group import Group
-from devops.models.network import Address
-from devops.models.network import Interface
-from devops.models.network import Address_Pool
-from devops.models.network import NetworkPool
-from devops.models.network import L2_Network_Device
-from devops.models.node import Node
-from devops.models.volume import Volume
-from devops.models.volume import DiskDevice
+
+def load_class(path):
+    mod_name, obj_name = path.split(':')
+    mod = importlib.import_module(mod_name)
+    return getattr(mod, obj_name)
+
+
+def get_class_path(obj):
+    return obj.__module__ + ':' + obj.__class__.__name__

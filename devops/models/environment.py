@@ -25,17 +25,21 @@ from devops.helpers.helpers import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
-from devops.models.base import DriverModel
-from devops.models.network import DiskDevice
+from devops.models.base import BaseModel
+from devops.models.network import Address_Pool
 from devops.models.network import Interface
-from devops.models.network import Network
+# from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import Volume
+from devops.models.volume import DiskDevice
+from devops.models.driver import Driver
+from devops.models.group import Group
 
 
-class Environment(DriverModel):
+class Environment(BaseModel):
     class Meta(object):
         db_table = 'devops_environment'
+        app_label = 'devops'
 
     name = models.CharField(max_length=255, unique=True, null=False)
 
@@ -49,23 +53,27 @@ class Environment(DriverModel):
     admin_net2 = 'admin2'
     os_image = None  # Dirty hack. Check for os_image attribute for relevancy.
 
+
+# OLD
+#==============================================
+# LEGACY, TO CHECK IN fuel-qa
     def get_volume(self, *args, **kwargs):
         return self.volume_set.get(*args, **kwargs)
 
+# LEGACY, TO CHECK IN fuel-qa
     def get_volumes(self, *args, **kwargs):
         return self.volume_set.filter(*args, **kwargs)
 
+# LEGACY, TO CHECK IN fuel-qa
     def get_network(self, *args, **kwargs):
-        return self.network_set.get(*args, **kwargs)
+#        return self.network_set.get(*args, **kwargs)
+        return self.l2_network_device_set.get(*args, **kwargs)
 
+# LEGACY, TO CHECK IN fuel-qa
     def get_networks(self, *args, **kwargs):
-        return self.network_set.filter(*args, **kwargs)
+#        return self.network_set.filter(*args, **kwargs)
+        return self.l2_network_device_set.filter(*args, **kwargs)
 
-    def get_node(self, *args, **kwargs):
-        return self.node_set.get(*args, **kwargs)
-
-    def get_nodes(self, *args, **kwargs):
-        return self.node_set.filter(*args, **kwargs)
 
     def add_node(self, memory, name, vcpu=1, boot=None, role='slave'):
         return Node.node_create(
@@ -87,7 +95,84 @@ class Environment(DriverModel):
                 format=format),
             device=device,
             bus=bus)
+#======================================
 
+# NEW
+    def get_allocated_networks(self):
+        allocated_networks = []
+        for group in self.get_groups():
+            allocated_networks += group.get_allocated_networks()
+        return allocated_networks
+
+# NEW
+    def get_address_pool(self, *args, **kwargs):
+        return self.address_pool_set.get(*args, **kwargs)
+
+# NEW    
+    def get_address_pools(self, *args, **kwargs):
+        return self.address_pool_set.filter(*args, **kwargs)
+
+# NEW
+    def get_group(self, *args, **kwargs):
+        return self.group_set.get(*args, **kwargs)
+
+# NEW
+    def get_groups(self, *args, **kwargs):
+        return self.group_set.filter(*args, **kwargs)
+
+#    def get_node(self, *args, **kwargs):
+#        return self.node_set.get(*args, **kwargs)
+    def get_node(self, *args, **kwargs):
+        return Node.objects.get(*args, group__environment=self, **kwargs)
+
+#    def get_nodes(self, *args, **kwargs):
+#        return self.node_set.filter(*args, **kwargs)
+    def get_nodes(self, *args, **kwargs):
+        return Node.objects.filter(*args, group__environment=self, **kwargs)
+
+# NEW
+    def add_groups(self, groups):
+        for group_data in groups:
+            driver_data = group_data['driver']
+            self.add_group(
+                group_name=group_data['name'],
+                driver_name=driver_data['name'],
+                **driver_data.get('params', {})
+            )
+
+# NEW
+    def add_group(self, group_name, driver_name, **driver_params):
+        driver = Driver.driver_create(
+            name=driver_name,
+            **driver_params
+        )
+        return Group.group_create(
+            name=group_name,
+            environment=self,
+            driver=driver,
+        )
+
+# NEW    
+    def add_address_pools(self, address_pools):
+        for name, data in address_pools.items():
+            self.add_address_pool(
+                name=name,
+                net=data['net'],
+                **data.get('params', {})
+            )
+
+# NEW
+    def add_address_pool(self, name, net, **params):
+        Address_Pool.address_pool_create(
+            environment=self,
+            name=name,
+            net=net,
+            **params
+        )
+
+
+
+# OLD
     @classmethod
     def create(cls, name):
         """Create Environment instance with given name.
@@ -96,48 +181,73 @@ class Environment(DriverModel):
         """
         return cls.objects.create(name=name)
 
+# OLD
     @classmethod
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
+# OLD
     @classmethod
     def list_all(cls):
         return cls.objects.all()
 
+# ??? OLD
     def has_snapshot(self, name):
-        return all(n.has_snapshot(name) for n in self.get_nodes())
+        if self.get_nodes():
+            return all(n.has_snapshot(name) for n in self.get_nodes())
+        else:
+            return False
 
-    def define(self, skip=True):
-        # 'skip' param is a temporary workaround.
-        # It will be removed with introducing the new database schema
-        # See the task QA-239 for details.
-        if not skip:
-            for network in self.get_networks():
-                network.define()
-            for volume in self.get_volumes():
-                volume.define()
-            for node in self.get_nodes():
-                node.define()
+#    def define(self, skip=True):
+#        # 'skip' param is a temporary workaround.
+#        # It will be removed with introducing the new database schema
+#        # See the task QA-239 for details.
+#        if not skip:
+#            for network in self.get_networks():
+#                network.define()
+#            for volume in self.get_volumes():
+#                volume.define()
+#            for node in self.get_nodes():
+#                node.define()
+    def define(self):
+        for group in self.get_groups():
+            group.define()
 
+
+
+#    def start(self, nodes=None):
+#        for network in self.get_networks():
+#            network.start()
+#        for node in nodes or self.get_nodes():
+#            node.start()
     def start(self, nodes=None):
-        for network in self.get_networks():
-            network.start()
-        for node in nodes or self.get_nodes():
-            node.start()
+        for group in self.get_groups():
+            group.start(nodes)
 
-    def destroy(self, verbose=False):
-        for node in self.get_nodes():
-            node.destroy(verbose=verbose)
 
+#    def destroy(self, verbose=False):
+#        for node in self.get_nodes():
+#            node.destroy(verbose=verbose)
+    def destroy(self):
+        for group in self.get_groups():
+            group.destroy()
+
+#    def erase(self):
+#        for node in self.get_nodes():
+#            node.erase()
+#        for network in self.get_networks():
+#            network.erase()
+#        for volume in self.get_volumes():
+#            volume.erase()
+#        self.delete()
     def erase(self):
-        for node in self.get_nodes():
-            node.erase()
-        for network in self.get_networks():
-            network.erase()
-        for volume in self.get_volumes():
-            volume.erase()
+        for group in self.get_groups():
+            group.erase()
         self.delete()
 
+
+# OLD - TO MODIFY BY GROUPS
+#===============================================================
     @classmethod
     def erase_empty(cls):
         for env in cls.list_all():
@@ -196,83 +306,6 @@ class Environment(DriverModel):
 
         logger.info('Undefined domains: %s, removed nodes: %s' %
                     (0, len(nodes_to_remove)))
-
-    @classmethod
-    def describe_environment(cls, boot_from='cdrom'):
-        """This method is DEPRECATED.
-
-           Reserved for backward compatibility only.
-           Please use self.create_environment() instead.
-        """
-        if settings.DEVOPS_SETTINGS_TEMPLATE:
-            config = get_devops_config(
-                settings.DEVOPS_SETTINGS_TEMPLATE)
-        else:
-            config = create_devops_config(
-                boot_from=boot_from,
-                env_name=settings.ENV_NAME,
-                admin_vcpu=settings.HARDWARE["admin_node_cpu"],
-                admin_memory=settings.HARDWARE["admin_node_memory"],
-                admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
-                admin_iso_path=settings.ISO_PATH,
-                nodes_count=settings.NODES_COUNT,
-                slave_vcpu=settings.HARDWARE["slave_node_cpu"],
-                slave_memory=settings.HARDWARE["slave_node_memory"],
-                slave_volume_capacity=settings.NODE_VOLUME_SIZE,
-                use_all_disks=settings.USE_ALL_DISKS,
-                ironic_nodes_count=settings.IRONIC_NODES_COUNT,
-                networks_bonding=settings.BONDING,
-                networks_bondinginterfaces=settings.BONDING_INTERFACES,
-                networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
-                networks_nodegroups=settings.NODEGROUPS,
-                networks_interfaceorder=settings.INTERFACE_ORDER,
-                networks_pools=settings.POOLS,
-                networks_forwarding=settings.FORWARDING,
-                networks_dhcp=settings.DHCP,
-            )
-
-        environment = cls.create_environment(config)
-        return environment
-
-    @classmethod
-    def create_environment(cls, full_config):
-        """Create a new environment using full_config object
-
-        :param full_config: object that describes all the parameters of
-                            created environment
-            :rtype: Environment
-        """
-
-        config = full_config['template']['devops_settings']
-        environment = cls.create(config['env_name'])
-
-        # TODO(ddmitriev): link the dict config['address_pools'] to the
-        # 'environment' object.
-        address_pools = config['address_pools']
-
-        # Create networks:
-        for group in config['groups']:
-            # TODO(ddmitriev): use group['driver'] as a driver for
-            # manage networks and nodes in the group
-
-            # TODO(ddmitriev): link the dict group['network_pools'] to 'group'
-            # object.
-
-            for l2_device_name in group['l2_network_devices']:
-                l2_device_config = group['l2_network_devices'][l2_device_name]
-                environment.create_networks(
-                    name=l2_device_name,
-                    l2_device_config=l2_device_config,
-                    address_pools=address_pools)
-
-        # Create nodes:
-        for group in config['groups']:
-            # TODO(ddmitriev): use group['driver'] as a driver for
-            # manage networks and nodes in the group
-            for config_node in group['nodes']:
-                environment.create_node(config_node)
-
-        return environment
 
     def create_networks(self, name, l2_device_config, address_pools):
 
@@ -360,6 +393,114 @@ class Environment(DriverModel):
         node.define()
         return node
 
+#==============================================================
+
+
+# LEGACY
+    @classmethod
+    def describe_environment(cls, boot_from='cdrom'):
+        """This method is DEPRECATED.
+
+           Reserved for backward compatibility only.
+           Please use self.create_environment() instead.
+        """
+        if settings.DEVOPS_SETTINGS_TEMPLATE:
+            config = get_devops_config(
+                settings.DEVOPS_SETTINGS_TEMPLATE)
+        else:
+            config = create_devops_config(
+                boot_from=boot_from,
+                env_name=settings.ENV_NAME,
+                admin_vcpu=settings.HARDWARE["admin_node_cpu"],
+                admin_memory=settings.HARDWARE["admin_node_memory"],
+                admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
+                admin_iso_path=settings.ISO_PATH,
+                nodes_count=settings.NODES_COUNT,
+                slave_vcpu=settings.HARDWARE["slave_node_cpu"],
+                slave_memory=settings.HARDWARE["slave_node_memory"],
+                slave_volume_capacity=settings.NODE_VOLUME_SIZE,
+                use_all_disks=settings.USE_ALL_DISKS,
+                ironic_nodes_count=settings.IRONIC_NODES_COUNT,
+                networks_bonding=settings.BONDING,
+                networks_bondinginterfaces=settings.BONDING_INTERFACES,
+                networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
+                networks_nodegroups=settings.NODEGROUPS,
+                networks_interfaceorder=settings.INTERFACE_ORDER,
+                networks_pools=settings.POOLS,
+                networks_forwarding=settings.FORWARDING,
+                networks_dhcp=settings.DHCP,
+            )
+
+        environment = cls.create_environment(config)
+        return environment
+
+
+    @classmethod
+    def create_environment(cls, full_config):
+        """Create a new environment using full_config object
+
+        :param full_config: object that describes all the parameters of
+                            created environment
+            :rtype: Environment
+        """
+
+        config = full_config['template']['devops_settings']
+        environment = cls.create(config['env_name'])
+
+        # create groups and drivers
+        groups = config['groups']
+        environment.add_groups(groups)
+
+        # create address pools
+        address_pools = config['address_pools']
+        environment.add_address_pools(address_pools)
+#        # TODO(ddmitriev): link the dict config['address_pools'] to the
+#        # 'environment' object.
+#        address_pools = config['address_pools']
+
+        # process group items
+        for group_data in groups:
+            group = environment.get_group(name=group_data['name'])
+
+            # add l2_network_devices
+            group.add_l2_network_devices(
+                group_data.get('l2_network_devices', {}))
+
+            # add network_pools
+            group.add_network_pools(
+                group_data.get('network_pools', {}))
+
+            # add nodes
+            group.add_nodes(
+                group_data.get('nodes', []))
+
+
+#        # Create networks:
+#        for group in config['groups']:
+#            # TODO(ddmitriev): use group['driver'] as a driver for
+#            # manage networks and nodes in the group
+#
+#            # TODO(ddmitriev): link the dict group['network_pools'] to 'group'
+#            # object.
+
+#            for l2_device_name in group['l2_network_devices']:
+#                l2_device_config = group['l2_network_devices'][l2_device_name]
+#                environment.create_networks(
+#                    name=l2_device_name,
+#                    l2_device_config=l2_device_config,
+#                    address_pools=address_pools)
+
+        # Create nodes:
+#        for group in config['groups']:
+#            # TODO(ddmitriev): use group['driver'] as a driver for
+#            # manage networks and nodes in the group
+#            for config_node in group['nodes']:
+#                environment.create_node(config_node)
+
+        return environment
+
+
+# LEGACY
     # Rename it to default_gw and move to models.Network class
     def router(self, router_name=None):  # Alternative name: get_host_node_ip
         router_name = router_name or self.admin_net
@@ -367,6 +508,7 @@ class Environment(DriverModel):
             return str(self.get_network(name=router_name).ip[2])
         return str(self.get_network(name=router_name).ip[1])
 
+# LEGACY
     # @logwrap
     def get_admin_remote(self,
                          login=settings.SSH_CREDENTIALS['login'],
@@ -380,6 +522,7 @@ class Environment(DriverModel):
             login=login,
             password=password)
 
+# LEGACY
     # @logwrap
     def get_ssh_to_remote(self, ip):
         keys = []
@@ -393,6 +536,7 @@ class Environment(DriverModel):
                          password=settings.SSH_CREDENTIALS['password'],
                          private_keys=keys)
 
+# LEGACY
     # @logwrap
     def get_ssh_to_remote_by_key(self, ip, keyfile):
         try:
@@ -404,11 +548,13 @@ class Environment(DriverModel):
             keys = Agent().get_keys()
         return SSHClient(ip, private_keys=keys)
 
+# LEGACY
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         # DEPRECATED. Please use environment.get_nodes() instead.
         return Nodes(self)
 
 
+# LEGACY CLASS
 class Nodes(object):
     def __init__(self, environment):
         self.admins = sorted(

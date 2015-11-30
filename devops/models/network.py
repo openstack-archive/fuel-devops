@@ -12,40 +12,42 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
+import jsonfield
+from ipaddr import IPNetwork
+
 from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
-from ipaddr import IPNetwork
 
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
+from devops.helpers.network import DevopsIPNetwork
 from devops.models.base import choices
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
+from devops.models.base import ParamedModel
+from devops.models.base import ParamField
 
 
-class Network(DriverModel):
+class Address_Pool(ParamedModel, BaseModel):
     class Meta(object):
         unique_together = ('name', 'environment')
-        db_table = 'devops_network'
+        db_table = 'devops_address_pool'
+        app_label = 'devops'
 
-    environment = models.ForeignKey('Environment', null=True)
-    name = models.CharField(max_length=255, unique=False, null=False)
-    uuid = models.CharField(max_length=255)
-    has_dhcp_server = models.BooleanField()
-    has_pxe_server = models.BooleanField()
-    has_reserved_ips = models.BooleanField(default=True)
-    tftp_root_dir = models.CharField(max_length=255)
-    forward = choices(
-        'nat', 'route', 'bridge', 'private', 'vepa',
-        'passthrough', 'hostdev', null=True)
-    # 'ip_network' should be renamed to 'cidr'
-    ip_network = models.CharField(max_length=255, unique=True)
+    environment = models.ForeignKey('Environment')
+    name = models.CharField(max_length=255)
+    net = models.CharField(max_length=255, unique=True)
+    tag = ParamField(default=0)
 
-    _iterhosts = None
-
-    # Dirty trick. It should be placed on instance level of Environment class.
-    default_pool = None
+#    @property
+#    def ip_network(self):
+#        """Return DevopsIPNetwork representation of self.net field.
+#
+#        :return: DevopsIPNetwork()
+#        """
+#        return DevopsIPNetwork(self.net)
 
     @property
     def ip(self):
@@ -54,10 +56,6 @@ class Network(DriverModel):
         :return: IPNetwork()
         """
         return IPNetwork(self.ip_network)
-
-    @property
-    def interfaces(self):
-        return self.interface_set.all()
 
     @property
     def ip_pool_start(self):
@@ -76,94 +74,38 @@ class Network(DriverModel):
         return IPNetwork(self.ip_network)[1]
 
     def next_ip(self):
-        while True:
-            self._iterhosts = self._iterhosts or IPNetwork(
-                self.ip_network).iterhosts()
-            ip = self._iterhosts.next()
-            if ip < self.ip_pool_start or ip > self.ip_pool_end:
+        ip_net = self.ip_network
+        for ip in ip_net.iterhosts():
+            if ip < ip_net.ip_start or ip > ip_net.ip_end:
                 continue
-            if not Address.objects.filter(
-                    interface__network=self,
-                    ip_address=str(ip)).exists():
-                return ip
-
-    def bridge_name(self):
-        return self.driver.network_bridge_name(self)
-
-    def define(self):
-        self.driver.network_define(self)
-        self.save()
-
-    def start(self):
-        self.create(verbose=False)
-
-    def create(self, verbose=False):
-        if verbose or not self.driver.network_active(self):
-            self.driver.network_create(self)
-
-    def destroy(self):
-        self.driver.network_destroy(self)
-
-    def erase(self):
-        self.remove(verbose=False)
-
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.driver.network_exists(self):
-                if self.driver.network_active(self):
-                    self.driver.network_destroy(self)
-                self.driver.network_undefine(self)
-        self.delete()
-
-    @classmethod
-    def create_network_pool(cls, networks, prefix):
-        """Create network pool
-
-        :rtype : IpNetworksPool
-        """
-        pool = IpNetworksPool(networks=networks, prefix=prefix)
-        pool.set_allocated_networks(cls.get_driver().get_allocated_networks())
-        return pool
-
-    @classmethod
-    def _get_default_pool(cls):
-        """Get default pool. If it does not exists, create 10.0.0.0/16 pool.
-
-        :rtype : IpNetworksPool
-        """
-        cls.default_pool = cls.default_pool or Network.create_network_pool(
-            networks=[IPNetwork('10.0.0.0/16')],
-            prefix=24)
-        return cls.default_pool
+            already_exists = Address.objects.filter(
+                interface__l2_network_device__address_pool=self,
+                ip_address=str(ip)).exists()
+            if already_exists:
+                continue
+            return ip
 
     @classmethod
     @transaction.commit_on_success
-    def _safe_create_network(
-            cls, name, environment=None, pool=None,
-            has_dhcp_server=True, has_pxe_server=False,
-            forward='nat'):
-        allocated_pool = pool or cls._get_default_pool()
-        while True:
+    def _safe_create_network(cls, name, pool, environment, **params):
+        for ip_network in pool:
             try:
-                ip_network = allocated_pool.next()
-                if not cls.objects.filter(
-                        ip_network=str(ip_network)).exists():
-                    return cls.objects.create(
-                        environment=environment,
-                        name=name,
-                        ip_network=ip_network,
-                        has_pxe_server=has_pxe_server,
-                        has_dhcp_server=has_dhcp_server,
-                        forward=forward)
+                if cls.objects.filter(net=str(ip_network)).exists():
+                    continue
+
+                new_params = deepcopy(params)
+                new_params['net'] = ip_network
+                return cls.objects.create(
+                    environment=environment,
+                    name=name,
+                    **new_params
+                )
             except IntegrityError:
                 transaction.rollback()
 
     @classmethod
-    def network_create(
-        cls, name, environment=None, ip_network=None, pool=None,
-        has_dhcp_server=True, has_pxe_server=False,
-        forward='nat'
-    ):
+    def address_pool_create(cls, name, environment,
+                            ip_network=None, pool=None, **params):
         """Create network
 
         :rtype : Network
@@ -172,23 +114,24 @@ class Network(DriverModel):
             return cls.objects.create(
                 environment=environment,
                 name=name,
-                ip_network=ip_network,
-                has_pxe_server=has_pxe_server,
-                has_dhcp_server=has_dhcp_server,
-                forward=forward
+                net=ip_network,
             )
+        if pool is None:
+            pool = IpNetworksPool(
+                networks=[DevopsIPNetwork('10.0.0.0/16')],
+                prefix=24,
+                allocated_networks=environment.get_allocated_networks())
         return cls._safe_create_network(
             environment=environment,
-            forward=forward,
-            has_dhcp_server=has_dhcp_server,
-            has_pxe_server=has_pxe_server,
             name=name,
-            pool=pool)
+            pool=pool,
+            **params
+        )
 
+    # UNUSED ?
     @classmethod
-    def create_networks(cls, environment, network_names=None,
-                        has_dhcp=False, has_pxe=False, forward='nat',
-                        pool=None):
+    def create_address_pools(cls, environment, network_names=None,
+                             pool=None):
         """Create several networks
 
         :param environment: Environment
@@ -200,94 +143,119 @@ class Network(DriverModel):
             :rtype : List
         """
         if network_names is None:
+            # TODO: remove settings
             network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
         networks = []
         for name in network_names:
-            net = cls.network_create(name=name, environment=environment,
-                                     has_dhcp_server=has_dhcp,
-                                     has_pxe_server=has_pxe,
-                                     forward=forward,
-                                     pool=pool)
+            net = cls.address_pool_create(
+                name=name,
+                environment=environment,
+                pool=pool)
             networks.append(net)
         return networks
 
 
-class DiskDevice(models.Model):
+class NetworkPool(BaseModel):
     class Meta(object):
-        db_table = 'devops_diskdevice'
+        db_table = 'devops_network_pool'
+        app_label = 'devops'
 
-    node = models.ForeignKey('Node', null=False)
-    volume = models.ForeignKey('Volume', null=True)
-    device = choices('disk', 'cdrom')
-    type = choices('file')
-    bus = choices('virtio')
-    target_dev = models.CharField(max_length=255, null=False)
+    group = models.ForeignKey('Address_Pool', null=True)
+    address_pool = models.ForeignKey('Environment', null=True)
+    name = models.CharField(max_length=255)
 
-    @classmethod
-    def node_attach_volume(cls, node, volume, device='disk', type='file',
-                           bus='virtio', target_dev=None):
-        """Attach volume to node
 
-        :rtype : DiskDevice
-        """
-        return cls.objects.create(
-            device=device, type=type, bus=bus,
-            target_dev=target_dev or node.next_disk_name(),
-            volume=volume, node=node)
+class L2_Network_Device(ParamedModel, BaseModel):
+    class Meta(object):
+        db_table = 'devops_l2_network_device'
+        app_label = 'devops'
+
+    group = models.ForeignKey('Group', null=True)
+    address_pool = models.ForeignKey('Address_Pool')
+    name = models.CharField(max_length=255)
+
+    @property
+    def driver(self):
+        return self.group.driver
+
+    @property
+    def interfaces(self):
+        return self.interface_set.all()
+
+    def define(self):
+        pass
+
+    def start(self):
+        pass
+
+    def destroy(self):
+        pass
+
+    def erase(self):
+        pass
+
+
+class Network_Config(models.Model):
+    class Meta(object):
+        db_table = 'devops_network_config'
+        app_label = 'devops'
+
+    node = models.ForeignKey('Node')
+    label = models.CharField(max_length=255, null=False)
+    networks = jsonfield.JSONField(default=[])
+    aggregation = models.CharField(max_length=255, null=True)
+    parents = jsonfield.JSONField(default=[])
 
 
 class Interface(models.Model):
     class Meta(object):
         db_table = 'devops_interface'
+        app_label = 'devops'
 
-    network = models.ForeignKey('Network')
     node = models.ForeignKey('Node')
+    l2_network_device = models.ForeignKey('L2_Network_Device', null=True)
+    label = models.CharField(max_length=255, null=True)
     mac_address = models.CharField(max_length=255, unique=True, null=False)
     type = models.CharField(max_length=255, null=False)
     model = choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
 
     @property
     def target_dev(self):
-        return self.node.driver.node_get_interface_target_dev(
-            self.node, self.mac_address)
+        return self.label
 
     @property
     def addresses(self):
         return self.address_set.all()
 
+    def add_address(self):
+        ip = self.l2_network_device.address_pool.next_ip()
+        Address.objects.create(
+            ip_address=str(ip),
+            interface=self,
+        )
+
     @staticmethod
-    def interface_create(network, node, type='network',
-                         mac_address=None, model='virtio',
-                         interface_map=None):
+    def interface_create(l2_network_device, node, label, type='network',
+                         mac_address=None, model='virtio'):
         """Create interface
 
         :rtype : Interface
         """
-        if interface_map is None:
-            interface_map = {}
-        interfaces = []
-
-        def _create(mac_addr=None):
-            interface = Interface.objects.create(
-                network=network, node=node, type=type,
-                mac_address=mac_addr or generate_mac(),
-                model=model)
-            Address.objects.create(ip_address=str(network.next_ip()),
-                                   interface=interface)
-            return interface
-
-        if interface_map:
-            if len(interface_map[network.name]) > 0:
-                for _ in interface_map[network.name]:
-                    interfaces.append(_create())
-                return interfaces
-        else:
-            return _create(mac_address)
+        interface = Interface.objects.create(
+            l2_network_device=l2_network_device,
+            node=node,
+            label=label,
+            type=type,
+            mac_address=mac_address or generate_mac(),
+            model=model)
+        interface.add_address()
+        return interface
 
 
 class Address(models.Model):
     class Meta(object):
         db_table = 'devops_address'
+        app_label = 'devops'
 
-    interface = models.ForeignKey('Interface')
+    interface = models.ForeignKey('Interface', null=True)
     ip_address = models.GenericIPAddressField()
