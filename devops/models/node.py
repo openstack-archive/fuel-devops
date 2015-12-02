@@ -74,11 +74,11 @@ class Node(DriverModel):
 
     @property
     def is_admin(self):
-        return self.role == 'admin'
+        return self.role == 'fuel_master'
 
     @property
     def is_slave(self):
-        return self.role == 'slave'
+        return self.role == 'fuel_slave'
 
     @property
     def should_enable_boot_menu(self):
