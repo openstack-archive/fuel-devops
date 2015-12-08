@@ -181,8 +181,15 @@ class Shell(object):
             networks=[ipaddr.IPNetwork(networks)],
             prefix=int(prefix))
         networks = Network.create_networks(environment=self.env)
+        # We need to define the networks here because they are quieried by the
+        # admin_add function.
+        for network in networks:
+            network.define()
         admin_node = self.admin_add(networks=networks)
-        self.do_slave_add(force_define=False)
+        # define the slave nodes since the Environment define no longer defines
+        # the networks, volumes and nodes by default and we need them to be
+        # created for this function
+        self.do_slave_add(force_define=True)
         self.env.define()
         admin_node.disk_devices.get(device='cdrom').volume.upload(
             self.params.iso_path)
