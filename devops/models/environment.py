@@ -322,6 +322,21 @@ class Environment(DriverModel):
                 model=model,
             )
 
+    def create_interfaces_from_networks(self, networks, node,
+                                        model=settings.INTERFACE_MODEL):
+
+        interface_map = {}
+        if settings.BONDING:
+            interface_map = settings.BONDING_INTERFACES
+
+        for network in networks:
+            Interface.interface_create(
+                network,
+                node=node,
+                model=model,
+                interface_map=interface_map
+            )
+
     def create_node(self, config_node):
         node_params = config_node['params']
         node = self.add_node(

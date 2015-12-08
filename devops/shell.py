@@ -181,6 +181,8 @@ class Shell(object):
             networks=[ipaddr.IPNetwork(networks)],
             prefix=int(prefix))
         networks = Network.create_networks(environment=self.env)
+        for net in networks:
+            net.define()
         admin_node = self.admin_add(networks=networks)
         self.do_slave_add(force_define=False)
         self.env.define()
