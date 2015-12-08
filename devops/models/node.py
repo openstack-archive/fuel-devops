@@ -271,8 +271,8 @@ class Node(DriverModel):
             network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
         networks = [
             self.environment.get_network(name=n) for n in network_names]
-        self.environment.create_interfaces(networks=networks,
-                                           node=self)
+        self.environment.create_interfaces_from_networks(networks=networks,
+                                                         node=self)
 
     def attach_disks(self,
                      disknames_capacity=None,
