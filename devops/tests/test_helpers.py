@@ -34,10 +34,8 @@ class TestSnaphotList(unittest.TestCase):
         )
 
         self.assertIn('<Wait>\n<Esc>\n<Wait>\n', keys)
-        self.assertIn('ip=IP', keys)
-        self.assertIn('netmask=NETMASK', keys)
-        self.assertIn('gw=GW', keys)
-        self.assertIn('dns1=DNS1', keys)
+        self.assertIn('ip=IP::GW:NETMASK:HOSTNAME:enp0s3:none', keys)
+        self.assertIn('nameserver=DNS1', keys)
         self.assertIn('hostname=HOSTNAME', keys)
         self.assertIn('dhcp_interface=NAT_INTERFACE', keys)
         self.assertIn('showmenu=SHOWMENU', keys)
