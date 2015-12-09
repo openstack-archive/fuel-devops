@@ -72,7 +72,9 @@ def admin_prepare_disks(node, disk_size):
 
 def admin_change_config(admin_node,
                         hostname=MASTER_FQDN,
-                        dns1=MASTER_DNS
+                        dns1=MASTER_DNS,
+                        admin_centos_version=7,
+                        static_interface='eth0'
                         ):
     """Change master node configuration via kernel param
 
@@ -90,7 +92,9 @@ def admin_change_config(admin_node,
         nat_interface='',
         dns1=dns1,
         showmenu='no',
-        build_images=0)
+        build_images=0,
+        centos_version=admin_centos_version,
+        static_interface=static_interface)
 
     print("Waiting for admin node to start up")
     wait(lambda: admin_node.driver.node_active(admin_node), 60)
