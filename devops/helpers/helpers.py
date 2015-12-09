@@ -170,16 +170,22 @@ def get_slave_ip(env, node_mac_address):
 
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images):
+             build_images, centos_version='7', static_interface='enp0s3'):
+    if centos_version < 7:
+        ip_format = ' ip={ip}'
+    else:
+        ip_format = ' ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:none'
+
     return '\n'.join([
         '<Wait>',
         '<Esc>',
         '<Wait>',
         'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
-        ' ip={ip}',
-        ' netmask={mask}',
-        ' gw={gw}',
+        ip_format,
+        ' netmask={mask}'
+        ' gw={gw}'
         ' dns1={dns1}',
+        ' nameserver={dns1}',
         ' hostname={hostname}',
         ' dhcp_interface={nat_interface}',
         ' showmenu={showmenu}',
@@ -194,7 +200,8 @@ def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
         nat_interface=nat_interface,
         dns1=dns1,
         showmenu=showmenu,
-        build_images=build_images
+        build_images=build_images,
+        static_interface=static_interface
     )
 
 

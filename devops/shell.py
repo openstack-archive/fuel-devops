@@ -374,6 +374,13 @@ class Shell(object):
                                             help='Set admin node disk '
                                                  'size (GB)',
                                             default=50, type=int)
+        admin_centos_version_parser = argparse.ArgumentParser(add_help=False)
+        admin_centos_version_parser.add_argument('--admin-centos-version',
+                                                 dest='admin_centos_version',
+                                                 help='CentOS version used '
+                                                      'for the admin node. '
+                                                      'Should be 6 or 7',
+                                                 default='7', type=int)
         ram_parser = argparse.ArgumentParser(add_help=False)
         ram_parser.add_argument('--ram', dest='ram_size',
                                 help='Set node RAM size',
@@ -516,7 +523,8 @@ class Shell(object):
                               description="Remove selected node from "
                               "environment")
         subparsers.add_parser('admin-setup',
-                              parents=[name_parser, admin_disk_size_parser],
+                              parents=[name_parser, admin_disk_size_parser,
+                                       admin_centos_version_parser],
                               help="Setup admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',
