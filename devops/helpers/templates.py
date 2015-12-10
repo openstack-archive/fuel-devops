@@ -331,6 +331,16 @@ def create_devops_config(boot_from,
                         'address_pools': address_pools,
                         'groups': [
                             {
+                                'driver': {
+                                    'name': 'devops.driver.libvirt.libvirt_driver:LibvirtDriver',
+                                    'params': {
+                                       'connection_string': 'qemu:///system',
+                                       'storage_pool_name': 'default',
+                                       'stp': True,
+                                       'hpet': False,
+                                       'use_host_cpu': True,
+                                    },
+                                },
                                 'name': 'rack-01',
                                 'l2_network_devices': l2_network_devices,
                                 'nodes': config_nodes,
