@@ -33,6 +33,11 @@ setup(
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
+    entry_points={
+       'console_scripts': [
+           'devops = devops.cli:main',
+       ]
+    },    
     install_requires=[
         'xmlbuilder',
         'ipaddr',
@@ -48,5 +53,6 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'click',
     ]
 )
