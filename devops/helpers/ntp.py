@@ -155,16 +155,23 @@ class Ntp(object):
     def get_ntp(remote, node_name='node', admin_ip=None):
 
         # Detect how NTPD is managed - by init script or by pacemaker.
-        cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        pcs_cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        systemd_cmd = "systemctl list-unit-files| grep ntpd"
 
-        if remote.execute(cmd)['exit_code'] == 0:
+        if remote.execute(pcs_cmd)['exit_code'] == 0:
             # Pacemaker service found
             cls = NtpPacemaker()
             cls.is_pacemaker = True
+        elif remote.execute(systemd_cmd)['exit_code'] == 0:
+            cls = NtpSystemd()
+            cls.is_pacemaker = False
         else:
             # Pacemaker not found, using native ntpd
             cls = NtpInitscript()
             cls.is_pacemaker = False
+            # Find upstart / sysv-init executable script
+            cmd = "find /etc/init.d/ -regex '/etc/init.d/ntp.?'"
+            cls.service = remote.execute(cmd)['stdout'][0].strip()
 
         cls.is_synchronized = False
         cls.is_connected = False
@@ -175,9 +182,6 @@ class Ntp(object):
         # Get IP of a server from which the time will be synchronized.
         cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
         cls.server = remote.execute(cmd)['stdout'][0]
-
-        cmd = "find /etc/init.d/ -regex '/etc/init.d/ntp.?'"
-        cls.service = remote.execute(cmd)['stdout'][0].strip()
 
         # Speedup time synchronization for slaves that use admin node as a peer
         if admin_ip:
@@ -272,3 +276,18 @@ class NtpPacemaker(Ntp):
     def get_peers(self):
         return self.remote.execute(
             'ip netns exec vrouter ntpq -pn 127.0.0.1')['stdout']
+
+
+class NtpSystemd(Ntp):
+    """NtpSystemd."""  # TODO(ddmitriev) documentation
+
+    def start(self):
+        self.is_connected = False
+        self.remote.execute('systemctl start ntpd')
+
+    def stop(self):
+        self.is_connected = False
+        self.remote.execute('systemctl stop ntpd')
+
+    def get_peers(self):
+        return self.remote.execute('ntpq -pn 127.0.0.1')['stdout']
