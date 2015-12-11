@@ -261,3 +261,8 @@ if MULTIPLE_NETWORKS:
 # Path to the YAML file with 'devops_settings' template
 # export DEVOPS_SETTINGS_TEMPLATE = /.../10-nodes-3-disks-kvm-fuel-iso.yaml
 DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
+
+# Enable making external snapshots
+SNAPSHOTS_EXTERNAL = get_var_as_bool('SNAPSHOTS_EXTERNAL', False)
+SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
+                                        os.path.expanduser("~/.devops/snap"))
