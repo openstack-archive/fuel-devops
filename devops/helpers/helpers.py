@@ -457,3 +457,19 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def deepgetattr(obj, attr, default=None):
+    """Recurses through an attribute chain to get the ultimate value.
+    If there is an AttributeError returns default value.
+    """
+    try:
+        return reduce(getattr, attr.split('.'), obj)
+    except AttributeError:
+        return default
+
+
+def _underscored(*args):
+    """Joins multiple strings using uderscore symbol. Skips empty strings.
+    """
+    return '_'.join(filter(bool, list(args)))
