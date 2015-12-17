@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2015 Mirantis, Inc.
+#    Copyright 2015 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,16 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+from devops.models.node import NodeExtensionBase
 
-from devops.models.environment import Environment
-from devops.models.group import Group
-from devops.models.network import Address
-from devops.models.network import Interface
-from devops.models.network import AddressPool
-from devops.models.network import NetworkPool
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import Volume
-from devops.models.volume import DiskDevice
+
+class NodeExtension(NodeExtensionBase):
+
+    def __init__(self, node):
+        self.node = node
