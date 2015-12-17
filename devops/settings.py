@@ -190,7 +190,7 @@ NODES_COUNT = int(os.environ.get('NODES_COUNT', 10))
 IRONIC_NODES_COUNT = int(os.environ.get('IRONIC_NODES_COUNT', 0))
 
 HARDWARE = {
-    "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 2048)),
+    "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 3072)),
     "admin_node_cpu": int(os.environ.get("ADMIN_NODE_CPU", 2)),
     "slave_node_cpu": int(os.environ.get("SLAVE_NODE_CPU", 2)),
     "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3027)),
