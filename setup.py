@@ -19,13 +19,13 @@ from setuptools import setup
 
 
 setup(
-    name='devops',
+    name='fuel-devops',
     version='2.9.15',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
     url='http://mirantis.com',
-    keywords='devops virtual environment mirantis',
+    keywords='devops virtual environment',
     zip_safe=False,
     include_package_data=True,
     packages=find_packages(),
