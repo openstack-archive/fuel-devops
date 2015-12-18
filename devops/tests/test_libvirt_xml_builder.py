@@ -12,221 +12,262 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
-import random
+
 from unittest import TestCase
 
-from lxml import etree
-import mock
+from ipaddr import IPNetwork
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
-from devops.tests import factories
 
 
 class BaseTestXMLBuilder(TestCase):
 
     def setUp(self):
-        # TODO(prmtl): make it fuzzy
-        self.volume_path = "volume_path_mock"
-        self.xml_builder = LibvirtXMLBuilder(mock.Mock())
-        self.xml_builder.driver.volume_path = mock.Mock(
-            return_value=self.volume_path
-        )
-        self.xml_builder.driver.network_name = mock.Mock(
-            return_value="network_name_mock"
-        )
-        self.xml_builder.driver.reboot_timeout = None
-        self.net = mock.Mock()
-        self.node = mock.Mock()
-        self.xml_builder.driver.use_hugepages = None
+        self.xml_builder = LibvirtXMLBuilder
 
-    def _reformat_xml(self, xml):
-        """Takes XML in string, parses it and returns pretty printed XML."""
-        return etree.tostring(etree.fromstring(xml), pretty_print=True)
-
-    def assertXMLEqual(self, first, second):
-        """Compare if two XMLs are equal.
-
-        It parses provided XMLs and converts back to string to minimise
-        errors caused by whitespaces.
-        """
-        first = self._reformat_xml(first)
-        second = self._reformat_xml(second)
-        # NOTE(prmtl): this assert provide better reporting (diff) in py.test
-        assert first == second
-
-    def assertXMLIn(self, member, container):
-        """Checks if one XML is included in another XML, dummy way.
-
-        If check fail, it pretty prints both elements
-        """
-        member = self._reformat_xml(member)
-        container = self._reformat_xml(container)
-
-        if member not in container:
-            msg = "\n{0}\n\nnot found in\n\n{1}".format(member, container)
-            self.fail(msg)
-
-    def assertXMLNotIn(self, member, container):
-        """Checks if one XML is not included in another XML, dummy way.
-
-        If check fail, it pretty prints both elements
-        """
-        member = self._reformat_xml(member)
-        container = self._reformat_xml(container)
-
-        if member in container:
-            msg = "\n{0}\n\nunexpectedly found in\n\n{1}".format(member,
-                                                                 container)
-            self.fail(msg)
-
-    def assertXpath(self, xpath, xml):
-        """Asserts XPath is valid for given XML."""
-        xml = etree.fromstring(xml)
-        if not xml.xpath(xpath):
-            self.fail('No result for XPath on element\n'
-                      'XPath: {xpath}\n'
-                      'Element:\n'
-                      '{xml}'.format(
-                          xpath=xpath,
-                          xml=etree.tostring(xml, pretty_print=True)))
+    def test_crop_name(self):
+        big_name = (
+            'very_very_very_very_very_very_very_very_very_very_very_'
+            'very_very_very_very_very_very_very_very_very_very_very_'
+            'very_very_very_very_very_very_very_very_very_big_name')
+        small_name = self.xml_builder._crop_name(big_name)
+        assert small_name == (
+            '5459166371483284022ry_very_very_very_very_very_very_'
+            'very_very_very_very_big_name')
 
 
 class TestNetworkXml(BaseTestXMLBuilder):
 
     def setUp(self):
         super(TestNetworkXml, self).setUp()
-        self.net.name = 'test_name'
-        self.net.environment.name = 'test_env_name'
-        self.net.id = random.randint(1, 100)
-        self.net.forward = None
-        self.net.ip_network = None
-        self.net.has_dhcp_server = False
 
-    def test_net_name_bridge_name(self):
-        bridge_name = 'fuelbr{0}'.format(self.net.id)
-        xml = self.xml_builder.build_network_xml(self.net)
-        self.assertXMLIn(
-            '<name>{0}_{1}</name>'
-            ''.format(self.net.environment.name, self.net.name),
-            xml)
-        self.assertXMLIn(
-            '<bridge delay="0" name="{0}" stp="on" />'
-            ''.format(bridge_name), xml)
+        self.address = [
+            {
+                'mac': '64:65:f3:5c:a5:a2',
+                'ip': '172.0.1.61',
+                'name': 'test_admin',
+            },
+            {
+                'mac': '64:70:8d:b0:4c:ad',
+                'ip': '172.0.1.62',
+                'name': 'test_public',
+            },
+        ]
 
-    def test_forward(self):
-        self.net.forward = "nat"
-        xml = self.xml_builder.build_network_xml(self.net)
-        self.assertXMLIn(
-            '<forward mode="{0}" />'
-            ''.format(self.net.forward), xml)
+        self.ip_net = IPNetwork('172.0.1.1/24')
+
+    def test_default(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
+                       '    <forward mode="nat" />\n'
+                       '</network>')
+
+    def test_stp_off(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            stp=False,
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="off" />\n'
+                       '    <forward mode="nat" />\n'
+                       '</network>')
+
+    def test_forward_mode(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            forward='bridge',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
+                       '    <forward mode="bridge" />\n'
+                       '</network>')
 
     def test_ip_network(self):
-        ip = '172.0.1.1'
-        prefix = '24'
-        self.net.ip_network = "{0}/{1}".format(ip, prefix)
-        self.net.has_pxe_server = False
-        self.net.tftp_root_dir = '/tmp'
-        xml = self.xml_builder.build_network_xml(self.net)
-        string = '<ip address="{0}" prefix="{1}" />'.format(ip, prefix)
-        self.assertXMLIn(string, xml)
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            ip_network=self.ip_net,
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
+                       '    <forward mode="nat" />\n'
+                       '    <ip address="172.0.1.1" prefix="24" />\n'
+                       '</network>')
+
+    def test_pxe_server(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            ip_network=self.ip_net,
+            has_pxe_server=True,
+            tftp_root_dir='/tmp',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
+                       '    <forward mode="nat" />\n'
+                       '    <ip address="172.0.1.1" prefix="24">\n'
+                       '        <tftp root="/tmp" />\n'
+                       '    </ip>\n'
+                       '</network>')
+
+    def test_dhcp_server(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            addresses=self.address,
+            ip_network=self.ip_net,
+            has_dhcp_server=True,
+        )
+        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+<network>
+    <name>test_name</name>
+    <bridge delay="0" name="virbr13" stp="on" />
+    <forward mode="nat" />
+    <ip address="172.0.1.1" prefix="24">
+        <dhcp>
+            <range end="172.0.1.254" start="172.0.1.2" />
+            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin" />
+            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public" />
+        </dhcp>
+    </ip>
+</network>"""
+
+    def test_dhcp_server_plus_pxe(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_id=13,
+            addresses=self.address,
+            ip_network=self.ip_net,
+            has_dhcp_server=True,
+            has_pxe_server=True,
+            tftp_root_dir='/tmp',
+        )
+        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+<network>
+    <name>test_name</name>
+    <bridge delay="0" name="virbr13" stp="on" />
+    <forward mode="nat" />
+    <ip address="172.0.1.1" prefix="24">
+        <tftp root="/tmp" />
+        <dhcp>
+            <range end="172.0.1.254" start="172.0.1.2" />
+            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin" />
+            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public" />
+            <bootp file="pxelinux.0" />
+        </dhcp>
+    </ip>
+</network>"""
 
 
 class TestVolumeXml(BaseTestXMLBuilder):
 
-    def setUp(self):
-        super(TestVolumeXml, self).setUp()
-
-    def get_xml(self, volume):
-        """Generate XML from volume"""
-        return self.xml_builder.build_volume_xml(volume)
-
-    def test_full_volume_xml(self):
-        volume = factories.VolumeFactory()
-        expected = '''<?xml version="1.0" encoding="utf-8" ?>
-<volume>
-    <name>{env_name}_{name}</name>
-    <capacity>{capacity}</capacity>
-    <target>
-        <format type="{format}" />
-    </target>
-    <backingStore>
-        <path>{path}</path>
-        <format type="{store_format}" />
-    </backingStore>
-</volume>'''.format(
-            env_name=volume.environment.name,
-            name=volume.name,
-            capacity=volume.capacity,
-            format=volume.format,
-            path=self.volume_path,
-            store_format=volume.backing_store.format,
+    def test_default(self):
+        xml = self.xml_builder.build_volume_xml(
+            name='test_name',
+            capacity=1048576,
+            format='qcow2',
+            backing_store_path=None,
+            backing_store_format=None,
         )
-        xml = self.get_xml(volume)
-        self.assertXMLEqual(expected, xml)
-        self.xml_builder.driver.volume_path.assert_called_with(
-            volume.backing_store)
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<volume>\n'
+                       '    <name>test_name</name>\n'
+                       '    <capacity>1048576</capacity>\n'
+                       '    <target>\n'
+                       '        <format type="qcow2" />\n'
+                       '    </target>\n'
+                       '</volume>')
 
-    def test_name_without_env(self):
-        volume = factories.VolumeFactory(environment=None)
-        xml = self.get_xml(volume)
-        self.assertXMLIn('<name>{0}</name>'.format(volume.name), xml)
-
-    def test_no_backing_store(self):
-        volume = factories.VolumeFactory(backing_store=None)
-        xml = self.get_xml(volume)
-        self.assertXpath("not(//backingStore)", xml)
+    def test_format(self):
+        xml = self.xml_builder.build_volume_xml(
+            name='test_name',
+            capacity=1048576,
+            format='raw',
+            backing_store_path=None,
+            backing_store_format=None,
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<volume>\n'
+                       '    <name>test_name</name>\n'
+                       '    <capacity>1048576</capacity>\n'
+                       '    <target>\n'
+                       '        <format type="raw" />\n'
+                       '    </target>\n'
+                       '</volume>')
 
     def test_backing_store(self):
-        store_format = "raw"
-        volume = factories.VolumeFactory(backing_store__format=store_format)
-        xml = self.get_xml(volume)
-        self.assertXMLIn('''
-    <backingStore>
-        <path>{path}</path>
-        <format type="{format}" />
-    </backingStore>'''.format(path=self.volume_path, format=store_format), xml)
+        xml = self.xml_builder.build_volume_xml(
+            name='test_name',
+            capacity=1048576,
+            format='qcow2',
+            backing_store_path='/tmp/master.img',
+            backing_store_format='raw',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<volume>\n'
+                       '    <name>test_name</name>\n'
+                       '    <capacity>1048576</capacity>\n'
+                       '    <target>\n'
+                       '        <format type="qcow2" />\n'
+                       '    </target>\n'
+                       '    <backingStore>\n'
+                       '        <path>/tmp/master.img</path>\n'
+                       '        <format type="raw" />\n'
+                       '    </backingStore>\n'
+                       '</volume>')
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
 
-    def check_snaphot_xml(self, name, description, expected):
-        result = self.xml_builder.build_snapshot_xml(name, description)
-        self.assertXMLIn(expected, result)
+    def test_default(self):
+        xml = self.xml_builder.build_snapshot_xml()
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<domainsnapshot />')
 
-    def test_no_name(self):
-        name = None
-        description = factories.fuzzy_string('test_description_')
-        expected = '''
-<domainsnapshot>
-    <description>{0}</description>
-</domainsnapshot>'''.format(description)
-        self.check_snaphot_xml(name, description, expected)
+    def test_name(self):
+        xml = self.xml_builder.build_snapshot_xml(
+            name='test_name',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<domainsnapshot>\n'
+                       '    <name>test_name</name>\n'
+                       '</domainsnapshot>')
 
-    def test_no_description(self):
-        name = factories.fuzzy_string('test_snapshot_')
-        description = None
-        expected = '''
-<domainsnapshot>
-    <name>{0}</name>
-</domainsnapshot>'''.format(name)
-        self.check_snaphot_xml(name, description, expected)
+    def test_description(self):
+        xml = self.xml_builder.build_snapshot_xml(
+            description='test_description',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<domainsnapshot>\n'
+                       '    <description>test_description</description>\n'
+                       '</domainsnapshot>')
 
-    def test_nothing_there(self):
-        name = None
-        description = None
-        expected = '<domainsnapshot />'
-        self.check_snaphot_xml(name, description, expected)
-
-    def test_snapshot(self):
-        name = factories.fuzzy_string('test_snapshot_')
-        description = factories.fuzzy_string('test_description_')
-        expected = '''
-<domainsnapshot>
-    <name>{0}</name>
-    <description>{1}</description>
-</domainsnapshot>'''.format(name, description)
-        self.check_snaphot_xml(name, description, expected)
+    def test_name_description(self):
+        xml = self.xml_builder.build_snapshot_xml(
+            name='test_name',
+            description='test_description',
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<domainsnapshot>\n'
+                       '    <name>test_name</name>\n'
+                       '    <description>test_description</description>\n'
+                       '</domainsnapshot>')
 
 
 class TestNodeXml(BaseTestXMLBuilder):
@@ -234,30 +275,70 @@ class TestNodeXml(BaseTestXMLBuilder):
     def setUp(self):
         super(TestNodeXml, self).setUp()
 
-        self.node.hypervisor = 'test_hypervisor'
-        self.node.name = 'test_name'
-        self.node.environment.name = 'test_env_name'
-        self.node.vcpu = random.randint(1, 10)
-        self.node.memory = random.randint(128, 1024)
-        self.node.os_type = 'test_os_type'
-        self.node.architecture = 'test_architecture'
-        self.node.boot = '["dev1", "dev2"]'
-        self.node.has_vnc = None
-        self.node.should_enable_boot_menu = False
-        disk_devices = mock.MagicMock()
-        disk_devices.filter.return_value = []
-        self.node.disk_devices = disk_devices
-        self.node.interfaces = []
+        self.disk_devices = [
+            dict(
+                disk_type='file',
+                disk_device='disk',
+                disk_volume_format='raw',
+                disk_volume_path='/tmp/volume.img',
+                disk_bus='usb',
+                disk_target_dev='sda',
+                disk_serial='ca9dcfe5a48540f39537eb3cbd96f370',
+            ),
+            dict(
+                disk_type='file',
+                disk_device='cdrom',
+                disk_volume_format='qcow2',
+                disk_volume_path='/tmp/volume2.img',
+                disk_bus='ide',
+                disk_target_dev='sdb',
+                disk_serial='8c81c0e0aba448fabcb54c34f61d8d07',
+            ),
+        ]
 
-    def test_node(self):
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
-        boot = json.loads(self.node.boot)
-        expected = '''
-<domain type="test_hypervisor">
-    <name>test_env_name_test_name</name>
-    <cpu mode="host-passthrough" />
-    <vcpu>{0}</vcpu>
-    <memory unit="KiB">{1}</memory>
+        self.interfaces = [
+            dict(
+                interface_type='network',
+                interface_mac_address='64:70:74:90:bc:84',
+                interface_network_name='test_admin',
+                interface_id=132,
+                interface_model='e1000',
+            ),
+            dict(
+                interface_type='network',
+                interface_mac_address='64:de:6c:44:de:46',
+                interface_network_name='test_public',
+                interface_id=133,
+                interface_model='pcnet',
+            ),
+        ]
+
+    def test_default(self):
+        xml = self.xml_builder.build_node_xml(
+            name='test_name',
+            hypervisor='test_description',
+            use_host_cpu=False,
+            vcpu=1,
+            memory=1024,
+            use_hugepages=False,
+            hpet=True,
+            os_type='hvm',
+            architecture='x86_64',
+            boot=['network', 'cdrom', 'hd'],
+            reboot_timeout=10,
+            should_enable_boot_menu=False,
+            emulator='/usr/lib64/xen/bin/qemu-dm',
+            has_vnc=True,
+            vnc_password='123456',
+            disk_devices=[],
+            interfaces=[],
+        )
+
+        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+<domain type="test_description">
+    <name>test_name</name>
+    <vcpu>1</vcpu>
+    <memory unit="KiB">1048576</memory>
     <clock offset="utc" />
     <clock>
         <timer name="rtc" tickpolicy="catchup" track="wall">
@@ -271,13 +352,16 @@ class TestNodeXml(BaseTestXMLBuilder):
         <timer name="hpet" present="yes" />
     </clock>
     <os>
-        <type arch="{2}">{3}</type>
-        <boot dev="{4}" />
-        <boot dev="{5}" />
+        <type arch="x86_64">hvm</type>
+        <boot dev="network" />
+        <boot dev="cdrom" />
+        <boot dev="hd" />
+        <bios rebootTimeout="10" />
     </os>
     <devices>
         <controller model="nec-xhci" type="usb" />
-        <emulator>test_emulator</emulator>
+        <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
+        <graphics autoport="yes" listen="0.0.0.0" passwd="123456" type="vnc" />
         <video>
             <model heads="1" type="vga" vram="9216" />
         </video>
@@ -288,51 +372,86 @@ class TestNodeXml(BaseTestXMLBuilder):
             <target port="0" type="serial" />
         </console>
     </devices>
-</domain>'''.format(self.node.vcpu, str(self.node.memory * 1024),
-                    self.node.architecture, self.node.os_type,
-                    boot[0], boot[1])
-        self.assertXMLIn(expected, xml)
+</domain>"""
 
-    @mock.patch('devops.driver.libvirt.libvirt_xml_builder.uuid')
-    def test_node_devices(self, mock_uuid):
-        mock_uuid.uuid4.return_value.hex = 'disk-serial'
-        volumes = [mock.Mock(uuid=i, format='frmt{0}'.format(i))
-                   for i in range(3)]
-
-        disk_devices = [
-            mock.Mock(
-                type='type{0}'.format(i),
-                device='device{0}'.format(i),
-                volume=volumes[i],
-                target_dev='tdev{0}'.format(i),
-                bus='bus{0}'.format(i)
-            ) for i in range(3)
-        ]
-        self.node.disk_devices = mock.MagicMock()
-        self.node.disk_devices.__iter__.return_value = iter(disk_devices)
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
-        expected = '''
+    def test_with_devices(self):
+        xml = self.xml_builder.build_node_xml(
+            name='test_name',
+            hypervisor='test_description',
+            use_host_cpu=True,
+            vcpu=4,
+            memory=1024,
+            use_hugepages=True,
+            hpet=False,
+            os_type='hvm',
+            architecture='i686',
+            boot=['cdrom', 'hd'],
+            reboot_timeout=10,
+            should_enable_boot_menu=True,
+            emulator='/usr/lib64/xen/bin/qemu-dm',
+            has_vnc=True,
+            vnc_password=None,
+            disk_devices=self.disk_devices,
+            interfaces=self.interfaces,
+        )
+        print xml
+        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+<domain type="test_description">
+    <name>test_name</name>
+    <cpu mode="host-passthrough" />
+    <vcpu>4</vcpu>
+    <memory unit="KiB">1048576</memory>
+    <memoryBacking>
+        <hugepages />
+    </memoryBacking>
+    <clock offset="utc" />
+    <clock>
+        <timer name="rtc" tickpolicy="catchup" track="wall">
+            <catchup limit="10000" slew="120" threshold="123" />
+        </timer>
+    </clock>
+    <clock>
+        <timer name="pit" tickpolicy="delay" />
+    </clock>
+    <clock>
+        <timer name="hpet" present="no" />
+    </clock>
+    <os>
+        <type arch="i686">hvm</type>
+        <boot dev="cdrom" />
+        <boot dev="hd" />
+        <bios rebootTimeout="10" />
+        <bootmenu enable="yes" timeout="3000" />
+    </os>
     <devices>
         <controller model="nec-xhci" type="usb" />
-        <emulator>test_emulator</emulator>
-        <disk device="device0" type="type0">
-            <driver cache="unsafe" type="frmt0" />
-            <source file="volume_path_mock" />
-            <target bus="bus0" dev="tdev0" />
-            <serial>disk-serial</serial>
+        <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
+        <graphics autoport="yes" listen="0.0.0.0" type="vnc" />
+        <disk device="disk" type="file">
+            <driver cache="unsafe" type="raw" />
+            <source file="/tmp/volume.img" />
+            <target bus="usb" dev="sda" removable="on" />
+            <readonly />
+            <serial>ca9dcfe5a48540f39537eb3cbd96f370</serial>
         </disk>
-        <disk device="device1" type="type1">
-            <driver cache="unsafe" type="frmt1" />
-            <source file="volume_path_mock" />
-            <target bus="bus1" dev="tdev1" />
-            <serial>disk-serial</serial>
+        <disk device="cdrom" type="file">
+            <driver cache="unsafe" type="qcow2" />
+            <source file="/tmp/volume2.img" />
+            <target bus="ide" dev="sdb" />
+            <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
         </disk>
-        <disk device="device2" type="type2">
-            <driver cache="unsafe" type="frmt2" />
-            <source file="volume_path_mock" />
-            <target bus="bus2" dev="tdev2" />
-            <serial>disk-serial</serial>
-        </disk>
+        <interface type="network">
+            <mac address="64:70:74:90:bc:84" />
+            <source network="test_admin" />
+            <target dev="virnet132" />
+            <model type="e1000" />
+        </interface>
+        <interface type="network">
+            <mac address="64:de:6c:44:de:46" />
+            <source network="test_public" />
+            <target dev="virnet133" />
+            <model type="pcnet" />
+        </interface>
         <video>
             <model heads="1" type="vga" vram="9216" />
         </video>
@@ -342,45 +461,5 @@ class TestNodeXml(BaseTestXMLBuilder):
         <console type="pty">
             <target port="0" type="serial" />
         </console>
-    </devices>'''
-        self.assertXMLIn(expected, xml)
-
-    def test_node_interfaces(self):
-        networks = [mock.Mock(uuid=i) for i in range(3)]
-        self.node.interfaces = [
-            mock.Mock(type='network'.format(i), mac_address='mac{0}'.format(i),
-                      network=networks[i], id='id{0}'.format(i),
-                      model='model{0}'.format(i)) for i in range(3)]
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
-        self.assertXMLIn('''
-    <devices>
-        <controller model="nec-xhci" type="usb" />
-        <emulator>test_emulator</emulator>
-        <interface type="network">
-            <mac address="mac0" />
-            <source network="network_name_mock" />
-            <target dev="fuelnetid0" />
-            <model type="model0" />
-        </interface>
-        <interface type="network">
-            <mac address="mac1" />
-            <source network="network_name_mock" />
-            <target dev="fuelnetid1" />
-            <model type="model1" />
-        </interface>
-        <interface type="network">
-            <mac address="mac2" />
-            <source network="network_name_mock" />
-            <target dev="fuelnetid2" />
-            <model type="model2" />
-        </interface>
-        <video>
-            <model heads="1" type="vga" vram="9216" />
-        </video>
-        <serial type="pty">
-            <target port="0" />
-        </serial>
-        <console type="pty">
-            <target port="0" type="serial" />
-        </console>
-    </devices>''', xml)
+    </devices>
+</domain>"""

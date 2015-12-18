@@ -12,32 +12,38 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ipaddr
+
+
+#class DevopsIPNetwork(ipaddr.IPv4Network):
+#
+#    @property
+#    def ip_start(self):
+#        return self[2]
+#
+#    @property
+#    def ip_end(self):
+#        return self[-2]
+#
+#    @property
+#    def default_gw(self):
+#        return self[1]
+
 
 class IpNetworksPool(object):
-    def __init__(self, networks, prefix):
+    def __init__(self, networks, prefix, allocated_networks=None):
+        if allocated_networks is None:
+            allocated_networks = []
+
         self.networks = networks
         self.prefix = prefix
-        self.allocated_networks = []
-        self._initialize_generator()
-
-    def set_allocated_networks(self, allocated_networks):
         self.allocated_networks = allocated_networks
-        self._initialize_generator()
 
     def _overlaps(self, network, allocated_networks):
         return any(an.overlaps(network) for an in allocated_networks)
 
-    def _initialize_generator(self):
-        def _get_generator():
-            for network in self.networks:
-                for sub_net in network.iter_subnets(new_prefix=self.prefix):
-                    if not self._overlaps(sub_net, self.allocated_networks):
-                        yield sub_net
-
-        self._generator = _get_generator()
-
     def __iter__(self):
-        return self._generator
-
-    def next(self):
-        return self._generator.next()
+        for network in self.networks:
+            for sub_net in network.iter_subnets(new_prefix=self.prefix):
+                if not self._overlaps(sub_net, self.allocated_networks):
+                    yield sub_net

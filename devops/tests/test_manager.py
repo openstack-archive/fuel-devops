@@ -23,7 +23,8 @@ from devops.models import Address
 from devops.models import DiskDevice
 from devops.models import Environment
 from devops.models import Interface
-from devops.models import Network
+from devops.models import L2NetworkDevice
+from devops.models import AddressPool
 from devops.models import Node
 from devops.models import Volume
 

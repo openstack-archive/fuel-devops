@@ -14,57 +14,34 @@
 
 from django.db import models
 
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
+from devops.models.base import ParamedModel
+from devops.models.base import choices
 
 
-class Volume(DriverModel):
+class Volume(ParamedModel, BaseModel):
     class Meta(object):
-        unique_together = ('name', 'environment')
+#        unique_together = ('name', 'group')
+        unique_together = ('name', 'node')
         db_table = 'devops_volume'
+        app_label = 'devops'
 
-    environment = models.ForeignKey('Environment', null=True)
     backing_store = models.ForeignKey('self', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
-    uuid = models.CharField(max_length=255)
-    capacity = models.BigIntegerField(null=False)
-    format = models.CharField(max_length=255, null=False)
+#    group = models.ForeignKey('Group', null=True)
+    node = models.ForeignKey('Node', null=True)
+
+    @property
+    def driver(self):
+        return self.node.driver
 
     def define(self):
-        self.driver.volume_define(self)
-        self.save()
+        pass
 
     def erase(self):
-        self.remove(verbose=False)
+        pass
 
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.driver.volume_exists(self):
-                self.driver.volume_delete(self)
-        self.delete()
-
-    def get_capacity(self):
-        return self.driver.volume_capacity(self)
-
-    def get_format(self):
-        return self.driver.volume_format(self)
-
-    def get_path(self):
-        return self.driver.volume_path(self)
-
-    def fill_from_exist(self):
-        self.capacity = self.get_capacity()
-        self.format = self.get_format()
-
-    def upload(self, path):
-        self.driver.volume_upload(self, path)
-
-    def get_allocation(self):
-        """Get allocated volume size
-
-        :rtype : int
-        """
-        return self.driver.volume_allocation(self)
-
+    # TO REWRITE, LEGACY, for fuel-qa compatibility
     @classmethod
     def volume_get_predefined(cls, uuid):
         """Get predefined volume
@@ -72,6 +49,7 @@ class Volume(DriverModel):
         :rtype : Volume
         """
         try:
+            # TODO: cant filter by uuid
             volume = cls.objects.get(uuid=uuid)
         except cls.DoesNotExist:
             volume = cls(uuid=uuid)
@@ -79,24 +57,40 @@ class Volume(DriverModel):
         volume.save()
         return volume
 
+    # TO REMOVE
     @classmethod
     def volume_create_child(cls, name, backing_store, format=None,
-                            environment=None):
+                            node=None):
         """Create new volume based on backing_store
 
         :rtype : Volume
         """
         return cls.objects.create(
-            name=name, environment=environment,
+            name=name, node=node,
             capacity=backing_store.capacity,
             format=format or backing_store.format, backing_store=backing_store)
 
-    @classmethod
-    def volume_create(cls, name, capacity, format='qcow2', environment=None):
-        """Create volume
 
-        :rtype : Volume
+class DiskDevice(models.Model):
+    class Meta(object):
+        db_table = 'devops_diskdevice'
+        app_label = 'devops'
+
+    node = models.ForeignKey('Node', null=False)
+    volume = models.ForeignKey('Volume', null=True)
+    device = choices('disk', 'cdrom')
+    type = choices('file')
+    bus = choices('virtio')
+    target_dev = models.CharField(max_length=255, null=False)
+
+    @classmethod
+    def node_attach_volume(cls, node, volume, device='disk', type='file',
+                           bus='virtio', target_dev=None):
+        """Attach volume to node
+
+        :rtype : DiskDevice
         """
         return cls.objects.create(
-            name=name, environment=environment,
-            capacity=capacity, format=format)
+            device=device, type=type, bus=bus,
+            target_dev=target_dev or node.next_disk_name(),
+            volume=volume, node=node)
