@@ -175,11 +175,21 @@ class Shell(object):
             if env.name == env_name:
                 print("Please, set another environment name")
                 raise SystemExit()
+        # We should prevent incorrect net-pool values
+        # ex: 10.109.0.0/29:10.109.0.0/27, 10.109.0.0/29, 10.109.0.0/29:11
+        try:
+            networks, prefix = self.params.net_pool.split(':')
+            prefix = int(prefix)
+            if int(networks[-2:]) > prefix:
+                print("Please, set correct prefixes")
+                raise SystemExit()
+            networks = [ipaddr.IPNetwork(networks)]
+            Network.default_pool = Network.create_network_pool(
+                networks=networks, prefix=prefix)
+        except ValueError as value_e:
+            print("Please, set correct net pool: {0}".format(value_e.message))
+            raise SystemExit()
         self.env = Environment.create(env_name)
-        networks, prefix = self.params.net_pool.split(':')
-        Network.default_pool = Network.create_network_pool(
-            networks=[ipaddr.IPNetwork(networks)],
-            prefix=int(prefix))
         networks = Network.create_networks(environment=self.env)
         # We need to define the networks here because they are quieried by the
         # admin_add function.
