@@ -246,7 +246,21 @@ class Shell(object):
         node_manager.admin_prepare_disks(node=admin_node,
                                          disk_size=self.params.admin_disk_size)
         admin_node.start()
-        node_manager.admin_change_config(admin_node)
+        node_manager.admin_change_config(admin_node=admin_node,
+                                         admin_centos_version=6,
+                                         static_interface='eth0')
+        admin_node.await("admin", timeout=10 * 60)
+        node_manager.admin_wait_bootstrap(3000, self.env)
+
+    def do_admin_setup_centos7(self):
+        admin_node = self.env.get_node(name='admin')
+        admin_node.destroy()
+        node_manager.admin_prepare_disks(node=admin_node,
+                                         disk_size=self.params.admin_disk_size)
+        admin_node.start()
+        node_manager.admin_change_config(admin_node=admin_node,
+                                         admin_centos_version=7,
+                                         static_interface=self.params.iface)
         admin_node.await("admin", timeout=10 * 60)
         node_manager.admin_wait_bootstrap(3000, self.env)
 
@@ -306,6 +320,7 @@ class Shell(object):
         'slave-change': do_slave_change,
         'slave-remove': do_slave_remove,
         'admin-setup': do_admin_setup,
+        'admin-setup-centos7': do_admin_setup_centos7,
         'admin-change': do_admin_change,
         'node-start': do_node_start,
         'node-destroy': do_node_destroy,
@@ -374,6 +389,14 @@ class Shell(object):
                                             help='Set admin node disk '
                                                  'size (GB)',
                                             default=50, type=int)
+        admin_setup_iface_parser = argparse.ArgumentParser(add_help=False)
+        admin_setup_iface_parser.add_argument('--iface',
+                                              dest='iface',
+                                              help='Static network interface '
+                                                   'to use when configuring '
+                                                   'the admin node. Should '
+                                                   'be eth0 or enp0s3',
+                                              default='enp0s3')
         ram_parser = argparse.ArgumentParser(add_help=False)
         ram_parser.add_argument('--ram', dest='ram_size',
                                 help='Set node RAM size',
@@ -518,6 +541,11 @@ class Shell(object):
         subparsers.add_parser('admin-setup',
                               parents=[name_parser, admin_disk_size_parser],
                               help="Setup admin node",
+                              description="Setup admin node from ISO")
+        subparsers.add_parser('admin-setup-centos7',
+                              parents=[name_parser, admin_disk_size_parser,
+                                       admin_setup_iface_parser],
+                              help="Setup CentOS 7 based admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',
                               parents=[name_parser, change_admin_ram_parser,
