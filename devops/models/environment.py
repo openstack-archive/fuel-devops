@@ -273,6 +273,11 @@ class Environment(DriverModel):
             for config_node in group['nodes']:
                 environment.create_node(config_node)
 
+        for network in environment.get_networks():
+            network.define()
+        for node in environment.get_nodes():
+            node.define()
+
         return environment
 
     def create_networks(self, name, l2_device_config, address_pools):
@@ -305,7 +310,6 @@ class Environment(DriverModel):
             pool=pool,
             forward=forward,
             has_dhcp_server=has_dhcp_server)
-        net.define()
         return net
 
     def create_interfaces(self, interfaces, node,
@@ -373,7 +377,6 @@ class Environment(DriverModel):
                 )
                 disk.volume.define()
 
-        node.define()
         return node
 
     # Rename it to default_gw and move to models.Network class
