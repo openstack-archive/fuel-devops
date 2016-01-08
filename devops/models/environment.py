@@ -436,7 +436,7 @@ class Nodes(object):
             key=lambda node: node.name
         )
         self.ironics = sorted(
-            list(environment.get_nodes(role='ironic')),
+            list(environment.get_nodes(role='ironic_slave')),
             key=lambda node: node.name
         )
         self.slaves = self.others
