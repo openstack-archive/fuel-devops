@@ -313,7 +313,7 @@ def create_devops_config(boot_from,
 
         ironic_config = create_slave_config(
             slave_name=ironic_name,
-            slave_role='fuel_slave',
+            slave_role='ironic',
             slave_vcpu=slave_vcpu,
             slave_memory=slave_memory,
             slave_volume_capacity=slave_volume_capacity,
