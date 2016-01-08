@@ -67,7 +67,7 @@ class Environment(DriverModel):
     def get_nodes(self, *args, **kwargs):
         return self.node_set.filter(*args, **kwargs)
 
-    def add_node(self, memory, name, vcpu=1, boot=None, role='slave'):
+    def add_node(self, memory, name, vcpu=1, boot=None, role='fuel_slave'):
         return Node.node_create(
             name=name,
             memory=memory,
