@@ -145,6 +145,21 @@ class Driver(DriverBase):
     use_hugepages = ParamField()
     vnc_password = ParamField()
 
+    # params schema
+    params_schema = {
+        'type': 'object',
+        'properties': {
+            'connection_string': {'type': 'string'},
+            'storage_pool_name': {'type': 'string'},
+            'stp': {'type': 'boolean'},
+            'hpet': {'type': 'boolean'},
+            'use_host_cpu': {'type': 'boolean'},
+            'reboot_timeout': {'type': 'integer'},
+            'use_hugepages': {'type': 'boolean'},
+            'vnc_password': {'type': 'string'},
+        }
+    }
+
     @lazy_property
     def conn(self):
         """Connection to libvirt api
@@ -462,6 +477,76 @@ class Node(NodeBase):
     vcpu = ParamField(default=1)
     memory = ParamField(default=1024)
     has_vnc = ParamField(default=True)
+
+    # params schema
+    params_schema = {
+        'type': 'object',
+        'properties': {
+            'vcpu': {'type': 'integer'},
+            'memory': {'type': 'integer'},
+            'boot': {
+                'type': 'array',
+                'items': {
+                    'type': 'string',
+                    'enum': ['hd', 'cdrom', 'network'],
+                },
+                'minItems': 1,
+            },
+
+            'volumes': {
+                'type': 'array',
+                'items': {
+                    'type': 'object',
+                    'additionalProperties': False,
+                    'properties': {
+                        'name': {'type': 'string'},
+                        'capacity': {'type': 'integer'},
+                        'format': {
+                            'type': 'string',
+                            'enum': ['qcow2', 'raw'],
+                        },
+                        'device': {
+                            'type': 'string',
+                            'enum': ['cdrom', 'disk'],
+                        },
+                        'bus': {
+                            'type': 'string',
+                            'enum': ['ide', 'usb'],
+                        },
+                        'source_image': {'type': 'string'},
+                    },
+                },
+                'minItems': 1,
+            },
+
+            'interfaces': {
+                'type': 'array',
+                'items': {
+                    'type': 'object',
+                    'properties': {
+                        'label': {'type': 'string'},
+                        'l2_network_device': {'type': 'string'},
+                        'interface_model': {'type': 'string'},
+                    },
+                    'additionalProperties': False,
+                }
+            },
+
+            'network_config': {
+                'type': 'object',
+                '^\\S+$': {
+                    'type': 'object',
+                    'additionalProperties': False,
+                    'properties': {
+                        'networks': {
+                            'type': 'array',
+                            'items': {'type': 'string'},
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     @property
     def _libvirt_node(self):
