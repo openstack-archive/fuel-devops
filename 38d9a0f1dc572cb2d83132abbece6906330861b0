@@ -1,0 +1,11 @@
+Code-Review+2: Dennis Dmitriev <ddmitriev@mirantis.com>
+Verified+1: Fuel CI <fuel-ci-bot@mirantis.com>
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Code-Review+1: Dmitry Tyzhnenko <dtyzhnenko@mirantis.com>
+Workflow+1: Dennis Dmitriev <ddmitriev@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Mon, 11 Jan 2016 11:09:25 +0000
+Reviewed-on: https://review.openstack.org/265157
+Project: openstack/fuel-devops
+Branch: refs/heads/master
