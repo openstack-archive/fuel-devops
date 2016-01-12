@@ -37,7 +37,7 @@ template:
     groups:
      - name: rack-01
        driver:
-         name: devops.driver.libvirt.libvirt_driver:LibvirtDriver
+         name: devops.driver.libvirt.libvirt_driver
          params:
            connection_string: !os_env CONNECTION_STRING, qemu:///system
            storage_pool_name: !os_env STORAGE_POOL_NAME, default

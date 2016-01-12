@@ -40,11 +40,7 @@ definitions:
         properties:
             net:
                 type: string
-                pattern: >-
-                    ^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}
-                    (?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)
-                    \/(?:3[0-2]|[12][0-9]|[1-9])
-                    \:(?:3[0-2]|[12][0-9]|[1-9])$
+                pattern: '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:3[0-2]|[12][0-9]|[1-9])\:(?:3[0-2]|[12][0-9]|[1-9])$'
             params:
                 type: object
                 properties:
@@ -91,19 +87,9 @@ definitions:
         type: object
         required:
           - address_pool
-          - dhcp
         properties:
             address_pool:
                 type: string
-            dhcp:
-                type: boolean
-            forward:
-                type: object
-                properties:
-                    mode:
-                        type: string
-                        enum:
-                          - nat
 
     node:
         type: object
@@ -118,26 +104,3 @@ definitions:
                 type: string
             params:
                 type: object
-
-    # # All libvirt definitions
-    # libvirt:
-    #     driver_params:
-    #         type: object
-    #         properties:
-    #             connection_string:
-    #                 type: string
-    #             storage_pool_name:
-    #                 type: string
-    #             stp:
-    #                 type: boolean
-    #             hpet:
-    #                 type: boolean
-    #             use_host_cpu:
-    #                 type: boolean
-
-    # ipmi:
-    #     driver_params:
-    #         type: object
-    #         properties:
-    #             ssh:
-    #                 type: string
