@@ -111,13 +111,13 @@ class Environment(DriverModel):
         # 'skip' param is a temporary workaround.
         # It will be removed with introducing the new database schema
         # See the task QA-239 for details.
+        for network in self.get_networks():
+            network.define()
         if not skip:
-            for network in self.get_networks():
-                network.define()
             for volume in self.get_volumes():
                 volume.define()
-            for node in self.get_nodes():
-                node.define()
+        for node in self.get_nodes():
+            node.define()
 
     def start(self, nodes=None):
         for network in self.get_networks():
@@ -305,7 +305,6 @@ class Environment(DriverModel):
             pool=pool,
             forward=forward,
             has_dhcp_server=has_dhcp_server)
-        net.define()
         return net
 
     def create_interfaces(self, interfaces, node,
@@ -373,7 +372,6 @@ class Environment(DriverModel):
                 )
                 disk.volume.define()
 
-        node.define()
         return node
 
     # Rename it to default_gw and move to models.Network class
