@@ -16,7 +16,10 @@
 
 import unittest
 
+from ipaddr import IPNetwork
+
 from devops.helpers import helpers
+from devops.helpers.network import IpNetworksPool
 
 
 class TestSnaphotList(unittest.TestCase):
@@ -67,3 +70,29 @@ class TestSnaphotList(unittest.TestCase):
         self.assertIn('dhcp_interface=NAT_INTERFACE', keys)
         self.assertIn('showmenu=SHOWMENU', keys)
         self.assertIn('build_images=BUILD_IMAGES', keys)
+
+
+class TestNetworkHelpers(unittest.TestCase):
+
+    def test_getting_subnetworks(self):
+        pool = IpNetworksPool([IPNetwork('10.1.0.0/22')], 24)
+        networks = list(pool)
+        assert len(networks) == 4
+        assert (IPNetwork('10.1.0.0/24') in networks) is True
+        assert (IPNetwork('10.1.1.0/24') in networks) is True
+        assert (IPNetwork('10.1.2.0/24') in networks) is True
+        assert (IPNetwork('10.1.3.0/24') in networks) is True
+
+    def test_getting_subnetworks_alloceted(self):
+        pool = IpNetworksPool(
+            networks=[IPNetwork('10.1.0.0/22')], prefix=24,
+            allocated_networks=[
+                IPNetwork('10.1.1.0/24'),
+                IPNetwork('10.1.3.0/24'),
+            ])
+        networks = list(pool)
+        assert len(networks) == 2
+        assert (IPNetwork('10.1.0.0/24') in networks) is True
+        assert (IPNetwork('10.1.1.0/24') not in networks) is True
+        assert (IPNetwork('10.1.2.0/24') in networks) is True
+        assert (IPNetwork('10.1.3.0/24') not in networks) is True
