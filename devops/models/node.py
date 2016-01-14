@@ -12,56 +12,74 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
-
 from django.conf import settings
 from django.db import models
 
-from devops.error import DevopsError
+from devops.helpers.helpers import _get_file_size
 from devops.helpers.helpers import _tcp_ping
 from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
-from devops import logger
-from devops.models.base import choices
-from devops.models.base import DriverModel
-from devops.models.volume import Volume
+from devops.helpers.lazy import lazy_property
+from devops.helpers import loader
+from devops.models.base import BaseModel
+from devops.models.base import ParamedModel
+from devops.models.network import Interface
+from devops.models.network import NetworkConfig
+from devops.models.volume import DiskDevice
 
 
-class NodeManager(models.Manager):
-    def create(self, *args, **kwargs):
-        Node.node_create(*args, **kwargs)
-
-    def all(self, *args, **kwargs):
-        Node.objects.all()
-
-
-class Node(DriverModel):
+class Node(ParamedModel, BaseModel):
     class Meta(object):
-        unique_together = ('name', 'environment')
+        unique_together = ('name', 'group')
         db_table = 'devops_node'
+        app_label = 'devops'
 
-    environment = models.ForeignKey('Environment', null=True)
+    group = models.ForeignKey('Group', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
-    uuid = models.CharField(max_length=255)
-    hypervisor = choices('kvm')
-    os_type = choices('hvm')
-    architecture = choices('x86_64', 'i686')
-    boot = models.CharField(max_length=255, null=False, default=json.dumps([]))
-    metadata = models.CharField(max_length=255, null=True)
     role = models.CharField(max_length=255, null=True)
-    vcpu = models.PositiveSmallIntegerField(null=False, default=1)
-    memory = models.IntegerField(null=False, default=1024)
-    has_vnc = models.BooleanField(null=False, default=True)
 
-    def next_disk_name(self):
-        disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
-        while True:
-            disk_name = disk_names.next()
-            if not self.disk_devices.filter(target_dev=disk_name).exists():
-                return disk_name
+    @property
+    def driver(self):
+        drv = self.group.driver
 
-    def get_vnc_port(self):
-        return self.driver.node_get_vnc_port(node=self)
+        # LEGACY (fuel-qa compatibility requires), TO REMOVE
+        def node_active(node):
+            return node.is_active()
+        drv.node_active = node_active
+
+        return drv
+
+    @lazy_property
+    def ext(self):
+        ExtCls = loader.load_class(
+            'devops.models.node_ext.{ext_name}:NodeExtension'
+            ''.format(ext_name=self.role or 'default'))
+        return ExtCls(node=self)
+
+    def define(self):
+        self.save()
+
+    def start(self):
+        pass
+
+    def destroy(self):
+        pass
+
+    def erase(self):
+        self.erase_volumes()
+        self.delete()
+
+    def suspend(self):
+        pass
+
+    def resume(self):
+        pass
+
+    def snapshot(self, name=None):
+        pass
+
+    def revert(self, name=None):
+        pass
 
     @property
     def disk_devices(self):
@@ -71,18 +89,49 @@ class Node(DriverModel):
     def interfaces(self):
         return self.interface_set.order_by('id')
 
-    @property
-    def vnc_password(self):
-        return settings.VNC_PASSWORD
-
+    # LEGACY, for fuel-qa compatibility
     @property
     def is_admin(self):
         return self.role == 'fuel_master'
 
+    # LEGACY, for fuel-qa compatibility
     @property
     def is_slave(self):
         return self.role == 'fuel_slave'
 
+    def next_disk_name(self):
+        disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
+        while True:
+            disk_name = disk_names.next()
+            if not self.disk_devices.filter(target_dev=disk_name).exists():
+                return disk_name
+
+    def interface_by_network_name(self, network_name):
+        return self.interface_set.filter(
+            l2_network_device__name=network_name)
+
+    def get_ip_address_by_network_name(self, name, interface=None):
+        interface = interface or self.interface_set.filter(
+            l2_network_device__name=name).order_by('id')[0]
+        return interface.address_set.get(interface=interface).ip_address
+
+    def remote(self, network_name, login, password=None, private_keys=None):
+        """Create SSH-connection to the network
+
+        :rtype : SSHClient
+        """
+        return SSHClient(
+            self.get_ip_address_by_network_name(network_name),
+            username=login,
+            password=password, private_keys=private_keys)
+
+    def await(self, network_name, timeout=120, by_port=22):
+        _wait(
+            lambda: _tcp_ping(
+                self.get_ip_address_by_network_name(network_name), by_port),
+            timeout=timeout)
+
+    # LEGACY, to rewrite according template-based approach
     @property
     def should_enable_boot_menu(self):
         """Method of node to decide if it should enable boot menu.
@@ -99,6 +148,7 @@ class Node(DriverModel):
         return (self.is_admin and self.disk_devices.filter(bus='usb')) or \
             (self.is_slave and not self.pxe_boot_interface_is_eth0)
 
+    # LEGACY, to rewrite according template-based approach
     @property
     def on_second_admin_network(self):
         """Method to get information about node if it is on second admin net.
@@ -109,7 +159,7 @@ class Node(DriverModel):
             return True
         if settings.MULTIPLE_NETWORKS:
             # TODO(akostrikov) 'admin2' as environment property or constant.
-            network = self.environment.get_network(name='admin2')
+            network = self.group.environment.get_network(name='admin2')
         else:
             network = None
 
@@ -119,12 +169,13 @@ class Node(DriverModel):
         else:
             return False
 
+    # LEGACY, to rewrite according template-based approach
     @property
     def pxe_boot_interface_is_eth0(self):
         """This method checks if admin interface is on eth0.
 
         It assumes that we are assigning interfaces with 'for node' in
-        self.environment.create_interfaces in which we run on all networks with
+        self.group.create_interfaces in which we run on all networks with
         'for network in networks: Interface.interface_create'.
         Which is called in
         'environment.describe_empty_node(name, networks_to_describe, volumes)'.
@@ -142,7 +193,8 @@ class Node(DriverModel):
 
         :returns: Boolean
         """
-        first_net_name = self.environment.get_networks().order_by('id')[0].name
+        first_net_name = sorted(self.group.environment.get_networks(),
+                                key=lambda network: network.id)[0].name
 
         if self.is_admin:
             return False
@@ -151,342 +203,102 @@ class Node(DriverModel):
         else:
             return first_net_name == 'admin'
 
-    def interface_by_network_name(self, network_name):
-        return self.interface_set.filter(
-            network__name=network_name)
+    # NEW
+    def add_interfaces(self, interfaces):
+        for interface in interfaces:
+            label = interface['label']
+            l2_network_device_name = interface.get('l2_network_device')
+            interface_model = interface.get('interface_model')
+            self.add_interface(
+                label=label,
+                l2_network_device_name=l2_network_device_name,
+                interface_model=interface_model)
 
-    def get_ip_address_by_network_name(self, name, interface=None):
-        interface = interface or self.interface_set.filter(
-            network__name=name).order_by('id')[0]
-        return interface.address_set.get(interface=interface).ip_address
+    # NEW
+    def add_interface(self, label, l2_network_device_name, interface_model):
+        l2_network_device = self.group.get_l2_network_device(
+            name=l2_network_device_name)
 
-    def remote(self, network_name, login, password=None, private_keys=None):
-        """Create SSH-connection to the network
-
-        :rtype : SSHClient
-        """
-        return SSHClient(
-            self.get_ip_address_by_network_name(network_name),
-            username=login,
-            password=password, private_keys=private_keys)
-
-    def send_keys(self, keys):
-        self.driver.node_send_keys(self, keys)
-
-    def await(self, network_name, timeout=120, by_port=22):
-        _wait(
-            lambda: _tcp_ping(
-                self.get_ip_address_by_network_name(network_name), by_port),
-            timeout=timeout)
-
-    def define(self):
-        self.driver.node_define(self)
-        self.save()
-
-    def start(self):
-        self.create(verbose=False)
-
-    def create(self, verbose=False):
-        if verbose or not self.driver.node_active(self):
-            self.driver.node_create(self)
-
-    def destroy(self, verbose=False):
-        if verbose or self.driver.node_active(self):
-            self.driver.node_destroy(self)
-
-    def erase(self):
-        self.remove(verbose=False)
-
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.driver.node_exists(self):
-                self.destroy(verbose=False)
-                self.driver.node_undefine(self, undefine_snapshots=True)
-        self.delete()
-
-    def suspend(self, verbose=False):
-        if verbose or self.driver.node_active(self):
-            self.driver.node_suspend(self)
-
-    def resume(self, verbose=False):
-        if verbose or self.driver.node_active(self):
-            self.driver.node_resume(self)
-
-    def reset(self):
-        self.driver.node_reset(self)
-
-    def has_snapshot(self, name):
-        return self.driver.node_snapshot_exists(node=self, name=name)
-
-    def snapshot_create_volume(self, name):
-        """Create volume child for snapshot"""
-        for disk in self.disk_devices:
-            if disk.device == 'disk':
-
-                # Find main disk name, it is used for external disk
-                back_vol_name = disk.volume.name
-                back_count = 0
-                disk_test = disk.volume.backing_store
-                while disk_test is not None:
-                    back_count += 1
-                    back_vol_name = disk_test.name
-                    disk_test = disk_test.backing_store
-                    if back_count > 500:
-                        raise DevopsError(
-                            "More then 500 snapshots in chain for {0}.{1}"
-                            .format(back_vol_name, name))
-
-                # Create new volume for snapshot
-                vol_child = Volume.volume_create_child(
-                    name='{0}.{1}'.format(back_vol_name, name),
-                    backing_store=disk.volume,
-                    environment=self.environment
-                )
-                vol_child.define()
-
-                # update disk node to new snapshot
-                disk.volume = vol_child
-                disk.save()
-
-    def snapshot(self, name=None, force=False, description=None,
-                 disk_only=False, external=False):
-        if self.has_snapshot(name):
-            if force:
-                self.driver.node_delete_snapshot(node=self, name=name)
-            else:
-                raise DevopsError("Snapshot with name {0} already exists"
-                                  .format(name))
-
-        if external:
-            if self.driver.get_libvirt_version() < 1002012:
-                raise DevopsError(
-                    "For external snapshots we need libvirtd >= 1.2.12")
-
-            # create new volume which will be used as
-            # disk for snapshot changes
-            self.snapshot_create_volume(name)
-        self.driver.node_create_snapshot(
-            node=self, name=name, description=description, disk_only=disk_only,
-            external=external)
-
-    def _update_disks_from_snapshot(self, name):
-        """Update actual node disks volumes to disks from snapshot
-
-           This method change disks attached to actual node to
-           disks used in snapshot. This is required to save correct
-           state of node disks. We use node disks as a backend when
-           new snapshots are created.
-        """
-        snapshot = self.driver.node_get_snapshot(self, name)
-        for snap_disk, snap_disk_file in snapshot.disks.items():
-            for disk in self.disk_devices:
-                if snap_disk == disk.target_dev:
-                    if snapshot.children_num == 0:
-                        disk.volume = Volume.objects.get(uuid=snap_disk_file)
-                    else:
-                        disk.volume = Volume.objects.get(
-                            uuid=snap_disk_file).backing_store
-                    disk.save()
-
-    def revert(self, name=None, destroy=True):
-        """Method to revert node in state from snapshot
-
-           For external snapshots in libvirt we use restore function.
-           After reverting in this way we get situation when node is connected
-           to original volume disk, without snapshot point. To solve this
-           problem we need to switch it to correct volume.
-
-           In case of usage external snapshots we clean snapshot disk when
-           revert to snapshot without childs and create new snapshot point
-           when reverting to snapshots with childs.
-        """
-        if destroy:
-            self.destroy(verbose=False)
-        if self.has_snapshot(name):
-            snapshot = self.driver.node_get_snapshot(self, name)
-            if snapshot.get_type == 'external':
-                self.destroy()
-                if snapshot.children_num == 0:
-                    logger.info("Reuse last snapshot")
-
-                    # Update current node disks
-                    self._update_disks_from_snapshot(name)
-
-                    # Recreate volumes for snapshot and reuse it.
-                    self.driver.node_revert_snapshot_recreate_disks(self, name)
-
-                    # Revert snapshot
-                    self.driver.node_revert_snapshot(node=self, name=name)
-                else:
-                    # Looking for last reverted snapshot without children
-                    # or create new and start next snapshot chain
-                    revert_name = name + '-revert'
-                    revert_count = 0
-                    create_new = True
-
-                    while self.has_snapshot(revert_name):
-                        # Check wheter revert snapshot has children
-                        snapshot_revert = self.driver.node_get_snapshot(
-                            self, revert_name)
-                        if snapshot_revert.children_num == 0:
-                            logger.info(
-                                "Revert snapshot exists, clean and reuse it")
-
-                            # Update current node disks
-                            self._update_disks_from_snapshot(revert_name)
-
-                            # Recreate volumes
-                            self.driver.node_revert_snapshot_recreate_disks(
-                                self, revert_name)
-
-                            # Revert snapshot
-                            self.driver.node_revert_snapshot(
-                                node=self, name=revert_name)
-                            create_new = False
-                            break
-                        else:
-                            revert_name = name + '-revert' + str(revert_count)
-                            revert_count += 1
-
-                    if create_new:
-                        logger.info("Create new revert snapshot")
-
-                        # Update current node disks
-                        self._update_disks_from_snapshot(name)
-
-                        # Revert snapshot
-                        self.driver.node_revert_snapshot(node=self, name=name)
-
-                        # Create new snapshot
-                        self.snapshot(name=revert_name, external=True)
-            else:
-                self.driver.node_revert_snapshot(node=self, name=name)
-        else:
-            print('Domain snapshot for {0} node not found: no domain '
-                  'snapshot with matching'
-                  ' name {1}'.format(self.name, name))
-
-    def get_snapshots(self):
-        """Return full snapshots objects"""
-        return self.driver.node_get_snapshots(node=self)
-
-    def erase_snapshot(self, name):
-        if self.has_snapshot(name):
-            snapshot = self.driver.node_get_snapshot(self, name)
-            if snapshot.get_type == 'external':
-                if snapshot.children_num == 0:
-                    self.driver.node_delete_snapshot(node=self, name=name)
-                    for disk in self.disk_devices:
-                        if disk.device == 'disk':
-                            snap_disk = disk.volume
-                            # update disk on node
-                            disk.volume = disk.volume.backing_store
-                            disk.save()
-                            snap_disk.remove()
-                else:
-                    logger.error(
-                        "Cannot delete external snapshots with children")
-            else:
-                self.driver.node_delete_snapshot(node=self, name=name)
-
-    def set_vcpu(self, vcpu):
-        """Set vcpu count on node
-
-        param: vcpu: Integer
-            :rtype : None
-        """
-        if vcpu is not None and vcpu != self.vcpu:
-            self.vcpu = vcpu
-            self.driver.node_set_vcpu(node=self, vcpu=vcpu)
-            self.save()
-
-    def set_memory(self, memory):
-        """Set memory size on node
-
-        param: memory: Integer
-            :rtype : None
-        """
-        if memory is not None and memory != self.memory:
-            self.memory = memory
-            self.driver.node_set_memory(node=self, memory=memory * 1024)
-            self.save()
-
-    def attach_to_networks(self, network_names=None):
-        """Attache node to several networks
-
-
-        param: network_names: List
-            :rtype : None
-        """
-        if network_names is None:
-            network_names = settings.DEFAULT_INTERFACE_ORDER.split(',')
-        networks = [
-            self.environment.get_network(name=n) for n in network_names]
-        self.environment.create_interfaces_from_networks(networks=networks,
-                                                         node=self)
-
-    def attach_disks(self,
-                     disknames_capacity=None,
-                     format='qcow2', device='disk', bus='virtio',
-                     force_define=False):
-        """Attach several disks to node
-
-
-        param: disknames_capacity: Dict
-        param: format: String
-        param: device: String
-        param: bus: String
-        param: force_define: Bool
-            :rtype : None
-        """
-        if disknames_capacity is None:
-            disknames_capacity = {
-                'system': 50 * 1024 ** 3,
-                'swift': 50 * 1024 ** 3,
-                'cinder': 50 * 1024 ** 3,
-            }
-
-        for diskname, capacity in disknames_capacity.iteritems():
-            self.attach_disk(name=diskname,
-                             capacity=capacity,
-                             force_define=force_define)
-
-    def attach_disk(self, name, capacity, format='qcow2',
-                    device='disk', bus='virtio', force_define=False):
-        """Attach disk to node
-
-
-        param: disknames_capacity: Dict
-        param: format: String
-        param: device: String
-        param: bus: String
-        param: force_define: Bool
-            :rtype : DiskDevice
-        """
-        vol_name = "%s-%s" % (self.name, name)
-        disk = self.environment.add_empty_volume(node=self,
-                                                 name=vol_name,
-                                                 capacity=capacity,
-                                                 device=device,
-                                                 bus=bus)
-        if force_define:
-            disk.volume.define()
-        return disk
-
-    @classmethod
-    def node_create(cls, name, environment=None, role=None, vcpu=1,
-                    memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
-                    os_type='hvm', architecture='x86_64', boot=None):
-        """Create node
-
-        :rtype : Node
-        """
-        if not boot:
-            boot = ['network', 'cdrom', 'hd']
-        node = cls.objects.create(
-            name=name, environment=environment,
-            role=role, vcpu=vcpu, memory=memory,
-            has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
-            os_type=os_type, architecture=architecture, boot=json.dumps(boot)
+        Interface.interface_create(
+            node=self,
+            label=label,
+            l2_network_device=l2_network_device,
+            model=interface_model,
         )
-        return node
+
+    # NEW
+    def add_network_configs(self, network_configs):
+        for label, data in network_configs.items():
+            self.add_network_config(
+                label=label,
+                networks=data.get('networks', []),
+                aggregation=data.get('aggregation'),
+                parents=data.get('parents', []),
+            )
+
+    # NEW
+    def add_network_config(self, label, networks=None, aggregation=None,
+                           parents=None):
+        if networks is None:
+            networks = []
+        if parents is None:
+            parents = []
+        NetworkConfig.objects.create(
+            node=self,
+            label=label,
+            networks=networks,
+            aggregation=aggregation,
+            parents=parents,
+        )
+
+    # NEW
+    def add_volumes(self, volumes):
+        for volume in volumes:
+            self.add_volume(
+                name=volume['name'],
+                capacity=volume.get('capacity', 50) * 1024 ** 3,
+                device=volume.get('device', 'disk'),
+                bus=volume.get('bus', 'virtio'),
+                format=volume.get('format', 'qcow2'),
+                source_image=volume.get('source_image', None),
+            )
+
+    # NEW
+    def add_volume(self, name, capacity=None,
+                   device='disk', bus='virtio', format='qcow2',
+                   source_image=None):
+        if source_image:
+            capacity = _get_file_size(source_image)
+
+        cls = self.driver.get_model_class('Volume')
+        volume = cls.objects.create(
+            name=name,
+            capacity=capacity,
+            node=self,
+            format=format,
+            source_image=source_image,
+        )
+        DiskDevice.node_attach_volume(
+            node=self,
+            volume=volume,
+            device=device,
+            bus=bus,
+        )
+        return volume
+
+    # NEW
+    def get_volume(self, *args, **kwargs):
+        # return self.volume_set.get(*args, **kwargs)
+        volumes = self.volume_set.iterator()
+        return [volume for volume in volumes
+                for key in kwargs
+                if volume.__getattribute__(key) == kwargs[key]][0]
+
+    # NEW
+    def get_volumes(self, *args, **kwargs):
+        return self.volume_set.filter(*args, **kwargs)
+
+    # NEW
+    def erase_volumes(self):
+        for volume in self.get_volumes():
+            volume.erase()
