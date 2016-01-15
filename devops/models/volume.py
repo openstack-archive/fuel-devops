@@ -14,89 +14,52 @@
 
 from django.db import models
 
-from devops.models.base import DriverModel
+from devops.models.base import BaseModel
+from devops.models.base import choices
+from devops.models.base import ParamedModel
 
 
-class Volume(DriverModel):
+class Volume(ParamedModel, BaseModel):
     class Meta(object):
-        unique_together = ('name', 'environment')
+        unique_together = ('name', 'node')
         db_table = 'devops_volume'
+        app_label = 'devops'
 
-    environment = models.ForeignKey('Environment', null=True)
     backing_store = models.ForeignKey('self', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
-    uuid = models.CharField(max_length=255)
-    capacity = models.BigIntegerField(null=False)
-    format = models.CharField(max_length=255, null=False)
+    node = models.ForeignKey('Node', null=True)
+
+    @property
+    def driver(self):
+        return self.node.driver
 
     def define(self):
-        self.driver.volume_define(self)
         self.save()
 
     def erase(self):
-        self.remove(verbose=False)
-
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.driver.volume_exists(self):
-                self.driver.volume_delete(self)
         self.delete()
 
-    def get_capacity(self):
-        return self.driver.volume_capacity(self)
 
-    def get_format(self):
-        return self.driver.volume_format(self)
+class DiskDevice(models.Model):
+    class Meta(object):
+        db_table = 'devops_diskdevice'
+        app_label = 'devops'
 
-    def get_path(self):
-        return self.driver.volume_path(self)
-
-    def fill_from_exist(self):
-        self.capacity = self.get_capacity()
-        self.format = self.get_format()
-
-    def upload(self, path):
-        self.driver.volume_upload(self, path)
-
-    def get_allocation(self):
-        """Get allocated volume size
-
-        :rtype : int
-        """
-        return self.driver.volume_allocation(self)
+    node = models.ForeignKey('Node', null=False)
+    volume = models.ForeignKey('Volume', null=True)
+    device = choices('disk', 'cdrom')
+    type = choices('file')
+    bus = choices('virtio')
+    target_dev = models.CharField(max_length=255, null=False)
 
     @classmethod
-    def volume_get_predefined(cls, uuid):
-        """Get predefined volume
+    def node_attach_volume(cls, node, volume, device='disk', type='file',
+                           bus='virtio', target_dev=None):
+        """Attach volume to node
 
-        :rtype : Volume
-        """
-        try:
-            volume = cls.objects.get(uuid=uuid)
-        except cls.DoesNotExist:
-            volume = cls(uuid=uuid)
-        volume.fill_from_exist()
-        volume.save()
-        return volume
-
-    @classmethod
-    def volume_create_child(cls, name, backing_store, format=None,
-                            environment=None):
-        """Create new volume based on backing_store
-
-        :rtype : Volume
+        :rtype : DiskDevice
         """
         return cls.objects.create(
-            name=name, environment=environment,
-            capacity=backing_store.capacity,
-            format=format or backing_store.format, backing_store=backing_store)
-
-    @classmethod
-    def volume_create(cls, name, capacity, format='qcow2', environment=None):
-        """Create volume
-
-        :rtype : Volume
-        """
-        return cls.objects.create(
-            name=name, environment=environment,
-            capacity=capacity, format=format)
+            device=device, type=type, bus=bus,
+            target_dev=target_dev or node.next_disk_name(),
+            volume=volume, node=node)
