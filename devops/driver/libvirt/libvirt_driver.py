@@ -33,8 +33,29 @@ class Snapshot(object):
 
     def __init__(self, snapshot):
         self._snapshot = snapshot
+        self._domain = snapshot.getDomain()
+        self._xml_content = ''
         self._xml = snapshot.getXMLDesc(0)
         self._repr = ""
+
+    @property
+    def _xml(self):
+        return self._xml_content
+
+    @_xml.setter
+    def _xml(self, xml_content):
+        snapshot_xmltree = ET.fromstring(xml_content)
+        cpu_mode = snapshot_xmltree.findall('./domain/cpu')[0].get('mode')
+        # Get cpu model from domain definition as it is not available
+        # in snapshot XML for host-passthrough cpu mode
+        if cpu_mode == 'host-passthrough':
+            domain_xml = self._domain.XMLDesc(libvirt.VIR_DOMAIN_XML_UPDATE_CPU)
+            domain_xmltree = ET.fromstring(domain_xml)
+            cpu_element = domain_xmltree.find('./cpu')
+            domain_element = snapshot_xmltree.findall('./domain')[0]
+            domain_element.remove(domain_element.findall('./cpu')[0])
+            domain_element.append(cpu_element)
+        self._xml_content = ET.tostring(snapshot_xmltree)
 
     @property
     def _xml_tree(self):
@@ -448,7 +469,7 @@ class DevopsDriver(object):
     def node_set_snapshot_current(self, node, name):
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
-        snapshot_xml = snapshot.getXMLDesc()
+        snapshot_xml = Snapshot(snapshot)._xml
         domain.snapshotCreateXML(
             snapshot_xml,
             libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE |
