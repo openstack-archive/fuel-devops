@@ -184,7 +184,12 @@ class TestDevopsDriver(TestCase):
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
     def test_node_set_snapshot_current(self, mock_conn):
         xml_fuzzy = factories.fuzzy_string()
-        xml = '<{0}/>'.format(xml_fuzzy)
+        xml = '''<domainsnapshot>
+  <name>{0}</name>
+  <domain>
+    <cpu mode="host-model" />
+  </domain>
+</domainsnapshot>'''.format(xml_fuzzy)
         snapshot = mock.Mock()
         snapshot.getXMLDesc.return_value = xml
         domain = mock.Mock()
@@ -205,13 +210,16 @@ class TestDevopsDriver(TestCase):
 
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
     @mock.patch('devops.driver.libvirt.libvirt_driver.os')
-    def test_delete_snaphost_files(self, mock_os, mock_conn):
+    def test_delete_snapshot_files(self, mock_os, mock_conn):
         mock_os.path.isfile.return_value = True
         mock_os.remove.return_value = True
 
         memory_file = factories.fuzzy_string('/path/to/')
         snapshot_xml = '''<domainsnapshot>
   <memory file="{0}" snapshot="external"/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''.format(memory_file)
         snapshot = mock.Mock()
         snapshot.getXMLDesc.return_value = snapshot_xml
@@ -223,12 +231,15 @@ class TestDevopsDriver(TestCase):
 
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
     @mock.patch('devops.driver.libvirt.libvirt_driver.os')
-    def test_delete_snaphost_files_internal(self, mock_os, mock_conn):
+    def test_delete_snapshot_files_internal(self, mock_os, mock_conn):
         mock_os.path.isfile.return_value = True
         mock_os.remove.return_value = True
 
         snapshot_xml = '''<domainsnapshot>
   <memory snapshot="internal"/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''
         snapshot = mock.Mock()
         snapshot.getXMLDesc.return_value = snapshot_xml
@@ -239,9 +250,12 @@ class TestDevopsDriver(TestCase):
         self.assertEqual(mock_os.remove.called, False)
 
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
-    def test_node_delete_snaphost_internal(self, mock_conn):
+    def test_node_delete_snapshot_internal(self, mock_conn):
         snapshot_xml = '''<domainsnapshot>
   <memory snapshot="internal"/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''
         snapshot = mock.Mock()
         snapshot.numChildren.return_value = 0
@@ -265,10 +279,13 @@ class TestDevopsDriver(TestCase):
         'devops.driver.libvirt.libvirt_driver.DevopsDriver.'
         '_delete_snapshot_files')
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
-    def test_node_delete_snaphost_external_has_children(
+    def test_node_delete_snapshot_external_has_children(
             self, mock_conn, mock_delete_snapshot_files):
         snapshot_xml = '''<domainsnapshot>
   <memory snapshot="external"/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''
         snapshot = mock.Mock()
         snapshot.numChildren.return_value = 1
@@ -293,10 +310,11 @@ class TestDevopsDriver(TestCase):
         'devops.driver.libvirt.libvirt_driver.DevopsDriver.'
         '_delete_snapshot_files')
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
-    def test_node_delete_snaphost_external(self, mock_conn,
+    def test_node_delete_snapshot_external(self, mock_conn,
                                            mock_delete_snapshot_files):
         domain_xml = '''<domain>
     <name>{0}</name>
+    <cpu mode='host-model'/>
     <devices>
       <disk type='file' device='disk' snapshot='external'>
         <driver name='qemu' type='raw'/>
@@ -341,8 +359,15 @@ class TestDevopsDriver(TestCase):
 
     @mock.patch('devops.driver.libvirt.libvirt_driver.libvirt.open')
     def test_node_revert_snapshot_recreate_disks_has_children(self, mock_conn):
+        snapshot_xml = '''<domainsnapshot>
+  <memory snapshot="external"/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
+</domainsnapshot>'''
         snapshot = mock.Mock()
         snapshot.children_num = 1
+        snapshot.getXMLDesc.return_value = snapshot_xml
         domain = mock.Mock()
         domain.isActive.return_value = True
         domain.snapshotCreateXML.return_value = True
@@ -371,6 +396,9 @@ class TestDevopsDriver(TestCase):
       <source file='{1}'/>
     </disk>
   </disks>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''.format(disk1_file, disk2_file)
         snapshot = mock.Mock()
         snapshot.getXMLDesc.return_value = snapshot_xml
@@ -440,6 +468,7 @@ class TestDevopsDriver(TestCase):
         snapshot2_path = factories.fuzzy_string('/path/to/')
         domain_xml_tmpl = '''  <domain>
     <name>{0}</name>
+    <cpu mode='host-model'/>
     <devices>
       <disk type='file' device='disk' snapshot='external'>
         <driver name='qemu' type='raw'/>
@@ -509,6 +538,9 @@ class TestDevopsDriver(TestCase):
   <state>running</state>
   <memory snapshot="internal"/>
   <disks/>
+  <domain>
+    <cpu mode='host-model'/>
+  </domain>
 </domainsnapshot>'''
         snapshot = mock.Mock()
         snapshot.getXMLDesc.return_value = snapshot_xml
@@ -542,6 +574,7 @@ class TestDevopsDriver(TestCase):
         snapshot1_path = factories.fuzzy_string('/path/to/')
         domain_xml_tmpl = '''  <domain>
     <name>{0}</name>
+    <cpu mode='host-model'/>
     <devices>
       <disk type='file' device='disk' snapshot='external'>
         <driver name='qemu' type='raw'/>
@@ -605,6 +638,7 @@ class TestDevopsDriver(TestCase):
         snapshot2_path = factories.fuzzy_string('/path/to/')
         domain_xml_tmpl = '''  <domain>
     <name>{0}</name>
+    <cpu mode='host-model'/>
     <devices>
       <disk type='file' device='disk' snapshot='external'>
         <driver name='qemu' type='raw'/>
