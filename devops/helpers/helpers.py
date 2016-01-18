@@ -29,6 +29,7 @@ from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
+from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
 
 
@@ -163,10 +164,11 @@ def get_admin_ip(env):
 def get_slave_ip(env, node_mac_address):
     with get_admin_remote(env) as remote:
         ip = remote.execute(
-            "fuel nodes --user={user} --password={passwd} --node-id {mac} "
-            "| awk -F'|' 'END{{gsub(\" \", \"\", $5); print $5}}'".format(
-                user=SSH_CREDENTIALS['login'],
-                passwd=SSH_CREDENTIALS['password'],
+            "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
+            "fuel nodes --node-id {mac} | awk -F'|' "
+            "'END{{gsub(\" \", \"\", $5); print $5}}'".format(
+                user=KEYSTONE_CREDS['username'],
+                passwd=KEYSTONE_CREDS['password'],
                 mac=node_mac_address))['stdout']
     return ip[0].rstrip()
 
