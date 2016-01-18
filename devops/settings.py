@@ -46,6 +46,9 @@ DATABASES = {
     }
 }
 
+KEYSTONE_CREDS = {'username': os.environ.get('KEYSTONE_USERNAME', 'admin'),
+                  'password': os.environ.get('KEYSTONE_PASSWORD', 'admin')}
+
 SSH_CREDENTIALS = {
     'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
     'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
