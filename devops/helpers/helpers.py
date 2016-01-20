@@ -464,3 +464,37 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def deepgetattr(obj, attr, default=None, splitter='.', do_raise=False):
+    """Recurses through an attribute chain to get the ultimate value.
+
+    :type obj: object
+    :param obj: object instance to get attribute from
+    :type attr: str
+    :param attr: attributes joined by some symbol. e.g. 'a.b.c.d'
+    :type default: any
+    :param default: default value (returned only in case of
+                    AttributeError)
+    :type splitter: str
+    :param splitter: one or more symbols to be used to split attr
+                     parameter
+    :type do_raise: bool
+    :param do_raise: if True then instead of returning default value
+                     AttributeError will be raised
+
+    """
+    try:
+        return reduce(getattr, attr.split(splitter), obj)
+    except AttributeError:
+        if do_raise:
+            raise
+        return default
+
+
+def _underscored(*args):
+    """Joins multiple strings using uderscore symbol.
+
+       Skips empty strings.
+    """
+    return '_'.join(filter(bool, list(args)))
