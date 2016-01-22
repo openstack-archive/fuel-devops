@@ -12,17 +12,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+import functools
 
-from devops.models.driver import Driver
-from devops.models.environment import Environment
-from devops.models.group import Group
-from devops.models.network import Address
-from devops.models.network import Interface
-from devops.models.network import AddressPool
-from devops.models.network import NetworkPool
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import Volume
-from devops.models.volume import DiskDevice
+
+def lazy(fn):
+    """Lazy decorator.
+
+    Decorates a method which will be evalueted only one time. After that next
+    calls return the same value stored in "_lazy_{method_name}" without
+    calling the method.
+    """
+
+    # create lazy attr name "_lazy_{method_name}"
+    attr_name = '_lazy_' + fn.__name__
+
+    @functools.wraps(fn)
+    def _lazy(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+
+    return _lazy
+
+
+def lazy_property(fn):
+    return property(lazy(fn))
