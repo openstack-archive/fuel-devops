@@ -1,0 +1,107 @@
+$schema: 'http://json-schema.org/draft-05/schema#'
+description: Schema for devops environment template
+type: object
+required:
+  - template
+properties:
+    template:
+        type: object
+        required:
+          - devops_settings
+        properties:
+            devops_settings:
+                type: object
+                required:
+                  - env_name
+                  - address_pools
+                  - groups
+                properties:
+                    env_name:
+                        type: string
+                    address_pools:
+                        type: object
+                        patternProperties:
+                            '^\S+$':
+                                $ref: '#/definitions/address_pool'
+                    groups:
+                        type: array
+                        items:
+                            $ref: '#/definitions/group'
+                additionalProperties: False
+
+definitions:
+
+    # Global definitions
+
+    address_pool:
+        type: object
+        required:
+          - net
+        properties:
+            net:
+                type: string
+                pattern: '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:3[0-2]|[12][0-9]|[1-9])\:(?:3[0-2]|[12][0-9]|[1-9])$'
+            params:
+                type: object
+                properties:
+                    tag:
+                        type: integer
+        additionalProperties: False
+
+    group:
+        type: object
+        required:
+          - name
+          - driver
+          - network_pools
+          - l2_network_devices
+          - nodes
+        properties:
+            name:
+                type: string
+            driver:
+                type: object
+                properties:
+                    name:
+                        type: string
+                    params:
+                        type: object
+            network_pools:
+                type: object
+                patternProperties:
+                    '^\S+$':
+                        type: string
+                additionalProperties: False
+            l2_network_devices:
+                type: object
+                patternProperties:
+                    '^\S+$':
+                        $ref: '#/definitions/l2_network_device'
+                additionalProperties: False
+            nodes:
+                type: array
+                items:
+                    $ref: '#/definitions/node'
+        additionalProperties: False
+
+    l2_network_device:
+        type: object
+        required:
+          - address_pool
+        properties:
+            address_pool:
+                type: string
+
+    node:
+        type: object
+        required:
+          - name
+          - role
+          - params
+        properties:
+            name:
+                type: string
+            role:
+                type: string
+            params:
+                type: object

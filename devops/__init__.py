@@ -19,6 +19,9 @@ import logging.config
 
 __version__ = '2.9.15'
 
+MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(MODULE_DIR, 'templates')
+
 log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
             os.path.expanduser('~/.devops'),

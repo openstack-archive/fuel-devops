@@ -1,0 +1,131 @@
+driver_params:
+    type: object
+    properties:
+        connection_string:
+            type: string
+        storage_pool_name:
+            type: string
+        stp:
+            type: boolean
+        hpet:
+            type: boolean
+        use_host_cpu:
+            type: boolean
+        reboot_timeout:
+            type: integer
+        use_hugepages:
+            type: boolean
+        vnc_password:
+            type: string
+    additionalProperties: False
+
+l2_network_device:
+    type: object
+    required:
+      - address_pool
+      - dhcp
+      - has_pxe_server
+      - has_dhcp_server
+      - tftp_root_dir
+    properties:
+        address_pool:
+            type: string
+        dhcp:
+            type: boolean
+        forward:
+            type: object
+            properties:
+                mode:
+                    type: string
+                    enum:
+                      - !!null
+                      - nat
+                      - route
+                      - bridge
+                      - private
+                      - vepa
+                      - passthrough
+                      - hostdev
+            additionalProperties: False
+        has_pxe_server:
+            type: boolean
+        has_dhcp_server:
+            type: boolean
+        tftp_root_dir:
+            type: string
+    additionalProperties: False
+
+node_params:
+    type: object
+    properties:
+        vcpu:
+            type: integer
+        memory:
+            type: integer
+        boot:
+            type: array
+            items:
+                type: string
+                enum:
+                  - hd
+                  - cdrom
+                  - network
+            minItems: 1
+
+        volumes:
+            type: array
+            minItems: 1
+            items:
+                type: object
+                additionalProperties: False
+                properties:
+                    name:
+                        type: string
+                    capacity:
+                        type: integer
+                    format:
+                        type: string
+                        enum:
+                          - qcow2
+                          - raw
+
+                    device:
+                        type: string
+                        enum:
+                          - cdrom
+                          - disk
+
+                    bus:
+                        type: string
+                        enum:
+                          - ide
+                          - usb
+
+                    source_image:
+                        type: string
+
+        interfaces:
+            type: array
+            items:
+                type: object
+                properties:
+                    label:
+                        type: string
+                    l2_network_device:
+                        type: string
+                    interface_model:
+                        type: string
+
+                additionalProperties: False
+
+        network_config:
+            type: object
+            '^\\S+$':
+                type: object
+                additionalProperties: False
+                properties:
+                    networks:
+                        type: array
+                        items:
+                            type: string
+    additionalProperties: False
