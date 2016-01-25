@@ -186,7 +186,7 @@ class Ntp(object):
         # Speedup time synchronization for slaves that use admin node as a peer
         if admin_ip:
             cmd = ("sed -i 's/^server {0} .*/server {0} minpoll 3 maxpoll 5 "
-                   "ibrust/' /etc/ntp.conf".format(admin_ip))
+                   "iburst/' /etc/ntp.conf".format(admin_ip))
             remote.execute(cmd)
 
         return cls
