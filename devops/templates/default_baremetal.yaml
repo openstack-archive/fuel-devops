@@ -1,0 +1,50 @@
+aliases:
+
+  dynamic_address_pool:
+   - &pool_default !os_env POOL_DEFAULT, 10.109.0.0/16:24
+
+  default_interface_model:
+   - &interface_model !os_env INTERFACE_MODEL, e1000
+
+template:
+  devops_settings:
+    env_name: !os_env ENV_NAME
+
+    address_pools:
+    # Network pools used by the environment
+      fuelweb_admin-pool01:
+        net: *pool_default
+        params:
+          tag: 0
+      public-pool01:
+        net: *pool_default
+        params:
+          tag: 0
+      storage-pool01:
+        net: *pool_default
+        params:
+          tag: 101
+      management-pool01:
+        net: *pool_default
+        params:
+          tag: 102
+      private-pool01:
+        net: *pool_default
+        params:
+          tag: 103
+    groups:
+     - name: rack-01
+       driver:
+         name: devops.driver.baremetal.ipmi_driver
+
+       nodes:
+        - name: admin        # Custom name of baremetal for Fuel admin node
+          role: fuel_master  # Fixed role for Fuel master node properties
+          params:
+            ipmi_user: mosqa
+            ipmi_password: password
+            ipmi_previlegies: OPERATOR
+            ipmi_host: c1-kvm.host-test.com
+            ipmi_lan_interface: lanplus
+            ipmi_port: 623
+            impi_cmd: ipmitool
