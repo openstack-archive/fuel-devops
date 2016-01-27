@@ -162,7 +162,7 @@ class DevopsDriver(object):
                      "ks.device='{3}' "
                      "repo=nfs:{0}:{1}/tftpboot/fuel/ ip={2} "
                      "netmask=255.255.255.0 dns1={0} "
-                     "hostname=fuel.mirantis.com ".
+                     "hostname=fuel.domain.local ".
                      format(self.ip_install_server,
                             self.ipmi_driver_root_dir,
                             self.ip_node_admin,
