@@ -88,7 +88,7 @@ class Shell(object):
         self.env.start()
 
     def do_destroy(self):
-        self.env.destroy(verbose=False)
+        self.env.destroy()
 
     def do_suspend(self):
         self.env.suspend(verbose=False)
