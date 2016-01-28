@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name='fuel-devops',
-    version='2.9.17',
+    version='3.0.0',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
@@ -38,6 +38,7 @@ setup(
         'ipaddr',
         'paramiko',
         'django<1.7',
+        'jsonfield',
         'psycopg2',
         'south',
         'PyYAML',
@@ -48,5 +49,6 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'six',
     ]
 )
