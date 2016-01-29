@@ -1,3 +1,10 @@
+.. _templates:
+
+Using templates
+===============
+
+
+
 ==============================
 Using !os_env and !include tags
 ==============================
