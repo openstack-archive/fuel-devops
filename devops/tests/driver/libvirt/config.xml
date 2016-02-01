@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<node>
+
+
+  <network>
+    <name>private</name>
+    <uuid>004b22212d78c30f5aa5f03c87d21e69</uuid>
+    <bridge name="brpriv"/>
+    <ip address="192.168.124.1" netmask="255.255.255.0">
+      <dhcp>
+        <range start="192.168.124.128" end="192.168.124.253"/>
+      </dhcp>
+    </ip>
+  </network>
+
+
+<device>
+  <name>File_test_device</name>
+  <capability type='system'>
+    <hardware>
+      <vendor>Libvirt</vendor>
+      <version>Test driver</version>
+      <serial>123456</serial>
+      <uuid>11111111-2222-3333-4444-555555555555</uuid>
+    </hardware>
+    <firmware>
+      <vendor>Libvirt</vendor>
+      <version>Test Driver</version>
+      <release_date>01/22/2007</release_date>
+    </firmware>
+  </capability>
+</device>
+
+
+  <cpu>
+    <mhz>6000</mhz>
+    <model>i986</model>
+    <active>50</active>
+    <nodes>4</nodes>
+    <sockets>4</sockets>
+    <cores>4</cores>
+    <threads>2</threads>
+  </cpu>
+  <memory>8192000</memory>
+</node>

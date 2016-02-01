@@ -15,10 +15,14 @@
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
+from devops.models.driver import Driver
 from devops.models.environment import Environment
+from devops.models.group import Group
 from devops.models.network import Address
-from devops.models.volume import DiskDevice
 from devops.models.network import Interface
-from devops.models.network import AddressPool as Network
+from devops.models.network import AddressPool
+from devops.models.network import NetworkPool
+from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
 from devops.models.volume import Volume
+from devops.models.volume import DiskDevice
