@@ -23,13 +23,17 @@ import libvirt
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import _underscored
+from devops.helpers.helpers import deepgetattr
 from devops.helpers.lazy import lazy
 from devops.helpers.lazy import lazy_property
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
 from devops.models.base import ParamField
+from devops.models.base import ParamMultiField
 from devops.models.driver import Driver as DriverBase
+from devops.models.network import L2NetworkDevice as L2NetworkDeviceBase
 
 
 class _LibvirtManagerBase(object):
@@ -195,6 +199,120 @@ class Driver(DriverBase):
         return self.conn.getLibVersion()
 
 
+class L2NetworkDevice(L2NetworkDeviceBase):
+
+    uuid = ParamField()
+
+    forward = ParamMultiField(
+        mode=ParamField(
+            choices=(None, 'nat', 'route', 'bridge', 'private',
+                     'vepa', 'passthrough', 'hostdev'),
+        )
+    )
+    dhcp = ParamField(default=False)
+
+    has_pxe_server = ParamField(default=False)
+    has_dhcp_server = ParamField(default=False)
+    tftp_root_dir = ParamField()
+
+    @property
+    def _libvirt_network(self):
+        return self.driver.conn.networkLookupByUUIDString(self.uuid)
+
+    @retry()
+    def bridge_name(self):
+        return self._libvirt_network.bridgeName()
+
+    @retry()
+    def network_name(self):
+        """Get network name
+
+            :rtype : String
+        """
+        return self._libvirt_network.name()
+
+    @retry()
+    def is_active(self):
+        """Check if network is active
+
+        :type network_uuid: str
+            :rtype : Boolean
+        """
+        return self._libvirt_network.isActive()
+
+    @retry()
+    def define(self):
+        network_name = _underscored(
+            deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+
+        addresses = []
+        for interface in self.interfaces:
+            for address in interface.addresses:
+                ip_addr = ipaddr.IPAddress(address.ip_address)
+                if ip_addr in self.address_pool.ip_network:
+                    addresses.append(dict(
+                        mac=str(interface.mac_address),
+                        ip=str(address.ip_address),
+                        name=interface.node.name
+                    ))
+
+        xml = LibvirtXMLBuilder.build_network_xml(
+            network_name=network_name,
+            bridge_id=self.id,
+            addresses=addresses,
+            forward=self.forward.mode,
+            ip_network=self.address_pool.ip_network,
+            stp=self.driver.stp,
+            has_pxe_server=self.has_pxe_server,
+            has_dhcp_server=self.has_dhcp_server,
+            tftp_root_dir=self.tftp_root_dir,
+        )
+        ret = self.driver.conn.networkDefineXML(xml)
+        ret.setAutostart(True)
+        self.uuid = ret.UUIDString()
+
+        super(L2NetworkDevice, self).define()
+
+    def start(self):
+        self.create(verbose=False)
+
+    @retry()
+    def create(self, verbose=False):
+        if verbose or not self.is_active():
+            self._libvirt_network.create()
+
+    @retry()
+    def destroy(self):
+        self._libvirt_network.destroy()
+
+    @retry()
+    def remove(self, verbose=False):
+        if verbose or self.uuid:
+            if verbose or self.exists():
+                if self.is_active():
+                    self._libvirt_network.destroy()
+                self._libvirt_network.undefine()
+        super(L2NetworkDevice, self).remove(verbose)
+
+    @retry()
+    def exists(self):
+        """Check if network exists
+
+        :type network_uuid: str
+            :rtype : Boolean
+        """
+        try:
+            self.driver.conn.networkLookupByUUIDString(self.uuid)
+            return True
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
+                return False
+            else:
+                raise
+
+
 class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
@@ -231,33 +349,6 @@ class DevopsDriver(object):
         return self.xml_builder._get_name(*kwargs)
 
     @retry()
-    def network_bridge_name(self, network):
-        """Get bridge name from UUID
-
-        :type network: Network
-            :rtype : String
-        """
-        return self.conn.networkLookupByUUIDString(network.uuid).bridgeName()
-
-    @retry()
-    def network_name(self, network):
-        """Get network name from UUID
-
-        :type network: Network
-            :rtype : String
-        """
-        return self.conn.networkLookupByUUIDString(network.uuid).name()
-
-    @retry()
-    def network_active(self, network):
-        """Check if network is active
-
-        :type network: Network
-            :rtype : Boolean
-        """
-        return self.conn.networkLookupByUUIDString(network.uuid).isActive()
-
-    @retry()
     def node_active(self, node):
         """Check if node is active
 
@@ -265,22 +356,6 @@ class DevopsDriver(object):
             :rtype : Boolean
         """
         return self.conn.lookupByUUIDString(node.uuid).isActive()
-
-    @retry()
-    def network_exists(self, network):
-        """Check if network exists
-
-        :type network: Network
-            :rtype : Boolean
-        """
-        try:
-            self.conn.networkLookupByUUIDString(network.uuid)
-            return True
-        except libvirt.libvirtError as e:
-            if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
-                return False
-            else:
-                raise
 
     @retry()
     def node_exists(self, node):
@@ -324,45 +399,6 @@ class DevopsDriver(object):
                 return False
             else:
                 raise
-
-    @retry()
-    def network_define(self, network):
-        """Define network
-
-        :type network: Network
-            :rtype : None
-        """
-        ret = self.conn.networkDefineXML(
-            self.xml_builder.build_network_xml(network))
-        ret.setAutostart(True)
-        network.uuid = ret.UUIDString()
-
-    @retry()
-    def network_destroy(self, network):
-        """Destroy network
-
-        :type network: Network
-            :rtype : None
-        """
-        self.conn.networkLookupByUUIDString(network.uuid).destroy()
-
-    @retry()
-    def network_undefine(self, network):
-        """Undefine network
-
-        :type network: Network
-            :rtype : None
-        """
-        self.conn.networkLookupByUUIDString(network.uuid).undefine()
-
-    @retry()
-    def network_create(self, network):
-        """Create network
-
-        :type network: Network
-            :rtype : None
-        """
-        self.conn.networkLookupByUUIDString(network.uuid).create()
 
     @retry()
     def node_define(self, node):
