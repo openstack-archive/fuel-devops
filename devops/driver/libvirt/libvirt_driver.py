@@ -34,6 +34,7 @@ from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
 from devops.models.driver import Driver as DriverBase
 from devops.models.network import L2NetworkDevice as L2NetworkDeviceBase
+from devops.models.volume import Volume as VolumeBase
 
 
 class _LibvirtManagerBase(object):
@@ -311,6 +312,146 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                 return False
             else:
                 raise
+
+
+class Volume(VolumeBase):
+
+    uuid = ParamField()
+    capacity = ParamField(default=None)
+    format = ParamField(default='qcow2', choices=('qcow2', 'raw'))
+    source_image = ParamField(default=None)
+
+    @property
+    def _libvirt_volume(self):
+        return self.driver.conn.storageVolLookupByKey(self.uuid)
+
+    @retry()
+    def define(self):
+        name = _underscored(
+            deepgetattr(self, 'node.group.environment.name'),
+            deepgetattr(self, 'node.name'),
+            self.name,
+        )
+
+        backing_store_path = None
+        backing_store_format = None
+        if self.backing_store is not None:
+            backing_store_path = self.backing_store.get_path()
+            backing_store_format = self.backing_store.format
+
+        if self.source_image is not None:
+            capacity = _get_file_size(self.source_image)
+        else:
+            capacity = self.capacity
+
+        pool_name = self.driver.storage_pool_name
+        pool = self.driver.conn.storagePoolLookupByName(pool_name)
+        xml = LibvirtXMLBuilder.build_volume_xml(
+            name=name,
+            capacity=capacity,
+            format=self.format,
+            backing_store_path=backing_store_path,
+            backing_store_format=backing_store_format,
+        )
+        libvirt_volume = pool.createXML(xml, 0)
+        self.uuid = libvirt_volume.key()
+        super(Volume, self).define()
+
+        # Upload predefined image to the volume
+        if self.source_image is not None:
+            self.upload(self.source_image)
+
+    @retry()
+    def remove(self, verbose=False):
+        if verbose or self.uuid:
+            if verbose or self.exists():
+                self._libvirt_volume.delete(0)
+        super(Volume, self).remove(verbose)
+
+    @retry()
+    def get_capacity(self):
+        """Get volume capacity"""
+        return self._libvirt_volume.info()[1]
+
+    @retry()
+    def get_format(self):
+        xml_desc = ET.fromstring(self._libvirt_volume.XMLDesc(0))
+        return xml_desc.find('target/format[@type]').get('type')
+
+    @retry()
+    def get_path(self):
+        return self._libvirt_volume.path()
+
+    def fill_from_exist(self):
+        self.capacity = self.get_capacity()
+        self.format = self.get_format()
+
+    @retry(count=2)
+    def upload(self, path):
+        size = _get_file_size(path)
+        with open(path, 'rb') as fd:
+            stream = self.driver.conn.newStream(0)
+            self._libvirt_volume.upload(
+                stream=stream, offset=0,
+                length=size, flags=0)
+            stream.sendAll(self.chunk_render, fd)
+            stream.finish()
+
+    def chunk_render(self, stream, size, fd):
+        return fd.read(size)
+
+    @retry()
+    def get_allocation(self):
+        """Get allocated volume size
+
+        :rtype : int
+        """
+        return self._libvirt_volume.info()[2]
+
+    @retry()
+    def exists(self):
+        """Check if volume exists"""
+        try:
+            self.driver.conn.storageVolLookupByKey(self.uuid)
+            return True
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_VOL:
+                return False
+            else:
+                raise
+
+    # Changed behaviour. It is not a @classmethod anymore; thus
+    # 'backing_store' variable deprecated, child of the current snapshot
+    # will be created.
+    def create_child(self, name):
+        """Create new volume based on current volume
+
+        :rtype : Volume
+        """
+        cls = self.driver.get_model_class('Volume')
+        return cls.objects.create(
+            name=name,
+            capacity=self.capacity,
+            node=self.node,
+            format=self.format,
+            backing_store=self,
+        )
+
+    # TO REWRITE, LEGACY, for fuel-qa compatibility
+    # Used for EXTERNAL SNAPSHOTS
+    @classmethod
+    def volume_get_predefined(cls, uuid):
+        """Get predefined volume
+
+        :rtype : Volume
+        """
+        try:
+            volume = cls.objects.get(uuid=uuid)
+        except cls.DoesNotExist:
+            volume = cls(uuid=uuid)
+        volume.fill_from_exist()
+        volume.save()
+        return volume
 
 
 class DevopsDriver(object):
@@ -826,79 +967,3 @@ class DevopsDriver(object):
         domain = self.conn.lookupByUUIDString(node.uuid)
         domain.setMaxMemory(memory)
         domain.setMemoryFlags(memory, 2)
-
-    @retry()
-    def volume_define(self, volume, pool=None):
-        """Define volume
-
-        :type volume: Volume
-        :type pool: String
-            :rtype : None
-        """
-        if pool is None:
-            pool = self.storage_pool_name
-        libvirt_volume = self.conn.storagePoolLookupByName(pool).createXML(
-            self.xml_builder.build_volume_xml(volume), 0)
-        volume.uuid = libvirt_volume.key()
-
-    @retry()
-    def volume_list(self, pool=None):
-        if pool is None:
-            pool = self.storage_pool_name
-        return self.conn.storagePoolLookupByName(pool).listAllVolumes()
-
-    @retry()
-    def volume_allocation(self, volume):
-        """Get volume allocation
-
-        :type volume: Volume
-            :rtype : Long
-        """
-        return self.conn.storageVolLookupByKey(volume.uuid).info()[2]
-
-    @retry()
-    def volume_path(self, volume):
-        return self.conn.storageVolLookupByKey(volume.uuid).path()
-
-    def chunk_render(self, stream, size, fd):
-        return fd.read(size)
-
-    @retry(count=2)
-    def volume_upload(self, volume, path):
-        size = _get_file_size(path)
-        with open(path, 'rb') as fd:
-            stream = self.conn.newStream(0)
-            self.conn.storageVolLookupByKey(volume.uuid).upload(
-                stream=stream, offset=0,
-                length=size, flags=0)
-            stream.sendAll(self.chunk_render, fd)
-            stream.finish()
-
-    @retry()
-    def volume_delete(self, volume):
-        """Delete volume
-
-        :type volume: Volume
-            :rtype : None
-        """
-        self.conn.storageVolLookupByKey(volume.uuid).delete(0)
-
-    @retry()
-    def volume_capacity(self, volume):
-        """Get volume capacity
-
-        :type volume: Volume
-            :rtype : Long
-        """
-        return self.conn.storageVolLookupByKey(volume.uuid).info()[1]
-
-    @retry()
-    def volume_format(self, volume):
-        """Get volume format
-
-        :type volume: Volume
-            :rtype : String
-        """
-        xml_desc = ET.fromstring(
-            self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
-        return xml_desc.find('target/format[@type]').get('type')
