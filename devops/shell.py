@@ -17,7 +17,6 @@ import collections
 import os
 import sys
 
-import ipaddr
 import tabulate
 
 import devops
@@ -25,8 +24,9 @@ from devops.helpers.helpers import _get_file_size
 from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_admin_config
+from devops.helpers.templates import create_devops_config
+from devops.helpers.templates import get_devops_config
 from devops.models import Environment
-from devops.models.network import AddressPool as Network
 from devops import settings
 
 
@@ -170,31 +170,54 @@ class Shell(object):
         print(devops.__version__)
 
     def do_create(self):
-        env_name = self.params.name
+        config = create_devops_config(
+            boot_from='cdrom',
+            env_name=self.params.name,
+            admin_vcpu=self.params.admin_vcpu_count,
+            admin_memory=self.params.admin_ram_size,
+            admin_sysvolume_capacity=self.params.admin_disk_size,
+            admin_iso_path=self.params.iso_path,
+            nodes_count=self.params.node_count,
+            slave_vcpu=self.params.vcpu_count,
+            slave_memory=self.params.ram_size,
+            slave_volume_capacity=settings.NODE_VOLUME_SIZE,
+            second_volume_capacity=self.params.second_disk_size,
+            third_volume_capacity=self.params.third_disk_size,
+            use_all_disks=settings.USE_ALL_DISKS,
+            ironic_nodes_count=settings.IRONIC_NODES_COUNT,
+            networks_bonding=settings.BONDING,
+            networks_bondinginterfaces=settings.BONDING_INTERFACES,
+            networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
+            networks_nodegroups=settings.NODEGROUPS,
+            networks_interfaceorder=settings.INTERFACE_ORDER,
+            networks_pools=dict(admin=self.params.net_pool.split(':'),
+                                public=self.params.net_pool.split(':'),
+                                management=self.params.net_pool.split(':'),
+                                private=self.params.net_pool.split(':'),
+                                storage=self.params.net_pool.split(':')),
+            networks_forwarding=settings.FORWARDING,
+            networks_dhcp=settings.DHCP,
+        )
+        self._create_env_from_config(config)
+
+    def do_create_env(self):
+        config = get_devops_config(self.params.env_config_name)
+        self._create_env_from_config(config)
+
+    def _create_env_from_config(self, config):
+        env_name = config['template']['devops_settings']['env_name']
         for env in Environment.list_all():
             if env.name == env_name:
                 print("Please, set another environment name")
                 raise SystemExit()
-        self.env = Environment.create(env_name)
-        networks, prefix = self.params.net_pool.split(':')
-        Network.default_pool = Network.create_network_pool(
-            networks=[ipaddr.IPNetwork(networks)],
-            prefix=int(prefix))
-        networks = Network.create_networks(environment=self.env)
-        # We need to define the networks here because they are quieried by the
-        # admin_add function.
-        for network in networks:
-            network.define()
-        admin_node = self.admin_add(networks=networks)
-        # define the slave nodes since the Environment define no longer defines
-        # the networks, volumes and nodes by default and we need them to be
-        # created for this function
-        self.do_slave_add(force_define=True)
+
+        self.env = Environment.create_environment(config)
         self.env.define()
-        admin_node.disk_devices.get(device='cdrom').volume.upload(
-            self.params.iso_path)
-        for net in self.env.get_networks():
-            net.start()
+
+        # Start all l2 network devices
+        for group in self.env.get_groups():
+            for net in group.get_l2_network_devices():
+                net.start()
 
     def do_slave_add(self, force_define=True):
         vcpu = self.params.vcpu_count
@@ -316,6 +339,7 @@ class Shell(object):
         'revert-resume': do_revert_resume,
         'version': do_version,
         'create': do_create,
+        'create-env': do_create_env,
         'slave-add': do_slave_add,
         'slave-change': do_slave_change,
         'slave-remove': do_slave_remove,
@@ -333,6 +357,12 @@ class Shell(object):
         name_parser.add_argument('name', help='environment name',
                                  default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
+        env_config_name_parser = argparse.ArgumentParser(add_help=False)
+        env_config_name_parser.add_argument('env_config_name',
+                                            help='environment template name',
+                                            default=os.environ.get(
+                                                'DEVOPS_SETTINGS_TEMPLATE'))
+
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
         snapshot_name_parser.add_argument('snapshot-name',
                                           help='snapshot name',
@@ -519,9 +549,14 @@ class Shell(object):
                                        admin_vcpu_parser,
                                        second_disk_size,
                                        third_disk_size],
+                              help="Create a new environment (DEPRECATED)",
+                              description="Create an environment by using "
+                                          "cli options"),
+        subparsers.add_parser('create-env',
+                              parents=[env_config_name_parser],
                               help="Create a new environment",
-                              description="Create an environment with "
-                              "the Fuel Master node and slaves"),
+                              description="Create an environment from a "
+                                          "template file"),
         subparsers.add_parser('slave-add',
                               parents=[name_parser, node_count,
                                        ram_parser, vcpu_parser,
