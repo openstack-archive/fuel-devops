@@ -38,6 +38,7 @@ setup(
         'ipaddr',
         'paramiko',
         'django<1.7',
+        'jsonfield',
         'psycopg2',
         'south',
         'PyYAML',
@@ -48,5 +49,6 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'six',
     ]
 )
