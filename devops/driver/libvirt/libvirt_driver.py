@@ -45,17 +45,19 @@ class Snapshot(object):
     @_xml.setter
     def _xml(self, xml_content):
         snapshot_xmltree = ET.fromstring(xml_content)
-        cpu_mode = snapshot_xmltree.findall('./domain/cpu')[0].get('mode')
-        # Get cpu model from domain definition as it is not available
-        # in snapshot XML for host-passthrough cpu mode
-        if cpu_mode == 'host-passthrough':
-            domain_xml = self._domain.XMLDesc(
-                libvirt.VIR_DOMAIN_XML_UPDATE_CPU)
-            domain_xmltree = ET.fromstring(domain_xml)
-            cpu_element = domain_xmltree.find('./cpu')
-            domain_element = snapshot_xmltree.findall('./domain')[0]
-            domain_element.remove(domain_element.findall('./cpu')[0])
-            domain_element.append(cpu_element)
+        cpu = snapshot_xmltree.findall('./domain/cpu')
+        if cpu and 'mode' in cpu[0].attrib:
+            cpu_mode = cpu[0].get('mode')
+            # Get cpu model from domain definition as it is not available
+            # in snapshot XML for host-passthrough cpu mode
+            if cpu_mode == 'host-passthrough':
+                domain_xml = self._domain.XMLDesc(
+                    libvirt.VIR_DOMAIN_XML_UPDATE_CPU)
+                domain_xmltree = ET.fromstring(domain_xml)
+                cpu_element = domain_xmltree.find('./cpu')
+                domain_element = snapshot_xmltree.findall('./domain')[0]
+                domain_element.remove(domain_element.findall('./cpu')[0])
+                domain_element.append(cpu_element)
         self._xml_content = ET.tostring(snapshot_xmltree)
 
     @property
