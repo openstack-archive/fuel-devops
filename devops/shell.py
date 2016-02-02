@@ -196,6 +196,20 @@ class Shell(object):
         for net in self.env.get_networks():
             net.start()
 
+    def do_admin_add(self):
+        '''Add new admin node in existent environment'''
+        env = Environment.objects.get(name=self.params.name)
+        self.check_iso(self.params.iso_path)
+        admin_node = create_admin_config(
+            admin_vcpu=self.params.admin_vcpu_count,
+            admin_memory=self.params.admin_ram_size,
+            admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
+            admin_iso_path=self.params.iso_path,
+            boot_from='cdrom',
+            interfaceorder=settings.INTERFACE_ORDER)
+        admin_node["name"] = self.params.admin_name
+        env.create_node(admin_node)
+
     def do_slave_add(self, force_define=True):
         vcpu = self.params.vcpu_count
         memory = self.params.ram_size
@@ -264,15 +278,18 @@ class Shell(object):
         admin_node.await("admin", timeout=10 * 60)
         node_manager.admin_wait_bootstrap(3000, self.env)
 
+    def check_iso(self, iso_path):
+        if not (_get_file_size(iso_path) > 0):
+            print("Please, set correct ISO file")
+            sys.exit(1)
+
     def admin_add(self, networks=None):
         vcpu = self.params.admin_vcpu_count
         ram = self.params.admin_ram_size
         iso_path = self.params.iso_path
-        iso_size = _get_file_size(iso_path)
 
-        if not (iso_size > 0):
-            print("Please, set correct ISO file")
-            sys.exit(1)
+        self.check_iso(iso_path)
+
         if networks is None:
             networks = []
             interfaces = settings.INTERFACE_ORDER
@@ -317,6 +334,7 @@ class Shell(object):
         'version': do_version,
         'create': do_create,
         'slave-add': do_slave_add,
+        'admin-add': do_admin_add,
         'slave-change': do_slave_change,
         'slave-remove': do_slave_remove,
         'admin-setup': do_admin_setup,
@@ -371,6 +389,11 @@ class Shell(object):
         admin_vcpu_parser.add_argument('--admin-vcpu', dest='admin_vcpu_count',
                                        help='Select admin node VCPU count',
                                        default=2, type=int)
+        admin_name_parser = argparse.ArgumentParser(add_help=False)
+        admin_name_parser.add_argument('--admin-name',
+                                       dest='admin_name',
+                                       help='Select new admin node name',
+                                       type=str)
         change_admin_ram_parser = argparse.ArgumentParser(add_help=False)
         change_admin_ram_parser.add_argument('--admin-ram',
                                              dest='admin_ram_size',
@@ -568,6 +591,12 @@ class Shell(object):
                               help="Reset (restart) node in environment",
                               description="Reset a separate node in "
                                           "environment")
+        subparsers.add_parser("admin-add",
+                              parents=[name_parser, admin_name_parser,
+                                       admin_ram_parser, admin_vcpu_parser,
+                                       iso_path_parser],
+                              help="Add admin node in existent environment",
+                              description="Add new admin node ")
         if len(self.args) == 0:
             self.args = ['-h']
         return parser.parse_args(self.args)
