@@ -26,7 +26,7 @@ from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_admin_config
 from devops.models import Environment
-from devops.models.network import Network
+from devops.models.network import AddressPool as Network
 from devops import settings
 
 
