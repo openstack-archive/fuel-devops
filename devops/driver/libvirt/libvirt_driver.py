@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,20 +13,40 @@
 #    under the License.
 
 import datetime
+import os
 from time import sleep
 import xml.etree.ElementTree as ET
 
+from django.conf import settings
+from django.utils.functional import cached_property
 import ipaddr
 import libvirt
-import os
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
+from devops.models.base import ParamField
+from devops.models.driver import Driver as DriverBase
 
-from django.conf import settings
+
+class _LibvirtManager(object):
+
+    def __init__(self):
+        libvirt.virInitialize()
+        self.connections = {}
+
+    def get_connection(self, connection_string):
+        if connection_string not in self.connections:
+            conn = libvirt.open(connection_string)
+            self.connections[connection_string] = conn
+        else:
+            conn = self.connections[connection_string]
+        return conn
+
+
+LibvirtManager = _LibvirtManager()
 
 
 class Snapshot(object):
@@ -115,6 +135,70 @@ class Snapshot(object):
         return self._repr
 
 
+class Driver(DriverBase):
+    """libvirt driver
+
+    :param use_host_cpu: When creating nodes, should libvirt's
+        CPU "host-model" mode be used to set CPU settings. If set to False,
+        default mode ("custom") will be used.  (default: True)
+    """
+
+    connection_string = ParamField(default="qemu:///system")
+    storage_pool_name = ParamField(default="default")
+    stp = ParamField(default=True)
+    hpet = ParamField(default=True)
+    use_host_cpu = ParamField(default=True)
+    reboot_timeout = ParamField()
+    use_hugepages = ParamField(default=False)
+    vnc_password = ParamField()
+
+    @cached_property
+    def conn(self):
+        """Connection to libvirt api"""
+        return LibvirtManager.get_connection(self.connection_string)
+
+    def get_capabilities(self):
+        """Get host capabilities
+
+        This method is deprecated. Use `capabilities` property instead.
+
+        :rtype : ET
+        """
+        return self.capabilities
+
+    @cached_property
+    @retry()
+    def capabilities(self):
+        return ET.fromstring(self.conn.getCapabilities())
+
+    @retry()
+    def node_list(self):
+        # virConnect.listDefinedDomains() only returns stopped domains
+        #   https://bugzilla.redhat.com/show_bug.cgi?id=839259
+        return [item.name() for item in self.conn.listAllDomains()]
+
+    @retry()
+    def get_allocated_networks(self):
+        """Get list of allocated networks
+
+            :rtype : List
+        """
+        allocated_networks = []
+        for network_name in self.conn.listDefinedNetworks():
+            et = ET.fromstring(
+                self.conn.networkLookupByName(network_name).XMLDesc(0))
+            ip = et.find('ip[@address]')
+            if ip is not None:
+                address = ip.get('address')
+                prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
+                allocated_networks.append(ipaddr.IPNetwork(
+                    "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
+        return allocated_networks
+
+    def get_libvirt_version(self):
+        return self.conn.getLibVersion()
+
+
 class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
@@ -149,19 +233,6 @@ class DevopsDriver(object):
 
     def _get_name(self, *kwargs):
         return self.xml_builder._get_name(*kwargs)
-
-    def get_libvirt_version(self):
-        return self.conn.getLibVersion()
-
-    @retry()
-    def get_capabilities(self):
-        """Get host capabilities
-
-        :rtype : ET
-        """
-        if self.capabilities is None:
-            self.capabilities = self.conn.getCapabilities()
-        return ET.fromstring(self.capabilities)
 
     @retry()
     def network_bridge_name(self, network):
@@ -389,12 +460,6 @@ class DevopsDriver(object):
             :rtype : None
         """
         self.conn.lookupByUUIDString(node.uuid).create()
-
-    @retry()
-    def node_list(self):
-        # virConnect.listDefinedDomains() only returns stopped domains
-        #   https://bugzilla.redhat.com/show_bug.cgi?id=839259
-        return [item.name() for item in self.conn.listAllDomains()]
 
     @retry()
     def node_reset(self, node):
@@ -805,23 +870,3 @@ class DevopsDriver(object):
         xml_desc = ET.fromstring(
             self.conn.storageVolLookupByKey(volume.uuid).XMLDesc(0))
         return xml_desc.find('target/format[@type]').get('type')
-
-    @retry()
-    def get_allocated_networks(self):
-        """Get list of allocated networks
-
-            :rtype : List
-        """
-        if self.allocated_networks is None:
-            allocated_networks = []
-            for network_name in self.conn.listDefinedNetworks():
-                et = ET.fromstring(
-                    self.conn.networkLookupByName(network_name).XMLDesc(0))
-                ip = et.find('ip[@address]')
-                if ip is not None:
-                    address = ip.get('address')
-                    prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
-                    allocated_networks.append(ipaddr.IPNetwork(
-                        "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
-            self.allocated_networks = allocated_networks
-        return self.allocated_networks
