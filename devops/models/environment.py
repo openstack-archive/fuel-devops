@@ -26,10 +26,10 @@ from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
 from devops.models.base import DriverModel
-from devops.models.network import DiskDevice
+from devops.models.network import AddressPool as Network
 from devops.models.network import Interface
-from devops.models.network import Network
 from devops.models.node import Node
+from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
 
 
