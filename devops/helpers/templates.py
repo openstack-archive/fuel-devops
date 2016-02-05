@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -91,14 +91,16 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
         admin_interfaces = [
             {
                 'label': label,
-                'l2_network_device': ifaces[label]
+                'l2_network_device': ifaces[label],
+                'interface_model': 'e1000',
             } for label in sorted(ifaces.keys())
         ]
     else:
         admin_interfaces = [
             {
                 'label': 'eth' + str(n),
-                'l2_network_device': iname
+                'l2_network_device': iname,
+                'interface_model': 'e1000',
             } for n, iname in enumerate(interfaceorder)
         ]
 
@@ -140,7 +142,10 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
 
 
 def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
-                        slave_volume_capacity, interfaceorder,
+                        slave_volume_capacity,
+                        interfaceorder,
+                        second_volume_capacity=None,
+                        third_volume_capacity=None,
                         use_all_disks=None,
                         networks_multiplenetworks=None,
                         networks_nodegroups=None,
@@ -152,7 +157,8 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         slave_interfaces = [
             {
                 'label': 'eth' + str(n),
-                'l2_network_device': iname
+                'l2_network_device': iname,
+                'interface_model': 'e1000',
             } for n, iname in enumerate(
                 networks_nodegroups[nodegroups_idx]['pools'])
         ]
@@ -167,14 +173,16 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         slave_interfaces = [
             {
                 'label': label,
-                'l2_network_device': ifaces[label]
+                'l2_network_device': ifaces[label],
+                'interface_model': 'e1000',
             } for label in sorted(ifaces.keys())
         ]
     else:
         slave_interfaces = [
             {
                 'label': 'eth' + str(n),
-                'l2_network_device': iname
+                'l2_network_device': iname,
+                'interface_model': 'e1000',
             } for n, iname in enumerate(interfaceorder)
         ]
 
@@ -198,11 +206,11 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         slave_config['params']['volumes'].extend([
             {
                 'name': 'cinder',
-                'capacity': slave_volume_capacity
+                'capacity': second_volume_capacity
             },
             {
                 'name': 'swift',
-                'capacity': slave_volume_capacity
+                'capacity': third_volume_capacity
             }
         ])
     return slave_config
@@ -242,6 +250,8 @@ def create_devops_config(boot_from,
                          slave_vcpu,
                          slave_memory,
                          slave_volume_capacity,
+                         second_volume_capacity,
+                         third_volume_capacity,
                          use_all_disks,
                          ironic_nodes_count,
                          networks_bonding,
@@ -299,6 +309,8 @@ def create_devops_config(boot_from,
             slave_vcpu=slave_vcpu,
             slave_memory=slave_memory,
             slave_volume_capacity=slave_volume_capacity,
+            second_volume_capacity=second_volume_capacity,
+            third_volume_capacity=third_volume_capacity,
             interfaceorder=interfaceorder,
             use_all_disks=use_all_disks,
             networks_multiplenetworks=networks_multiplenetworks,
@@ -323,21 +335,30 @@ def create_devops_config(boot_from,
         config_nodes.append(ironic_config)
 
     config = {
-        'template':
-            {
-                'devops_settings':
+        'template': {
+            'devops_settings': {
+                'env_name': env_name,
+                'address_pools': address_pools,
+                'groups': [
                     {
-                        'env_name': env_name,
-                        'address_pools': address_pools,
-                        'groups': [
-                            {
-                                'name': 'rack-01',
-                                'l2_network_devices': l2_network_devices,
-                                'nodes': config_nodes,
+                        'driver': {
+                            'name':
+                                'devops.driver.libvirt.libvirt_driver',
+                            'params': {
+                                'connection_string': 'qemu:///system',
+                                'storage_pool_name': 'default',
+                                'stp': True,
+                                'hpet': False,
+                                'use_host_cpu': True,
                             },
-                        ]
-                    }
+                        },
+                        'name': 'rack-01',
+                        'l2_network_devices': l2_network_devices,
+                        'nodes': config_nodes,
+                    },
+                ]
             }
+        }
     }
 
     return config
