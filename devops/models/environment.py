@@ -397,10 +397,9 @@ class Environment(DriverModel):
     # @logwrap
     def get_ssh_to_remote(self, ip):
         keys = []
-        for key_string in ['/root/.ssh/id_rsa',
-                           '/root/.ssh/bootstrap.rsa']:
-            with self.get_admin_remote().open(key_string) as f:
-                keys.append(RSAKey.from_private_key(f))
+        key_string = '/root/.ssh/id_rsa'
+        with self.get_admin_remote().open(key_string) as f:
+            keys.append(RSAKey.from_private_key(f))
 
         return SSHClient(ip,
                          username=settings.SSH_CREDENTIALS['login'],
