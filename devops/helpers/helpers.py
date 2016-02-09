@@ -13,6 +13,7 @@
 #    under the License.
 
 import httplib
+import json
 import logging
 import os
 import posixpath
@@ -161,16 +162,44 @@ def get_admin_ip(env):
     return env.get_node(name='admin').get_ip_address_by_network_name('admin')
 
 
+def get_ip_from_json(js, mac):
+    for node in range(len(js)):
+        path = js[node]['meta']['pci_devices']['children']
+        device = 0
+        for dev in range(len(path)):
+            if 'Motherboard' in path[dev]['description']:
+                device = dev
+                break
+        path1 = path[device]['children']
+        bridge = 0
+        for brg in range(len(path1)):
+            if 'Host bridge' in path1[brg]['description']:
+                bridge = brg
+                break
+        path2 = path1[bridge]['children']
+        interface = 0
+        for iface in range(len(path2)):
+            if 'Ethernet interface' in path2[iface]['description'] \
+                    and 'network:0' in path2[iface]['id']:
+                interface = iface
+                break
+        serial = path2[interface]['serial']
+        if mac in serial:
+            return js[node]['ip']
+
+    raise DevopsError('There is no match between MAC {mac} and devops MACs')\
+        .format(mac)
+
+
 def get_slave_ip(env, node_mac_address):
     with get_admin_remote(env) as remote:
-        ip = remote.execute(
+        result = remote.execute(
             "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --node-id {mac} | awk -F'|' "
-            "'END{{gsub(\" \", \"\", $5); print $5}}'".format(
+            "fuel nodes --json".format(
                 user=KEYSTONE_CREDS['username'],
-                passwd=KEYSTONE_CREDS['password'],
-                mac=node_mac_address))['stdout']
-    return ip[0].rstrip()
+                passwd=KEYSTONE_CREDS['password']))['stdout']
+        js = json.loads(''.join(result))
+    return get_ip_from_json(js, node_mac_address)
 
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
