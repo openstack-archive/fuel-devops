@@ -13,6 +13,7 @@
 #    under the License.
 
 import httplib
+import json
 import logging
 import os
 import posixpath
@@ -161,16 +162,31 @@ def get_admin_ip(env):
     return env.get_node(name='admin').get_ip_address_by_network_name('admin')
 
 
+def get_ip_from_json(js, mac):
+    def poor_mac(mac_addr):
+        return \
+            [m.lower() for m in mac_addr if m.lower() in '01234546789abcdef']
+
+    for node in js:
+        for interface in node['meta']['interfaces']:
+            if poor_mac(interface['mac']) == poor_mac(mac):
+                logger.debug("For mac {0} found ip {1}".format(
+                    mac, node['ip']))
+                return node['ip']
+    raise DevopsError(
+        'There is no match between MAC {} and Nailgun MACs')\
+        .format(mac)
+
+
 def get_slave_ip(env, node_mac_address):
     with get_admin_remote(env) as remote:
-        ip = remote.execute(
+        result = remote.execute(
             "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --node-id {mac} | awk -F'|' "
-            "'END{{gsub(\" \", \"\", $5); print $5}}'".format(
+            "fuel nodes --json".format(
                 user=KEYSTONE_CREDS['username'],
-                passwd=KEYSTONE_CREDS['password'],
-                mac=node_mac_address))['stdout']
-    return ip[0].rstrip()
+                passwd=KEYSTONE_CREDS['password']))['stdout']
+        js = json.loads(''.join(result))
+    return get_ip_from_json(js, node_mac_address)
 
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
