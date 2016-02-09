@@ -162,14 +162,15 @@ def get_admin_ip(env):
 
 
 def get_slave_ip(env, node_mac_address):
+    mac = ':'.join(node_mac_address.split(':')[-2:])
     with get_admin_remote(env) as remote:
         ip = remote.execute(
             "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --node-id {mac} | awk -F'|' "
-            "'END{{gsub(\" \", \"\", $5); print $5}}'".format(
+            "fuel nodes | awk -F'|' "
+            "'/{mac}/ {{gsub(\" \", \"\", $5); print $5}}'".format(
                 user=KEYSTONE_CREDS['username'],
                 passwd=KEYSTONE_CREDS['password'],
-                mac=node_mac_address))['stdout']
+                mac=mac))['stdout']
     return ip[0].rstrip()
 
 
