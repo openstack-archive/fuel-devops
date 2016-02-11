@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,30 +14,26 @@
 
 
 class IpNetworksPool(object):
-    def __init__(self, networks, prefix):
+
+    def __init__(self, networks, prefix, allocated_networks=None):
+        if allocated_networks is None:
+            allocated_networks = []
+
         self.networks = networks
         self.prefix = prefix
-        self.allocated_networks = []
-        self._initialize_generator()
-
-    def set_allocated_networks(self, allocated_networks):
         self.allocated_networks = allocated_networks
-        self._initialize_generator()
 
     def _overlaps(self, network, allocated_networks):
         return any(an.overlaps(network) for an in allocated_networks)
 
-    def _initialize_generator(self):
-        def _get_generator():
-            for network in self.networks:
-                for sub_net in network.iter_subnets(new_prefix=self.prefix):
-                    if not self._overlaps(sub_net, self.allocated_networks):
-                        yield sub_net
-
-        self._generator = _get_generator()
-
     def __iter__(self):
-        return self._generator
+        for network in self.networks:
+            for sub_net in network.iter_subnets(new_prefix=self.prefix):
+                if not self._overlaps(sub_net, self.allocated_networks):
+                    yield sub_net
 
-    def next(self):
-        return self._generator.next()
+    def __repr__(self):
+        return "{}(networks={}, prefix={}, allocated_networks={})".format(
+            self.__class__.__name__, self.networks, self.prefix,
+            self.allocated_networks
+        )
