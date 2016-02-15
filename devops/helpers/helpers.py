@@ -30,7 +30,7 @@ from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
 from devops.settings import KEYSTONE_CREDS
-from devops.settings import SSH_CREDENTIALS
+from devops.settings import SSH_NETWORK
 
 
 def get_free_port():
@@ -141,9 +141,9 @@ def get_admin_remote(env):
          timeout_msg=("Admin node {ip} is not accessible by SSH."
                       .format(ip=admin_ip)))
     return env.get_node(
-        name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
-                             login=SSH_CREDENTIALS['login'],
-                             password=SSH_CREDENTIALS['password'])
+        name='admin').remote(network_name=SSH_NETWORK,
+                             login=env.fuel_login,
+                             password=env.fuel_password)
 
 
 def get_node_remote(env, node_name):
@@ -152,8 +152,8 @@ def get_node_remote(env, node_name):
     wait(lambda: tcp_ping(ip, 22), timeout=180,
          timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
     return SSHClient(ip,
-                     username=SSH_CREDENTIALS['login'],
-                     password=SSH_CREDENTIALS['password'],
+                     username=env.slave_login,
+                     password=env.slave_password,
                      private_keys=get_private_keys(env))
 
 

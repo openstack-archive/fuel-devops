@@ -49,11 +49,12 @@ DATABASES = {
 KEYSTONE_CREDS = {'username': os.environ.get('KEYSTONE_USERNAME', 'admin'),
                   'password': os.environ.get('KEYSTONE_PASSWORD', 'admin')}
 
-SSH_CREDENTIALS = {
-    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
-    'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
-    'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
-}
+SSH_NETWORK = os.environ.get('ENV_ADMIN_NETWORK', 'admin')
+
+FUEL_NODE_LOGIN = os.environ.get("ENV_FUEL_LOGIN", 'root')
+FUEL_NODE_PASSWORD = os.environ.get("ENV_FUEL_PASSWORD", 'r00tme')
+SLAVE_NODE_LOGIN = os.environ.get("ENV_SLAVE_LOGIN", 'root')
+SLAVE_NODE_PASSWORD = os.environ.get("ENV_SLAVE_PASSWORD", 'r00tme')
 
 SECRET_KEY = 'dummykey'
 

@@ -75,6 +75,15 @@ def get_devops_config(filename):
     return yaml_template_load(config_file)
 
 
+def create_credentials(fuel_node_login, fuel_node_password,
+                       slave_node_login, slave_node_password):
+    creds = {'fuel_node_login': fuel_node_login,
+             'fuel_node_password': fuel_node_password,
+             'slave_node_login': slave_node_login,
+             'slave_node_password': slave_node_password}
+    return creds
+
+
 def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                         admin_iso_path, boot_from, interfaceorder,
                         networks_bonding=None,
@@ -251,7 +260,11 @@ def create_devops_config(boot_from,
                          networks_interfaceorder,
                          networks_pools,
                          networks_forwarding,
-                         networks_dhcp):
+                         networks_dhcp,
+                         fuel_node_login,
+                         fuel_node_password,
+                         slave_node_login,
+                         slave_node_password):
     """Creates devops config object
 
     This method is used for backward compatibility with old-style
@@ -267,6 +280,11 @@ def create_devops_config(boot_from,
         interfaceorder = networks_bondinginterfaces.keys()
     else:
         interfaceorder = networks_interfaceorder
+
+    credentials = create_credentials(fuel_node_login=fuel_node_login,
+                                     fuel_node_password=fuel_node_password,
+                                     slave_node_login=slave_node_login,
+                                     slave_node_password=slave_node_password)
 
     # Create address pools object
     address_pools = create_address_pools(interfaceorder, networks_pools)
@@ -328,6 +346,7 @@ def create_devops_config(boot_from,
                 'devops_settings':
                     {
                         'env_name': env_name,
+                        'credentials': credentials,
                         'address_pools': address_pools,
                         'groups': [
                             {

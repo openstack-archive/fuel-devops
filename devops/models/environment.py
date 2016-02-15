@@ -169,6 +169,12 @@ class Environment(DriverModel):
         for node in self.get_nodes():
             node.revert(name, destroy=False)
 
+    def set_credentials(self, credentials):
+        self.fuel_login = credentials['fuel_node_login']
+        self.fuel_password = credentials['fuel_node_password']
+        self.slave_login = credentials['slave_node_login']
+        self.slave_password = credentials['slave_node_password']
+
     @classmethod
     def synchronize_all(cls):
         driver = cls.get_driver()
@@ -230,6 +236,10 @@ class Environment(DriverModel):
                 networks_pools=settings.POOLS,
                 networks_forwarding=settings.FORWARDING,
                 networks_dhcp=settings.DHCP,
+                fuel_node_login=settings.FUEL_NODE_LOGIN,
+                fuel_node_password=settings.FUEL_NODE_PASSWORD,
+                slave_node_login=settings.SLAVE_NODE_LOGIN,
+                slave_node_password=settings.SLAVE_NODE_PASSWORD,
             )
 
         environment = cls.create_environment(config)
@@ -246,6 +256,8 @@ class Environment(DriverModel):
 
         config = full_config['template']['devops_settings']
         environment = cls.create(config['env_name'])
+
+        environment.set_credentials(config['credentials'])
 
         # TODO(ddmitriev): link the dict config['address_pools'] to the
         # 'environment' object.
@@ -383,12 +395,18 @@ class Environment(DriverModel):
 
     # @logwrap
     def get_admin_remote(self,
-                         login=settings.SSH_CREDENTIALS['login'],
-                         password=settings.SSH_CREDENTIALS['password']):
+                         login=None,
+                         password=None):
         """SSH to admin node
 
         :rtype : SSHClient
         """
+        if not login:
+            login = self.fuel_login
+
+        if not password:
+            password = self.fuel_password
+
         return self.nodes().admin.remote(
             self.admin_net,
             login=login,
@@ -403,8 +421,8 @@ class Environment(DriverModel):
                 keys.append(RSAKey.from_private_key(f))
 
         return SSHClient(ip,
-                         username=settings.SSH_CREDENTIALS['login'],
-                         password=settings.SSH_CREDENTIALS['password'],
+                         username=self.slave_login,
+                         password=self.slave_password,
                          private_keys=keys)
 
     # @logwrap
