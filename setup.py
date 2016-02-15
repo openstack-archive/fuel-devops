@@ -32,7 +32,10 @@ setup(
     data_files=[
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
-    scripts=['bin/dos.py'],
+    scripts=['bin/dos.py',
+             'bin/env_export.sh', 'bin/env_import.sh',
+             'bin/libvirt_functions.sh',
+             'bin/snapshots_export.sh', 'bin/snapshots_import.sh'],
     install_requires=[
         'xmlbuilder',
         'ipaddr',
