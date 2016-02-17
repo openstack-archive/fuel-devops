@@ -55,6 +55,12 @@ SSH_CREDENTIALS = {
     'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
 
+SSH_SLAVE_CREDENTIALS = {
+    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
+    'login': os.environ.get('ENV_SLAVE_LOGIN', 'root'),
+    'password': os.environ.get('ENV_SLAVE_PASSWORD', 'r00tme')
+}
+
 SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
