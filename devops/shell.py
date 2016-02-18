@@ -180,17 +180,14 @@ class Shell(object):
         Network.default_pool = Network.create_network_pool(
             networks=[ipaddr.IPNetwork(networks)],
             prefix=int(prefix))
+
         networks = Network.create_networks(environment=self.env)
-        # We need to define the networks here because they are quieried by the
-        # admin_add function.
         for network in networks:
             network.define()
-        admin_node = self.admin_add(networks=networks)
-        # define the slave nodes since the Environment define no longer defines
-        # the networks, volumes and nodes by default and we need them to be
-        # created for this function
+
+        admin_node = self.admin_add(networks=networks, force_define=True)
         self.do_slave_add(force_define=True)
-        self.env.define()
+
         admin_node.disk_devices.get(device='cdrom').volume.upload(
             self.params.iso_path)
         for net in self.env.get_networks():
@@ -264,7 +261,7 @@ class Shell(object):
         admin_node.await("admin", timeout=10 * 60)
         node_manager.admin_wait_bootstrap(3000, self.env)
 
-    def admin_add(self, networks=None):
+    def admin_add(self, networks=None, force_define=True):
         vcpu = self.params.admin_vcpu_count
         ram = self.params.admin_ram_size
         iso_path = self.params.iso_path
@@ -279,7 +276,7 @@ class Shell(object):
             for name in interfaces:
                 networks.append(self.env.create_networks(name))
 
-        admin_node = create_admin_config(
+        node_template = create_admin_config(
             admin_vcpu=vcpu,
             admin_memory=ram,
             admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
@@ -287,7 +284,11 @@ class Shell(object):
             boot_from='cdrom',
             interfaceorder=settings.INTERFACE_ORDER)
 
-        return self.env.create_node(admin_node)
+        admin_node = self.env.create_node(node_template)
+        if force_define is True:
+            admin_node.define()
+
+        return admin_node
 
     def do_node_start(self):
         self.env.get_node(name=self.params.node_name).start()
