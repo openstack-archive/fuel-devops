@@ -268,27 +268,23 @@ class Shell(object):
 
     def do_admin_setup(self):
         admin_node = self.env.get_node(name='admin')
-        admin_node.destroy()
-        node_manager.admin_prepare_disks(node=admin_node,
-                                         disk_size=self.params.admin_disk_size)
-        admin_node.start()
-        node_manager.admin_change_config(admin_node=admin_node,
-                                         admin_centos_version=6,
-                                         static_interface='eth0')
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
+        admin_node.ext.start_node_with_boot_menu()
+        admin_node.ext.wait_for_ssh()
+        conf = admin_node.ext.get_config()
+        admin_node.ext.config_update_router(conf)
+        admin_node.ext.save_config(conf)
+        admin_node.ext.wait_deploy_end()
 
     def do_admin_setup_centos7(self):
         admin_node = self.env.get_node(name='admin')
-        admin_node.destroy()
-        node_manager.admin_prepare_disks(node=admin_node,
-                                         disk_size=self.params.admin_disk_size)
-        admin_node.start()
-        node_manager.admin_change_config(admin_node=admin_node,
-                                         admin_centos_version=7,
-                                         static_interface=self.params.iface)
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
+        admin_node.ext.start_node_with_boot_menu(
+            master_is_centos7=True,
+            iface=self.params.iface)
+        admin_node.ext.wait_for_ssh()
+        conf = admin_node.ext.get_config()
+        admin_node.ext.config_update_router(conf)
+        admin_node.ext.save_config(conf)
+        admin_node.ext.wait_deploy_end()
 
     def do_node_start(self):
         self.env.get_node(name=self.params.node_name).start()
@@ -552,12 +548,11 @@ class Shell(object):
                               description="Remove selected node from "
                               "environment")
         subparsers.add_parser('admin-setup',
-                              parents=[name_parser, admin_disk_size_parser],
+                              parents=[name_parser],
                               help="Setup admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-setup-centos7',
-                              parents=[name_parser, admin_disk_size_parser,
-                                       admin_setup_iface_parser],
+                              parents=[name_parser, admin_setup_iface_parser],
                               help="Setup CentOS 7 based admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',

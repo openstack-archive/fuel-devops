@@ -173,42 +173,6 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
-def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images, centos_version='7', static_interface='enp0s3'):
-    if centos_version < 7:
-        ip_format = ' ip={ip}'
-    else:
-        ip_format = ' ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:none'
-
-    return '\n'.join([
-        '<Wait>',
-        '<Esc>',
-        '<Wait>',
-        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
-        ip_format,
-        ' netmask={mask}'
-        ' gw={gw}'
-        ' dns1={dns1}',
-        ' nameserver={dns1}',
-        ' hostname={hostname}',
-        ' dhcp_interface={nat_interface}',
-        ' showmenu={showmenu}',
-        ' build_images={build_images}',
-        ' <Enter>',
-        ''
-    ]).format(
-        ip=ip,
-        mask=mask,
-        gw=gw,
-        hostname=hostname,
-        nat_interface=nat_interface,
-        dns1=dns1,
-        showmenu=showmenu,
-        build_images=build_images,
-        static_interface=static_interface
-    )
-
-
 class KeyPolicy(paramiko.WarningPolicy):
     def missing_host_key(self, client, hostname, key):
         return
@@ -502,3 +466,10 @@ def _underscored(*args):
        Skips empty strings.
     """
     return '_'.join(filter(bool, list(args)))
+
+
+def create_empty_file(path, size):
+    with open(path, 'wb') as f:
+        one_mb = '\x00' * 1024 * 1024
+        for _ in xrange(size):
+            f.write(one_mb)
