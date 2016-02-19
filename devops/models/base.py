@@ -16,11 +16,9 @@ import abc
 from datetime import datetime
 import operator
 
-from django.conf import settings
 from django.db import models
 from django.db.models.base import ModelBase
 from django.db.models import query
-from django.utils.importlib import import_module
 import jsonfield
 import six
 
@@ -34,33 +32,6 @@ def choices(*args, **kwargs):
     defaults.update(kwargs)
     defaults.update(choices=zip(args, args))
     return models.CharField(**defaults)
-
-
-class DriverModel(models.Model):
-    _driver = None
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
-
-    class Meta(object):
-        abstract = True
-
-    @classmethod
-    def get_driver(cls):
-        """Get driver
-
-        :rtype : DevopsDriver
-        """
-        driver = import_module(settings.DRIVER)
-        cls._driver = cls._driver or driver.DevopsDriver(
-            **settings.DRIVER_PARAMETERS)
-        return cls._driver
-
-    @property
-    def driver(self):
-        """Driver object.
-
-        :rtype : DevopsDriver
-        """
-        return self.get_driver()
 
 
 class BaseModel(models.Model):
