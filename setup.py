@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2015 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -38,6 +38,7 @@ setup(
         'ipaddr',
         'paramiko',
         'django<1.7',
+        'jsonfield',
         'psycopg2',
         'south',
         'PyYAML',
@@ -48,5 +49,6 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'six',
     ]
 )
