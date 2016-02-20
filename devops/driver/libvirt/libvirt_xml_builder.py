@@ -35,7 +35,7 @@ class LibvirtXMLBuilder(object):
             name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
         return name
 
-    def build_network_xml(self, network):
+    def build_network_xml(self, network, br_prefix="fuelbr"):
         """Generate network XML
 
         :type network: Network
@@ -50,7 +50,7 @@ class LibvirtXMLBuilder(object):
         if self.driver.stp:
             stp_val = 'on'
         network_xml.bridge(
-            name="fuelbr{0}".format(network.id),
+            name="{0}{1}".format(br_prefix, network.id),
             stp=stp_val, delay="0")
 
         if network.forward is not None:
@@ -162,7 +162,7 @@ class LibvirtXMLBuilder(object):
                     bus=disk_device.bus)
             device_xml.serial(''.join(uuid.uuid4().hex))
 
-    def _build_interface_device(self, device_xml, interface):
+    def _build_interface_device(self, device_xml, interface, if_prefix):
         """Build xml for interface
 
         :param device_xml: XMLBuilder
@@ -177,11 +177,11 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
                 network=self.driver.network_name(interface.network))
-            device_xml.target(dev="fuelnet{0}".format(interface.id))
+            device_xml.target(dev="{0}{1}".format(if_prefix, interface.id))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
 
-    def build_node_xml(self, node, emulator):
+    def build_node_xml(self, node, emulator, if_prefix="fuelnet"):
         """Generate node XML
 
         :type node: Node
@@ -244,7 +244,7 @@ class LibvirtXMLBuilder(object):
             for disk_device in node.disk_devices:
                 self._build_disk_device(node_xml, disk_device)
             for interface in node.interfaces:
-                self._build_interface_device(node_xml, interface)
+                self._build_interface_device(node_xml, interface, if_prefix)
             with node_xml.video:
                 node_xml.model(type='vga', vram='9216', heads='1')
             with node_xml.serial(type='pty'):
