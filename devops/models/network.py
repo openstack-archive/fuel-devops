@@ -18,6 +18,7 @@ from django.db import models
 from django.db import transaction
 from ipaddr import IPNetwork
 
+from devops.error import DevopsError
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
 from devops.models.base import choices
@@ -141,28 +142,36 @@ class Network(DriverModel):
     def _safe_create_network(
             cls, name, environment=None, pool=None,
             has_dhcp_server=True, has_pxe_server=False,
-            forward='nat'):
+            forward='nat', reuse_network_pools=True):
         allocated_pool = pool or cls._get_default_pool()
-        while True:
+
+        for ip_network in allocated_pool:
             try:
-                ip_network = allocated_pool.next()
-                if not cls.objects.filter(
-                        ip_network=str(ip_network)).exists():
-                    return cls.objects.create(
-                        environment=environment,
-                        name=name,
-                        ip_network=ip_network,
-                        has_pxe_server=has_pxe_server,
-                        has_dhcp_server=has_dhcp_server,
-                        forward=forward)
+                if not reuse_network_pools:
+                  # Skip the ip_network if it is
+                  # in the database or in libvirt XMLs
+                  if (cls.objects.filter(
+                          ip_network=str(ip_network)).exists() or
+                      ip_network in cls.get_driver().get_allocated_networks(
+                          all_networks=True)):
+                      continue
+                return cls.objects.create(
+                    environment=environment,
+                    name=name,
+                    ip_network=ip_network,
+                    has_pxe_server=has_pxe_server,
+                    has_dhcp_server=has_dhcp_server,
+                    forward=forward)
             except IntegrityError:
                 transaction.rollback()
+        raise DevopsError("There is no network pool available for creating "
+                          "the network {}".format(name))
 
     @classmethod
     def network_create(
         cls, name, environment=None, ip_network=None, pool=None,
         has_dhcp_server=True, has_pxe_server=False,
-        forward='nat'
+        forward='nat', reuse_network_pools=True
     ):
         """Create network
 
@@ -183,7 +192,9 @@ class Network(DriverModel):
             has_dhcp_server=has_dhcp_server,
             has_pxe_server=has_pxe_server,
             name=name,
-            pool=pool)
+            pool=pool,
+            reuse_network_pools=reuse_network_pools
+        )
 
     @classmethod
     def create_networks(cls, environment, network_names=None,
