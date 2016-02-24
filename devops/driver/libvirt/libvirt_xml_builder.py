@@ -29,9 +29,11 @@ class LibvirtXMLBuilder(object):
         return name
 
     @classmethod
-    def build_network_xml(cls, network_name, bridge_id, addresses=None,
-                          forward='nat', ip_network=None, stp=True,
+    def build_network_xml(cls, network_name, bridge_name, addresses=None,
+                          forward=None, ip_network_address=None,
+                          ip_network_prefixlen=None, stp=True,
                           has_pxe_server=False, has_dhcp_server=False,
+                          dhcp_range_start=None, dhcp_range_end=None,
                           tftp_root_dir=None):
         """Generate network XML
 
@@ -45,30 +47,26 @@ class LibvirtXMLBuilder(object):
         network_xml.name(cls._crop_name(network_name))
 
         network_xml.bridge(
-            name='virbr{0}'.format(bridge_id),
+            name=bridge_name,
             stp='on' if stp else 'off',
             delay='0')
 
         if forward:
             network_xml.forward(mode=forward)
 
-        if ip_network is None:
+        if ip_network_address is None:
             return str(network_xml)
 
         with network_xml.ip(
-                # TODO(astudenov): ip address of network should be taken from
-                # database instead of hardcode.
-                address=str(ip_network[1]),
-                prefix=str(ip_network.prefixlen)):
+                address=ip_network_address,
+                prefix=ip_network_prefixlen):
             if has_pxe_server and tftp_root_dir:
                 network_xml.tftp(root=tftp_root_dir)
             if has_dhcp_server:
                 with network_xml.dhcp:
                     network_xml.range(
-                        # TODO(astudenov): these ranges should be taken from
-                        # database instead of hardcoded indexes.
-                        start=str(ip_network[2]),
-                        end=str(ip_network[-2]))
+                        start=dhcp_range_start,
+                        end=dhcp_range_end)
                     for address in addresses:
                         network_xml.host(
                             mac=address['mac'],

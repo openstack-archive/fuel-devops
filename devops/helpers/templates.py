@@ -15,8 +15,6 @@
 import os
 import yaml
 
-from devops.helpers.helpers import _get_file_size
-
 
 def yaml_template_load(config_file):
     def yaml_include(loader, node):
@@ -129,7 +127,6 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                 {
                     'name': 'iso',
                     'source_image': admin_iso_path,
-                    'capacity': _get_file_size(admin_iso_path),
                     'format': 'raw',
                     'device': iso_device,
                     'bus': iso_bus,
@@ -236,9 +233,31 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
 def create_address_pools(interfaceorder, networks_pools):
     address_pools = {
         iname: {
-            'net': ':'.join(networks_pools[iname])
+            'net': ':'.join(networks_pools[iname]),
+            'params': {
+                'ip_reserved': {
+                    # Gateway will be used for configure OpenStack networks
+                    'gateway': 1,
+                    # l2_network_device will be used for configure local bridge
+                    'l2_network_device': 1,
+                },
+                'ip_ranges': {
+                    'default': [2, -2],
+                },
+            },
         } for iname in interfaceorder
     }
+
+    if 'public' in interfaceorder:
+        # Put floating IP range for public network
+        default_pool_name = 'default'
+        floating_pool_name = 'floating'
+
+        address_pools['public']['params']['ip_ranges'][default_pool_name] = [
+            2, 127]
+        address_pools['public']['params']['ip_ranges'][floating_pool_name] = [
+            128, -2]
+
     return address_pools
 
 

@@ -91,6 +91,10 @@ class Node(ParamedModel, BaseModel):
     def interfaces(self):
         return self.interface_set.order_by('id')
 
+    @property
+    def network_configs(self):
+        return self.networkconfig_set.all()
+
     # LEGACY, for fuel-qa compatibility
     @property
     def is_admin(self):
