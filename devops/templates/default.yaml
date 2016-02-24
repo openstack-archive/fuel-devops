@@ -13,22 +13,64 @@ template:
 
     address_pools:
     # Network pools used by the environment
+
       fuelweb_admin-pool01:
         net: *pool_default
         params:
           tag: 0
+
+          # Reserved IP addresses.
+          # - 'l2_network_device' will be used as an IP address for creating
+          #   libvirt network with assigned IP on it, if specified.
+          # - 'gateway' should be used in fuel-qa framework to get the gateway
+          #   of the address pool. Can be different from libvirt IP address
+          #   in case if a network already have another gateway.
+          # - all other IP addresses specified in the template can be used
+          #   for different purposes in different test cases.
+          ip_reserved:
+
+            # Address of the gateway in the address pool fuelweb_admin-pool01.
+            # If string - than is used 'as is', as a real IP address
+            # If numeric - than assumed as a relative address
+            #              from the start of the address pool.
+            gateway: +1
+
+            # Libvirt bridge will get this IP address
+            l2_network_device: +1
+
+          # IP ranges, reserved in the address pool.
+          # - 'default' IP range stands for 'default' nodegroup in Fuel.
+          # - any other IP range names such as 'floating' can be specified to
+          #   provide a special IP ranges to configure cluster settings.
+          #   For special test cases, several IP ranges can be configured here
+          #   for different networks. Names of these ranges should be
+          #   agreed for template and test cases.
+          ip_ranges:
+
+            # Relative or real IP addresses
+            default: [+2, -2]     # admin IP range for 'default' nodegroup name
+
       public-pool01:
         net: *pool_default
         params:
           tag: 0
+          ip_reserved:
+            gateway: +1
+            l2_network_device: +1  # l2_network_device will get this IP address
+          ip_ranges:
+            default: [+2, +127]  # public IP range for 'default' nodegroup name
+            floating: [+128, -2]
+
       storage-pool01:
         net: *pool_default
         params:
           tag: 101
+
       management-pool01:
         net: *pool_default
         params:
           tag: 102
+
       private-pool01:
         net: *pool_default
         params:
