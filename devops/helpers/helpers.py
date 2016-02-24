@@ -52,13 +52,15 @@ def icmp_ping(host, timeout=1):
             'host': host, 'timeout': timeout}) == 0
 
 
-def _tcp_ping(host, port):
+def _tcp_ping(host, port, timeout=None):
     s = socket.socket()
+    if timeout:
+        s.settimeout(timeout)
     s.connect((str(host), int(port)))
     s.close()
 
 
-def tcp_ping(host, port):
+def tcp_ping(host, port, timeout=None):
     """Run TCP ping
 
     returns True if TCP connection to specified host and port
@@ -66,7 +68,7 @@ def tcp_ping(host, port):
     False - otherwise.
     """
     try:
-        _tcp_ping(host, port)
+        _tcp_ping(host, port, timeout)
     except socket.error:
         return False
     return True
