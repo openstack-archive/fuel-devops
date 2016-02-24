@@ -48,6 +48,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
             name='test_ap',
             net='172.0.0.0/16:24',
             tag=0,
+            ip_reserved=dict(l2_network_device='172.0.0.1'),
         )
 
         self.net_pool = self.group.add_network_pool(
@@ -57,7 +58,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
 
         self.l2_net_dev = self.group.add_l2_network_device(
             name='test_l2_net_dev',
-            address_pool_name='test_ap',
+            address_pool='test_ap',
             forward=dict(mode='nat'),
         )
 
