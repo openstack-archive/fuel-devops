@@ -58,36 +58,38 @@ class TestNetworkXml(BaseTestXMLBuilder):
         ]
 
         self.ip_net = IPNetwork('172.0.1.1/24')
+        self.ip_network_address = '172.0.1.1'
+        self.ip_network_prefixlen = '24'
+        self.dhcp_range_start = '172.0.1.2'
+        self.dhcp_range_end = '172.0.1.254'
 
     def test_default(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
+            bridge_name='virbr13',
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
                        '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '    <forward mode="nat" />\n'
                        '</network>')
 
     def test_stp_off(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
+            bridge_name='virbr13',
             stp=False,
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
                        '    <bridge delay="0" name="virbr13" stp="off" />\n'
-                       '    <forward mode="nat" />\n'
                        '</network>')
 
-    def test_forward_mode(self):
+    def test_ip_network_bridge(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
+            bridge_name='virbr13',
             forward='bridge',
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
@@ -97,11 +99,13 @@ class TestNetworkXml(BaseTestXMLBuilder):
                        '    <forward mode="bridge" />\n'
                        '</network>')
 
-    def test_ip_network(self):
+    def test_ip_network_nat(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
-            ip_network=self.ip_net,
+            bridge_name='virbr13',
+            forward='nat',
+            ip_network_address=self.ip_network_address,
+            ip_network_prefixlen=self.ip_network_prefixlen,
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
                        '<network>\n'
@@ -111,11 +115,29 @@ class TestNetworkXml(BaseTestXMLBuilder):
                        '    <ip address="172.0.1.1" prefix="24" />\n'
                        '</network>')
 
+    def test_ip_network_route(self):
+        xml = self.xml_builder.build_network_xml(
+            network_name='test_name',
+            bridge_name='virbr13',
+            forward='route',
+            ip_network_address=self.ip_network_address,
+            ip_network_prefixlen=self.ip_network_prefixlen,
+        )
+        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+                       '<network>\n'
+                       '    <name>test_name</name>\n'
+                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
+                       '    <forward mode="route" />\n'
+                       '    <ip address="172.0.1.1" prefix="24" />\n'
+                       '</network>')
+
     def test_pxe_server(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
-            ip_network=self.ip_net,
+            bridge_name='virbr13',
+            forward='nat',
+            ip_network_address=self.ip_network_address,
+            ip_network_prefixlen=self.ip_network_prefixlen,
             has_pxe_server=True,
             tftp_root_dir='/tmp',
         )
@@ -132,10 +154,14 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_dhcp_server(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
+            bridge_name='virbr13',
+            forward='nat',
             addresses=self.address,
-            ip_network=self.ip_net,
+            ip_network_address=self.ip_network_address,
+            ip_network_prefixlen=self.ip_network_prefixlen,
             has_dhcp_server=True,
+            dhcp_range_start=self.dhcp_range_start,
+            dhcp_range_end=self.dhcp_range_end,
         )
         assert xml == """<?xml version="1.0" encoding="utf-8" ?>
 <network>
@@ -154,10 +180,14 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_dhcp_server_plus_pxe(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_id=13,
+            bridge_name='virbr13',
+            forward='nat',
             addresses=self.address,
-            ip_network=self.ip_net,
+            ip_network_address=self.ip_network_address,
+            ip_network_prefixlen=self.ip_network_prefixlen,
             has_dhcp_server=True,
+            dhcp_range_start=self.dhcp_range_start,
+            dhcp_range_end=self.dhcp_range_end,
             has_pxe_server=True,
             tftp_root_dir='/tmp',
         )
