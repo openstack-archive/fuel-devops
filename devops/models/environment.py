@@ -369,15 +369,15 @@ class Environment(BaseModel):
     def _create_network_object(self, l2_network_device):
         class LegacyNetwork(object):
             def __init__(self):
-                self.id = l2_network_device.id,
-                self.name = l2_network_device.name,
-                self.uuid = l2_network_device.uuid,
-                self.environment = self,
-                self.has_dhcp_server = l2_network_device.has_dhcp_server,
-                self.has_pxe_server = l2_network_device.has_pxe_server,
-                self.has_reserved_ips = True,
-                self.tftp_root_dir = '',
-                self.forward = l2_network_device.forward.mode,
+                self.id = l2_network_device.id
+                self.name = l2_network_device.name
+                self.uuid = l2_network_device.uuid
+                self.environment = self
+                self.has_dhcp_server = l2_network_device.has_dhcp_server
+                self.has_pxe_server = l2_network_device.has_pxe_server
+                self.has_reserved_ips = True
+                self.tftp_root_dir = ''
+                self.forward = l2_network_device.forward.mode
                 self.net = l2_network_device.address_pool.net
                 self.ip_network = l2_network_device.address_pool.net
                 self.ip = l2_network_device.address_pool.ip_network
@@ -395,7 +395,7 @@ class Environment(BaseModel):
     def get_network(self, *args, **kwargs):
         for group in self.get_groups():
             l2_network_device = group.l2networkdevice_set.get(*args, **kwargs)
-            if l2_network_device:
+            if l2_network_device and l2_network_device.address_pool:
                 network = self._create_network_object(l2_network_device)
                 return network
 
@@ -405,7 +405,8 @@ class Environment(BaseModel):
         for group in self.get_groups():
             l2_network_devices.extend(
                 group.l2networkdevice_set.filter(*args, **kwargs))
-        networks = [self._create_network_object(x) for x in l2_network_devices]
+        networks = [self._create_network_object(x)
+                    for x in l2_network_devices if x.address_pool]
         return networks
 
     # LEGACY, for fuel-qa compatibility
