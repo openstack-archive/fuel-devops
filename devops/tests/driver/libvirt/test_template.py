@@ -44,22 +44,40 @@ template:
         net: *pool_default
         params:
           tag: 0
+          ip_reserved:
+            gateway: +1
+            l2_network_device: +1
+          ip_ranges:
+            default: [+2, -2]
+            dhcp: [+2, -2]
       public-pool01:
         net: *pool_default
         params:
           tag: 0
+          ip_reserved:
+            gateway: +1
+            l2_network_device: +1
+          ip_ranges:
+            default: [+2, +127]
+            floating: [+128, -2]
       storage-pool01:
         net: *pool_default
         params:
           tag: 101
+          ip_reserved:
+            l2_network_device: +1
       management-pool01:
         net: *pool_default
         params:
           tag: 102
+          ip_reserved:
+            l2_network_device: +1
       private-pool01:
         net: *pool_default
         params:
           tag: 103
+          ip_reserved:
+            l2_network_device: +1
 
     groups:
      - name: rack-01

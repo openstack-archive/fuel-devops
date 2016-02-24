@@ -13,7 +13,9 @@
 #    under the License.
 
 from django.test import TestCase
+from ipaddr import IPNetwork
 
+from devops.helpers.network import IpNetworksPool
 from devops.models import Address
 from devops.models import AddressPool
 from devops.models import Environment
@@ -31,8 +33,9 @@ class TestManager(TestCase):
             name='test_node',
             role='default',
         )
+        pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/24')], prefix=24)
         address_pool = AddressPool.address_pool_create(
-            environment=environment, name='internal', ip_network='10.1.0.0/24')
+            environment=environment, name='internal', pool=pool)
         l2_net_dev = L2NetworkDevice.objects.create(
             group=None, address_pool=address_pool, name='test_l2_dev')
         interface = Interface.interface_create(l2_network_device=l2_net_dev,
@@ -52,8 +55,9 @@ class TestManager(TestCase):
             name='test_node',
             role='default',
         )
+        pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/24')], prefix=24)
         address_pool = AddressPool.address_pool_create(
-            environment=environment, name='internal', ip_network='10.1.0.0/24')
+            environment=environment, name='internal', pool=pool)
         l2_net_dev = L2NetworkDevice.objects.create(
             group=None, address_pool=address_pool, name='test_l2_dev')
 
@@ -85,8 +89,9 @@ class TestManager(TestCase):
 
     def test_node_creation(self):
         environment = Environment.create('test_env3')
+        pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/24')], prefix=24)
         address_pool = AddressPool.address_pool_create(
-            environment=environment, name='internal', ip_network='10.1.0.0/24')
+            environment=environment, name='internal', pool=pool)
         l2_net_dev = L2NetworkDevice.objects.create(
             group=None, address_pool=address_pool, name='test_l2_dev')
 
