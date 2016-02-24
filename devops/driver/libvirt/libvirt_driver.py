@@ -216,6 +216,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                      'vepa', 'passthrough', 'hostdev'),
         )
     )
+    #  TODO(ddmitriev): use 'dhcp atttibute' instead of has_dhcp_server
     dhcp = ParamField(default=False)
 
     has_pxe_server = ParamField(default=False)
@@ -254,23 +255,40 @@ class L2NetworkDevice(L2NetworkDeviceBase):
             self.name,
         )
 
+        bridge_name = 'virbr{0}'.format(self.id)
+
+        # Define libvirt network
+        ip_network_address = None
+        ip_network_prefixlen = None
+        dhcp_range_start = None
+        dhcp_range_end = None
         addresses = []
-        for interface in self.interfaces:
-            for address in interface.addresses:
-                ip_addr = ipaddr.IPAddress(address.ip_address)
-                if ip_addr in self.address_pool.ip_network:
-                    addresses.append(dict(
-                        mac=str(interface.mac_address),
-                        ip=str(address.ip_address),
-                        name=interface.node.name
-                    ))
+        if self.address_pool is not None:
+            # Reserved names 'l2_network_device' and 'dhcp'
+            ip_network_address = self.address_pool.get_ip('l2_network_device')
+            ip_network_prefixlen = str(self.address_pool.ip_network.prefixlen)
+            dhcp_range_start = self.address_pool.ip_range_start('dhcp')
+            dhcp_range_end = self.address_pool.ip_range_end('dhcp')
+
+            for interface in self.interfaces:
+                for address in interface.addresses:
+                    ip_addr = ipaddr.IPAddress(address.ip_address)
+                    if ip_addr in self.address_pool.ip_network:
+                        addresses.append(dict(
+                            mac=str(interface.mac_address),
+                            ip=str(address.ip_address),
+                            name=interface.node.name
+                        ))
 
         xml = LibvirtXMLBuilder.build_network_xml(
             network_name=network_name,
-            bridge_id=self.id,
+            bridge_name=bridge_name,
             addresses=addresses,
             forward=self.forward.mode,
-            ip_network=self.address_pool.ip_network,
+            ip_network_address=ip_network_address,
+            ip_network_prefixlen=ip_network_prefixlen,
+            dhcp_range_start=dhcp_range_start,
+            dhcp_range_end=dhcp_range_end,
             stp=self.driver.stp,
             has_pxe_server=self.has_pxe_server,
             has_dhcp_server=self.has_dhcp_server,
