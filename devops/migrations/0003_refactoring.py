@@ -70,7 +70,8 @@ class Migration(SchemaMigration):
                                       blank=True)),
             ('params', JSONField(default={})),
             ('group', ForeignKey(to=orm['devops.Group'], null=True)),
-            ('address_pool', ForeignKey(to=orm['devops.AddressPool'])),
+            ('address_pool', ForeignKey(to=orm['devops.AddressPool'],
+                                        null=True)),
             ('name', CharField(max_length=255)),
         ))
         db.send_create_signal('devops', ['L2NetworkDevice'])
@@ -104,7 +105,8 @@ class Migration(SchemaMigration):
                                       auto_now_add=True,
                                       blank=True)),
             ('group', ForeignKey(to=orm['devops.Group'], null=True)),
-            ('address_pool', ForeignKey(to=orm['devops.AddressPool'])),
+            ('address_pool', ForeignKey(to=orm['devops.AddressPool'],
+                                        null=True)),
             ('name', CharField(max_length=255)),
         ))
         db.send_create_signal('devops', ['NetworkPool'])
@@ -483,7 +485,8 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'L2NetworkDevice',
                      'db_table': "'devops_l2_network_device'",},
             'address_pool': ('django.db.models.fields.related.ForeignKey', [],
-                             {'to': "orm['devops.AddressPool']"}),
+                             {'to': "orm['devops.AddressPool']",
+                              'null': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [],
                         {'default': 'datetime.datetime.utcnow',
                          'auto_now_add': 'True',
