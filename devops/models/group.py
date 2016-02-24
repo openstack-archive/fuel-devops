@@ -138,20 +138,20 @@ class Group(BaseModel):
         for name, params in l2_network_devices.items():
             self.add_l2_network_device(
                 name=name,
-                address_pool_name=params.pop('address_pool'),
                 **params
             )
 
-    def add_l2_network_device(self, name, address_pool_name, **params):
-        address_pool = self.environment.get_address_pool(
-            name=address_pool_name)
+    def add_l2_network_device(self, name, **params):
+        if 'address_pool' in params:
+            params['address_pool'] = self.environment.get_address_pool(
+                name=params['address_pool'])
 
         cls = self.driver.get_model_class('L2NetworkDevice')
         return cls.objects.create(
             group=self,
             name=name,
-            address_pool=address_pool,
-            **deepcopy(params))
+            **params
+        )
 
     def add_nodes(self, nodes):
         for node_cfg in nodes:
