@@ -20,6 +20,7 @@ from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
 
+from devops import logger
 from devops.error import DevopsError
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
@@ -39,6 +40,9 @@ class AddressPool(ParamedModel, BaseModel):
     name = models.CharField(max_length=255)
     net = models.CharField(max_length=255, unique=True)
     tag = ParamField(default=0)
+    ip_ranges = ParamField(default={})    # {'range_a': ('x.x.x.x', 'y.y.y.y'),
+                                          #  'range_b': ('a.a.a.a', 'b.b.b.b'), ...}
+    ip_reserved = ParamField(default={})  # {'gateway': 'n.n.n.1', 'local_ip': 'm.m.m.254'}
 
     # NEW. Warning: Old implementation returned self.net
     @property
@@ -48,6 +52,43 @@ class AddressPool(ParamedModel, BaseModel):
         :return: IPNetwork()
         """
         return IPNetwork(self.net)
+
+    def ip_range_start(self, range_name):
+        """Return the IP address of start the IP range 'range_name'
+
+        :return: str
+        """
+        if range_name in self.ip_ranges:
+            return str(self.ip_ranges.get(range_name)[0])
+        else:
+            logger.debug("IP range '{0}' not found in the "
+                         "address pool {1}".format(range_name, self.name))
+            return None
+
+    def ip_range_end(self, range_name):
+        """Return the IP address of end the IP range 'range_name'
+
+        :return: str
+        """
+        if range_name in self.ip_ranges:
+            return str(self.ip_ranges.get(range_name)[1])
+        else:
+            logger.debug("IP range '{0}' not found in the "
+                         "address pool {1}".format(range_name, self.name))
+            return None
+
+    def get_ip(self, ip_name):
+        """Return the reserved IP
+           For example, 'gateway' is one of the common reserved IPs
+
+        :return: str
+        """
+        if ip_name in self.ip_reserved:
+            return str(self.ip_reserved.get(ip_name))
+        else:
+            logger.debug("Reserved IP '{0}' not found in the "
+                         "address pool {1}".format(ip_name, self.name))
+            return None
 
     def next_ip(self):
         for ip in self.ip_network.iterhosts():
@@ -83,29 +124,57 @@ class AddressPool(ParamedModel, BaseModel):
                 transaction.rollback()
 
     @classmethod
-    def address_pool_create(cls, name, environment,
-                            ip_network=None, pool=None, **params):
+    def address_pool_create(cls, name, environment, pool=None, **params):
         """Create network
 
         :rtype : Network
         """
-        if ip_network:
-            return cls.objects.create(
-                environment=environment,
-                name=name,
-                net=ip_network,
-            )
         if pool is None:
             pool = IpNetworksPool(
                 networks=[IPNetwork('10.0.0.0/16')],
                 prefix=24,
                 allocated_networks=environment.get_allocated_networks())
-        return cls._safe_create_network(
+
+        address_pool = cls._safe_create_network(
             environment=environment,
             name=name,
             pool=pool,
             **params
         )
+
+        # Translate indexes into IP addresses for ip_reserved and ip_ranges
+        def _relative_to_ip(ip_network, ip_id):
+            """Get an IP from IPNetwork ip's list by index
+
+            :param ip_network: IPNetwork object
+            :param ip_id: string, if contains '+' or '-' then it is
+                          used as index of an IP address in ip_network,
+                          else it is considered as IP address.
+
+            :rtype : str(IP)
+            """
+            if type(ip_id) == int:
+                return str(ip_network[int(ip_id)])
+            else:
+                return str(ip_id)
+
+        if 'ip_reserved' in params:
+            for ip_res in params['ip_reserved'].keys():
+                ip = _relative_to_ip(address_pool.ip_network,
+                                     params['ip_reserved'][ip_res])
+                params['ip_reserved'][ip_res] = ip      # Store to template
+                address_pool.ip_reserved[ip_res] = ip   # Store to the object
+
+        if 'ip_ranges' in params:
+            for ip_range in params['ip_ranges']:
+                ipr_start = _relative_to_ip(address_pool.ip_network,
+                                            params['ip_ranges'][ip_range][0])
+                ipr_end = _relative_to_ip(address_pool.ip_network,
+                                          params['ip_ranges'][ip_range][1])
+                params['ip_ranges'][ip_range] = (ipr_start, ipr_end)
+                address_pool.ip_ranges[ip_range] = (ipr_start, ipr_end)
+
+        return address_pool
 
 
 class NetworkPool(BaseModel):
@@ -124,7 +193,7 @@ class L2NetworkDevice(ParamedModel, BaseModel):
         app_label = 'devops'
 
     group = models.ForeignKey('Group', null=True)
-    address_pool = models.ForeignKey('AddressPool')
+    address_pool = models.ForeignKey('AddressPool', null=True)
     name = models.CharField(max_length=255)
 
     @property
@@ -204,7 +273,8 @@ class Interface(models.Model):
             type=type,
             mac_address=mac_address or generate_mac(),
             model=model)
-        interface.add_address()
+        if interface.l2_network_device.address_pool is not None:
+            interface.add_address()
         return interface
 
 
