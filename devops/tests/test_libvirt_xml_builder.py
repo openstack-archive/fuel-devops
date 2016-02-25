@@ -149,6 +149,9 @@ class TestVolumeXml(BaseTestXMLBuilder):
     <capacity>{capacity}</capacity>
     <target>
         <format type="{format}" />
+        <permissions>
+            <mode>0644</mode>
+        </permissions>
     </target>
     <backingStore>
         <path>{path}</path>

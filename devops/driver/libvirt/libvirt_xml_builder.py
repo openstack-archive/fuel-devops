@@ -93,6 +93,7 @@ class LibvirtXMLBuilder(object):
         volume_xml.capacity(str(volume.capacity))
         with volume_xml.target:
             volume_xml.format(type=volume.format)
+            volume_xml.permissions.mode("0644")
         if volume.backing_store is not None:
             with volume_xml.backingStore:
                 volume_xml.path(self.driver.volume_path(volume.backing_store))
