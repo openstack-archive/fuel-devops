@@ -91,6 +91,7 @@ class LibvirtXMLBuilder(object):
         volume_xml.capacity(str(capacity))
         with volume_xml.target:
             volume_xml.format(type=format)
+            volume_xml.permissions.mode("0644")
         if backing_store_path:
             with volume_xml.backingStore:
                 volume_xml.path(backing_store_path)
