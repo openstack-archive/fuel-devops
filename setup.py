@@ -28,6 +28,11 @@ setup(
     keywords='devops virtual environment',
     zip_safe=False,
     include_package_data=True,
+    package_data={
+        'devops': [
+            'templates/*.yaml',
+            'driver/*/*.yaml',
+        ]},
     packages=find_packages(),
     data_files=[
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
@@ -49,6 +54,7 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'jsonschema>=2.4.0,<2.5.0',
         'six',
     ]
 )
