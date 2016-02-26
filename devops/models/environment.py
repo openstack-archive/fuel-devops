@@ -346,7 +346,8 @@ class Environment(DriverModel):
             vcpu=int(node_params['vcpu']),
             boot=node_params['boot'])
 
-        self.create_interfaces(node_params['interfaces'], node)
+        self.create_interfaces(node_params['interfaces'], node,
+                               node_params['interface_model'])
 
         for volume in node_params.get('volumes', None):
             volume_name = config_node['name'] + '-' + volume['name']
