@@ -77,6 +77,7 @@ def get_devops_config(filename):
 
 def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                         admin_iso_path, boot_from, interfaceorder,
+                        interface_model='e1000',
                         networks_bonding=None,
                         networks_bondinginterfaces=None):
 
@@ -134,6 +135,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                 },
             ],
             'interfaces': admin_interfaces,
+            'interface_model': interface_model,
         },
     }
     return admin_config
@@ -141,6 +143,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
 
 def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                         slave_volume_capacity, interfaceorder,
+                        interface_model='e1000',
                         use_all_disks=None,
                         networks_multiplenetworks=None,
                         networks_nodegroups=None,
@@ -192,6 +195,7 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                 },
             ],
             'interfaces': slave_interfaces,
+            'interface_model': interface_model,
         },
     }
     if use_all_disks:

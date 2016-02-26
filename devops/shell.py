@@ -293,7 +293,9 @@ class Shell(object):
             admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
             admin_iso_path=iso_path,
             boot_from='cdrom',
-            interfaceorder=settings.INTERFACE_ORDER)
+            interfaceorder=settings.INTERFACE_ORDER,
+            interface_model=settings.ADMIN_INTERFACE_MODEL,
+        )
 
         admin_node = self.env.create_node(node_template)
         if force_define is True:
