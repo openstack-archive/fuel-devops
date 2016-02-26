@@ -81,7 +81,7 @@ class TestLibvirtVolume(LibvirtTestCase):
     <path>/default-pool/test_env_test_node_test_volume</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
@@ -123,7 +123,7 @@ class TestLibvirtVolume(LibvirtTestCase):
     <path>/default-pool/test_env_test_node_test_child</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
@@ -132,7 +132,7 @@ class TestLibvirtVolume(LibvirtTestCase):
     <path>/default-pool/test_env_test_node_test_volume</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
