@@ -180,6 +180,7 @@ FORWARDING = {
 
 # May be one of virtio, e1000, pcnet, rtl8139
 INTERFACE_MODEL = os.environ.get('INTERFACE_MODEL', 'e1000')
+ADMIN_INTERFACE_MODEL = os.environ.get('ADMIN_INTERFACE_MODEL', 'virtio')
 
 DHCP = {
     'admin': False,
