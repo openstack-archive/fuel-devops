@@ -29,6 +29,7 @@ from devops.models.base import BaseModel
 from devops.models.driver import Driver
 from devops.models.group import Group
 from devops.models.network import AddressPool
+from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
 
 
@@ -391,13 +392,22 @@ class Environment(BaseModel):
 
         return LegacyNetwork()
 
+    def get_env_l2_network_device(self, **kwargs):
+        for group in self.get_groups():
+            try:
+                return group.l2networkdevice_set.get(**kwargs)
+            except L2NetworkDevice.DoesNotExist:
+                continue
+        # TODO(ddmitriev): raise DoesNotExist(*args, **kwargs) if not found
+
     # LEGACY, TO CHECK IN fuel-qa / PROXY
     def get_network(self, *args, **kwargs):
-        for group in self.get_groups():
-            l2_network_device = group.l2networkdevice_set.get(*args, **kwargs)
-            if l2_network_device and l2_network_device.address_pool:
-                network = self._create_network_object(l2_network_device)
-                return network
+        l2_network_device = self.get_env_l2_network_device(*args, **kwargs)
+
+        if l2_network_device and l2_network_device.address_pool:
+            network = self._create_network_object(l2_network_device)
+            return network
+        # TODO(ddmitriev): raise DoesNotExist(*args, **kwargs) if not found
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
     def get_networks(self, *args, **kwargs):

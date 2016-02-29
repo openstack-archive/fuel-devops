@@ -483,7 +483,8 @@ class Interface(models.Model):
             type=type,
             mac_address=mac_address or generate_mac(),
             model=model)
-        if interface.l2_network_device.address_pool is not None:
+        if (interface.l2_network_device and
+                interface.l2_network_device.address_pool is not None):
             interface.add_address()
         return interface
 
