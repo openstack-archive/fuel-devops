@@ -246,3 +246,34 @@ class LibvirtXMLBuilder(object):
             with node_xml.console(type='pty'):
                 node_xml.target(type='serial', port='0')
         return str(node_xml)
+
+    @classmethod
+    def build_iface_xml(cls, name, ip=None, prefix=None, vlanid=None):
+        """Generate interface bridge XML
+
+        :type name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : String
+        """
+        if vlanid is not None:
+            iface_type = 'vlan'
+            iface_name = "{0}.{1}".format(name, str(vlanid))
+        else:
+            iface_type = 'ethernet'
+            iface_name = "{0}".format(name)
+
+        interface_xml = XMLBuilder('interface',
+                                   type=iface_type,
+                                   name=iface_name)
+        interface_xml.start(mode="onboot")
+
+        if vlanid is not None:
+            with interface_xml.vlan(tag=str(vlanid)):
+                interface_xml.interface(name=name)
+
+        if (ip is not None) and (prefix is not None):
+            with interface_xml.protocol(family='ipv4'):
+                interface_xml.ip(address=ip, prefix=prefix)
+        return str(interface_xml)
