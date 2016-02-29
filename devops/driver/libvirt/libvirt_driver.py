@@ -14,6 +14,7 @@
 
 import datetime
 import os
+import subprocess
 from time import sleep
 import uuid
 import xml.etree.ElementTree as ET
@@ -207,7 +208,100 @@ class Driver(DriverBase):
 
 
 class L2NetworkDevice(L2NetworkDeviceBase):
+    """L2 network device based on libvirt Network
 
+       Template example
+       ----------------
+       # Nodes should have at least two interfaces connected to the following
+       # L2 networks:
+       # admin: for admin/PXE network
+       # openstack_br: for all other tagged networks.
+
+       l2_network_devices:  # Libvirt bridges. It is *NOT* Nailgun networks
+
+         # Admin/PXE network
+         # Virtual nodes can be connected here (Fuel master, OpenStack nodes).
+         # A physical interface ${BAREMETAL_ADMIN_IFACE} will be added
+         # to the libvirt network with name 'admin' to allow connectivity
+         # between VMs, baremetal servers and system tests on this server.
+         admin:
+           address_pool: fuelweb_admin-pool01
+           dhcp: false
+           forward:
+             mode: nat
+           parent_iface:
+             phys_dev: !os_env BAREMETAL_ADMIN_IFACE
+
+         # Libvirt bridge dedicated for access to a baremetal network
+         # ${BAREMETAL_OS_NETS_IFACE} with tagged OpenStack networks.
+         # This is intermediate bridge, where tagged interfaces with tags
+         # 100, 101 and 102 will be created, to get untagged access
+         # to the tagged networks.
+         # IT IS *NOT* FOR ADDING ADDRESS POOLS!
+         # ONLY FOR CONNECTING VM's INTERFACES!
+         openstack_br:
+           vlan_ifaces:
+            - 100
+            - 101
+            - 102
+            - 103
+           parent_iface:
+             phys_dev: !os_env BAREMETAL_OS_NETS_IFACE
+
+         # Public libvirt bridge, only for keeping IP address.
+         # 'nat' forward can be ommited if the baremetal network has
+         # it's own gateway.
+         # This l2 libvirt network can be ommited if no access required
+         # from system tests to the nodes via public addresses.
+         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+         # ONLY FOR ACCESS TO THE PUBLIC NETWORK ADDRESSES
+         # AND 'NAT' FROM PUBLIC TO WAN.
+         public:
+           address_pool: public-pool01
+           dhcp: false
+           forward:
+             mode: nat
+           parent_iface:
+             l2_net_dev: openstack_br
+             tag: 100
+
+         # Storage libvirt bridge, only for keeping IP address.
+         # This l2 libvirt network can be ommited if no access required
+         # from system tests to the nodes via storage addresses.
+         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+         # ONLY FOR ACCESS TO THE STORAGE NETWORK ADDRESSES
+         storage:
+           address_pool: storage-pool01
+           dhcp: false
+           parent_iface:
+             l2_net_dev: openstack_br
+             tag: 101
+
+         # Management libvirt bridge, only for keeping IP address.
+         # This l2 libvirt network can be ommited if no access required
+         # from system tests to the nodes via management addresses.
+         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+         # ONLY FOR ACCESS TO THE MANAGEMENT NETWORK ADDRESSES
+         management:
+           address_pool: management-pool01
+           dhcp: false
+           parent_iface:
+             l2_net_dev: openstack_br
+             tag: 102
+
+         # Private libvirt bridge, only for keeping IP address.
+         # This l2 libvirt network can be ommited if no access required
+         # from system tests to the nodes via private addresses.
+         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+         # ONLY FOR ACCESS TO THE PRIVATE NETWORK ADDRESSES
+         private:
+           address_pool: private-pool01
+           dhcp: false
+           parent_iface:
+             l2_net_dev: openstack_br
+             tag: 103
+
+    """
     uuid = ParamField()
 
     forward = ParamMultiField(
@@ -222,6 +316,13 @@ class L2NetworkDevice(L2NetworkDeviceBase):
     has_pxe_server = ParamField(default=False)
     has_dhcp_server = ParamField(default=False)
     tftp_root_dir = ParamField()
+
+    vlan_ifaces = ParamField(default=[])
+    parent_iface = ParamMultiField(
+        phys_dev=ParamField(default=None),
+        l2_net_dev=ParamField(default=None),
+        tag=ParamField(default=None),
+    )
 
     @property
     def _libvirt_network(self):
@@ -256,6 +357,10 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         )
 
         bridge_name = 'virbr{0}'.format(self.id)
+
+        # Define tagged interfaces on the bridge
+        for vlanid in self.vlan_ifaces:
+            self.iface_define(name=bridge_name, vlanid=vlanid)
 
         # Define libvirt network
         ip_network_address = None
@@ -308,6 +413,31 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         if verbose or not self.is_active():
             self._libvirt_network.create()
 
+        # Insert a specified interface into the network's bridge
+        parent_name = ''
+        if self.parent_iface.phys_dev is not None:
+            # TODO(ddmitriev): check that phys_dev is not the device
+            # that is used for default route
+            parent_name = self.parent_iface.phys_dev
+
+        elif self.parent_iface.l2_net_dev is not None:
+            l2_net_dev = self.group.get_l2_network_device(
+                name=self.parent_iface.l2_net_dev)
+            parent_name = l2_net_dev.bridge_name()
+
+        # Add specified interface to the current bridge
+        if parent_name is not '':
+            if self.parent_iface.tag:
+                parent_iface_name = "{0}.{1}".format(
+                    parent_name, str(self.parent_iface.tag))
+            else:
+                parent_iface_name = parent_name
+            # TODO(ddmitriev): check if the parent_name is already
+            # used in any bridge
+            cmd = 'sudo brctl addif {br} {iface}'.format(
+                br=self.bridge_name(), iface=parent_iface_name)
+            subprocess.check_output(cmd.split())
+
     @retry()
     def destroy(self):
         self._libvirt_network.destroy()
@@ -316,8 +446,15 @@ class L2NetworkDevice(L2NetworkDeviceBase):
     def remove(self, verbose=False):
         if verbose or self.uuid:
             if verbose or self.exists():
+                # Stop network
                 if self.is_active():
                     self._libvirt_network.destroy()
+                # Remove tagged interfaces
+                for vlanid in self.vlan_ifaces:
+                    iface_name = "{}.{}".format(self.bridge_name(),
+                                                str(vlanid))
+                    self.iface_undefine(iface_name=iface_name)
+                # Remove network
                 self._libvirt_network.undefine()
         super(L2NetworkDevice, self).remove(verbose)
 
@@ -336,6 +473,28 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                 return False
             else:
                 raise
+
+    @retry()
+    def iface_define(self, name, ip=None, prefix=None, vlanid=None):
+        """Define bridge interface
+
+        :type name: String
+        :type ip: IPAddress
+        :type prefix: Integer
+        :type vlanid: Integer
+            :rtype : None
+        """
+        self.driver.conn.interfaceDefineXML(
+            LibvirtXMLBuilder.build_iface_xml(name, ip, prefix, vlanid))
+
+    @retry()
+    def iface_undefine(self, iface_name):
+        """Start interface
+
+        :type iface_name: String
+            :rtype : None
+        """
+        self.driver.conn.interfaceLookupByName(iface_name).undefine()
 
 
 class Volume(VolumeBase):
