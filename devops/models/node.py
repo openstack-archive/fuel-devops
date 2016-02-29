@@ -234,8 +234,11 @@ class Node(ParamedModel, BaseModel):
 
     # NEW
     def add_interface(self, label, l2_network_device_name, interface_model):
-        l2_network_device = self.group.get_l2_network_device(
-            name=l2_network_device_name)
+        if l2_network_device_name:
+            l2_network_device = self.group.get_l2_network_device(
+                name=l2_network_device_name)
+        else:
+            l2_network_device = None
 
         Interface.interface_create(
             node=self,
