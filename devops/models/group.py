@@ -157,7 +157,7 @@ class Group(BaseModel):
         for node_cfg in nodes:
             self.add_node(name=node_cfg['name'],
                           role=node_cfg['role'],
-                          **node_cfg['params'])
+                          **node_cfg.get('params', {}))
 
     def add_node(self, name, role='fuel_slave', **params):
         new_params = deepcopy(params)
