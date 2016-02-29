@@ -65,9 +65,9 @@ class Node(ParamedModel, BaseModel):
         pass
 
     def erase(self):
-        self.remove(verbose=False)
+        self.remove()
 
-    def remove(self, verbose=False):
+    def remove(self, **kwargs):
         self.erase_volumes()
         self.delete()
 
@@ -77,10 +77,10 @@ class Node(ParamedModel, BaseModel):
     def resume(self):
         pass
 
-    def snapshot(self, name=None):
+    def snapshot(self, **kwargs):
         pass
 
-    def revert(self, name=None):
+    def revert(self, **kwargs):
         pass
 
     @property
@@ -234,8 +234,11 @@ class Node(ParamedModel, BaseModel):
 
     # NEW
     def add_interface(self, label, l2_network_device_name, interface_model):
-        l2_network_device = self.group.get_l2_network_device(
-            name=l2_network_device_name)
+        if l2_network_device_name:
+            l2_network_device = self.group.get_l2_network_device(
+                name=l2_network_device_name)
+        else:
+            l2_network_device = None
 
         Interface.interface_create(
             node=self,
