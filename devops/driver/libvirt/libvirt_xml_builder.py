@@ -140,7 +140,32 @@ class LibvirtXMLBuilder(object):
                                          snapshot='external')
         return str(xml_builder)
 
-    def _build_disk_device(self, device_xml, disk_device):
+    def _pre_generate_disk_uuids(self, disk_devices):
+        """Generate serial and wwn for volumes
+
+        Multipath devices should have the same serial.
+        There is no attribute for 'serial' or 'wwn' in 'disk_device'.
+        As a workaround, the same serial will be used for the same volume.
+        If the volume is used more than for one disk device, than
+        also add WWN to these disk devices.
+        """
+        vol_uuids = [x.volume.uuid for x in disk_devices]
+
+        disk_uuids = {}
+        for vol_uuid in vol_uuids:
+
+            if vol_uuid not in disk_uuids:
+                disk_uuids[vol_uuid] = {
+                    'serial': ''.join(uuid.uuid4().hex),
+                    'wwn': None,
+                }
+            else:
+                disk_uuids[vol_uuid]['wwn'] = '0' + ''.join(
+                    uuid.uuid4().hex)[:15]
+
+        return disk_uuids
+
+    def _build_disk_device(self, device_xml, disk_device, disk_uuids):
         """Build xml for disk
 
         :param device_xml: XMLBuilder
@@ -161,7 +186,9 @@ class LibvirtXMLBuilder(object):
                 device_xml.target(
                     dev=disk_device.target_dev,
                     bus=disk_device.bus)
-            device_xml.serial(''.join(uuid.uuid4().hex))
+            device_xml.serial(disk_uuids[disk_device.volume.uuid]['serial'])
+            if disk_uuids[disk_device.volume.uuid]['wwn']:
+                device_xml.wwn(disk_uuids[disk_device.volume.uuid]['wwn'])
 
     def _build_interface_device(self, device_xml, interface):
         """Build xml for interface
@@ -242,8 +269,9 @@ class LibvirtXMLBuilder(object):
                         listen='0.0.0.0',
                         autoport='yes')
 
+            disk_uuids = self._pre_generate_disk_uuids(node.disk_devices)
             for disk_device in node.disk_devices:
-                self._build_disk_device(node_xml, disk_device)
+                self._build_disk_device(node_xml, disk_device, disk_uuids)
             for interface in node.interfaces:
                 self._build_interface_device(node_xml, interface)
             with node_xml.video:
