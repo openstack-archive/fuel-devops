@@ -140,7 +140,32 @@ class LibvirtXMLBuilder(object):
                                          snapshot='external')
         return str(xml_builder)
 
-    def _build_disk_device(self, device_xml, disk_device):
+    def _pre_generate_disk_uuids(self, disk_devices):
+        """Generate serial and wwn for volumes
+
+        Multipath devices should have the same serial.
+        There is no attribute for 'serial' or 'wwn' in 'disk_device'.
+        As a workaround, the same serial will be used for the same volume.
+        If the volume is used more than for one disk device, than
+        also add WWN to these disk devices.
+        """
+        vol_names = [self.driver.volume_path(x.volume) for x in disk_devices]
+
+        disk_uuids = {}
+        for vol_name in vol_names:
+
+            if vol_name not in disk_uuids:
+                disk_uuids[vol_name] = {
+                    'serial': ''.join(uuid.uuid4().hex),
+                    'wwn': None,
+                }
+            else:
+                disk_uuids[vol_name]['wwn'] = ''.join(
+                    uuid.uuid4().hex)[:16]
+
+        return disk_uuids
+
+    def _build_disk_device(self, device_xml, disk_device, disk_uuids):
         """Build xml for disk
 
         :param device_xml: XMLBuilder
@@ -150,7 +175,8 @@ class LibvirtXMLBuilder(object):
         with device_xml.disk(type=disk_device.type, device=disk_device.device):
             # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
             device_xml.driver(type=disk_device.volume.format, cache="unsafe")
-            device_xml.source(file=self.driver.volume_path(disk_device.volume))
+            volume_path = self.driver.volume_path(disk_device.volume)
+            device_xml.source(file=volume_path)
             if disk_device.bus == 'usb':
                 device_xml.target(
                     dev=disk_device.target_dev,
@@ -161,7 +187,9 @@ class LibvirtXMLBuilder(object):
                 device_xml.target(
                     dev=disk_device.target_dev,
                     bus=disk_device.bus)
-            device_xml.serial(''.join(uuid.uuid4().hex))
+            device_xml.serial(disk_uuids[volume_path]['serial'])
+            if disk_uuids[volume_path]['wwn']:
+                device_xml.serial(disk_uuids[volume_path]['wwn'])
 
     def _build_interface_device(self, device_xml, interface):
         """Build xml for interface
@@ -242,8 +270,9 @@ class LibvirtXMLBuilder(object):
                         listen='0.0.0.0',
                         autoport='yes')
 
+            disk_uuids = self._pre_generate_disk_uuids(node.disk_devices)
             for disk_device in node.disk_devices:
-                self._build_disk_device(node_xml, disk_device)
+                self._build_disk_device(node_xml, disk_device, disk_uuids)
             for interface in node.interfaces:
                 self._build_interface_device(node_xml, interface)
             with node_xml.video:
