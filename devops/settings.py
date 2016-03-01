@@ -206,6 +206,9 @@ HARDWARE = {
 }
 
 USE_ALL_DISKS = get_var_as_bool('USE_ALL_DISKS', True)
+SLAVE_MULTIPATH_DISKS_COUNT = int(
+    os.environ.get("SLAVE_MULTIPATH_DISKS_COUNT", 0))
+
 ISO_PATH = os.environ.get('ISO_PATH')
 
 IRONIC_ENABLED = get_var_as_bool('IRONIC_ENABLED', False)
@@ -275,3 +278,4 @@ DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
 SNAPSHOTS_EXTERNAL = get_var_as_bool('SNAPSHOTS_EXTERNAL', False)
 SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
                                         os.path.expanduser("~/.devops/snap"))
+

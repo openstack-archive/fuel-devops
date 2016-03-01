@@ -26,10 +26,10 @@ from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
 from devops.models.base import DriverModel
-from devops.models.network import DiskDevice
 from devops.models.network import Interface
 from devops.models.network import Network
 from devops.models.node import Node
+from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
 
 
@@ -76,17 +76,20 @@ class Environment(DriverModel):
             role=role,
             boot=boot)
 
-    def add_empty_volume(self, node, name, capacity,
-                         device='disk', bus='virtio', format='qcow2'):
-        return DiskDevice.node_attach_volume(
+    def add_empty_volume(self, node, name, capacity, device='disk',
+                         bus='virtio', format='qcow2', multipath_count=0):
+        volume = Volume.volume_create(
+            name=name,
+            capacity=capacity,
+            environment=self,
+            format=format)
+        DiskDevice.node_attach_volume(
             node=node,
-            volume=Volume.volume_create(
-                name=name,
-                capacity=capacity,
-                environment=self,
-                format=format),
+            volume=volume,
             device=device,
-            bus=bus)
+            bus=bus,
+            multipath_count=multipath_count)
+        return volume
 
     @classmethod
     def create(cls, name):
@@ -221,6 +224,7 @@ class Environment(DriverModel):
                 slave_memory=settings.HARDWARE["slave_node_memory"],
                 slave_volume_capacity=settings.NODE_VOLUME_SIZE,
                 use_all_disks=settings.USE_ALL_DISKS,
+                multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
                 ironic_nodes_count=settings.IRONIC_NODES_COUNT,
                 networks_bonding=settings.BONDING,
                 networks_bondinginterfaces=settings.BONDING_INTERFACES,
@@ -351,26 +355,28 @@ class Environment(DriverModel):
         for volume in node_params.get('volumes', None):
             volume_name = config_node['name'] + '-' + volume['name']
             if 'source_image' in volume:
-                disk = self.add_empty_volume(
+                new_vol = self.add_empty_volume(
                     node,
                     volume_name,
                     capacity=_get_file_size(volume['source_image']),
                     format=volume.get('format', 'qcow2'),
                     device=volume.get('device', 'disk'),
-                    bus=volume.get('bus', 'virtio')
+                    bus=volume.get('bus', 'virtio'),
+                    multipath_count=volume.get('multipath_count', 0),
                 )
-                disk.volume.define()
-                disk.volume.upload(volume['source_image'])
+                new_vol.define()
+                new_vol.upload(volume['source_image'])
             else:
-                disk = self.add_empty_volume(
+                new_vol = self.add_empty_volume(
                     node,
                     volume_name,
                     capacity=int(volume['capacity']) * 1024 ** 3,
                     format=volume.get('format', 'qcow2'),
                     device=volume.get('device', 'disk'),
-                    bus=volume.get('bus', 'virtio')
+                    bus=volume.get('bus', 'virtio'),
+                    multipath_count=volume.get('multipath_count', 0),
                 )
-                disk.volume.define()
+                new_vol.define()
 
         return node
 

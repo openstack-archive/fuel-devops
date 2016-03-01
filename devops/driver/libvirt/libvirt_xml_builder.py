@@ -140,7 +140,7 @@ class LibvirtXMLBuilder(object):
                                          snapshot='external')
         return str(xml_builder)
 
-    def _build_disk_device(self, device_xml, disk_device):
+    def _build_disk_device(self, device_xml, disk_device, disk_serial):
         """Build xml for disk
 
         :param device_xml: XMLBuilder
@@ -161,7 +161,7 @@ class LibvirtXMLBuilder(object):
                 device_xml.target(
                     dev=disk_device.target_dev,
                     bus=disk_device.bus)
-            device_xml.serial(''.join(uuid.uuid4().hex))
+            device_xml.serial(disk_serial)
 
     def _build_interface_device(self, device_xml, interface):
         """Build xml for interface
@@ -242,8 +242,19 @@ class LibvirtXMLBuilder(object):
                         listen='0.0.0.0',
                         autoport='yes')
 
+            prev_volume = None
+            disk_serial = ''.join(uuid.uuid4().hex)
             for disk_device in node.disk_devices:
-                self._build_disk_device(node_xml, disk_device)
+                # Multipath devices should have the same serial.
+                # There is no attribute for 'serial' in 'disk_device',
+                # so as a workaround, the same serial will be used for
+                # the same volumes ordered one after other.
+                if prev_volume != disk_device.volume:
+                    # Generate new serial
+                    disk_serial = ''.join(uuid.uuid4().hex)
+                    prev_volume = disk_device.volume
+                self._build_disk_device(node_xml, disk_device, disk_serial)
+
             for interface in node.interfaces:
                 self._build_interface_device(node_xml, interface)
             with node_xml.video:

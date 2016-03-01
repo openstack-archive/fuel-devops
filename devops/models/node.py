@@ -464,13 +464,13 @@ class Node(DriverModel):
             :rtype : DiskDevice
         """
         vol_name = "%s-%s" % (self.name, name)
-        disk = self.environment.add_empty_volume(node=self,
+        new_vol = self.environment.add_empty_volume(node=self,
                                                  name=vol_name,
                                                  capacity=capacity,
                                                  device=device,
                                                  bus=bus)
         if force_define:
-            disk.volume.define()
+            new_vol.define()
         return disk
 
     @classmethod
