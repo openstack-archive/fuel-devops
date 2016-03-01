@@ -413,8 +413,8 @@ class TestNodeXml(BaseTestXMLBuilder):
                 bus='bus{0}'.format(i)
             ) for i in range(3)
         ]
-        self.node.disk_devices = mock.MagicMock()
-        self.node.disk_devices.__iter__.return_value = iter(disk_devices)
+
+        self.node.disk_devices = disk_devices
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
         expected = '''
     <devices>
