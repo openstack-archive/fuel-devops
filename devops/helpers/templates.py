@@ -142,6 +142,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
 def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                         slave_volume_capacity, interfaceorder,
                         use_all_disks=None,
+                        multipath_count=0,
                         networks_multiplenetworks=None,
                         networks_nodegroups=None,
                         networks_bonding=None,
@@ -189,6 +190,7 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                 {
                     'name': 'system',
                     'capacity': slave_volume_capacity,
+                    'multipath_count': multipath_count,
                 },
             ],
             'interfaces': slave_interfaces,
@@ -198,11 +200,12 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         slave_config['params']['volumes'].extend([
             {
                 'name': 'cinder',
-                'capacity': slave_volume_capacity
+                'capacity': slave_volume_capacity,
+                'multipath_count': multipath_count,
             },
             {
                 'name': 'swift',
-                'capacity': slave_volume_capacity
+                'capacity': slave_volume_capacity,
             }
         ])
     return slave_config
@@ -243,6 +246,7 @@ def create_devops_config(boot_from,
                          slave_memory,
                          slave_volume_capacity,
                          use_all_disks,
+                         multipath_count,
                          ironic_nodes_count,
                          networks_bonding,
                          networks_bondinginterfaces,
@@ -301,6 +305,7 @@ def create_devops_config(boot_from,
             slave_volume_capacity=slave_volume_capacity,
             interfaceorder=interfaceorder,
             use_all_disks=use_all_disks,
+            multipath_count=multipath_count,
             networks_multiplenetworks=networks_multiplenetworks,
             networks_nodegroups=networks_nodegroups,
             networks_bonding=networks_bonding,
