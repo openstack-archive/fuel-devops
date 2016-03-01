@@ -473,17 +473,17 @@ class Node(DriverModel):
         param: device: String
         param: bus: String
         param: force_define: Bool
-            :rtype : DiskDevice
+            :rtype : Volume
         """
         vol_name = "%s-%s" % (self.name, name)
-        disk = self.environment.add_empty_volume(node=self,
-                                                 name=vol_name,
-                                                 capacity=capacity,
-                                                 device=device,
-                                                 bus=bus)
+        new_vol = self.environment.add_empty_volume(node=self,
+                                                    name=vol_name,
+                                                    capacity=capacity,
+                                                    device=device,
+                                                    bus=bus)
         if force_define:
-            disk.volume.define()
-        return disk
+            new_vol.define()
+        return new_vol
 
     @classmethod
     def node_create(cls, name, environment=None, role=None, vcpu=1,
