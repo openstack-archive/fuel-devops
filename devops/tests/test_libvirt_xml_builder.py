@@ -413,8 +413,8 @@ class TestNodeXml(BaseTestXMLBuilder):
                 bus='bus{0}'.format(i)
             ) for i in range(3)
         ]
-        self.node.disk_devices = mock.MagicMock()
-        self.node.disk_devices.__iter__.return_value = iter(disk_devices)
+
+        self.node.disk_devices = disk_devices
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
         expected = '''
     <devices>
@@ -437,6 +437,82 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source file="volume_path_mock" />
             <target bus="bus2" dev="tdev2" />
             <serial>disk-serial</serial>
+        </disk>
+        <video>
+            <model heads="1" type="vga" vram="9216" />
+        </video>
+        <serial type="pty">
+            <target port="0" />
+        </serial>
+        <console type="pty">
+            <target port="0" type="serial" />
+        </console>
+    </devices>'''
+        self.assertXMLIn(expected, xml)
+
+    @mock.patch('devops.driver.libvirt.libvirt_xml_builder.uuid')
+    def test_node_multipath_devices(self, mock_uuid):
+        mock_uuid.uuid4.return_value.hex = 'disk-serial'
+        volumes = [mock.Mock(uuid=i, format='frmt{0}'.format(i))
+                   for i in range(3)]
+
+        disk_devices = [
+            mock.Mock(
+                type='type{0}'.format(i),
+                device='device{0}'.format(i),
+                volume=volumes[i],
+                target_dev='tdev{0}'.format(i),
+                bus='bus{0}'.format(i)
+            ) for i in range(3)
+        ]
+
+        self.node.disk_devices = disk_devices + disk_devices
+        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
+        expected = '''
+    <devices>
+        <controller model="nec-xhci" type="usb" />
+        <emulator>test_emulator</emulator>
+        <disk device="device0" type="type0">
+            <driver cache="unsafe" type="frmt0"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus0" dev="tdev0"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
+        </disk>
+        <disk device="device1" type="type1">
+            <driver cache="unsafe" type="frmt1"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus1" dev="tdev1"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
+        </disk>
+        <disk device="device2" type="type2">
+            <driver cache="unsafe" type="frmt2"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus2" dev="tdev2"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
+        </disk>
+        <disk device="device0" type="type0">
+            <driver cache="unsafe" type="frmt0"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus0" dev="tdev0"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
+        </disk>
+        <disk device="device1" type="type1">
+            <driver cache="unsafe" type="frmt1"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus1" dev="tdev1"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
+        </disk>
+        <disk device="device2" type="type2">
+            <driver cache="unsafe" type="frmt2"/>
+            <source file="volume_path_mock"/>
+            <target bus="bus2" dev="tdev2"/>
+            <serial>disk-serial</serial>
+            <wwn>0disk-serial</wwn>
         </disk>
         <video>
             <model heads="1" type="vga" vram="9216" />
