@@ -288,7 +288,12 @@ class DevopsDriver(object):
         :type network: Network
             :rtype : None
         """
-        self.conn.networkLookupByUUIDString(network.uuid).undefine()
+        try:
+            network = self.conn.networkLookupByUUIDString(network.uuid)
+        except libvirt.libvirtError:
+            logger.error("Network not found by UUID: {}".format(network.uuid))
+            return
+        return network.undefine()
 
     @retry()
     def network_create(self, network):
@@ -308,8 +313,13 @@ class DevopsDriver(object):
     @retry()
     def network_filter_undefine(self, network):
         """Undefine network filter"""
-        return self.conn.nwfilterLookupByName(
-            "{}_{}".format(network.environment.name, network.name)).undefine()
+        network_name = "{}_{}".format(network.environment.name, network.name)
+        try:
+            nwfilter = self.conn.nwfilterLookupByName(network_name)
+        except libvirt.libvirtError:
+            logger.error("Network filter {} not found.".format(network_name))
+            return
+        return nwfilter.undefine()
 
     @retry()
     def network_block_status(self, network):
@@ -349,11 +359,17 @@ class DevopsDriver(object):
     @retry()
     def interface_filter_undefine(self, interface):
         """Undefine interface filter"""
-        self.conn.nwfilterLookupByName(
-            "{}_{}_{}".format(
-                interface.network.environment.name,
-                interface.network.name,
-                interface.mac_address)).undefine()
+        iface_name = "{}_{}_{}".format(
+            interface.network.environment.name,
+            interface.network.name,
+            interface.mac_address)
+        try:
+            nwfilter = self.conn.nwfilterLookupByName(iface_name)
+        except libvirt.libvirtError:
+            logger.error("Interface filter {} not found.".format(iface_name))
+            return
+
+        nwfilter.undefine()
 
     @retry()
     def interface_block_status(self, interface):
@@ -432,7 +448,12 @@ class DevopsDriver(object):
             :rtype : None
 
         """
-        domain = self.conn.lookupByUUIDString(node.uuid)
+        try:
+            domain = self.conn.lookupByUUIDString(node.uuid)
+        except libvirt.libvirtError:
+            logger.error("Domain not found by UUID: {}".format(node.uuid))
+            return
+
         if undefine_snapshots:
             # Delete external snapshots
             snap_list = domain.listAllSnapshots(0)
