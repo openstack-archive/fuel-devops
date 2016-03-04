@@ -186,11 +186,8 @@ class Shell(object):
         for network in networks:
             network.define()
         admin_node = self.admin_add(networks=networks)
-        # define the slave nodes since the Environment define no longer defines
-        # the networks, volumes and nodes by default and we need them to be
-        # created for this function
+        admin_node.define()
         self.do_slave_add(force_define=True)
-        self.env.define()
         admin_node.disk_devices.get(device='cdrom').volume.upload(
             self.params.iso_path)
         for net in self.env.get_networks():
