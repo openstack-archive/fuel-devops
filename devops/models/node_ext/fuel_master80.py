@@ -18,13 +18,13 @@ from devops.settings import SSH_CREDENTIALS
 
 
 class NodeExtension(object):
-    """Extension for Fuel 7.0"""
+    """Extension for Fuel 8.0"""
 
     def __init__(self, node):
         self.node = node
 
     def _send_keys(self, kernel_cmd):
-        """Provide virables data to kernel cmd format template"""
+        """Provide variables data to kernel cmd format template"""
 
         master_iface = self.node.get_interface_by_nailgun_network_name(
             SSH_CREDENTIALS['admin_network'])
@@ -50,15 +50,10 @@ class NodeExtension(object):
                 '2\n'
                 '<Esc><Enter>\n'
                 '<Wait>\n'
-                'vmlinuz'
-                ' initrd=initrd.img ks=hd:LABEL="Mirantis_Fuel":/ks.cfg\n'
-                ' repo=hd:LABEL="Mirantis_Fuel":/\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={dns1}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
+                'vmlinuz initrd=initrd.img ks=hd:LABEL=Mirantis_Fuel:/ks.cfg\n'
+                ' repo=hd:LABEL=Mirantis_Fuel:/\n'
+                ' ip={ip}::{gw}:{mask}:{hostname}'
+                ':' + iface + ':off::: dns1={dns1}'
                 ' showmenu=no\n'
                 ' wait_for_external_config=' + wait_for_external_config + '\n'
                 ' build_images=0\n'
@@ -71,12 +66,8 @@ class NodeExtension(object):
                 '<Esc>\n'
                 '<Wait>\n'
                 'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={dns1}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
+                ' ip={ip}::{gw}:{mask}:{hostname}'
+                ':' + iface + ':off::: dns1={dns1}'
                 ' showmenu=no\n'
                 ' wait_for_external_config=' + wait_for_external_config + '\n'
                 ' build_images=0\n'
