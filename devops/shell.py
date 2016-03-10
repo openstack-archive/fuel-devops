@@ -22,6 +22,7 @@ import tabulate
 
 import devops
 from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import check_net_pool
 from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_admin_config
@@ -175,11 +176,13 @@ class Shell(object):
             if env.name == env_name:
                 print("Please, set another environment name")
                 raise SystemExit()
-        self.env = Environment.create(env_name)
+        if not check_net_pool(self.params.net_pool):
+            raise SystemExit()
         networks, prefix = self.params.net_pool.split(':')
         Network.default_pool = Network.create_network_pool(
             networks=[ipaddr.IPNetwork(networks)],
             prefix=int(prefix))
+        self.env = Environment.create(env_name)
 
         networks = Network.create_networks(environment=self.env)
         for network in networks:

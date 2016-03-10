@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import posixpath
+import re
 import socket
 import stat
 import time
@@ -30,6 +31,7 @@ from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
+from devops.settings import DEFAULT_INTERFACE_ORDER
 from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
 from devops.settings import SSH_SLAVE_CREDENTIALS
@@ -489,3 +491,46 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def check_net_pool(netpool):
+    """Check whether netpool is correct
+
+    We should should check whether net-pool value is correct
+    Wrong values: 10.109.0.0/29:10.109.0.0/27, 10.109.0.0/29,
+    10.109.0.0/29:11, 10.109.0.0, 10.109.0.0/11::29, 10.109.0.0/0xFF:29,
+    abcd/1:29, 10.109.0.0/35:40, 10.109.0.0/32:35,
+    10.109.0.0/28:29 (correct, but not enought subnets for all interfaces)
+
+    returns True if net-pool has correct format
+    False - otherwise.
+    """
+
+    pattern = '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}' \
+              '(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)' \
+              '\/(?:3[0-2]|[12][0-9]|[1-9])\:(?:3[0-2]|[12][0-9]|[1-9])$'
+    result = re.match(pattern, netpool)
+    if result is None:
+        logging.error("Network pool '%s' is wrong. "
+                      "Please, provide correct net pool", netpool)
+        return False
+
+    networks, new_prefix = netpool.split(':')
+    networks, prefix = networks.split('/')
+    prefix, new_prefix = int(prefix), int(new_prefix)
+    networks_count = 2 ** (new_prefix - prefix)
+
+    if prefix > new_prefix:
+        logging.error("New prefix must be longer than %s. "
+                      "Please, provide correct prefixes order",
+                      prefix)
+        return False
+
+    if networks_count < len(DEFAULT_INTERFACE_ORDER.split(',')):
+        logging.error("Net pool '%s' will contain %s networks, but need %s. "
+                      "Please, provide greater range",
+                      netpool, networks_count,
+                      len(DEFAULT_INTERFACE_ORDER.split(',')))
+        return False
+
+    return True
