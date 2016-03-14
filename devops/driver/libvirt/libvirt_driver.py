@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import division
 import datetime
 from time import sleep
 import xml.etree.ElementTree as ET
@@ -21,6 +22,7 @@ import libvirt
 import os
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from devops.error import DevopsError
 from devops.helpers.helpers import _get_file_size
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
@@ -121,7 +123,7 @@ class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
-                 stp=True, hpet=True, use_host_cpu=True):
+                 stp=True, hpet=True, use_host_cpu=True, enable_acpi=False):
         """libvirt driver
 
         :param use_host_cpu: When creating nodes, should libvirt's
@@ -137,6 +139,7 @@ class DevopsDriver(object):
         self.storage_pool_name = storage_pool_name
         self.reboot_timeout = None
         self.use_host_cpu = use_host_cpu
+        self.enable_acpi = enable_acpi
         self.use_hugepages = settings.USE_HUGEPAGES
 
         if settings.VNC_PASSWORD:
@@ -424,8 +427,37 @@ class DevopsDriver(object):
             'guest/arch[@name="{0:>s}"]/'
             'domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
+
+        # NUMA nodes
+        # TODO(ddmitriev): pass 'numa' structure from the YAML template
+        # for fuel-devops-3.0 instead of calculating parameters here.
+        numa_nodes = settings.HARDWARE["numa_nodes"]
+        numa = []
+        if numa_nodes:
+            cpus_per_numa = node.vcpu // numa_nodes
+            if cpus_per_numa * numa_nodes != node.vcpu:
+                raise DevopsError(
+                    "NUMA_NODES={0} is not a multiple of the number of CPU={1}"
+                    " for node '{2}'".format(numa_nodes, node.vcpu, node.name))
+
+            memory_per_numa = (node.memory * 1024) // numa_nodes
+            if memory_per_numa * numa_nodes != (node.memory * 1024):
+                raise DevopsError(
+                    "NUMA_NODES={0} is not a multiple of the amount of "
+                    "MEMORY={1} for node '{2}'".format(numa_nodes,
+                                                       node.memory,
+                                                       node.name))
+            for x in range(numa_nodes):
+                # List of cpu IDs for the numa node
+                cpus = range(x * cpus_per_numa, (x + 1) * cpus_per_numa)
+                cell = {
+                    'cpus': ','.join(map(str, cpus)),
+                    'memory': memory_per_numa,
+                }
+                numa.append(cell)
+
         node_xml = self.xml_builder.build_node_xml(
-            node, emulator, if_prefix=settings.LIBVIRT_IF_PREFIX)
+            node, emulator, numa, if_prefix=settings.LIBVIRT_IF_PREFIX)
         logger.info(node_xml)
         node.uuid = self.conn.defineXML(node_xml).UUIDString()
 

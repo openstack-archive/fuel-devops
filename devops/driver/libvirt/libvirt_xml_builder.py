@@ -219,7 +219,7 @@ class LibvirtXMLBuilder(object):
 
         return str(filter_xml)
 
-    def build_node_xml(self, node, emulator, if_prefix="fuelnet"):
+    def build_node_xml(self, node, emulator, numa, if_prefix="fuelnet"):
         """Generate node XML
 
         :type node: Node
@@ -230,8 +230,26 @@ class LibvirtXMLBuilder(object):
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
+
+        # TODO(ddmitriev): add a libvirt node attribute 'acpi'
+        # for fuel-devops3.0.0
+        if self.driver.enable_acpi:
+            with node_xml.features:
+                node_xml.acpi
+
         if self.driver.use_host_cpu:
-            node_xml.cpu(mode='host-passthrough')
+            cpu_args = {'mode': 'host-passthrough'}
+        else:
+            cpu_args = {}
+        with node_xml.cpu(**cpu_args):
+            if numa:
+                with node_xml.numa:
+                    for cell in numa:
+                        node_xml.cell(
+                            cpus=str(cell['cpus']),
+                            memory=str(cell['memory'])
+                        )
+
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
