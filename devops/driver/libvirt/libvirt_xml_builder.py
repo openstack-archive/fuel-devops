@@ -230,6 +230,13 @@ class LibvirtXMLBuilder(object):
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
+
+        # TODO(ddmitriev): add a libvirt node attribute 'acpi'
+        # for fuel-devops3.0.0
+        if self.driver.enable_acpi:
+            with node_xml.features:
+                node_xml.acpi
+
         if self.driver.use_host_cpu:
             node_xml.cpu(mode='host-passthrough')
         node_xml.vcpu(str(node.vcpu))

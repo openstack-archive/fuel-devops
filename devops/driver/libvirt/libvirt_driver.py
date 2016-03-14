@@ -121,7 +121,7 @@ class DevopsDriver(object):
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
-                 stp=True, hpet=True, use_host_cpu=True):
+                 stp=True, hpet=True, use_host_cpu=True, enable_acpi=False):
         """libvirt driver
 
         :param use_host_cpu: When creating nodes, should libvirt's
@@ -138,6 +138,7 @@ class DevopsDriver(object):
         self.storage_pool_name = storage_pool_name
         self.reboot_timeout = None
         self.use_host_cpu = use_host_cpu
+        self.enable_acpi = enable_acpi
         self.use_hugepages = settings.USE_HUGEPAGES
 
         if settings.VNC_PASSWORD:

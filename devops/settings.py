@@ -29,6 +29,7 @@ DRIVER_PARAMETERS = {
     'stp': True,
     'hpet': False,
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
+    'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
 
 INSTALLED_APPS = ['south', 'devops']
