@@ -22,6 +22,7 @@ from paramiko import RSAKey
 
 from devops.helpers.helpers import SSHClient
 from devops.helpers.network import IpNetworksPool
+from devops.helpers.template_validator import TemplateValidator
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
@@ -255,6 +256,9 @@ class Environment(BaseModel):
                             created environment
             :rtype: Environment
         """
+
+        v = TemplateValidator()
+        v.validate(full_config)
 
         config = full_config['template']['devops_settings']
         environment = cls.create(config['env_name'])
