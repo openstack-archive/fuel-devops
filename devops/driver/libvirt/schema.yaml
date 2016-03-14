@@ -1,0 +1,199 @@
+driver_params:
+    type: object
+    additionalProperties: False
+    properties:
+        connection_string:
+            type: string
+        storage_pool_name:
+            type: string
+        stp:
+            type: boolean
+        hpet:
+            type: boolean
+        use_host_cpu:
+            type: boolean
+        reboot_timeout:
+            type: integer
+            minimum: 0
+        use_hugepages:
+            type: boolean
+        vnc_password:
+            type: string
+
+l2_network_device:
+    type: object
+    additionalProperties: False
+    required:
+      - address_pool
+    properties:
+        address_pool:
+            $ref: '#/definitions/links/address_pool'
+        dhcp:
+            type: boolean
+        forward:
+            type: object
+            additionalProperties: False
+            properties:
+                mode:
+                    type: string
+                    enum:
+                      - !!null
+                      - nat
+                      - route
+                      - bridge
+                      - private
+                      - vepa
+                      - passthrough
+                      - hostdev
+        has_pxe_server:
+            type: boolean
+        has_dhcp_server:
+            type: boolean
+        tftp_root_dir:
+            type: string
+
+node_params:
+    type: object
+    additionalProperties: False
+    properties:
+        hypervisor:
+            type: string
+            enum:
+              - kvm
+              - test
+        os_type:
+            type: string
+            enum:
+              - hvm
+        architecture:
+            type: string
+            enum:
+              - x86_64
+              - i686
+        boot:
+            type: array
+            items:
+                type: string
+                enum:
+                  - hd
+                  - cdrom
+                  - network
+            minItems: 1
+        vcpu:
+            type: integer
+            minimum: 1
+        memory:
+            type: integer
+            minimum: 1
+        has_vnc:
+            type: boolean
+
+        volumes:
+            type: array
+            minItems: 1
+            items:
+                oneOf:
+                    # Volume with defined capacity
+                  - type: object
+                    additionalProperties: False
+                    required:
+                      - name
+                      - capacity
+                    properties:
+                        name:
+                            type: string
+                        capacity:
+                            type: number
+                            minimum: 0
+                            exclusiveMinimum: True
+                        format:
+                            type: string
+                            enum:
+                              - qcow2
+                              - raw
+                        device:
+                            type: string
+                            enum:
+                              - cdrom
+                              - disk
+                        bus:
+                            type: string
+                            enum:
+                              - ide
+                              - usb
+
+                    # Volume created from image
+                  - type: object
+                    additionalProperties: False
+                    required:
+                      - name
+                      - source_image
+                    properties:
+                        name:
+                            type: string
+                        source_image:
+                            type: string
+                        format:
+                            type: string
+                            enum:
+                              - qcow2
+                              - raw
+                        device:
+                            type: string
+                            enum:
+                              - cdrom
+                              - disk
+                        bus:
+                            type: string
+                            enum:
+                              - ide
+                              - usb
+
+        interfaces:
+            type: array
+            items:
+                type: object
+                additionalProperties: False
+                required:
+                  - label
+                  - l2_network_device
+                  - interface_model
+                properties:
+                    label:
+                        type: string
+                    l2_network_device:
+                        $ref: '#/definitions/links/l2_network_device'
+                    interface_model:
+                        type: string
+                        enum:
+                          - virtio
+                          - e1000
+                          - pcnet
+                          - rtl8139
+                          - ne2k_pci
+
+        network_config:
+            type: object
+            additionalProperties: False
+            patternProperties:
+                '^\S+$': # label
+                    type: object
+                    additionalProperties: False
+                    required:
+                      - networks
+                    properties:
+                        networks:
+                            type: array
+                            minItems: 1
+                            items:
+                                $ref: '#/definitions/links/network_pool'
+                        aggregation:
+                            type: string
+                        parents:
+                            type: array
+                            minItems: 1
+                            items:
+                                $ref: '#/definitions/links/interface'
+                    dependencies:
+                        aggregation:
+                            - parents

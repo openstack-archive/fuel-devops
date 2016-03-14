@@ -32,6 +32,10 @@ class MyModel(Driver):
     )
 
 
+class BadModel(Driver):
+    list_field = ParamField(default=[])
+
+
 class TestParamedModel(TestCase):
 
     def test_default(self):
@@ -183,6 +187,13 @@ class TestParamedModel(TestCase):
             g.node_set.get(hypervisor='kvm', uuid='bcd')
         with self.assertRaises(Node.DoesNotExist):
             g.node_set.get(role='qqq', hypervisor='kvm')
+
+    def test_list_field_default(self):
+        t1 = BadModel()
+        t2 = BadModel()
+
+        t1.list_field.append(10)
+        assert t2.list_field == []
 
 
 class MyMultiModel(Driver):
