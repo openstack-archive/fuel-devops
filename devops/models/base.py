@@ -13,6 +13,7 @@
 #    under the License.
 
 import abc
+import copy
 from datetime import datetime
 import operator
 
@@ -176,10 +177,13 @@ class ParamField(ParamFieldBase):
         self.choices = choices
 
     def set_default_value(self, instance):
-        instance.params.setdefault(self.param_key, self.default_value)
+        instance.params.setdefault(
+            self.param_key, copy.deepcopy(self.default_value))
 
     def __get__(self, instance, cls):
-        return instance.params.get(self.param_key, self.default_value)
+        if self.param_key not in instance.params:
+            instance.params[self.param_key] = copy.deepcopy(self.default_value)
+        return instance.params[self.param_key]
 
     def __set__(self, instance, value):
         if self.choices and value not in self.choices:
