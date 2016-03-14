@@ -29,6 +29,7 @@ DRIVER_PARAMETERS = {
     'stp': True,
     'hpet': False,
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
+    'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
 
 INSTALLED_APPS = ['south', 'devops']
@@ -203,7 +204,11 @@ HARDWARE = {
     "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 3072)),
     "admin_node_cpu": int(os.environ.get("ADMIN_NODE_CPU", 2)),
     "slave_node_cpu": int(os.environ.get("SLAVE_NODE_CPU", 2)),
-    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3027)),
+    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3072)),
+    # Number of NUMA nodes on each VM node.
+    # Each NUMA node will have (<admin|slave>_node_cpu/numa_nodes) CPUs
+    # and (<admin|slave>_node_memory/numa_nodes) memory.
+    "numa_nodes": int(os.environ.get("NUMA_NODES", 0)),
 }
 
 USE_ALL_DISKS = get_var_as_bool('USE_ALL_DISKS', True)
