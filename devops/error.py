@@ -54,3 +54,7 @@ class DevopsEnvironmentError(DevopsError):
 
 class TimeoutError(DevopsError):
     pass
+
+
+class TemplateValidatorError(DevopsError):
+    pass
