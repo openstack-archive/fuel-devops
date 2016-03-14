@@ -236,13 +236,16 @@ class Node(ParamedModel, BaseModel):
             label = interface['label']
             l2_network_device_name = interface.get('l2_network_device')
             interface_model = interface.get('interface_model')
+            mac_address = interface.get('mac_address')
             self.add_interface(
                 label=label,
                 l2_network_device_name=l2_network_device_name,
+                mac_address=mac_address,
                 interface_model=interface_model)
 
     # NEW
-    def add_interface(self, label, l2_network_device_name, interface_model):
+    def add_interface(self, label, l2_network_device_name,
+                      mac_address, interface_model):
         if l2_network_device_name:
             env = self.group.environment
             l2_network_device = env.get_env_l2_network_device(
@@ -254,6 +257,7 @@ class Node(ParamedModel, BaseModel):
             node=self,
             label=label,
             l2_network_device=l2_network_device,
+            mac_address=mac_address,
             model=interface_model,
         )
 
