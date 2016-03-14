@@ -39,6 +39,7 @@ class BaseTestXMLBuilder(TestCase):
         self.net = mock.Mock()
         self.node = mock.Mock()
         self.xml_builder.driver.use_hugepages = None
+        self.xml_builder.driver.enable_acpi = None
 
     def _reformat_xml(self, xml):
         """Takes XML in string, parses it and returns pretty printed XML."""
@@ -355,12 +356,73 @@ class TestNodeXml(BaseTestXMLBuilder):
         self.node.interfaces = []
 
     def test_node(self):
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
+        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator', [])
         boot = json.loads(self.node.boot)
         expected = '''
 <domain type="test_hypervisor">
     <name>test_env_name_test_name</name>
     <cpu mode="host-passthrough" />
+    <vcpu>{0}</vcpu>
+    <memory unit="KiB">{1}</memory>
+    <clock offset="utc" />
+    <clock>
+        <timer name="rtc" tickpolicy="catchup" track="wall">
+            <catchup limit="10000" slew="120" threshold="123" />
+        </timer>
+    </clock>
+    <clock>
+        <timer name="pit" tickpolicy="delay" />
+    </clock>
+    <clock>
+        <timer name="hpet" present="yes" />
+    </clock>
+    <os>
+        <type arch="{2}">{3}</type>
+        <boot dev="{4}" />
+        <boot dev="{5}" />
+    </os>
+    <devices>
+        <controller model="nec-xhci" type="usb" />
+        <emulator>test_emulator</emulator>
+        <video>
+            <model heads="1" type="vga" vram="9216" />
+        </video>
+        <serial type="pty">
+            <target port="0" />
+        </serial>
+        <console type="pty">
+            <target port="0" type="serial" />
+        </console>
+    </devices>
+</domain>'''.format(self.node.vcpu, str(self.node.memory * 1024),
+                    self.node.architecture, self.node.os_type,
+                    boot[0], boot[1])
+        self.assertXMLIn(expected, xml)
+
+    def test_node_with_numa(self):
+        self.node.vcpu = 4
+        self.node.memory = 1024
+        numa = [
+            {
+                'cpus': '0,1',
+                'memory': 512 * 1024
+            },
+            {
+                'cpus': '2,3',
+                'memory': 512 * 1024
+            }
+        ]
+        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator', numa)
+        boot = json.loads(self.node.boot)
+        expected = '''
+<domain type="test_hypervisor">
+    <name>test_env_name_test_name</name>
+    <cpu mode="host-passthrough">
+        <numa>
+            <cell cpus="0,1" memory="524288"/>
+            <cell cpus="2,3" memory="524288"/>
+        </numa>
+    </cpu>
     <vcpu>{0}</vcpu>
     <memory unit="KiB">{1}</memory>
     <clock offset="utc" />
@@ -415,7 +477,7 @@ class TestNodeXml(BaseTestXMLBuilder):
         ]
         self.node.disk_devices = mock.MagicMock()
         self.node.disk_devices.__iter__.return_value = iter(disk_devices)
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
+        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator', [])
         expected = '''
     <devices>
         <controller model="nec-xhci" type="usb" />
@@ -459,7 +521,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             mock.Mock(type='network', mac_address='mac{0}'.format(i),
                       network=networks[i], id='id{0}'.format(i),
                       model='model{0}'.format(i)) for i in range(3)]
-        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator')
+        xml = self.xml_builder.build_node_xml(self.node, 'test_emulator', [])
         self.assertXMLIn('''
     <devices>
         <controller model="nec-xhci" type="usb" />
