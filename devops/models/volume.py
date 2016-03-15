@@ -37,9 +37,9 @@ class Volume(ParamedModel, BaseModel):
         self.save()
 
     def erase(self):
-        self.remove(verbose=False)
+        self.remove()
 
-    def remove(self, verbose=False):
+    def remove(self, **kwargs):
         self.delete()
 
 
