@@ -33,13 +33,13 @@ class Volume(ParamedModel, BaseModel):
     def driver(self):
         return self.node.driver
 
-    def define(self):
+    def define(self, *args, **kwargs):
         self.save()
 
-    def erase(self):
-        self.remove(verbose=False)
+    def erase(self, *args, **kwargs):
+        self.remove()
 
-    def remove(self, verbose=False):
+    def remove(self, *args, **kwargs):
         self.delete()
 
 
