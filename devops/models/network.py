@@ -424,9 +424,9 @@ class L2NetworkDevice(ParamedModel, BaseModel):
         pass
 
     def erase(self):
-        self.remove(verbose=False)
+        self.remove()
 
-    def remove(self, verbose=False):
+    def remove(self, **kwargs):
         self.delete()
 
 
