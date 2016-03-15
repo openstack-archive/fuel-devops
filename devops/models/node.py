@@ -55,33 +55,43 @@ class Node(ParamedModel, BaseModel):
             ''.format(ext_name=self.role or 'default'))
         return ExtCls(node=self)
 
-    def define(self):
+    def define(self, **kwargs):
         self.save()
 
-    def start(self):
+    def start(self, **kwargs):
         pass
 
-    def destroy(self):
+    def destroy(self, **kwargs):
         pass
 
     def erase(self):
-        self.remove(verbose=False)
+        self.remove()
 
-    def remove(self, verbose=False):
+    def remove(self, **kwargs):
         self.erase_volumes()
         self.delete()
 
-    def suspend(self):
+    def suspend(self, **kwargs):
         pass
 
-    def resume(self):
+    def resume(self, **kwargs):
         pass
 
-    def snapshot(self, name=None):
+    def snapshot(self, **kwargs):
         pass
 
-    def revert(self, name=None):
+    def revert(self, **kwargs):
         pass
+
+    # for fuel-qa compatibility
+    def has_snapshot(self, **kwargs):
+        return True
+
+    # for fuel-qa compatibility
+    def get_snapshots(self):
+        """Return full snapshots objects"""
+        return []
+
 
     @property
     def disk_devices(self):
