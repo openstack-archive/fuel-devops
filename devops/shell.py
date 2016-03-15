@@ -87,13 +87,13 @@ class Shell(object):
         self.env.start()
 
     def do_destroy(self):
-        self.env.destroy(verbose=False)
+        self.env.destroy()
 
     def do_suspend(self):
-        self.env.suspend(verbose=False)
+        self.env.suspend()
 
     def do_resume(self):
-        self.env.resume(verbose=False)
+        self.env.resume()
 
     def do_revert(self):
         self.env.revert(self.snapshot_name, flag=False)
@@ -160,7 +160,7 @@ class Shell(object):
 
     def do_revert_resume(self):
         self.env.revert(self.snapshot_name, flag=False)
-        self.env.resume(verbose=False)
+        self.env.resume()
         if not self.params.no_timesync:
             print('Time synchronization is starting')
             self.do_timesync()
