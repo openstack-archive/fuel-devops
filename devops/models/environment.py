@@ -151,13 +151,13 @@ class Environment(BaseModel):
             group.erase()
         self.delete()
 
-    def suspend(self, verbose=False):
+    def suspend(self, **kwargs):
         for node in self.get_nodes():
-            node.suspend(verbose)
+            node.suspend()
 
-    def resume(self, verbose=False):
+    def resume(self, **kwargs):
         for node in self.get_nodes():
-            node.resume(verbose)
+            node.resume()
 
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
@@ -169,7 +169,7 @@ class Environment(BaseModel):
     def revert(self, name=None, destroy=True, flag=True):
         if destroy:
             for node in self.get_nodes():
-                node.destroy(verbose=False)
+                node.destroy()
         if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
