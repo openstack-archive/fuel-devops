@@ -413,11 +413,11 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         super(L2NetworkDevice, self).define()
 
     def start(self):
-        self.create(verbose=False)
+        self.create()
 
     @retry()
-    def create(self, verbose=False):
-        if verbose or not self.is_active():
+    def create(self, *args, **kwargs):
+        if not self.is_active():
             self._libvirt_network.create()
 
         # Insert a specified interface into the network's bridge
@@ -458,9 +458,9 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         self._libvirt_network.destroy()
 
     @retry()
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.exists():
+    def remove(self, *args, **kwargs):
+        if self.uuid:
+            if self.exists():
                 # Stop network
                 if self.is_active():
                     self._libvirt_network.destroy()
@@ -471,7 +471,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                     self.iface_undefine(iface_name=iface_name)
                 # Remove network
                 self._libvirt_network.undefine()
-        super(L2NetworkDevice, self).remove(verbose)
+        super(L2NetworkDevice, self).remove()
 
     @retry()
     def exists(self):
@@ -564,11 +564,11 @@ class Volume(VolumeBase):
             self.upload(self.source_image)
 
     @retry()
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.exists():
+    def remove(self, *args, **kwargs):
+        if self.uuid:
+            if self.exists():
                 self._libvirt_volume.delete(0)
-        super(Volume, self).remove(verbose)
+        super(Volume, self).remove()
 
     @retry()
     def get_capacity(self):
@@ -793,23 +793,23 @@ class Node(NodeBase):
         super(Node, self).define()
 
     def start(self):
-        self.create(verbose=False)
+        self.create()
 
     @retry()
-    def create(self, verbose=False):
-        if verbose or not self.is_active():
+    def create(self, *args, **kwargs):
+        if not self.is_active():
             self._libvirt_node.create()
 
     @retry()
-    def destroy(self, verbose=False):
-        if verbose or self.is_active():
+    def destroy(self, *args, **kwargs):
+        if self.is_active():
             self._libvirt_node.destroy()
 
     @retry()
-    def remove(self, verbose=False):
-        if verbose or self.uuid:
-            if verbose or self.exists():
-                self.destroy(verbose=False)
+    def remove(self, *args, **kwargs):
+        if self.uuid:
+            if self.exists():
+                self.destroy()
 
                 # EXTERNAL SNAPSHOTS
                 for snapshot in self.get_snapshots():
@@ -818,16 +818,16 @@ class Node(NodeBase):
                 # ORIGINAL SNAPSHOTS
                 self._libvirt_node.undefineFlags(
                     libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
-        super(Node, self).remove(verbose)
+        super(Node, self).remove()
 
     @retry()
-    def suspend(self, verbose=False):
-        if verbose or self.is_active():
+    def suspend(self, *args, **kwargs):
+        if self.is_active():
             self._libvirt_node.suspend()
 
     @retry()
-    def resume(self, verbose=False):
-        if verbose or self.is_active():
+    def resume(self, *args, **kwargs):
+        if self.is_active():
             domain = self._libvirt_node
             if domain.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
                 domain.resume()
@@ -1172,7 +1172,7 @@ class Node(NodeBase):
            when reverting to snapshots with childs.
         """
         if destroy:
-            self.destroy(verbose=False)
+            self.destroy()
         if self.has_snapshot(name):
             snapshot = self._get_snapshot(name)
 
