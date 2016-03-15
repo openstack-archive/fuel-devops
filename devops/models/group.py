@@ -86,9 +86,9 @@ class Group(BaseModel):
         for node in nodes or self.get_nodes():
             node.start()
 
-    def destroy(self, verbose=False):
+    def destroy(self, **kwargs):
         for node in self.get_nodes():
-            node.destroy(verbose=verbose)
+            node.destroy()
 
     def erase(self):
         for node in self.get_nodes():
