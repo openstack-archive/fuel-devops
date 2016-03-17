@@ -1,27 +1,30 @@
-libvirt Package
-===============
+devops.driver.libvirt package
+=============================
 
-:mod:`libvirt` Package
-----------------------
+Submodules
+----------
 
-.. automodule:: devops.driver.libvirt
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`libvirt_driver` Module
-----------------------------
+devops.driver.libvirt.libvirt_driver module
+-------------------------------------------
 
 .. automodule:: devops.driver.libvirt.libvirt_driver
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`libvirt_xml_builder` Module
----------------------------------
+devops.driver.libvirt.libvirt_xml_builder module
+------------------------------------------------
 
 .. automodule:: devops.driver.libvirt.libvirt_xml_builder
     :members:
     :undoc-members:
     :show-inheritance:
 
+
+Module contents
+---------------
+
+.. automodule:: devops.driver.libvirt
+    :members:
+    :undoc-members:
+    :show-inheritance:

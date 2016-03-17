@@ -3,66 +3,148 @@
 Getting Started
 ===============
 
-Devops is the library to manage virtual test environments including virtual machines and networks. Management means here making, snapshotting, destroying. You can define as much environments as you need automatically allocating ip addresses to virtual machines avoiding ip clashes. Devops uses Django ORM to save and restore environments.
+Devops is the library to manage virtual test environments including virtual
+machines networks and baremetal servers. Management means here making,
+snapshotting, destroying. You can define as much environments as you need
+automatically allocating ip addresses to virtual machines avoiding ip clashes.
+Devops uses Django ORM to save and restore environments.
 
-To start using devops you have to install devops and the most simple way to do that is to use setup.py script.
+There are two ways of using devops:
 
-::
+* CLI and yaml template files
+* Writing python code on top of devops API
 
-   virtualenv /var/tmp/venv
-   source /var/tmp/venv/bin/activate
 
-   git clone git@github.com:Mirantis/devops.git
-   cd devops
-   python setup.py install
+Example of code
+***************
 
-Now it is time to configure it. You can edit default configuration file devops/settings.py or use environment variable DJANGO_SETTINGS_MODULE to define which python module to use as settings module. By default devops uses Postgresql database. Here is the database part of devops/settings.py file.
+.. code-block:: python
+   :caption: script.py
+   :name: script.py
 
-::
+    from devops.models import Environment
 
-   DATABASES = {
-       'default': {
-           'ENGINE': 'django.db.backends.postgresql_psycopg2',
-           'NAME': 'postgres',
-           'USER': 'postgres',
-           'PASSWORD': '',
-           'HOST': '',
-           'PORT': '',
-           'TEST_CHARSET': 'UTF8'
-       }
-   }
 
-Once database parameters configured it is needed to install corresponding database and configure database itself to make devops applications possible to access to it. For example, to configure Postgresql you need to edit pg_hba.conf file and create configured user and database.
+    if __name__ == '__main__':
+        env = Environment.create(name='myenv')
 
-All virtual machines names and virtual networks names will be prepended with environment name avoiding name clashes. As long as different devops applications use not overlapped network ranges and environments names it is possible to use different database for every application. If you are not absolutely sure just use the same database configuration for all devops instances. Once database and devops configured you need to create database schema.
+        address_pool = env.add_address_pool(
+            name='fuelweb_admin-pool01',
+            net='10.109.0.0/16:24',
+            tag=0)
 
-::
+        group = env.add_group(
+            group_name='rack-01',
+            driver_name='devops.driver.libvirt.libvirt_driver',
+            stp=True,
+            hpet=False)
 
-   django-admin.py syncdb --settings=custom-settings
+        l2_net_dev = group.add_l2_network_device(
+            name='myl2netdev',
+            address_pool='fuelweb_admin-pool01',
+            dhcp=False,
+            forward=dict(mode='nat'))
 
-It is necessary to note that the path to 'custom-settings' must be in PYTHONPATH.
+        net_pool = group.add_network_pool(
+            name='fuelweb_admin',
+            address_pool='fuelweb_admin-pool01')
 
-At this point you are ready to make your first devops application.
+        node = group.add_node(
+            name='mynode',
+            role='default',
+            vcpu=2,
+            memory=3072)
 
-::
+        interface = node.add_interface(
+            label='eth0',
+            l2_network_device_name='myl2netdev',
+            interface_model='e1000')
 
-   from devops.models import DiskDevice
-   from devops.models import Environment
-   from devops.models import Interface
-   from devops.models import Network
-   from devops.models import Node
-   from ipaddr import IPNetwork
+        volume = node.add_volume(
+            name='myvolume',
+            capacity=10,  # 10 GB
+            format='qcow2')
 
-   environment = Environment.create(name='myenv')
-   node = Node.node_create(name='mynode', environment=environment)
+        node.add_network_config(
+            label='eth0',
+            networks=['fuelweb_admin'])
 
-   network_pool = Network.create_network_pool(networks=[IPNetwork('10.0.0.0/16')], prefix=24)
-   network = Network.network_create(name='mynet', environment=environment, pool=network_pool)
-   Interface.interface_create(network=network, node=node)
+        env.define()
 
-   volume = Volume.volume_create(name='myvol', capacity=10737418240, environment=environment)
-   DiskDevice.node_attach_volume(node=node, volume=volume)
 
-   environment.define()
+This code creates environment 'myenv' with only one VM 'mynode' and attaches
+10G qcow2 volume to it. It also creates libvirt network 'mynet' from the range
+10.109.0.0/16.
 
-This code creates environment 'myenv' with only one VM 'mynode' and attaches 10G qcow2 volume to it. It also creates libvirt network 'mynet' from the range 10.0.0.0/16.
+See more information about API in :ref:`apibasics` section.
+
+
+Example of yaml template
+************************
+
+.. code-block:: yaml
+   :caption: template.yaml
+   :name: template.yaml
+
+    ---
+
+    template:
+        devops_settings:
+            env_name: myenv
+
+            address_pools:
+                fuelweb_admin-pool01:
+                    net: 10.109.0.0/16:24
+                    params:
+                        tag: 0
+
+            groups:
+              - name: rack-01
+                driver:
+                    name: devops.driver.libvirt.libvirt_driver
+                    params:
+                        stp: True
+                        hpet: False
+
+                network_pools:
+                    fuelweb_admin: fuelweb_admin-pool01
+
+                l2_network_devices:
+                    myl2netdev:
+                        address_pool: fuelweb_admin-pool01
+                        dhcp: false
+                        forward:
+                            mode: nat
+
+                nodes:
+                  - name: mynode
+                    role: default
+                    params:
+                        vcpu: 2
+                        memory: 3072
+                        volumes:
+                          - name: myvolume
+                            capacity: 10
+                            format: qcow2
+                        interfaces:
+                          - label: eth0
+                            l2_network_device: myl2netdev
+                            interface_model: e1000
+                        network_config:
+                            eth0:
+                                networks:
+                                  - fuelweb_admin
+
+
+This template describes the same environment as in previous exaple of code.
+Use the following CLI command to create it::
+
+    dos.py create-env example.yaml
+
+.. note::
+
+    yaml file should be located in `devops/templates` directory.
+
+See more information about templates in :ref:`templates` section.
+
+See more information about cli commands in :ref:`commandline` section.
