@@ -394,10 +394,15 @@ class Environment(BaseModel):
     # LEGACY, TO CHECK IN fuel-qa / PROXY
     def get_network(self, *args, **kwargs):
         for group in self.get_groups():
-            l2_network_device = group.l2networkdevice_set.get(*args, **kwargs)
+            try:
+                l2_network_device = group.l2networkdevice_set.get(*args,
+                                                                  **kwargs)
+            except Environment.DoesNotExist:
+                continue
             if l2_network_device and l2_network_device.address_pool:
                 network = self._create_network_object(l2_network_device)
                 return network
+        # TODO(ddmitriev): raise DoesNotExist(*args, **kwargs) if not found
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
     def get_networks(self, *args, **kwargs):
