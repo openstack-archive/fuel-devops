@@ -1,19 +1,22 @@
-dummy Package
-=============
+devops.driver.dummy package
+===========================
 
-:mod:`dummy` Package
---------------------
+Submodules
+----------
 
-.. automodule:: devops.driver.dummy
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`dummy_driver` Module
---------------------------
+devops.driver.dummy.dummy_driver module
+---------------------------------------
 
 .. automodule:: devops.driver.dummy.dummy_driver
     :members:
     :undoc-members:
     :show-inheritance:
 
+
+Module contents
+---------------
+
+.. automodule:: devops.driver.dummy
+    :members:
+    :undoc-members:
+    :show-inheritance:
