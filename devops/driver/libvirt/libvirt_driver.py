@@ -326,7 +326,11 @@ class L2NetworkDevice(L2NetworkDeviceBase):
 
     @property
     def _libvirt_network(self):
-        return self.driver.conn.networkLookupByUUIDString(self.uuid)
+        try:
+            return self.driver.conn.networkLookupByUUIDString(self.uuid)
+        except libvirt.libvirtError:
+            logger.error("Network not found by UUID: {}".format(self.uuid))
+            return None
 
     @retry()
     def bridge_name(self):
@@ -470,7 +474,8 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                                                 str(vlanid))
                     self.iface_undefine(iface_name=iface_name)
                 # Remove network
-                self._libvirt_network.undefine()
+                if self._libvirt_network:
+                    self._libvirt_network.undefine()
         super(L2NetworkDevice, self).remove()
 
     @retry()
@@ -525,7 +530,11 @@ class Volume(VolumeBase):
 
     @property
     def _libvirt_volume(self):
-        return self.driver.conn.storageVolLookupByKey(self.uuid)
+        try:
+            return self.driver.conn.storageVolLookupByKey(self.uuid)
+        except libvirt.libvirtError:
+            logger.error("Volume not found by UUID: {}".format(self.uuid))
+            return None
 
     @retry()
     def define(self):
@@ -669,7 +678,11 @@ class Node(NodeBase):
 
     @property
     def _libvirt_node(self):
-        return self.driver.conn.lookupByUUIDString(self.uuid)
+        try:
+            return self.driver.conn.lookupByUUIDString(self.uuid)
+        except libvirt.libvirtError:
+            logger.error("Domain not found by UUID: {}".format(self.uuid))
+            return None
 
     @retry()
     def get_vnc_port(self):
@@ -816,8 +829,9 @@ class Node(NodeBase):
                     self._delete_snapshot_files(snapshot)
 
                 # ORIGINAL SNAPSHOTS
-                self._libvirt_node.undefineFlags(
-                    libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+                if self._libvirt_node:
+                    self._libvirt_node.undefineFlags(
+                        libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         super(Node, self).remove()
 
     @retry()
