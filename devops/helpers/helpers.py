@@ -21,6 +21,7 @@ import socket
 import stat
 import time
 import xmlrpclib
+import urllib2
 
 import paramiko
 
@@ -33,7 +34,7 @@ from devops import logger
 from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
 from devops.settings import SSH_SLAVE_CREDENTIALS
-
+from keystoneclient.v2_0 import Client as KeystoneClient
 
 def get_free_port():
     ports = range(32000, 32100)
@@ -184,13 +185,10 @@ def get_ip_from_json(js, mac):
 
 
 def get_slave_ip(env, node_mac_address):
-    with get_admin_remote(env) as remote:
-        result = remote.execute(
-            "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --json".format(
-                user=KEYSTONE_CREDS['username'],
-                passwd=KEYSTONE_CREDS['password']))['stdout']
-        js = json.loads(''.join(result))
+    admin_ip = get_admin_ip(env)
+    url = "https://{}:8443".format(admin_ip)
+    keystone_url = "http://{}:5000/v2.0/".format(admin_ip)
+    js = get_nodes(url, keystone_url)
     return get_ip_from_json(js, node_mac_address)
 
 
@@ -489,3 +487,19 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def get_nodes(url, keystone_url):
+    endpoint = '/api/nodes'
+    keystone = KeystoneClient(username=KEYSTONE_CREDS['username'],
+                              password=KEYSTONE_CREDS['password'],
+                              tenant_name=KEYSTONE_CREDS['tenant_name'],
+                              auth_url=keystone_url,
+                              insecure=True)
+    token = keystone.auth_token
+    req = urllib2.Request('{}{}'.format(url, endpoint))
+    req.add_header("X-Auth-Token", token)
+    resp = urllib2.urlopen(req)
+    nodes = json.loads(resp.read())
+    logger.debug("Nodes: {}".format(nodes))
+    return nodes
