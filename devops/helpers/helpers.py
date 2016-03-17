@@ -20,6 +20,7 @@ import posixpath
 import socket
 import stat
 import time
+import urllib2
 import xmlrpclib
 
 import paramiko
@@ -30,7 +31,6 @@ from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
-from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
 from devops.settings import SSH_SLAVE_CREDENTIALS
 
@@ -184,13 +184,8 @@ def get_ip_from_json(js, mac):
 
 
 def get_slave_ip(env, node_mac_address):
-    with get_admin_remote(env) as remote:
-        result = remote.execute(
-            "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --json".format(
-                user=KEYSTONE_CREDS['username'],
-                passwd=KEYSTONE_CREDS['password']))['stdout']
-        js = json.loads(''.join(result))
+    admin_ip = get_admin_ip(env)
+    js = get_nodes(admin_ip)
     return get_ip_from_json(js, node_mac_address)
 
 
@@ -489,3 +484,23 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def get_nodes(admin_ip):
+    auth_data = '{"auth": {"tenantName": "admin",' \
+                ' "passwordCredentials":' \
+                ' {"username": "admin", "password": "admin"}}}'
+    url = "https://{}:8443".format(admin_ip)
+    endpoint = '/api/nodes/'
+    keystone_url = "http://{}:5000/v2.0/tokens".format(admin_ip)
+    tokens_request = urllib2.Request(keystone_url)
+    tokens_request.add_header('Content-Type', 'application/json')
+    tokens_request.add_data(auth_data)
+    tokens_response = urllib2.urlopen(tokens_request)
+    tokens_dct = json.loads(tokens_response.read())
+    token = tokens_dct['access']['token']['id']
+    nodes_request = urllib2.Request(url + endpoint)
+    nodes_request.add_header('X-Auth-Token', token)
+    nodes_response = urllib2.urlopen(nodes_request)
+    nodes = json.loads(nodes_response.read())
+    return nodes
