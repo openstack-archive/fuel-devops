@@ -1,45 +1,5 @@
-devops Package
+devops package
 ==============
-
-:mod:`error` Module
--------------------
-
-.. automodule:: devops.error
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`manager` Module
----------------------
-
-.. automodule:: devops.manager
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`models` Module
---------------------
-
-.. automodule:: devops.models
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`settings` Module
-----------------------
-
-.. automodule:: devops.settings
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`shell` Module
--------------------
-
-.. automodule:: devops.shell
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 Subpackages
 -----------
@@ -48,5 +8,42 @@ Subpackages
 
     devops.driver
     devops.helpers
+    devops.migrations
+    devops.models
     devops.tests
 
+Submodules
+----------
+
+devops.error module
+-------------------
+
+.. automodule:: devops.error
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+devops.settings module
+----------------------
+
+.. automodule:: devops.settings
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+devops.shell module
+-------------------
+
+.. automodule:: devops.shell
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: devops
+    :members:
+    :undoc-members:
+    :show-inheritance:

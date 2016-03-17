@@ -11,7 +11,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   install
    getstart
+   clsdiagram
+   templates
+   commandline
    modules
 
 Indices and tables
