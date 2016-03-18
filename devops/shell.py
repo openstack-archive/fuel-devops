@@ -249,8 +249,11 @@ class Shell(object):
         node_manager.admin_change_config(admin_node=admin_node,
                                          admin_centos_version=6,
                                          static_interface='eth0')
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
+        admin_node.await('admin',
+                         timeout=settings.WAIT_FOR_PROVISIONING_TIMEOUT)
+        node_manager.admin_wait_bootstrap(
+            settings.ADMIN_NODE_BOOTSTRAP_TIMEOUT,
+            self.env)
 
     def do_admin_setup_centos7(self):
         admin_node = self.env.get_node(name='admin')
@@ -261,8 +264,11 @@ class Shell(object):
         node_manager.admin_change_config(admin_node=admin_node,
                                          admin_centos_version=7,
                                          static_interface=self.params.iface)
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
+        admin_node.await('admin',
+                         timeout=settings.WAIT_FOR_PROVISIONING_TIMEOUT)
+        node_manager.admin_wait_bootstrap(
+            settings.ADMIN_NODE_BOOTSTRAP_TIMEOUT,
+            self.env)
 
     def admin_add(self, networks=None):
         vcpu = self.params.admin_vcpu_count

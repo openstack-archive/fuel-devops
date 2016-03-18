@@ -136,6 +136,7 @@ def get_private_keys(env):
 
 def get_admin_remote(env):
     admin_ip = get_admin_ip(env)
+    logger.error('admmin_ip: {admin_ip}'.format(admin_ip=admin_ip))
     wait(lambda: tcp_ping(admin_ip, 22),
          timeout=180,
          timeout_msg=("Admin node {ip} is not accessible by SSH."
@@ -173,26 +174,52 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
-def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images, centos_version='7', static_interface='enp0s3'):
+def get_keys(ip, mask, gw, hostname, nat_interface, dns1,
+             showmenu, build_images, centos_version=7,
+             static_interface='enp0s3',
+             device_label=None,
+             wait_for_external_config=None,
+             iso_connect_as='cdrom'
+             ):
+    # TODO(akostrikov) Remove centos_version?
     if centos_version < 7:
-        ip_format = ' ip={ip}'
+        ip_fmt = 'ip={ip}'
     else:
-        ip_format = ' ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:none'
+        ip_fmt = 'ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:off:::'
+
+    # NOTE: Why does it works in devops usage without device_label?
+    if device_label:
+        device_label_string = (
+            ' inst.ks=cdrom:LABEL={device_label}:/ks.cfg' +
+            ' inst.repo=cdrom:LABEL={device_label}:/').format(
+                device_label=device_label)
+    else:
+        device_label_string = ' ks=cdrom:/ks.cfg'
+
+    # NOTE(akostrikov) Is it necessary and absence is a bug?
+    if wait_for_external_config:
+        wait_string = '\n wait_for_external_config={wait_for_external_config}'
+    else:
+        wait_string = ''
+
+    if iso_connect_as == 'usb':
+        keys = '<Wait>\n<F12>\n'  # USB boot uses boot_menu=yes for master
+    else:
+        keys = '<Wait>'  # cdrom is default
 
     return '\n'.join([
-        '<Wait>',
+        keys,
         '<Esc>',
         '<Wait>',
-        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
-        ip_format,
+        'vmlinuz initrd=initrd.img' + device_label_string,
+        ip_fmt,
         ' netmask={mask}'
         ' gw={gw}'
         ' dns1={dns1}',
         ' nameserver={dns1}',
         ' hostname={hostname}',
         ' dhcp_interface={nat_interface}',
-        ' showmenu={showmenu}',
+        ' showmenu={showmenu}' + wait_string,
         ' build_images={build_images}',
         ' <Enter>',
         ''
@@ -205,7 +232,8 @@ def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
         dns1=dns1,
         showmenu=showmenu,
         build_images=build_images,
-        static_interface=static_interface
+        static_interface=static_interface,
+        wait_for_external_config=wait_for_external_config
     )
 
 
