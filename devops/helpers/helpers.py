@@ -173,18 +173,42 @@ def get_slave_ip(env, node_mac_address):
     return ip[0].rstrip()
 
 
-def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images, centos_version='7', static_interface='enp0s3'):
+def get_keys(ip, mask, gw, hostname, nat_interface, dns1,
+             showmenu, build_images, centos_version=7,
+             static_interface='enp0s3',
+             device_label=None,
+             wait_for_external_config=None,
+             iso_connect_as='cdrom'
+             ):
+    # TODO(akostrikov) Remove centos_version?
     if centos_version < 7:
         ip_format = ' ip={ip}'
     else:
         ip_format = ' ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:none'
 
+    # NOTE: Why does it works in devops usage without device_label?
+    if device_label:
+        device_label_string = ' inst.ks=cdrom:LABEL={device_label}/ks.cfg' + \
+            ' inst.repo=cdrom:LABEL={device_label}:/'
+    else:
+        device_label_string = ' ks=cdrom:/ks.cfg'
+
+    # NOTE(akostrikov) Is it necessary and absence is a bug?
+    if wait_for_external_config:
+        wait_string = '\n wait_for_external_config={wait_for_external_config}'
+    else:
+        wait_string = ''
+
+    if iso_connect_as == 'usb':
+        keys = '<Wait>\n<F12>\n'  # USB boot uses boot_menu=yes for master
+    else:
+        keys = '<Wait>'  # cdrom is default
+
     return '\n'.join([
-        '<Wait>',
+        keys,
         '<Esc>',
         '<Wait>',
-        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
+        'vmlinuz initrd=initrd.img' + device_label_string,
         ip_format,
         ' netmask={mask}'
         ' gw={gw}'
@@ -192,7 +216,7 @@ def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
         ' nameserver={dns1}',
         ' hostname={hostname}',
         ' dhcp_interface={nat_interface}',
-        ' showmenu={showmenu}',
+        ' showmenu={showmenu}' + wait_string,
         ' build_images={build_images}',
         ' <Enter>',
         ''
