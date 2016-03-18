@@ -98,6 +98,10 @@ OPENSTACK_RELEASE = os.environ.get(
 NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
 ADMIN_NODE_VOLUME_SIZE = int(os.environ.get('ADMIN_NODE_VOLUME_SIZE', 75))
 ENV_NAME = os.environ.get("ENV_NAME", "fuel_system_test")
+WAIT_FOR_PROVISIONING_TIMEOUT = int(os.environ.get(
+    'WAIT_FOR_PROVISIONING_TIMEOUT', 1200))
+ADMIN_NODE_BOOTSTRAP_TIMEOUT = os.environ.get(
+    'ADMIN_NODE_BOOTSTRAP_TIMEOUT', 3600)
 
 DEFAULT_INTERFACE_ORDER = 'admin,public,management,private,storage'
 INTERFACE_ORDER = os.environ.get('INTERFACE_ORDER',
