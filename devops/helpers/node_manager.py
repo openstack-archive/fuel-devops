@@ -20,6 +20,8 @@ from devops.models.volume import Volume
 from devops.settings import MASTER_BOOTSTRAP_LOG
 from devops.settings import MASTER_DNS
 from devops.settings import MASTER_FQDN
+from devops.settings import WAIT_FOR_PROVISIONING_TIMEOUT
+from devops.settings import SSH_CREDENTIALS
 
 
 def admin_wait_bootstrap(puppet_timeout, env):
@@ -83,20 +85,43 @@ def admin_change_config(admin_node,
     param: dns1: String
         :rtype : None
     """
-    admin_net = admin_node.environment.get_network(name='admin')
-    keys = get_keys(
-        ip=admin_node.get_ip_address_by_network_name('admin'),
-        mask=admin_net.netmask,
-        gw=admin_net.default_gw,
-        hostname=hostname,
-        nat_interface='',
-        dns1=dns1,
-        showmenu='no',
-        build_images=0,
-        centos_version=admin_centos_version,
-        static_interface=static_interface)
+    # TODO(akostrikov) missing:
+    #  set_admin_ssh_password
+    #  setup_customisation
+    #  nessus_node = NessusActions(self.d_env)
+    #  nessus_node.add_nessus_node()
+    #  self.admin_actions.modify_configs(self.d_env.router())
+    #  self.kill_wait_for_external_config()
 
-    print("Waiting for admin node to start up")
+    admin_net = admin_node.environment.get_network(name='admin')
+    admin_ip = admin_node.get_ip_address_by_network_name('admin')
+    mask = admin_net.netmask
+    gw = admin_net.default_gw
+    hostname = hostname
+    nat_interface = ''
+    dns1 = dns1
+    showmenu = 'no'
+    build_images = 0
+    keys = get_keys(
+        admin_ip, mask, gw, hostname, nat_interface, dns1,
+        showmenu, build_images, centos_version=7,
+        static_interface='enp0s3',
+        wait_for_external_config='yes')
+
+    print('Waiting for admin node to start up')
     wait(lambda: admin_node.driver.node_active(admin_node), 60)
-    print("Proceed with installation")
+
+    print('Proceed with installation')
     admin_node.send_keys(keys)
+
+    # wait_for_provisioning() analog
+    admin_node.await('admin',
+                     timeout=WAIT_FOR_PROVISIONING_TIMEOUT)
+
+    # wait_for_external_config() analog
+    check_cmd = 'pkill -0 -f wait_for_external_config'
+    remote = admin_node.remote('admin',
+                               login=SSH_CREDENTIALS['login'],
+                               password=SSH_CREDENTIALS['password'])
+    wait(
+        lambda: remote.execute(check_cmd)['exit_code'] == 0, timeout=120)
