@@ -134,7 +134,6 @@ class DevopsDriver(object):
         self.stp = stp
         self.hpet = hpet
         self.capabilities = None
-        self.allocated_networks = None
         self.storage_pool_name = storage_pool_name
         self.reboot_timeout = None
         self.use_host_cpu = use_host_cpu
@@ -268,7 +267,8 @@ class DevopsDriver(object):
             :rtype : None
         """
         ret = self.conn.networkDefineXML(
-            self.xml_builder.build_network_xml(network))
+            self.xml_builder.build_network_xml(
+                network, br_prefix=settings.LIBVIRT_BR_PREFIX))
         ret.setAutostart(True)
         network.uuid = ret.UUIDString()
 
@@ -424,7 +424,8 @@ class DevopsDriver(object):
             'guest/arch[@name="{0:>s}"]/'
             'domain[@type="{1:>s}"]/emulator'.format(
                 node.architecture, node.hypervisor)).text
-        node_xml = self.xml_builder.build_node_xml(node, emulator)
+        node_xml = self.xml_builder.build_node_xml(
+            node, emulator, if_prefix=settings.LIBVIRT_IF_PREFIX)
         logger.info(node_xml)
         node.uuid = self.conn.defineXML(node_xml).UUIDString()
 
@@ -927,21 +928,25 @@ class DevopsDriver(object):
         return xml_desc.find('target/format[@type]').get('type')
 
     @retry()
-    def get_allocated_networks(self):
+    def get_allocated_networks(self, all_networks=False):
         """Get list of allocated networks
 
             :rtype : List
         """
-        if self.allocated_networks is None:
-            allocated_networks = []
-            for network_name in self.conn.listDefinedNetworks():
-                et = ET.fromstring(
-                    self.conn.networkLookupByName(network_name).XMLDesc(0))
-                ip = et.find('ip[@address]')
-                if ip is not None:
-                    address = ip.get('address')
-                    prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
-                    allocated_networks.append(ipaddr.IPNetwork(
-                        "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
-            self.allocated_networks = allocated_networks
-        return self.allocated_networks
+        allocated_networks = []
+
+        if all_networks:  # Get stopped and started libvirt networks
+            network_names = [x.name() for x in self.conn.listAllNetworks()]
+        else:             # Get only started libvirt networks
+            network_names = self.conn.listNetworks()
+
+        for network_name in network_names:
+            et = ET.fromstring(
+                self.conn.networkLookupByName(network_name).XMLDesc(0))
+            ip = et.find('ip[@address]')
+            if ip is not None:
+                address = ip.get('address')
+                prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
+                allocated_networks.append(ipaddr.IPNetwork(
+                    "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
+        return allocated_networks

@@ -309,7 +309,8 @@ class Environment(DriverModel):
             environment=self,
             pool=pool,
             forward=forward,
-            has_dhcp_server=has_dhcp_server)
+            has_dhcp_server=has_dhcp_server,
+            reuse_network_pools=settings.REUSE_NETWORK_POOLS)
         return net
 
     def create_interfaces(self, interfaces, node,
