@@ -35,7 +35,7 @@ class LibvirtXMLBuilder(object):
             name = hash_str + name[len(name) - self.NAME_SIZE + len(hash_str):]
         return name
 
-    def build_network_xml(self, network, br_prefix="fuelbr"):
+    def build_network_xml(self, network):
         """Generate network XML
 
         :type network: Network
@@ -50,7 +50,7 @@ class LibvirtXMLBuilder(object):
         if self.driver.stp:
             stp_val = 'on'
         network_xml.bridge(
-            name="{0}{1}".format(br_prefix, network.id),
+            name="fuelbr{0}".format(network.id),
             stp=stp_val, delay="0")
 
         if network.forward is not None:
@@ -163,7 +163,7 @@ class LibvirtXMLBuilder(object):
                     bus=disk_device.bus)
             device_xml.serial(''.join(uuid.uuid4().hex))
 
-    def _build_interface_device(self, device_xml, interface, if_prefix):
+    def _build_interface_device(self, device_xml, interface):
         """Build xml for interface
 
         :param device_xml: XMLBuilder
@@ -178,7 +178,7 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
                 network=self.driver.network_name(interface.network))
-            device_xml.target(dev="{0}{1}".format(if_prefix, interface.id))
+            device_xml.target(dev="fuelnet{0}".format(interface.id))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
             device_xml.filterref(filter='{}_{}_{}'.format(
@@ -219,7 +219,7 @@ class LibvirtXMLBuilder(object):
 
         return str(filter_xml)
 
-    def build_node_xml(self, node, emulator, if_prefix="fuelnet"):
+    def build_node_xml(self, node, emulator, numa):
         """Generate node XML
 
         :type node: Node
@@ -230,8 +230,26 @@ class LibvirtXMLBuilder(object):
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
+
+        # TODO(ddmitriev): add a libvirt node attribute 'acpi'
+        # for fuel-devops3.0.0
+        if self.driver.enable_acpi:
+            with node_xml.features:
+                node_xml.acpi
+
         if self.driver.use_host_cpu:
-            node_xml.cpu(mode='host-passthrough')
+            cpu_args = {'mode': 'host-passthrough'}
+        else:
+            cpu_args = {}
+        with node_xml.cpu(**cpu_args):
+            if numa:
+                with node_xml.numa:
+                    for cell in numa:
+                        node_xml.cell(
+                            cpus=str(cell['cpus']),
+                            memory=str(cell['memory'])
+                        )
+
         node_xml.vcpu(str(node.vcpu))
         node_xml.memory(str(node.memory * 1024), unit='KiB')
 
@@ -282,7 +300,7 @@ class LibvirtXMLBuilder(object):
             for disk_device in node.disk_devices:
                 self._build_disk_device(node_xml, disk_device)
             for interface in node.interfaces:
-                self._build_interface_device(node_xml, interface, if_prefix)
+                self._build_interface_device(node_xml, interface)
             with node_xml.video:
                 node_xml.model(type='vga', vram='9216', heads='1')
             with node_xml.serial(type='pty'):

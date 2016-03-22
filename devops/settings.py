@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
 import os
 
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
@@ -30,6 +29,7 @@ DRIVER_PARAMETERS = {
     'stp': True,
     'hpet': False,
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
+    'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
 
 INSTALLED_APPS = ['south', 'devops']
@@ -204,7 +204,11 @@ HARDWARE = {
     "admin_node_memory": int(os.environ.get("ADMIN_NODE_MEMORY", 3072)),
     "admin_node_cpu": int(os.environ.get("ADMIN_NODE_CPU", 2)),
     "slave_node_cpu": int(os.environ.get("SLAVE_NODE_CPU", 2)),
-    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3027)),
+    "slave_node_memory": int(os.environ.get("SLAVE_NODE_MEMORY", 3072)),
+    # Number of NUMA nodes on each VM node.
+    # Each NUMA node will have (<admin|slave>_node_cpu/numa_nodes) CPUs
+    # and (<admin|slave>_node_memory/numa_nodes) memory.
+    "numa_nodes": int(os.environ.get("NUMA_NODES", 0)),
 }
 
 USE_ALL_DISKS = get_var_as_bool('USE_ALL_DISKS', True)
@@ -277,17 +281,3 @@ DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
 SNAPSHOTS_EXTERNAL = get_var_as_bool('SNAPSHOTS_EXTERNAL', False)
 SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
                                         os.path.expanduser("~/.devops/snap"))
-
-# Dynamic prefix for libvirt bridges and interfaces to get unique
-# names for different environments.
-# Based on the 3-digits hash of the DATABASE settings and ENV_NAME.
-_if_prefix = str(
-    int(hashlib.md5(repr(DATABASES) + ENV_NAME).hexdigest(), 16))[:3]
-LIBVIRT_BR_PREFIX = os.environ.get("LIBVIRT_BR_PREFIX",
-                                   "fuel{0}br".format(_if_prefix))
-LIBVIRT_IF_PREFIX = os.environ.get("LIBVIRT_IF_PREFIX",
-                                   "fuel{0}net".format(_if_prefix))
-
-# Allow to create networks with the same CIDR for different environments.
-# All other libvirt networks should be destroyed before creating new networks.
-REUSE_NETWORK_POOLS = os.environ.get("REUSE_NETWORK_POOLS", False)
