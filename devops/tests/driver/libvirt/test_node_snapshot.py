@@ -72,6 +72,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
         self.interface = self.node.add_interface(
             label='eth0',
             l2_network_device_name='test_l2_net_dev',
+            mac_address=None,
             interface_model='virtio',
         )
 
