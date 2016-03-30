@@ -137,7 +137,7 @@ if MULTIPLE_NETWORKS:
     ADMIN_FORWARD = os.environ.get('ADMIN_FORWARD', 'nat')
     PUBLIC_FORWARD = os.environ.get('PUBLIC_FORWARD', 'nat')
 else:
-    NODEGROUPS = {}
+    NODEGROUPS = ()
     FORWARD_DEFAULT = os.environ.get('FORWARD_DEFAULT', None)
     ADMIN_FORWARD = os.environ.get('ADMIN_FORWARD', FORWARD_DEFAULT or 'nat')
     PUBLIC_FORWARD = os.environ.get('PUBLIC_FORWARD', FORWARD_DEFAULT or 'nat')

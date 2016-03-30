@@ -48,5 +48,6 @@ setup(
         'pytest-django >= 2.8.0',
         'mock>=1.0.1',
         'sphinx',
+        'six'
     ]
 )
