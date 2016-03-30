@@ -11,6 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from netaddr import IPSet
 
 
 class IpNetworksPool(object):
@@ -25,19 +26,26 @@ class IpNetworksPool(object):
         self._initialize_generator()
 
     def _overlaps(self, network, allocated_networks):
-        return any(an.overlaps(network) for an in allocated_networks)
+        return any((IPSet(network) & IPSet(an)) for an in allocated_networks)
 
     def _initialize_generator(self):
         def _get_generator():
             for network in self.networks:
-                for sub_net in network.iter_subnets(new_prefix=self.prefix):
+                for sub_net in network.subnet(prefixlen=self.prefix):
                     if not self._overlaps(sub_net, self.allocated_networks):
                         yield sub_net
 
         self._generator = _get_generator()
 
+    def __repr__(self):
+        return '{0}({1}, {2})'.format(
+            self.__class__.__name__,
+            self.networks,
+            self.prefix
+        )
+
     def __iter__(self):
         return self._generator
 
     def next(self):
-        return self._generator.next()
+        return next(self._generator)
