@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 import json
 
 from django.conf import settings
@@ -458,7 +460,7 @@ class Node(DriverModel):
                 'cinder': 50 * 1024 ** 3,
             }
 
-        for diskname, capacity in disknames_capacity.iteritems():
+        for diskname, capacity in disknames_capacity.items():
             self.attach_disk(name=diskname,
                              capacity=capacity,
                              force_define=force_define)
