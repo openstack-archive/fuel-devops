@@ -14,9 +14,8 @@
 
 
 from django.test import TestCase
-from ipaddr import IPNetwork
-from ipaddr import IPv4Network
 import mock
+from netaddr import IPNetwork
 import pytest
 
 from devops.helpers.network import IpNetworksPool
@@ -39,15 +38,15 @@ class TestManager(TestCase):
 
     def test_getting_subnetworks(self):
         pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/22')], prefix=24)
-        pool.set_allocated_networks([IPv4Network('10.1.1.0/24')])
+        pool.set_allocated_networks([IPNetwork('10.1.1.0/24')])
         networks = list(pool)
-        self.assertTrue(IPv4Network('10.1.0.0/24') in networks)
-        self.assertFalse(IPv4Network('10.1.1.0/24') in networks)
-        self.assertTrue(IPv4Network('10.1.2.0/24') in networks)
-        self.assertTrue(IPv4Network('10.1.3.0/24') in networks)
+        self.assertTrue(IPNetwork('10.1.0.0/24') in networks)
+        self.assertFalse(IPNetwork('10.1.1.0/24') in networks)
+        self.assertTrue(IPNetwork('10.1.2.0/24') in networks)
+        self.assertTrue(IPNetwork('10.1.3.0/24') in networks)
 
     def test_getting_ips(self):
-        self.assertEquals('10.1.0.254', str(IPv4Network('10.1.0.0/24')[-2]))
+        self.assertEqual('10.1.0.254', str(IPNetwork('10.1.0.0/24')[-2]))
 
     def test_network_iterator(self):
         environment = Environment.create('test_env')
@@ -61,7 +60,7 @@ class TestManager(TestCase):
         Address.objects.create(str('10.1.0.3'),
                                interface=interface)
         ip = network.next_ip()
-        self.assertEquals('10.1.0.4', str(ip))
+        self.assertEqual('10.1.0.4', str(ip))
 
     def test_network_model(self):
         environment = Environment.create('test_env')
@@ -69,10 +68,10 @@ class TestManager(TestCase):
         network = Network.network_create(
             environment=environment, name='internal', ip_network='10.1.0.0/24')
         interface1 = Interface.interface_create(network=network, node=node)
-        self.assertEquals('virtio', interface1.model)
+        self.assertEqual('virtio', interface1.model)
         interface2 = Interface.interface_create(
             network=network, node=node, model='e1000')
-        self.assertEquals('e1000', interface2.model)
+        self.assertEqual('e1000', interface2.model)
 
     def test_environment_values(self):
         environment = Environment.create('test_env')

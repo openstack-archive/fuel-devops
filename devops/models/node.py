@@ -56,7 +56,7 @@ class Node(DriverModel):
     def next_disk_name(self):
         disk_names = ('sd' + c for c in list('abcdefghijklmnopqrstuvwxyz'))
         while True:
-            disk_name = disk_names.next()
+            disk_name = next(disk_names)
             if not self.disk_devices.filter(target_dev=disk_name).exists():
                 return disk_name
 
