@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 from devops.helpers.helpers import get_admin_remote
 from devops.helpers.helpers import get_keys
 from devops.helpers.helpers import wait

@@ -12,12 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 import argparse
 import collections
 import os
 import sys
 
 from netaddr import IPNetwork
+# pylint: disable=redefined-builtin
+from six.moves import xrange
+# pylint: enable=redefined-builtin
 import tabulate
 
 import devops
@@ -133,7 +138,7 @@ class Shell(object):
 
     def do_snapshot_delete(self):
         for node in self.env.get_nodes():
-            snaps = map(lambda x: x.name, node.get_snapshots())
+            snaps = [elem.name for elem in node.get_snapshots()]
             if self.snapshot_name in snaps:
                 node.erase_snapshot(name=self.snapshot_name)
 
@@ -278,7 +283,7 @@ class Shell(object):
         iso_path = self.params.iso_path
         iso_size = _get_file_size(iso_path)
 
-        if not (iso_size > 0):
+        if iso_size <= 0:
             print("Please, set correct ISO file")
             sys.exit(1)
         if networks is None:
