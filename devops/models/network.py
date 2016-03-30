@@ -16,7 +16,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 from devops.error import DevopsError
 from devops.helpers.helpers import generate_mac
@@ -92,8 +92,8 @@ class Network(DriverModel):
     def next_ip(self):
         while True:
             self._iterhosts = self._iterhosts or IPNetwork(
-                self.ip_network).iterhosts()
-            ip = self._iterhosts.next()
+                self.ip_network).iter_hosts()
+            ip = next(self._iterhosts)
             if ip < self.ip_pool_start or ip > self.ip_pool_end:
                 continue
             if not Address.objects.filter(

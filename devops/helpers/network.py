@@ -40,4 +40,4 @@ class IpNetworksPool(object):
         return self._generator
 
     def next(self):
-        return self._generator.next()
+        return next(self._generator)

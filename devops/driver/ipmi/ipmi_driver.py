@@ -66,7 +66,7 @@ class DevopsDriver(object):
         LOGGER.debug('Resetting server via IPMI')
         cmd = self.ipmi_cmd + ['power', 'reset']
         output = subprocess.check_output(cmd)
-        LOGGER.debug('Reset output: %s' % output)
+        LOGGER.debug('Reset output: {}'.format(output))
         return True
 
     def node_reboot(self):
@@ -91,7 +91,7 @@ class DevopsDriver(object):
         pxe,
         disk,
         """
-        LOGGER.debug('Set boot device to %s' % device)
+        LOGGER.debug('Set boot device to {}'.format(device))
         cmd = self.ipmi_cmd + ['chassis', 'bootdev', device]
         output = subprocess.check_output(cmd)
         LOGGER.debug('Set boot server output: {0}'.format(output))
@@ -168,8 +168,8 @@ class DevopsDriver(object):
                             self.ip_node_admin,
                             interface,
                             ks_script))
-        with open('{0}/tftpboot/pxelinux.cfg/default'.
-                  format(self.ipmi_driver_root_dir, 'w')) as f:
+        with open('{0}/tftpboot/pxelinux.cfg/default'.format(
+                self.ipmi_driver_root_dir), 'w') as f:
             f.write(menu_boot)
 
         return True
@@ -183,9 +183,10 @@ class DevopsDriver(object):
                    self.interface_install_server]
             output = subprocess.check_output(cmd)
             if output.find(self.ip_install_server) > -1:
-                LOGGER.debug('ip {0} already set on the interface {1}'.
-                             format((self.ip_install_server,
-                                     self.interface_install_server)))
+                LOGGER.debug(
+                    'ip {0} already set on the interface {1}'.format(
+                        self.ip_install_server,
+                        self.interface_install_server))
                 return
             else:
                 LOGGER.debug('ip {0} already set on the another interface'.
@@ -195,7 +196,7 @@ class DevopsDriver(object):
                format(self.ip_install_server),
                'dev', self.interface_install_server]
         output = subprocess.check_output(cmd)
-        LOGGER.debug('Added ip address {0} to {0} . Output is :{1}'.
+        LOGGER.debug('Added ip address {0} to {1} . Output is :{2}'.
                      format(self.ip_install_server,
                             self.interface_install_server,
                             output))

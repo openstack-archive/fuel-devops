@@ -21,7 +21,7 @@ from devops.models import Volume
 
 from devops.helpers import SSHClient
 
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 
 def block_traffic():
