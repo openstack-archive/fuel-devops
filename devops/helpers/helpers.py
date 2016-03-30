@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-import httplib
 import json
 import logging
 import os
@@ -23,10 +22,13 @@ import socket
 import ssl
 import stat
 import time
-import urllib2
-import xmlrpclib
 
 import paramiko
+# pylint: disable=import-error
+from six.moves import http_client
+from six.moves.urllib import request
+from six.moves import xmlrpc_client
+# pylint: enable=import-error
 
 from devops.error import AuthenticationError
 from devops.error import DevopsCalledProcessError
@@ -40,8 +42,7 @@ from devops.settings import SSH_SLAVE_CREDENTIALS
 
 
 def get_free_port():
-    ports = range(32000, 32100)
-    for port in ports:
+    for port in range(32000, 32100):
         if not tcp_ping('localhost', port):
             return port
     raise DevopsError('No free ports available')
@@ -123,7 +124,7 @@ def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
 
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
     try:
-        conn = httplib.HTTPConnection(str(host), int(port))
+        conn = http_client.HTTPConnection(str(host), int(port))
         conn.request(method, url)
         res = conn.getresponse()
 
@@ -283,8 +284,9 @@ class SSHClient(object):
     @retry(count=3, delay=3)
     def connect(self):
         logging.debug(
-            "Connect to '%s:%s' as '%s:%s'" % (
-                self.host, self.port, self.username, self.password))
+            "Connect to '{host}:{port}' as '{user}:{passwd}'".format(
+                host=self.host, port=self.port,
+                user=self.username, passwd=self.password))
         for private_key in self.private_keys:
             try:
                 return self._ssh.connect(
@@ -326,7 +328,7 @@ class SSHClient(object):
         for remote in remotes:
             cmd = "%s\n" % command
             if remote.sudo_mode:
-                cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
+                cmd = 'sudo -S bash -c "{}"'.format(cmd.replace('"', '\\"'))
             chan = remote._ssh.get_transport().open_session()
             chan.exec_command(cmd)
             futures[remote] = chan
@@ -338,7 +340,7 @@ class SSHClient(object):
             raise DevopsCalledProcessError(command, errors)
 
     def execute(self, command, verbose=False):
-        chan, stdin, stderr, stdout = self.execute_async(command)
+        chan, _, stderr, stdout = self.execute_async(command)
         result = {
             'stdout': [],
             'stderr': [],
@@ -357,7 +359,7 @@ class SSHClient(object):
         return result
 
     def execute_async(self, command):
-        logging.debug("Executing command: '%s'" % command.rstrip())
+        logging.debug("Executing command: '{}'".format(command.rstrip()))
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
@@ -397,7 +399,7 @@ class SSHClient(object):
             self._sftp.put(source, target)
             return
 
-        for rootdir, subdirs, files in os.walk(source):
+        for rootdir, _, files in os.walk(source):
             targetdir = os.path.normpath(
                 os.path.join(
                     target,
@@ -461,7 +463,7 @@ def ssh(*args, **kwargs):
 
 
 def xmlrpctoken(uri, login, password):
-    server = xmlrpclib.Server(uri)
+    server = xmlrpc_client.Server(uri)
     try:
         return server.login(login, password)
     except Exception:
@@ -469,7 +471,7 @@ def xmlrpctoken(uri, login, password):
 
 
 def xmlrpcmethod(uri, method):
-    server = xmlrpclib.Server(uri)
+    server = xmlrpc_client.Server(uri)
     try:
         return getattr(server, method)
     except Exception:
@@ -502,22 +504,22 @@ def get_nodes(admin_ip):
     url = "https://{}:8443".format(admin_ip)
     endpoint = '/api/nodes/'
     keystone_url = "http://{}:5000/v2.0/tokens".format(admin_ip)
-    tokens_request = urllib2.Request(keystone_url)
+    tokens_request = request.Request(keystone_url)
     tokens_request.add_header('Content-Type', 'application/json')
     tokens_request.add_data(auth_data)
-    tokens_response = urllib2.urlopen(tokens_request)
+    tokens_response = request.urlopen(tokens_request)
     tokens_dct = json.load(tokens_response)
     token = tokens_dct['access']['token']['id']
-    nodes_request = urllib2.Request(url + endpoint)
+    nodes_request = request.Request(url + endpoint)
     nodes_request.add_header('X-Auth-Token', token)
     # pylint: disable=protected-access
     # Note: this API is accessible not on all Python 2.7 versions,
     # so use if-else
     if hasattr(ssl, '_create_unverified_context'):
-        nodes_response = urllib2.urlopen(
+        nodes_response = request.urlopen(
             nodes_request, context=ssl._create_unverified_context())
     else:
-        nodes_response = urllib2.urlopen(nodes_request)
+        nodes_response = request.urlopen(nodes_request)
     # pylint: enable=protected-access
     nodes = json.load(nodes_response)
     return nodes
