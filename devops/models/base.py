@@ -22,7 +22,7 @@ from django.utils.importlib import import_module
 def choices(*args, **kwargs):
     defaults = {'max_length': 255, 'null': False}
     defaults.update(kwargs)
-    defaults.update(choices=zip(args, args))
+    defaults.update(choices=dict(zip(args, args)))
     return models.CharField(**defaults)
 
 
