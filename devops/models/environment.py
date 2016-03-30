@@ -16,7 +16,7 @@ import time
 
 from django.conf import settings
 from django.db import models
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
@@ -203,8 +203,8 @@ class Environment(DriverModel):
             nodes[n].delete()
         cls.erase_empty()
 
-        logger.info('Undefined domains: %s, removed nodes: %s' %
-                    (0, len(nodes_to_remove)))
+        logger.info('Undefined domains: {0}, removed nodes: {1}'.format(
+            0, len(nodes_to_remove)))
 
     @classmethod
     def describe_environment(cls, boot_from='cdrom'):

@@ -14,12 +14,12 @@
 
 from __future__ import division
 import datetime
+import os
 from time import sleep
 import xml.etree.ElementTree as ET
 
-import ipaddr
 import libvirt
-import os
+from netaddr import IPNetwork
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
@@ -979,6 +979,6 @@ class DevopsDriver(object):
             if ip is not None:
                 address = ip.get('address')
                 prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
-                allocated_networks.append(ipaddr.IPNetwork(
+                allocated_networks.append(IPNetwork(
                     "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
         return allocated_networks

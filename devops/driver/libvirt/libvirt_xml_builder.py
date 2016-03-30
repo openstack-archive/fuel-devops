@@ -16,8 +16,8 @@ import json
 import os
 import uuid
 
-from ipaddr import IPAddress
-from ipaddr import IPNetwork
+from netaddr import IPAddress
+from netaddr import IPNetwork
 from xmlbuilder import XMLBuilder
 
 
