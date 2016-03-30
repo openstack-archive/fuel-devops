@@ -32,7 +32,7 @@ class UseCases(unittest.TestCase):
             'centos6.4-base.qcow2': '/tmp/centos6.4-base.qcow2',
         }
 
-        for name, vol in images_for_upload.iteritems():
+        for name, vol in images_for_upload.items():
             v = Volume.volume_create(name, _get_file_size(vol))
             if not self.driver.volume_exists(v):
                 self.driver.volume_define(v)
