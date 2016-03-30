@@ -17,7 +17,7 @@ import collections
 import os
 import sys
 
-import ipaddr
+from netaddr import IPNetwork
 import tabulate
 
 import devops
@@ -178,7 +178,7 @@ class Shell(object):
         self.env = Environment.create(env_name)
         networks, prefix = self.params.net_pool.split(':')
         Network.default_pool = Network.create_network_pool(
-            networks=[ipaddr.IPNetwork(networks)],
+            networks=[IPNetwork(networks)],
             prefix=int(prefix))
 
         networks = Network.create_networks(environment=self.env)
