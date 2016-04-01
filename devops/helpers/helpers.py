@@ -12,12 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import absolute_import
+
 import httplib
 import json
 import logging
 import os
 import posixpath
 import socket
+import ssl
 import stat
 import time
 import urllib2
@@ -507,6 +510,12 @@ def get_nodes(admin_ip):
     token = tokens_dct['access']['token']['id']
     nodes_request = urllib2.Request(url + endpoint)
     nodes_request.add_header('X-Auth-Token', token)
-    nodes_response = urllib2.urlopen(nodes_request)
+    # pylint: disable=protected-access
+    logger.info(type(ssl))
+    logger.info(repr(ssl))
+    logger.info(dir(ssl))
+    nodes_response = urllib2.urlopen(
+        nodes_request, context=ssl._create_unverified_context())
+    # pylint: enable=protected-access
     nodes = json.load(nodes_response)
     return nodes
