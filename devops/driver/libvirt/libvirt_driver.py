@@ -494,6 +494,7 @@ class Node(NodeBase):
     vcpu = ParamField(default=1)
     memory = ParamField(default=1024)
     has_vnc = ParamField(default=True)
+    bootmenu_timeout = ParamField(default=0)
 
     @property
     def _libvirt_node(self):
@@ -608,7 +609,7 @@ class Node(NodeBase):
             architecture=self.architecture,
             boot=self.boot,
             reboot_timeout=self.driver.reboot_timeout,
-            should_enable_boot_menu=self.should_enable_boot_menu,
+            bootmenu_timeout=self.bootmenu_timeout,
             emulator=emulator,
             has_vnc=self.has_vnc,
             vnc_password=self.driver.vnc_password,
