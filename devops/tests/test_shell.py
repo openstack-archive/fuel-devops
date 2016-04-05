@@ -66,9 +66,13 @@ class TestDoSnapshot(BaseShellTestCase):
     @mock.patch('devops.models.environment.time.time')
     @mock.patch.object(models.Environment, 'get_nodes')
     @mock.patch.object(models.Environment, 'get')
-    def test_create_snaphot_with_mandatory_snapshot_name(self, mock_get_env,
+    @mock.patch.object(models.Environment, 'has_snapshot')
+    def test_create_snaphot_with_mandatory_snapshot_name(self,
+                                                         mock_has_snapshot,
+                                                         mock_get_env,
                                                          mock_get_nodes,
                                                          mock_time):
+        mock_has_snapshot.return_value = False
         mock_get_env.return_value = models.Environment()
         mock_time.return_value = 123456.789
 
