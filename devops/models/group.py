@@ -72,17 +72,21 @@ class Group(BaseModel):
     def has_snapshot(self, name):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
-    def define(self):
+    def define_networks(self):
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.define()
+
+    def define_nodes(self):
         for node in self.get_nodes():
             for volume in node.get_volumes():
                 volume.define()
             node.define()
 
-    def start(self, nodes=None):
+    def start_networks(self):
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.start()
+
+    def start_nodes(self, nodes=None):
         for node in nodes or self.get_nodes():
             node.start()
 
