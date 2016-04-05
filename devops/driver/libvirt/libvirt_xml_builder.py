@@ -177,7 +177,7 @@ class LibvirtXMLBuilder(object):
     @classmethod
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
-                       reboot_timeout, should_enable_boot_menu, emulator,
+                       reboot_timeout, bootmenu_timeout, emulator,
                        has_vnc, vnc_password, local_disk_devices, interfaces):
         """Generate node XML
 
@@ -216,8 +216,8 @@ class LibvirtXMLBuilder(object):
                 node_xml.boot(dev=boot_dev)
             if reboot_timeout:
                 node_xml.bios(rebootTimeout=str(reboot_timeout))
-            if should_enable_boot_menu:
-                node_xml.bootmenu(enable='yes', timeout='3000')
+            if bootmenu_timeout:
+                node_xml.bootmenu(enable='yes', timeout=str(bootmenu_timeout))
 
         with node_xml.devices:
             node_xml.controller(type='usb', model='nec-xhci')
