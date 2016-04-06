@@ -224,6 +224,9 @@ class TestVolumeXml(BaseTestXMLBuilder):
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
                        '        <format type="qcow2" />\n'
+                       '        <permissions>\n'
+                       '            <mode>0644</mode>\n'
+                       '        </permissions>\n'
                        '    </target>\n'
                        '</volume>')
 
@@ -241,6 +244,9 @@ class TestVolumeXml(BaseTestXMLBuilder):
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
                        '        <format type="raw" />\n'
+                       '        <permissions>\n'
+                       '            <mode>0644</mode>\n'
+                       '        </permissions>\n'
                        '    </target>\n'
                        '</volume>')
 
@@ -258,6 +264,9 @@ class TestVolumeXml(BaseTestXMLBuilder):
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
                        '        <format type="qcow2" />\n'
+                       '        <permissions>\n'
+                       '            <mode>0644</mode>\n'
+                       '        </permissions>\n'
                        '    </target>\n'
                        '    <backingStore>\n'
                        '        <path>/tmp/master.img</path>\n'
