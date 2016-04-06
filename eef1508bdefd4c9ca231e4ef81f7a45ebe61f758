@@ -1,0 +1,16 @@
+Code-Review+1: Alejandro Siller Rivas <alejandro.rivas@ericsson.com>
+Code-Review+1: Vinod Kumar Yadav <vinod.kumar.v.yadav@ericsson.com>
+Code-Review+1: Mikhail Samoylov <msamoylov@mirantis.com>
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Code-Review+1: Vasily Gorin <vgorin@mirantis.com>
+Code-Review+1: Dmitry Tyzhnenko <dtyzhnenko@mirantis.com>
+Code-Review+1: Alexandr Kostrikov <akostrikov@mirantis.com>
+Code-Review+1: Artem Grechanichenko <agrechanichenko@mirantis.com>
+Workflow+1: Dennis Dmitriev <ddmitriev@mirantis.com>
+Verified+1: Fuel CI <fuel-ci-bot@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 06 Apr 2016 16:19:56 +0000
+Reviewed-on: https://review.openstack.org/293034
+Project: openstack/fuel-devops
+Branch: refs/heads/master
