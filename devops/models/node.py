@@ -16,9 +16,9 @@ from django.conf import settings
 from django.db import models
 from django.utils.functional import cached_property
 
-from devops.helpers.helpers import _tcp_ping
-from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
+from devops.helpers.helpers import tcp_ping_
+from devops.helpers.helpers import wait_
 from devops.helpers import loader
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
@@ -153,8 +153,8 @@ class Node(ParamedModel, BaseModel):
             password=password, private_keys=private_keys)
 
     def await(self, network_name, timeout=120, by_port=22):
-        _wait(
-            lambda: _tcp_ping(
+        wait_(
+            lambda: tcp_ping_(
                 self.get_ip_address_by_network_name(network_name), by_port),
             timeout=timeout)
 
