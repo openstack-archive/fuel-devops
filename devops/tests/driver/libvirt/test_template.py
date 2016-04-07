@@ -463,7 +463,9 @@ class TestLibvirtTemplate(LibvirtTestCase):
 
         self.env.define()
 
+        # pylint: disable=map-builtin-not-iterating
         nets = map(str, self.d.get_allocated_networks())
+        # pylint: enable=map-builtin-not-iterating
         assert sorted(nets) == [
             '10.109.0.1/24',
             '10.109.1.1/24',
@@ -504,7 +506,7 @@ class TestLibvirtTemplate(LibvirtTestCase):
         networks = self.d.conn.listAllNetworks()
         assert len(networks) == 5
         for network in networks:
-            assert network.isActive()  # shlold be active
+            assert network.isActive()  # should be active
 
         domains = self.d.conn.listAllDomains()
         assert len(domains) == 3

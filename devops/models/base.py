@@ -14,6 +14,9 @@
 
 import abc
 from datetime import datetime
+# pylint: disable=redefined-builtin
+from functools import reduce
+# pylint: enable=redefined-builtin
 import operator
 
 from django.db import models
@@ -30,7 +33,7 @@ from devops.helpers import loader
 def choices(*args, **kwargs):
     defaults = {'max_length': 255, 'null': False}
     defaults.update(kwargs)
-    defaults.update(choices=zip(args, args))
+    defaults.update(choices=list(zip(args, args)))
     return models.CharField(**defaults)
 
 
@@ -63,7 +66,9 @@ class ParamedModelType(ModelBase):
 
         # if not ParamModel itself
         if name != 'ParamedModel' and name != 'NewBase':
+            # pylint: disable=map-builtin-not-iterating
             parents = reduce(operator.add, map(lambda a: a.__mro__, bases))
+            # pylint: enable=map-builtin-not-iterating
             # if not a first subclass of ParamedModel
             if ParamedModel not in bases and ParamedModel in parents:
                 # add proxy=True by default
@@ -219,7 +224,7 @@ class ParamMultiField(ParamFieldBase):
             raise DevopsError('subfields is empty')
 
         self.subfields = []
-        for name, field in subfields.iteritems():
+        for name, field in subfields.items():
             if not isinstance(field, (ParamField, ParamMultiField)):
                 raise DevopsError('field "{}" has wrong type;'
                                   ' should be ParamField or ParamMultiField'
@@ -252,7 +257,7 @@ class ParamMultiField(ParamFieldBase):
         if not isinstance(values, dict):
             raise DevopsError('Can set only dict')
         self._init_proxy_params(instance)
-        for field_name, field_value in values.iteritems():
+        for field_name, field_value in values.items():
             if field_name not in self.proxy_fields:
                 raise DevopsError('Unknown field "{}"'.format(field_name))
             setattr(self._proxy, field_name, field_value)
@@ -286,7 +291,7 @@ class ParamedModelQuerySet(query.QuerySet):
         # filter using params
         result_ids = []
         for item in queryset:
-            for key, value in kwargs_for_params.iteritems():
+            for key, value in kwargs_for_params.items():
                 # NOTE(astudenov): no support for 'gt', 'lt', 'in'
                 # and other django's filter stuff
 

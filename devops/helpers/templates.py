@@ -14,8 +14,9 @@
 
 from __future__ import division
 
-from ipaddr import IPNetwork  # TODO(ddmitriev): use netaddr instead of ipaddr
 import os
+
+from ipaddr import IPNetwork  # TODO(ddmitriev): use netaddr instead of ipaddr
 import yaml
 
 
@@ -26,7 +27,7 @@ def yaml_template_load(config_file):
             raise ValueError(
                 "Cannot load the environment template {0} : include file {1} "
                 "doesn't exist.".format(config_file, file_name))
-        with file(file_name) as inputfile:
+        with open(file_name) as inputfile:
             return yaml.load(inputfile)
 
     def yaml_get_env_variable(loader, node):

@@ -124,7 +124,7 @@ class LibvirtXMLBuilder(object):
             else:
                 xml_builder.memory(snapshot='no')
 
-            for disk in (local_disk_devices or []):
+            for disk in local_disk_devices or []:
                 with xml_builder.disks:
                     xml_builder.disk(name=disk['disk_target_dev'],
                                      file=disk['disk_volume_path'],

@@ -483,7 +483,7 @@ class Migration(SchemaMigration):
         },
         'devops.l2networkdevice': {
             'Meta': {'object_name': 'L2NetworkDevice',
-                     'db_table': "'devops_l2_network_device'",},
+                     'db_table': "'devops_l2_network_device'"},
             'address_pool': ('django.db.models.fields.related.ForeignKey', [],
                              {'to': "orm['devops.AddressPool']",
                               'null': 'True'}),

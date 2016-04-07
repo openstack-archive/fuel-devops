@@ -20,6 +20,8 @@ in section group['driver']['name']. This module should contain 4 major classes:
 Driver, L2NetworkDevice, Volume, Node.
 """
 
+from __future__ import print_function
+
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
 from devops.models.driver import Driver as DriverBase
@@ -88,7 +90,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
 
     # example parameter
     dhcp = ParamField(default=False)
-    other = ParamField(defaul='')
+    other = ParamField(default='')
 
     def define(self):
         """Define
@@ -118,7 +120,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         # and network
         print(self.address_pool.ip_network)
 
-        super(Node, self).define()
+        super(L2NetworkDevice, self).define()
         print('Do something after define')
 
     def start(self):
@@ -144,7 +146,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         Erase method is called one time when you want remove existing
         l2 network device
         """
-        super(Node, self).erase()
+        super(L2NetworkDevice, self).erase()
         print('Do something after erase')
 
 
@@ -170,7 +172,7 @@ class Volume(VolumeBase):
         print(self.driver.dummy_parameter)
 
         print('Do something before define')
-        super(Node, self).define()
+        super(Volume, self).define()
         print('Do something after define')
 
     def erase(self):
@@ -180,7 +182,7 @@ class Volume(VolumeBase):
         volume
         """
         print('Do something before erase')
-        super(Node, self).erase()
+        super(Volume, self).erase()
         print('Do something after erase')
 
 
