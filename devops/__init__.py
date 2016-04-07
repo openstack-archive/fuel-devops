@@ -13,9 +13,10 @@
 #    under the License.
 
 import os
-import yaml
 import logging
 import logging.config
+
+import yaml
 
 __version__ = '3.0.0'
 

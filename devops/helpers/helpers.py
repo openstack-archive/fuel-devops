@@ -12,6 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# pylint: disable=redefined-builtin
+from functools import reduce
+# pylint: enable=redefined-builtin
 import httplib
 import logging
 import os
@@ -34,8 +37,7 @@ from devops.settings import SSH_CREDENTIALS
 
 
 def get_free_port():
-    ports = range(32000, 32100)
-    for port in ports:
+    for port in range(32000, 32100):
         if not tcp_ping('localhost', port):
             return port
     raise DevopsError('No free ports available')
@@ -264,7 +266,7 @@ class SSHClient(object):
     @retry(count=3, delay=3)
     def connect(self):
         logging.debug(
-            "Connect to '%s:%s' as '%s:%s'" % (
+            "Connect to '{0}:{1}' as '{2}:{3}'".format(
                 self.host, self.port, self.username, self.password))
         for private_key in self.private_keys:
             try:
@@ -319,7 +321,7 @@ class SSHClient(object):
             raise DevopsCalledProcessError(command, errors)
 
     def execute(self, command, verbose=False):
-        chan, stdin, stderr, stdout = self.execute_async(command)
+        chan, _, stderr, stdout = self.execute_async(command)
         result = {
             'stdout': [],
             'stderr': [],
@@ -338,7 +340,7 @@ class SSHClient(object):
         return result
 
     def execute_async(self, command):
-        logging.debug("Executing command: '%s'" % command.rstrip())
+        logging.debug("Executing command: '{}'".format(command.rstrip()))
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
@@ -378,7 +380,7 @@ class SSHClient(object):
             self._sftp.put(source, target)
             return
 
-        for rootdir, subdirs, files in os.walk(source):
+        for rootdir, _, files in os.walk(source):
             targetdir = os.path.normpath(
                 os.path.join(
                     target,

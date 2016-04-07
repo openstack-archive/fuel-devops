@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
 import re
 import xml.etree.ElementTree as ET
 
@@ -1065,10 +1064,10 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
         self.snap_create_xml_mock.reset_mock()
         self.def_xml_mock.reset_mock()
 
-        with nested(
-                mock.patch('libvirt.virStorageVol.delete'),
-                mock.patch('libvirt.virStoragePool.createXML')
-        ) as (vol_del_mock, pool_crt_mock):
+        with \
+                mock.patch('libvirt.virStorageVol.delete') as vol_del_mock,\
+                mock.patch('libvirt.virStoragePool.createXML') as\
+                pool_crt_mock:
             self.node.revert(name='test1')  # second revert
 
         assert (self.node.disk_devices[0].volume.name ==

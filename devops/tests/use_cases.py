@@ -17,9 +17,9 @@ import unittest
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
-from devops.driver.libvirt import libvirt_driver
-from devops.helpers.helpers import _get_file_size
-from devops.models import Volume
+from devops.driver.libvirt import libvirt_driver  # noqa
+from devops.helpers.helpers import _get_file_size  # noqa
+from devops.models import Volume  # noqa
 
 
 class UseCases(unittest.TestCase):
@@ -32,7 +32,7 @@ class UseCases(unittest.TestCase):
             'centos6.4-base.qcow2': '/tmp/centos6.4-base.qcow2',
         }
 
-        for name, vol in images_for_upload.iteritems():
+        for name, vol in images_for_upload.items():
             v = Volume.volume_create(name, _get_file_size(vol))
             if not self.driver.volume_exists(v):
                 self.driver.volume_define(v)

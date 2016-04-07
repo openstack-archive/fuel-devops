@@ -204,8 +204,9 @@ class Environment(BaseModel):
             nodes[n].delete()
         cls.erase_empty()
 
-        logger.info('Undefined domains: %s, removed nodes: %s' %
-                    (0, len(nodes_to_remove)))
+        logger.info('Undefined domains: {0}, removed nodes: {1}'.format(
+            0, len(nodes_to_remove)
+        ))
 
     # LEGACY
     @classmethod
