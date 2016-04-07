@@ -199,7 +199,7 @@ class AddressPool(ParamedModel, BaseModel):
                           " with CIDR {1}".format(self.name, self.net))
 
     @classmethod
-    @transaction.commit_on_success
+    @transaction.atomic
     def _safe_create_network(cls, name, pool, environment, **params):
         for ip_network in pool:
             try:
@@ -246,7 +246,7 @@ class AddressPool(ParamedModel, BaseModel):
 
             :rtype : str(IP)
             """
-            if type(ip_id) == int:
+            if isinstance(ip_id, int):
                 return str(ip_network[int(ip_id)])
             else:
                 return str(ip_id)
@@ -354,7 +354,7 @@ class NetworkPool(BaseModel):
             ip_range_end = str(self.address_pool.ip_network[relative_end])
             self.address_pool.ip_range_set(
                 range_name, ip_range_start, ip_range_end)
-            return (ip_range_start, ip_range_end)
+            return ip_range_start, ip_range_end
 
     @property
     def gateway(self):

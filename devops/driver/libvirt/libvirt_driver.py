@@ -1103,7 +1103,7 @@ class Node(NodeBase):
         snapshot = self._get_snapshot(name)
 
         if snapshot.children_num == 0:
-            for s_disk, s_disk_data in snapshot.disks.items():
+            for s_disk_data in snapshot.disks.values():
                 logger.info("Recreate {0}".format(s_disk_data))
 
                 # Save actual volume XML, delete volume and create

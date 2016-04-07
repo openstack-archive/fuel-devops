@@ -12,11 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 import argparse
 import collections
 import os
 import sys
 
+# pylint: disable=redefined-builtin
+from six.moves import xrange
+# pylint: enable=redefined-builtin
 import tabulate
 
 import devops
@@ -132,7 +137,7 @@ class Shell(object):
 
     def do_snapshot_delete(self):
         for node in self.env.get_nodes():
-            snaps = map(lambda x: x.name, node.get_snapshots())
+            snaps = [x.name for x in node.get_snapshots()]
             if self.snapshot_name in snaps:
                 node.erase_snapshot(name=self.snapshot_name)
 

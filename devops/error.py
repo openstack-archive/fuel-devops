@@ -16,6 +16,7 @@
 class DevopsError(Exception):
     def __init__(self, message):
         self.message = message
+        super(DevopsError, self).__init__()
 
     def __str__(self):
         return self.message
@@ -30,13 +31,11 @@ class DevopsCalledProcessError(DevopsError):
         self.returncode = returncode
         self.cmd = command
         self.output = output
-
-    def __str__(self):
         message = "Command '%s' returned non-zero exit status %s" % (
             self.cmd, self.returncode)
         if self.output:
-            message += "\n%s" % '\n'.join(self.output)
-        return message
+            message += "\n{}".format('\n'.join(self.output))
+        super(DevopsCalledProcessError, self).__init__(message)
 
 
 class DevopsNotImplementedError(DevopsError):
@@ -46,10 +45,9 @@ class DevopsNotImplementedError(DevopsError):
 class DevopsEnvironmentError(DevopsError):
     def __init__(self, command):
         self.cmd = command
-
-    def __str__(self):
-        message = "Command '{0}' is not found".format(self.cmd)
-        return message
+        super(DevopsEnvironmentError, self).__init__(
+            "Command '{0}' is not found".format(self.cmd)
+        )
 
 
 class TimeoutError(DevopsError):
