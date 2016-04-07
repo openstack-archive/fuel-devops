@@ -256,8 +256,12 @@ def create_address_pools(interfaceorder, networks_pools):
         default_pool_name = 'default'
         floating_pool_name = 'floating'
 
+        # Take a first subnet with necessary size and calculate the size
+        net = IPNetwork(networks_pools['public'][0])
+        new_prefix = int(networks_pools['public'][1])
+        subnet = net.subnet(new_prefix=new_prefix)[0]
         # TODO(ddmitriev): for netaddr, use IPNetwork().size
-        network_size = IPNetwork(networks_pools['public'][0]).numhosts
+        network_size = subnet.numhosts
 
         address_pools['public']['params']['ip_ranges'][default_pool_name] = [
             2, network_size // 2 - 1]
