@@ -23,7 +23,7 @@ from netaddr import IPNetwork
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
-from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import get_file_size
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
@@ -921,7 +921,7 @@ class DevopsDriver(object):
 
     @retry(count=2)
     def volume_upload(self, volume, path):
-        size = _get_file_size(path)
+        size = get_file_size(path)
         with open(path, 'rb') as fd:
             stream = self.conn.newStream(0)
             self.conn.storageVolLookupByKey(volume.uuid).upload(

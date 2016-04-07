@@ -20,6 +20,7 @@ import posixpath
 import socket
 import stat
 import time
+from warnings import warn
 
 from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
@@ -60,12 +61,18 @@ def icmp_ping(host, timeout=1):
             'host': host, 'timeout': timeout}) == 0
 
 
-def _tcp_ping(host, port, timeout=None):
+def tcp_ping_(host, port, timeout=None):
     s = socket.socket()
     if timeout:
         s.settimeout(timeout)
     s.connect((str(host), int(port)))
     s.close()
+
+
+def _tcp_ping(*args, **kwargs):
+    logger.warning('_tcp_ping is deprecated in favor of tcp_ping')
+    warn('_tcp_ping is deprecated in favor of tcp_ping', DeprecationWarning)
+    return tcp_ping_(*args, **kwargs)
 
 
 def tcp_ping(host, port, timeout=None):
@@ -76,7 +83,7 @@ def tcp_ping(host, port, timeout=None):
     False - otherwise.
     """
     try:
-        _tcp_ping(host, port, timeout)
+        tcp_ping_(host, port, timeout)
     except socket.error:
         return False
     return True
@@ -112,7 +119,8 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
     return timeout + start_time - time.time()
 
 
-def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
+def wait_pass(raising_predicate, expected=Exception, interval=5, timeout=None):
+    """Wait for successful return from predicate or expected exception"""
     start_time = time.time()
     while True:
         try:
@@ -121,6 +129,12 @@ def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
             if timeout and start_time + timeout < time.time():
                 raise
             time.sleep(interval)
+
+
+def _wait(*args, **kwargs):
+    logger.warning('_wait has been deprecated in favor of wait_pass')
+    warn('_wait has been deprecated in favor of wait_pass', DeprecationWarning)
+    return wait_pass(*args, **kwargs)
 
 
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
@@ -259,14 +273,27 @@ class SSHClient(object):
 
         self.sudo_mode = False
         self.sudo = self.get_sudo(self)
+        self._ssh = None
+        self.__sftp = None
 
         self.reconnect()
 
+    @property
+    def _sftp(self):
+        if self.__sftp is not None:
+            return self.__sftp
+        logger.warning('SFTP is not connected, try to reconnect')
+        self._connect_sftp()
+        if self.__sftp is not None:
+            return self.__sftp
+        raise paramiko.SSHException('SFTP connection failed')
+
     def clear(self):
-        try:
-            self._sftp.close()
-        except Exception:
-            logger.exception("Could not close sftp connection")
+        if self.__sftp is not None:
+            try:
+                self.__sftp.close()
+            except Exception:
+                logger.exception("Could not close sftp connection")
         try:
             self._ssh.close()
         except Exception:
@@ -301,11 +328,17 @@ class SSHClient(object):
             self.host, port=self.port, username=self.username,
             password=self.password)
 
+    def _connect_sftp(self):
+        try:
+            self.__sftp = self._ssh.open_sftp()
+        except paramiko.SSHException:
+            logger.warning('SFTP enable failed! SSH only is accessible.')
+
     def reconnect(self):
         self._ssh = paramiko.SSHClient()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.connect()
-        self._sftp = self._ssh.open_sftp()
+        self._connect_sftp()
 
     def check_call(self, command, verbose=False):
         ret = self.execute(command, verbose)
@@ -328,7 +361,7 @@ class SSHClient(object):
         for remote in remotes:
             cmd = "%s\n" % command
             if remote.sudo_mode:
-                cmd = 'sudo -S bash -c "{}"'.format(cmd.replace('"', '\\"'))
+                cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
             chan = remote._ssh.get_transport().open_session()
             chan.exec_command(cmd)
             futures[remote] = chan
@@ -483,7 +516,7 @@ def generate_mac():
         *bytearray(os.urandom(5)))
 
 
-def _get_file_size(path):
+def get_file_size(path):
     """Get size of file-like object
 
     :type path: str
@@ -491,6 +524,15 @@ def _get_file_size(path):
     """
 
     return os.stat(path).st_size
+
+
+def _get_file_size(*args, **kwargs):
+    logger.warning(
+        '_get_file_size has been deprecated in favor of get_file_size')
+    warn(
+        '_get_file_size has been deprecated in favor of get_file_size',
+        DeprecationWarning)
+    return get_file_size(*args, **kwargs)
 
 
 def get_nodes(admin_ip):

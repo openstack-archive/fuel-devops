@@ -20,9 +20,9 @@ from django.conf import settings
 from django.db import models
 
 from devops.error import DevopsError
-from devops.helpers.helpers import _tcp_ping
-from devops.helpers.helpers import _wait
 from devops.helpers.helpers import SSHClient
+from devops.helpers.helpers import tcp_ping
+from devops.helpers.helpers import wait_pass
 from devops import logger
 from devops.models.base import choices
 from devops.models.base import DriverModel
@@ -176,8 +176,8 @@ class Node(DriverModel):
         self.driver.node_send_keys(self, keys)
 
     def await(self, network_name, timeout=120, by_port=22):
-        _wait(
-            lambda: _tcp_ping(
+        wait_pass(
+            lambda: tcp_ping(
                 self.get_ip_address_by_network_name(network_name), by_port),
             timeout=timeout)
 
