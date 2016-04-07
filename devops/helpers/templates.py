@@ -82,6 +82,9 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                         networks_bondinginterfaces=None):
 
     if networks_bonding:
+        # DEPRECATED. Use YAML template for test cases with bonding.
+        # For fuel-qa bonding cases, 'network_config' is hardcoded in the tests
+        # (see self.INTERFACES in fuel-qa 'test_bonding_base.py')
         # Translate a dict of lists {net_name: [eth0, eth1],} into a new dict:
         # {eth0: net_name, eth1: net_name,}
         ifaces = {
@@ -96,14 +99,45 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                 'interface_model': 'e1000',
             } for label in sorted(ifaces.keys())
         ]
+        # Please use YAML templates instead of old-style tests to make new
+        # tests for bonds.
     else:
         admin_interfaces = [
             {
-                'label': 'eth' + str(n),
+                'label': 'iface' + str(n),
                 'l2_network_device': iname,
                 'interface_model': 'e1000',
             } for n, iname in enumerate(interfaceorder)
         ]
+
+    # network_config is for storing OpenStack networks mapping on interfaces
+    # based on 'interfaceorder' object.
+    # Resulting object will be (by default):
+    #   network_config:
+    #     iface0:
+    #       networks:
+    #        - fuelweb_admin
+    #     iface1:
+    #       networks:
+    #        - public
+    #     iface2:
+    #       networks:
+    #        - storage
+    #     iface3:
+    #       networks:
+    #        - management
+    #     iface4:
+    #       networks:
+    #        - private
+    network_config = {
+        iface['label']: {
+            'networks': [
+                iface['l2_network_device']
+                if iface['l2_network_device'] != 'admin'
+                else 'fuelweb_admin',
+            ]
+        } for iface in admin_interfaces
+    }
 
     if boot_from == 'usb':
         boot_device_order = ['hd']
@@ -139,6 +173,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                 },
             ],
             'interfaces': admin_interfaces,
+            'network_config': network_config,
         },
     }
     return admin_config
@@ -159,13 +194,16 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         nodegroups_idx = 1 - int(slave_name[-2:]) % 2
         slave_interfaces = [
             {
-                'label': 'eth' + str(n),
+                'label': 'iface' + str(n),
                 'l2_network_device': iname,
                 'interface_model': 'e1000',
             } for n, iname in enumerate(
                 networks_nodegroups[nodegroups_idx]['pools'])
         ]
     elif networks_bonding:
+        # DEPRECATED. Use YAML template for test cases with bonding.
+        # For fuel-qa bonding cases, 'network_config' is hardcoded in the tests
+        # (see self.INTERFACES in fuel-qa 'test_bonding_base.py')
         # Translate a dict of lists {net_name: [eth0, eth1],} into a new dict:
         # {eth0: net_name, eth1: net_name,}
         ifaces = {
@@ -183,11 +221,40 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
     else:
         slave_interfaces = [
             {
-                'label': 'eth' + str(n),
+                'label': 'iface' + str(n),
                 'l2_network_device': iname,
                 'interface_model': 'e1000',
             } for n, iname in enumerate(interfaceorder)
         ]
+
+    # network_config is for storing OpenStack networks mapping on interfaces
+    # based on 'interfaceorder' object.
+    # Resulting object will be (by default):
+    #   network_config:
+    #     iface0:
+    #       networks:
+    #        - fuelweb_admin
+    #     iface1:
+    #       networks:
+    #        - public
+    #     iface2:
+    #       networks:
+    #        - storage
+    #     iface3:
+    #       networks:
+    #        - management
+    #     iface4:
+    #       networks:
+    #        - private
+    network_config = {
+        iface['label']: {
+            'networks': [
+                iface['l2_network_device']
+                if iface['l2_network_device'] != 'admin'
+                else 'fuelweb_admin',
+            ]
+        } for iface in slave_interfaces
+    }
 
     volumes = [
         {
@@ -231,9 +298,21 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
             'boot': ['network', 'hd'],
             'volumes': volumes,
             'interfaces': slave_interfaces,
+            'network_config': network_config,
         },
     }
     return slave_config
+
+
+def create_netpools(interfaceorder):
+    netpool = {}
+    for iname in interfaceorder:
+        if iname == 'admin':
+            netname = 'fuelweb_admin'
+        else:
+            netname = iname
+        netpool[netname] = iname
+    return netpool
 
 
 def create_address_pools(interfaceorder, networks_pools):
@@ -325,6 +404,7 @@ def create_devops_config(boot_from,
 
     # Create address pools object
     address_pools = create_address_pools(interfaceorder, networks_pools)
+    netpools = create_netpools(interfaceorder)
 
     # Create network devices object
     l2_network_devices = create_l2_network_devices(interfaceorder,
@@ -398,6 +478,7 @@ def create_devops_config(boot_from,
                             },
                         },
                         'name': 'default',
+                        'network_pools': netpools,
                         'l2_network_devices': l2_network_devices,
                         'nodes': config_nodes,
                     },
