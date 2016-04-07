@@ -26,9 +26,9 @@ import libvirt
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
-from devops.helpers.helpers import _get_file_size
-from devops.helpers.helpers import _underscored
 from devops.helpers.helpers import deepgetattr
+from devops.helpers.helpers import get_file_size_
+from devops.helpers.helpers import underscored_
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
@@ -355,7 +355,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
 
     @retry()
     def define(self):
-        network_name = _underscored(
+        network_name = underscored_(
             deepgetattr(self, 'group.environment.name'),
             self.name,
         )
@@ -538,7 +538,7 @@ class Volume(VolumeBase):
 
     @retry()
     def define(self):
-        name = _underscored(
+        name = underscored_(
             deepgetattr(self, 'node.group.environment.name'),
             deepgetattr(self, 'node.name'),
             self.name,
@@ -551,7 +551,7 @@ class Volume(VolumeBase):
             backing_store_format = self.backing_store.format
 
         if self.source_image is not None:
-            capacity = _get_file_size(self.source_image)
+            capacity = get_file_size_(self.source_image)
         else:
             capacity = int(self.capacity * 1024 ** 3)
 
@@ -599,7 +599,7 @@ class Volume(VolumeBase):
 
     @retry(count=2)
     def upload(self, path):
-        size = _get_file_size(path)
+        size = get_file_size_(path)
         with open(path, 'rb') as fd:
             stream = self.driver.conn.newStream(0)
             self._libvirt_volume.upload(
@@ -744,7 +744,7 @@ class Node(NodeBase):
 
             :rtype : None
         """
-        name = _underscored(
+        name = underscored_(
             deepgetattr(self, 'group.environment.name'),
             self.name,
         )
