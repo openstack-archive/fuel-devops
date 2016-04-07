@@ -20,7 +20,7 @@ from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
-from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import get_file_size
 from devops.helpers.helpers import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
@@ -364,7 +364,7 @@ class Environment(DriverModel):
                 new_vol = self.add_empty_volume(
                     node,
                     volume_name,
-                    capacity=_get_file_size(volume['source_image']),
+                    capacity=get_file_size(volume['source_image']),
                     format=volume.get('format', 'qcow2'),
                     device=volume.get('device', 'disk'),
                     bus=volume.get('bus', 'virtio'),

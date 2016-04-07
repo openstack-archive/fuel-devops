@@ -15,7 +15,7 @@
 import os
 import yaml
 
-from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import get_file_size
 
 
 def yaml_template_load(config_file):
@@ -127,7 +127,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                 {
                     'name': 'iso',
                     'source_image': admin_iso_path,
-                    'capacity': _get_file_size(admin_iso_path),
+                    'capacity': get_file_size(admin_iso_path),
                     'format': 'raw',
                     'device': iso_device,
                     'bus': iso_bus,

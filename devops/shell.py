@@ -26,7 +26,7 @@ from six.moves import xrange
 import tabulate
 
 import devops
-from devops.helpers.helpers import _get_file_size
+from devops.helpers.helpers import get_file_size
 from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_admin_config
@@ -285,7 +285,7 @@ class Shell(object):
         vcpu = self.params.admin_vcpu_count
         ram = self.params.admin_ram_size
         iso_path = self.params.iso_path
-        iso_size = _get_file_size(iso_path)
+        iso_size = get_file_size(iso_path)
 
         if iso_size <= 0:
             print("Please, set correct ISO file")
