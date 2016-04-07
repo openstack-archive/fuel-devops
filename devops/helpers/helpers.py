@@ -15,7 +15,6 @@
 # pylint: disable=redefined-builtin
 from functools import reduce
 # pylint: enable=redefined-builtin
-import httplib
 import logging
 import os
 import posixpath
@@ -23,9 +22,13 @@ import socket
 import stat
 import time
 from warnings import warn
-import xmlrpclib
 
 import paramiko
+# pylint: disable=import-error
+from six.moves import http_client
+from six.moves import xmlrpc_client
+# pylint: enable=import-error
+
 
 from devops.error import AuthenticationError
 from devops.error import DevopsCalledProcessError
@@ -133,7 +136,7 @@ def _wait(*args, **kwargs):
 
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
     try:
-        conn = httplib.HTTPConnection(str(host), int(port))
+        conn = http_client.HTTPConnection(str(host), int(port))
         conn.request(method, url)
         res = conn.getresponse()
 
@@ -476,7 +479,7 @@ def ssh(*args, **kwargs):
 
 
 def xmlrpctoken(uri, login, password):
-    server = xmlrpclib.Server(uri)
+    server = xmlrpc_client.Server(uri)
     try:
         return server.login(login, password)
     except Exception:
@@ -484,7 +487,7 @@ def xmlrpctoken(uri, login, password):
 
 
 def xmlrpcmethod(uri, method):
-    server = xmlrpclib.Server(uri)
+    server = xmlrpc_client.Server(uri)
     try:
         return getattr(server, method)
     except Exception:
