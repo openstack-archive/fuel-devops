@@ -14,7 +14,7 @@
 
 from netaddr import IPNetwork
 
-from devops.helpers.helpers import SSHClient
+from devops.helpers.ssh_client import SSHClient
 from devops.models import DiskDevice
 from devops.models import Environment
 from devops.models import Interface
