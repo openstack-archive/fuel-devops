@@ -15,10 +15,10 @@
 from django.db import models
 from django.utils.functional import cached_property
 
-from devops.helpers.helpers import SSHClient
 from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
 from devops.helpers import loader
+from devops.helpers.ssh_client import SSHClient
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
 from devops.models.network import Interface
