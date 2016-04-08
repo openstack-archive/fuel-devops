@@ -13,6 +13,7 @@
 #    under the License.
 
 import time
+from warnings import warn
 
 from django.conf import settings
 from django.db import models
@@ -20,8 +21,8 @@ from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
-from devops.helpers.helpers import SSHClient
 from devops.helpers.network import IpNetworksPool
+from devops.helpers.ssh_client import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
@@ -161,7 +162,13 @@ class Environment(BaseModel):
             node.suspend()
 
     def resume(self, **kwargs):
-        for node in self.get_nodes():
+        nodes = set(self.get_nodes())
+        masters = set(self.get_nodes(role='fuel_master'))
+
+        for node in sorted(masters, key=lambda node: node.name):
+            node.resume()
+
+        for node in sorted(nodes - masters, key=lambda node: node.name):
             node.resume()
 
     def snapshot(self, name=None, description=None, force=False):
@@ -172,13 +179,19 @@ class Environment(BaseModel):
                           external=settings.SNAPSHOTS_EXTERNAL)
 
     def revert(self, name=None, destroy=True, flag=True):
+        nodes = set(self.get_nodes())
+        masters = set(self.get_nodes(role='fuel_master'))
+
         if destroy:
-            for node in self.get_nodes():
+            for node in nodes:
                 node.destroy()
         if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
-        for node in self.get_nodes():
+        for node in sorted(masters, key=lambda node: node.name):
+            node.revert(name, destroy=False)
+
+        for node in sorted(nodes - masters, key=lambda node: node.name):
             node.revert(name, destroy=False)
 
     # TO REWRITE FOR LIBVIRT DRIVER ONLY
@@ -220,6 +233,9 @@ class Environment(BaseModel):
            Reserved for backward compatibility only.
            Please use self.create_environment() instead.
         """
+        warn(
+            'describe_environment is deprecated in favor of'
+            ' create_environment', DeprecationWarning)
         if settings.DEVOPS_SETTINGS_TEMPLATE:
             config = get_devops_config(
                 settings.DEVOPS_SETTINGS_TEMPLATE)
@@ -317,7 +333,11 @@ class Environment(BaseModel):
 
         :rtype : SSHClient
         """
-        return self.nodes().admin.remote(
+        admin = sorted(
+            list(self.get_nodes(role='fuel_master')),
+            key=lambda node: node.name
+        )[0]
+        return admin.remote(
             self.admin_net,
             login=login,
             password=password)
@@ -350,7 +370,11 @@ class Environment(BaseModel):
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
+        warn(
+            'environment.nodes is deprecated in favor of'
+            ' environment.get_nodes', DeprecationWarning)
         # DEPRECATED. Please use environment.get_nodes() instead.
+
         class Nodes(object):
             def __init__(self, environment):
                 self.admins = sorted(
