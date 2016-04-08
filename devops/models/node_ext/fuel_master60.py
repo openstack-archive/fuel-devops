@@ -18,13 +18,13 @@ from devops.settings import SSH_CREDENTIALS
 
 
 class NodeExtension(object):
-    """Extension for Fuel 7.0"""
+    """Extension for Fuel 6.0"""
 
     def __init__(self, node):
         self.node = node
 
     def _send_keys(self, kernel_cmd):
-        """Provide virables data to kernel cmd format template"""
+        """Provide variables data to kernel cmd format template"""
 
         master_iface = self.node.get_interface_by_nailgun_network_name(
             SSH_CREDENTIALS['admin_network'])
@@ -41,46 +41,21 @@ class NodeExtension(object):
 
     def get_kernel_cmd(self, boot_from='cdrom', iface='enp0s3',
                        wait_for_external_config='yes'):
-        if boot_from == 'usb':
-            return (
-                '<Wait>\n'
-                '<Wait>\n'
-                '<Wait>\n'
-                '<F12>\n'
-                '2\n'
-                '<Esc><Enter>\n'
-                '<Wait>\n'
-                'vmlinuz'
-                ' initrd=initrd.img ks=hd:LABEL="Mirantis_Fuel":/ks.cfg\n'
-                ' repo=hd:LABEL="Mirantis_Fuel":/\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={dns1}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
-                ' showmenu=no\n'
-                ' wait_for_external_config=' + wait_for_external_config + '\n'
-                ' build_images=0\n'
-                ' <Enter>\n')
-        else:
-            return (
-                '<Wait>\n'
-                '<Wait>\n'
-                '<Wait>\n'
-                '<Esc>\n'
-                '<Wait>\n'
-                'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={dns1}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
-                ' showmenu=no\n'
-                ' wait_for_external_config=' + wait_for_external_config + '\n'
-                ' build_images=0\n'
-                ' <Enter>\n')
+        return (
+            '<Wait>\n'
+            '<Wait>\n'
+            '<Wait>\n'
+            '<Esc><Enter>\n'
+            '<Wait>\n'
+            'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n'
+            ' ip={ip}\n'
+            ' netmask={mask}\n'
+            ' gw={gw}\n'
+            ' dns1={dns1}\n'
+            ' hostname={hostname}\n'
+            ' dhcp_interface=' + iface + '\n'
+            ' showmenu=no\n'
+            ' <Enter>\n')
 
     def get_deploy_check_cmd(self):
         return ("grep 'Fuel node deployment complete' "

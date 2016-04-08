@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from functools import partial
 # pylint: disable=redefined-builtin
 from functools import reduce
 # pylint: enable=redefined-builtin
@@ -117,6 +118,19 @@ def _wait(raising_predicate, expected=Exception, interval=5, timeout=None):
             time.sleep(interval)
 
 
+def wait_tcp(host, port, timeout):
+    is_port_active = partial(tcp_ping, host=host, port=port)
+    wait(is_port_active, timeout=timeout)
+
+
+def wait_ssh_cmd(host, port, check_cmd, username, password, timeout):
+    ssh_client = SSHClient(host=host, port=port,
+                           username=SSH_CREDENTIALS['login'],
+                           password=SSH_CREDENTIALS['password'])
+    wait(lambda: not ssh_client.execute(check_cmd)['exit_code'],
+         timeout=timeout)
+
+
 def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
     try:
         conn = httplib.HTTPConnection(str(host), int(port))
@@ -175,42 +189,6 @@ def get_slave_ip(env, node_mac_address):
                 passwd=KEYSTONE_CREDS['password'],
                 mac=node_mac_address))['stdout']
     return ip[0].rstrip()
-
-
-def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images, centos_version='7', static_interface='enp0s3'):
-    if centos_version < 7:
-        ip_format = ' ip={ip}'
-    else:
-        ip_format = ' ip={ip}::{gw}:{mask}:{hostname}:{static_interface}:none'
-
-    return '\n'.join([
-        '<Wait>',
-        '<Esc>',
-        '<Wait>',
-        'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg',
-        ip_format,
-        ' netmask={mask}'
-        ' gw={gw}'
-        ' dns1={dns1}',
-        ' nameserver={dns1}',
-        ' hostname={hostname}',
-        ' dhcp_interface={nat_interface}',
-        ' showmenu={showmenu}',
-        ' build_images={build_images}',
-        ' <Enter>',
-        ''
-    ]).format(
-        ip=ip,
-        mask=mask,
-        gw=gw,
-        hostname=hostname,
-        nat_interface=nat_interface,
-        dns1=dns1,
-        showmenu=showmenu,
-        build_images=build_images,
-        static_interface=static_interface
-    )
 
 
 class KeyPolicy(paramiko.WarningPolicy):
