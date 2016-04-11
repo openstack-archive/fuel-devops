@@ -16,7 +16,7 @@ from __future__ import division
 
 import os
 
-from ipaddr import IPNetwork  # TODO(ddmitriev): use netaddr instead of ipaddr
+from netaddr import IPNetwork
 import yaml
 
 
@@ -343,8 +343,7 @@ def create_address_pools(interfaceorder, networks_pools):
         net = IPNetwork(networks_pools['public'][0])
         new_prefix = int(networks_pools['public'][1])
         subnet = net.subnet(new_prefix=new_prefix)[0]
-        # TODO(ddmitriev): for netaddr, use IPNetwork().size
-        network_size = subnet.numhosts
+        network_size = subnet.size
 
         address_pools['public']['params']['ip_ranges'][default_pool_name] = [
             2, network_size // 2 - 1]

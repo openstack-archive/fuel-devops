@@ -14,7 +14,7 @@
 
 from unittest import TestCase
 
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 
