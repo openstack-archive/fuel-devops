@@ -21,8 +21,8 @@ import xml.etree.ElementTree as ET
 
 from django.conf import settings
 from django.utils.functional import cached_property
-import ipaddr
 import libvirt
+import netaddr
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
@@ -199,7 +199,7 @@ class Driver(DriverBase):
             if ip is not None:
                 address = ip.get('address')
                 prefix_or_netmask = ip.get('prefix') or ip.get('netmask')
-                allocated_networks.append(ipaddr.IPNetwork(
+                allocated_networks.append(netaddr.IPNetwork(
                     "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
         return allocated_networks
 
@@ -388,7 +388,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
 
             for interface in self.interfaces:
                 for address in interface.addresses:
-                    ip_addr = ipaddr.IPAddress(address.ip_address)
+                    ip_addr = netaddr.IPAddress(address.ip_address)
                     if ip_addr in self.address_pool.ip_network:
                         addresses.append(dict(
                             mac=str(interface.mac_address),
