@@ -15,8 +15,8 @@
 import xml.etree.ElementTree as ET
 
 from django.test import TestCase
-import ipaddr
 import mock
+from netaddr import IPNetwork
 
 from devops.driver.libvirt.libvirt_driver import _LibvirtManager
 from devops.driver.libvirt.libvirt_driver import Driver
@@ -139,7 +139,7 @@ class TestLibvirtDriver(LibvirtTestCase):
         )
         ret = self.d.get_allocated_networks()
         assert len(ret) == 1
-        assert ret[0] == ipaddr.IPNetwork('172.0.1.1/24')
+        assert ret[0] == IPNetwork('172.0.1.1/24')
 
     def test_get_version(self):
         assert isinstance(self.d.get_libvirt_version(), int)

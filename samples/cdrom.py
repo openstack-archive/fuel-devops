@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 from devops.helpers.helpers import SSHClient
 from devops.models import DiskDevice

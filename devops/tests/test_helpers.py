@@ -16,7 +16,7 @@
 
 import unittest
 
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 from devops.helpers import helpers
 from devops.helpers.network import IpNetworksPool
