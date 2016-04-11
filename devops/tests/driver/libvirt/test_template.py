@@ -15,8 +15,8 @@
 import collections
 import os
 
-import ipaddr
 import mock
+from netaddr import IPAddress
 import yaml
 
 from devops.models import AddressPool
@@ -260,7 +260,7 @@ class TestLibvirtTemplate(LibvirtTestCase):
             name='private-pool01').ip_network
 
         def assert_ip_in_net(ip, net):
-            assert ipaddr.IPAddress(ip) in net
+            assert IPAddress(ip) in net
 
         admin_node = self.env.get_node(name='admin')
         adm_eth0 = admin_node.interface_set.get(label='eth0')

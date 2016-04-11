@@ -16,7 +16,7 @@ import time
 
 from django.conf import settings
 from django.db import models
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 

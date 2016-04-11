@@ -13,7 +13,7 @@
 #    under the License.
 
 from django.test import TestCase
-from ipaddr import IPNetwork
+from netaddr import IPNetwork
 
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address

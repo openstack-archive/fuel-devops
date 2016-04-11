@@ -13,12 +13,12 @@
 #    under the License.
 
 from copy import deepcopy
-from ipaddr import IPNetwork
-import jsonfield
 
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
+import jsonfield
+from netaddr import IPNetwork
 
 from devops.error import DevopsError
 from devops.helpers.helpers import generate_mac
@@ -184,7 +184,7 @@ class AddressPool(ParamedModel, BaseModel):
             return None
 
     def next_ip(self):
-        for ip in self.ip_network.iterhosts():
+        for ip in self.ip_network.iter_hosts():
             # if ip < self.ip_pool_start or ip > self.ip_pool_end:
             # Skip net, gw and broadcast addresses in the address pool
             if ip < self.ip_network[2] or ip > self.ip_network[-2]:

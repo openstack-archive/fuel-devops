@@ -35,7 +35,7 @@ setup(
     scripts=['bin/dos.py'],
     install_requires=[
         'xmlbuilder',
-        'ipaddr',
+        'netaddr',
         'paramiko',
         'django<1.7',
         'jsonfield',

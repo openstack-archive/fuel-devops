@@ -13,8 +13,8 @@
 #    under the License.
 
 from django.test import TestCase
-import ipaddr
 import mock
+from netaddr import IPNetwork
 
 from devops.models import Environment
 
@@ -107,4 +107,4 @@ class TestLibvirtL2NetworkDevice(TestCase):
 
         ret = self.d.get_allocated_networks()
         assert len(ret) == 1
-        assert ret[0] == ipaddr.IPNetwork('172.0.0.1/24')
+        assert ret[0] == IPNetwork('172.0.0.1/24')
