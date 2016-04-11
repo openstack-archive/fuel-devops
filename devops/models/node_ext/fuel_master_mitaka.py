@@ -18,7 +18,7 @@ from devops.settings import SSH_CREDENTIALS
 
 
 class NodeExtension(object):
-    """Extension for the latest Fuel development build"""
+    """Extension for Fuel Mitaka"""
 
     def __init__(self, node):
         self.node = node

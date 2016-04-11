@@ -25,7 +25,6 @@ from six.moves import xrange
 import tabulate
 
 import devops
-from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import create_slave_config
@@ -273,27 +272,13 @@ class Shell(object):
 
     def do_admin_setup(self):
         admin_node = self.env.get_node(name='admin')
-        admin_node.destroy()
-        node_manager.admin_prepare_disks(node=admin_node,
-                                         disk_size=self.params.admin_disk_size)
-        admin_node.start()
-        node_manager.admin_change_config(admin_node=admin_node,
-                                         admin_centos_version=6,
-                                         static_interface='eth0')
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
-
-    def do_admin_setup_centos7(self):
-        admin_node = self.env.get_node(name='admin')
-        admin_node.destroy()
-        node_manager.admin_prepare_disks(node=admin_node,
-                                         disk_size=self.params.admin_disk_size)
-        admin_node.start()
-        node_manager.admin_change_config(admin_node=admin_node,
-                                         admin_centos_version=7,
-                                         static_interface=self.params.iface)
-        admin_node.await("admin", timeout=10 * 60)
-        node_manager.admin_wait_bootstrap(3000, self.env)
+        if admin_node.kernel_cmd is None:
+            admin_node.kernel_cmd = admin_node.ext.get_kernel_cmd(
+                boot_from=self.params.boot_from,
+                wait_for_external_config='no',
+                iface=self.params.iface)
+        admin_node.bootstrap_and_wait()
+        admin_node.deploy_wait()
 
     def do_node_start(self):
         self.env.get_node(name=self.params.node_name).start()
@@ -327,7 +312,6 @@ class Shell(object):
         'slave-change': do_slave_change,
         'slave-remove': do_slave_remove,
         'admin-setup': do_admin_setup,
-        'admin-setup-centos7': do_admin_setup_centos7,
         'admin-change': do_admin_change,
         'node-start': do_node_start,
         'node-destroy': do_node_destroy,
@@ -410,6 +394,11 @@ class Shell(object):
                                                    'the admin node. Should '
                                                    'be eth0 or enp0s3',
                                               default='enp0s3')
+        admin_setup_boot_from_parser = argparse.ArgumentParser(add_help=False)
+        admin_setup_boot_from_parser.add_argument(
+            '--boot-from', dest='boot_from', default='cdrom',
+            help='Set device to boot from for admin node. '
+            'Should be cdrom or usb')
         ram_parser = argparse.ArgumentParser(add_help=False)
         ram_parser.add_argument('--ram', dest='ram_size',
                                 help='Set node RAM size',
@@ -557,13 +546,9 @@ class Shell(object):
                               description="Remove selected node from "
                               "environment")
         subparsers.add_parser('admin-setup',
-                              parents=[name_parser, admin_disk_size_parser],
+                              parents=[name_parser, admin_setup_iface_parser,
+                                       admin_setup_boot_from_parser],
                               help="Setup admin node",
-                              description="Setup admin node from ISO")
-        subparsers.add_parser('admin-setup-centos7',
-                              parents=[name_parser, admin_disk_size_parser,
-                                       admin_setup_iface_parser],
-                              help="Setup CentOS 7 based admin node",
                               description="Setup admin node from ISO")
         subparsers.add_parser('admin-change',
                               parents=[name_parser, change_admin_ram_parser,

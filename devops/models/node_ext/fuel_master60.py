@@ -18,7 +18,7 @@ from devops.settings import SSH_CREDENTIALS
 
 
 class NodeExtension(object):
-    """Extension for the latest Fuel development build"""
+    """Extension for Fuel 6.0"""
 
     def __init__(self, node):
         self.node = node
@@ -35,41 +35,28 @@ class NodeExtension(object):
             mask=admin_ip_net.netmask,
             gw=admin_ip_net[1],
             hostname=DEFAULT_MASTER_FQDN,
-            nameserver=DEFAULT_DNS,
+            dns1=DEFAULT_DNS,
         )
         self.node.send_keys(result_kernel_cmd)
 
     def get_kernel_cmd(self, boot_from='cdrom', iface='enp0s3',
                        wait_for_external_config='yes'):
-        if boot_from == 'usb':
-            keys = (
-                '<Wait>\n'
-                '<Wait>\n'
-                '<Wait>\n'
-                '<F12>\n'
-                '2\n'
-            )
-        else:  # cdrom is default
-            keys = (
-                '<Wait>\n'
-                '<Wait>\n'
-                '<Wait>\n'
-            )
-
-        keys += (
-            '<Esc>\n'
+        return (
             '<Wait>\n'
-            'vmlinuz initrd=initrd.img'
-            ' inst.ks=cdrom:LABEL=OpenStack_Fuel:/ks.cfg'
-            ' inst.repo=cdrom:LABEL=OpenStack_Fuel:/'
-            ' ip={ip}::{gw}:{mask}:{hostname}'
-            ':' + iface + ':off::: nameserver={nameserver}'
+            '<Wait>\n'
+            '<Wait>\n'
+            '<Esc><Enter>\n'
+            '<Wait>\n'
+            'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n'
+            ' ip={ip}\n'
+            ' netmask={mask}\n'
+            ' gw={gw}\n'
+            ' dns1={dns1}\n'
+            ' hostname={hostname}\n'
+            ' dhcp_interface=' + iface + '\n'
             ' showmenu=no\n'
-            ' wait_for_external_config=' + wait_for_external_config + '\n'
-            ' build_images=0\n'
-            ' <Enter>\n'
-        )
-        return keys
+            ' <Enter>\n')
 
     def get_deploy_check_cmd(self):
-        return 'timeout 15 fuel-utils check_all'
+        return ("grep 'Fuel node deployment complete' "
+                "'/var/log/puppet/bootstrap_admin_node.log'")
