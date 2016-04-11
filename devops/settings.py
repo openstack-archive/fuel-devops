@@ -50,7 +50,7 @@ KEYSTONE_CREDS = {'username': os.environ.get('KEYSTONE_USERNAME', 'admin'),
                   'password': os.environ.get('KEYSTONE_PASSWORD', 'admin')}
 
 SSH_CREDENTIALS = {
-    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),
+    'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'fuelweb_admin'),
     'login': os.environ.get('ENV_FUEL_LOGIN', 'root'),
     'password': os.environ.get('ENV_FUEL_PASSWORD', 'r00tme')
 }
