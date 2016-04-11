@@ -18,7 +18,7 @@ import unittest
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
 
 from devops.driver.libvirt import libvirt_driver  # noqa
-from devops.helpers.helpers import _get_file_size  # noqa
+from devops.helpers.helpers import get_file_size  # noqa
 from devops.models import Volume  # noqa
 
 
@@ -33,7 +33,7 @@ class UseCases(unittest.TestCase):
         }
 
         for name, vol in images_for_upload.items():
-            v = Volume.volume_create(name, _get_file_size(vol))
+            v = Volume.volume_create(name, get_file_size(vol))
             if not self.driver.volume_exists(v):
                 self.driver.volume_define(v)
                 self.driver.volume_upload(v, vol)
