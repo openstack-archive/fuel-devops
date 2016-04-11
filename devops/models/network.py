@@ -467,6 +467,10 @@ class Interface(models.Model):
     def addresses(self):
         return self.address_set.all()
 
+    @property
+    def network_config(self):
+        return self.node.networkconfig_set.get(label=self.label)
+
     def add_address(self):
         ip = self.l2_network_device.address_pool.next_ip()
         Address.objects.create(
