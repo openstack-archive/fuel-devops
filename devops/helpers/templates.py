@@ -110,10 +110,12 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
         boot_device_order = ['hd']
         iso_device = 'disk'
         iso_bus = 'usb'
+        bootmenu_timeout = 3000
     else:  # boot_from == 'cdrom':
         boot_device_order = ['hd', 'cdrom']
         iso_device = 'cdrom'
         iso_bus = 'ide'
+        bootmenu_timeout = 0
 
     admin_config = {
         'name': 'admin',  # Custom name of VM for Fuel admin node
@@ -122,6 +124,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
             'vcpu': admin_vcpu,
             'memory': admin_memory,
             'boot': boot_device_order,
+            'bootmenu_timeout': bootmenu_timeout,
             'volumes': [
                 {
                     'name': 'system',
