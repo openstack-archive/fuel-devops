@@ -20,6 +20,7 @@ from ipaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
+from devops.error import DevopsObjNotFound
 from devops.helpers.helpers import SSHClient
 from devops.helpers.network import IpNetworksPool
 from devops.helpers.templates import create_devops_config
@@ -49,6 +50,9 @@ class Environment(BaseModel):
     admin_net = 'admin'
     admin_net2 = 'admin2'
 
+    def __repr__(self):
+        return 'Environment(name={name})'.format(name=self.name)
+
     def get_allocated_networks(self):
         allocated_networks = []
         for group in self.get_groups():
@@ -56,13 +60,19 @@ class Environment(BaseModel):
         return allocated_networks
 
     def get_address_pool(self, **kwargs):
-        return self.addresspool_set.get(**kwargs)
+        try:
+            return self.addresspool_set.get(**kwargs)
+        except AddressPool.DoesNotExist:
+            raise DevopsObjNotFound(AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
         return self.addresspool_set.filter(**kwargs)
 
     def get_group(self, **kwargs):
-        return self.group_set.get(**kwargs)
+        try:
+            return self.group_set.get(**kwargs)
+        except Group.DoesNotExist:
+            raise DevopsObjNotFound(Group, **kwargs)
 
     def get_groups(self, **kwargs):
         return self.group_set.filter(**kwargs)
@@ -122,7 +132,10 @@ class Environment(BaseModel):
 
     @classmethod
     def get(cls, *args, **kwargs):
-        return cls.objects.get(*args, **kwargs)
+        try:
+            return cls.objects.get(*args, **kwargs)
+        except Environment.DoesNotExist:
+            raise DevopsObjNotFound(Environment, *args, **kwargs)
 
     @classmethod
     def list_all(cls):
@@ -429,7 +442,10 @@ class Environment(BaseModel):
 
     # LEGACY, for fuel-qa compatibility
     def get_node(self, *args, **kwargs):
-        return Node.objects.get(*args, group__environment=self, **kwargs)
+        try:
+            return Node.objects.get(*args, group__environment=self, **kwargs)
+        except Node.DoesNotExist:
+            raise DevopsObjNotFound(Node, *args, **kwargs)
 
     # LEGACY, for fuel-qa compatibility
     def get_nodes(self, *args, **kwargs):

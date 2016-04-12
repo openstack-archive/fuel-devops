@@ -12,14 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+
 
 class DevopsError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super(DevopsError, self).__init__()
-
-    def __str__(self):
-        return self.message
+    """Base class for errors"""
 
 
 class AuthenticationError(DevopsError):
@@ -52,3 +49,17 @@ class DevopsEnvironmentError(DevopsError):
 
 class TimeoutError(DevopsError):
     pass
+
+
+class DevopsObjNotFound(DevopsError):
+    """Object not found in Devops database"""
+
+    def __init__(self, cls, *args, **kwargs):
+        cls_name = '{}.{}'.format(inspect.getmodule(cls).__name__,
+                                  cls.__name__)
+        items = [repr(a) for a in args]
+        items += ['{}={!r}'.format(k, v) for k, v in kwargs.items()]
+        content = ', '.join(items)
+        msg = '{cls_name}({content}) does not exist in database.'.format(
+            cls_name=cls_name, content=content)
+        super(DevopsObjNotFound, self).__init__(msg)
