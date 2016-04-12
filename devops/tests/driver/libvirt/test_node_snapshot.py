@@ -254,7 +254,7 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
         self.node.snapshot(name='test1')
 
         with mock.patch('libvirt.virDomain.destroy') as dest_mock:
-            self.node.revert(name='test1', destroy=True)
+            self.node.revert(name='test1')
             dest_mock.assert_called_once_with()
 
 

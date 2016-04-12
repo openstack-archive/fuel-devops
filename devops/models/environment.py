@@ -171,15 +171,12 @@ class Environment(BaseModel):
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)
 
-    def revert(self, name=None, destroy=True, flag=True):
-        if destroy:
-            for node in self.get_nodes():
-                node.destroy()
+    def revert(self, name=None, flag=True):
         if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
         for node in self.get_nodes():
-            node.revert(name, destroy=False)
+            node.revert(name)
 
     # TO REWRITE FOR LIBVIRT DRIVER ONLY
     @classmethod
