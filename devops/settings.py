@@ -31,7 +31,7 @@ DRIVER_PARAMETERS = {
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
 }
 
-INSTALLED_APPS = ['south', 'devops']
+INSTALLED_APPS = ['devops']
 
 DATABASES = {
     'default': {
