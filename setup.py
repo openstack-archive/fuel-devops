@@ -36,10 +36,9 @@ setup(
     install_requires=[
         'netaddr',
         'paramiko',
-        'django<1.7',
+        'django<1.10',
         'jsonfield',
         'psycopg2',
-        'south',
         'PyYAML',
         'libvirt-python',
         'tabulate',
