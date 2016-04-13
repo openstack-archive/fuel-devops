@@ -41,7 +41,7 @@ class BaseModel(models.Model):
     class Meta(object):
         abstract = True
 
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
+    created = models.DateTimeField(default=datetime.utcnow)
 
 
 class ParamedModelType(ModelBase):
@@ -266,14 +266,33 @@ class ParamMultiField(ParamFieldBase):
 class ParamedModelQuerySet(query.QuerySet):
     """Custom QuerySet for ParamedModel"""
 
-    def filter(self, **kwargs):
+    def filter(self, *args, **kwargs):
         super_filter = super(ParamedModelQuerySet, self).filter
 
         # split kwargs which django db are not aware of
-        # to separete dict
+        # to separate dict
         kwargs_for_params = {}
         db_kwargs = {}
-        field_names = self.model._meta.get_all_field_names()
+
+        # Fix deprecated code usage from django
+        field_names = set()
+        _meta = self.model._meta
+        fields = _meta.get_fields()
+        for field in fields:
+            # For backwards compatibility GenericForeignKey should not be
+            # included in the results.
+            if field.is_relation and field.many_to_one and\
+                    field.related_model is None:
+                continue
+            # Relations to child proxy models should not be included.
+            if (field.model != _meta.model and
+                    field.model._meta.concrete_model == _meta.concrete_model):
+                continue
+
+            field_names.add(field.name)
+            if hasattr(field, 'attname'):
+                field_names.add(field.attname)
+
         for param in kwargs.keys():
             first_subparam = param.split('__')[0]
             if first_subparam not in field_names:
@@ -282,7 +301,7 @@ class ParamedModelQuerySet(query.QuerySet):
                 db_kwargs[param] = kwargs[param]
 
         # filter using db arguments
-        queryset = super_filter(**db_kwargs)
+        queryset = super_filter(*args, **db_kwargs)
 
         if not kwargs_for_params:
             # return db queryset if there is no params

@@ -77,7 +77,7 @@ class TestLibvirtDriver(LibvirtTestCase):
         self.env = Environment.create('test_env')
         self.group = self.env.add_group(
             group_name='test_group',
-            driver_name='devops.driver.libvirt.libvirt_driver',
+            driver_name='devops.driver.libvirt',
             connection_string='test:///default')
 
         self.ap = self.env.add_address_pool(
