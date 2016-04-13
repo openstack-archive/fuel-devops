@@ -25,6 +25,8 @@ from six.moves import xrange
 import tabulate
 
 import devops
+
+from devops.error import DevopsObjNotFound
 from devops.helpers import node_manager
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_devops_config
@@ -44,7 +46,7 @@ class Shell(object):
                 getattr(self.params, 'command', None) != 'create'):
             try:
                 self.env = Environment.get(name=self.params.name)
-            except Environment.DoesNotExist:
+            except DevopsObjNotFound:
                 self.env = None
                 sys.exit("Enviroment with name {} doesn't exist."
                          "".format(self.params.name))

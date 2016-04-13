@@ -20,6 +20,7 @@ from ipaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
+from devops.error import DevopsObjNotFound
 from devops.helpers.helpers import SSHClient
 from devops.helpers.network import IpNetworksPool
 from devops.helpers.templates import create_devops_config
@@ -49,6 +50,9 @@ class Environment(BaseModel):
     admin_net = 'admin'
     admin_net2 = 'admin2'
 
+    def __repr__(self):
+        return 'Environment(name={name})'.format(name=self.name)
+
     def get_allocated_networks(self):
         allocated_networks = []
         for group in self.get_groups():
@@ -56,13 +60,19 @@ class Environment(BaseModel):
         return allocated_networks
 
     def get_address_pool(self, **kwargs):
-        return self.addresspool_set.get(**kwargs)
+        try:
+            return self.addresspool_set.get(**kwargs)
+        except AddressPool.DoesNotExist:
+            raise DevopsObjNotFound(AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
         return self.addresspool_set.filter(**kwargs)
 
     def get_group(self, **kwargs):
-        return self.group_set.get(**kwargs)
+        try:
+            return self.group_set.get(**kwargs)
+        except Group.DoesNotExist:
+            raise DevopsObjNotFound(Group, **kwargs)
 
     def get_groups(self, **kwargs):
         return self.group_set.filter(**kwargs)
@@ -122,7 +132,10 @@ class Environment(BaseModel):
 
     @classmethod
     def get(cls, *args, **kwargs):
-        return cls.objects.get(*args, **kwargs)
+        try:
+            return cls.objects.get(*args, **kwargs)
+        except Environment.DoesNotExist:
+            raise DevopsObjNotFound(Environment, *args, **kwargs)
 
     @classmethod
     def list_all(cls):
@@ -376,6 +389,10 @@ class Environment(BaseModel):
 
     # BACKWARD COMPATIBILITY LAYER
     def _create_network_object(self, l2_network_device):
+        if l2_network_device.address_pool is None:
+            raise DevopsError('L2NetworkDevice {!r} has no address pool'
+                              .format(l2_network_device.name))
+
         class LegacyNetwork(object):
             def __init__(self):
                 self.id = l2_network_device.id
@@ -401,35 +418,32 @@ class Environment(BaseModel):
         return LegacyNetwork()
 
     def get_env_l2_network_device(self, **kwargs):
-        for group in self.get_groups():
-            try:
-                return group.l2networkdevice_set.get(**kwargs)
-            except L2NetworkDevice.DoesNotExist:
-                continue
-        # TODO(ddmitriev): raise DoesNotExist(*args, **kwargs) if not found
+        try:
+            return L2NetworkDevice.objects.get(
+                group__environment=self, **kwargs)
+        except L2NetworkDevice.DoesNotExist:
+            raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
+
+    def get_env_l2_network_devices(self, **kwargs):
+        return L2NetworkDevice.objects.filter(
+            group__environment=self, **kwargs)
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
-    def get_network(self, *args, **kwargs):
-        l2_network_device = self.get_env_l2_network_device(*args, **kwargs)
-
-        if l2_network_device and l2_network_device.address_pool:
-            network = self._create_network_object(l2_network_device)
-            return network
-        # TODO(ddmitriev): raise DoesNotExist(*args, **kwargs) if not found
+    def get_network(self, **kwargs):
+        l2_network_device = self.get_env_l2_network_device(**kwargs)
+        return self._create_network_object(l2_network_device)
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
-    def get_networks(self, *args, **kwargs):
-        l2_network_devices = []
-        for group in self.get_groups():
-            l2_network_devices.extend(
-                group.l2networkdevice_set.filter(*args, **kwargs))
-        networks = [self._create_network_object(x)
-                    for x in l2_network_devices if x.address_pool]
-        return networks
+    def get_networks(self, **kwargs):
+        l2_network_devices = self.get_env_l2_network_devices(**kwargs)
+        return [self._create_network_object(x) for x in l2_network_devices]
 
     # LEGACY, for fuel-qa compatibility
     def get_node(self, *args, **kwargs):
-        return Node.objects.get(*args, group__environment=self, **kwargs)
+        try:
+            return Node.objects.get(*args, group__environment=self, **kwargs)
+        except Node.DoesNotExist:
+            raise DevopsObjNotFound(Node, *args, **kwargs)
 
     # LEGACY, for fuel-qa compatibility
     def get_nodes(self, *args, **kwargs):
