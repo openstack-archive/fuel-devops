@@ -521,7 +521,7 @@ def create_devops_config(boot_from,
                     {
                         'driver': {
                             'name':
-                                'devops.driver.libvirt.libvirt_driver',
+                                'devops.driver.libvirt',
                             'params': {
                                 'connection_string': 'qemu:///system',
                                 'storage_pool_name': 'default',

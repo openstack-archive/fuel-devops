@@ -24,14 +24,16 @@ from __future__ import print_function
 
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
-from devops.models.driver import Driver as DriverBase
-from devops.models.network import L2NetworkDevice as L2NetworkDeviceBase
-from devops.models.node import Node as NodeBase
-from devops.models.volume import Volume as VolumeBase
+from devops.models.driver import Driver
+from devops.models.network import L2NetworkDevice
+from devops.models.node import Node
+from devops.models.volume import Volume
 
 
-class Driver(DriverBase):
+class DummyDriver(Driver):
     """Example of driver implementation
+
+    Note: This class is imported as Driver at .__init__.py
 
     This class should contain parameters specified in template
     group['driver']['params']
@@ -68,8 +70,10 @@ class Driver(DriverBase):
         return ['192.168.0.0/24', '192.168.1.0/24']
 
 
-class L2NetworkDevice(L2NetworkDeviceBase):
+class DummyL2NetworkDevice(L2NetworkDevice):
     """Example implementation of l2 network device.
+
+    Note: This class is imported as L2NetworkDevice at .__init__.py
 
     L2NetworkDevice represents node/device which acts like switch or router
 
@@ -120,7 +124,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         # and network
         print(self.address_pool.ip_network)
 
-        super(L2NetworkDevice, self).define()
+        super(DummyL2NetworkDevice, self).define()
         print('Do something after define')
 
     def start(self):
@@ -146,12 +150,14 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         Erase method is called one time when you want remove existing
         l2 network device
         """
-        super(L2NetworkDevice, self).erase()
+        super(DummyL2NetworkDevice, self).erase()
         print('Do something after erase')
 
 
-class Volume(VolumeBase):
+class DummyVolume(Volume):
     """Example implementation of volume
+
+    Note: This class is imported as Volume at .__init__.py
 
     Volume is image or disk which should be mounted to a specific Node
     """
@@ -172,7 +178,7 @@ class Volume(VolumeBase):
         print(self.driver.dummy_parameter)
 
         print('Do something before define')
-        super(Volume, self).define()
+        super(DummyVolume, self).define()
         print('Do something after define')
 
     def erase(self):
@@ -182,12 +188,14 @@ class Volume(VolumeBase):
         volume
         """
         print('Do something before erase')
-        super(Volume, self).erase()
+        super(DummyVolume, self).erase()
         print('Do something after erase')
 
 
-class Node(NodeBase):
+class DummyNode(Node):
     """Example implementation of node
+
+    Note: This class is imported as Node at .__init__.py
 
     Node is a server which will be used for deloying of openstack depending on
     node role
@@ -244,7 +252,7 @@ class Node(NodeBase):
         print(self.interfaces)
 
         print('Do something before define')
-        super(Node, self).define()
+        super(DummyNode, self).define()
         print('Do something after define')
 
     def start(self):
@@ -266,5 +274,5 @@ class Node(NodeBase):
         node
         """
         print('Do something before erase')
-        super(Node, self).erase()
+        super(DummyNode, self).erase()
         print('Do something after erase')

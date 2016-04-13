@@ -71,6 +71,17 @@ class Environment(BaseModel):
     def add_groups(self, groups):
         for group_data in groups:
             driver_data = group_data['driver']
+            if driver_data['name'] == 'devops.driver.libvirt.libvirt_driver':
+                warn(
+                    "Driver 'devops.driver.libvirt.libvirt_driver' "
+                    "has been renamed to 'devops.driver.libvirt', "
+                    "please update the tests!",
+                    DeprecationWarning)
+                logger.warn(
+                    "Driver 'devops.driver.libvirt.libvirt_driver' "
+                    "has been renamed to 'devops.driver.libvirt', "
+                    "please update the tests!")
+                driver_data['name'] = 'devops.driver.libvirt'
             self.add_group(
                 group_name=group_data['name'],
                 driver_name=driver_data['name'],
