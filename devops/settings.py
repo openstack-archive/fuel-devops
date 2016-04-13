@@ -22,7 +22,7 @@ def get_var_as_bool(name, default):
     value = os.environ.get(name, '')
     return _boolean_states.get(value.lower(), default)
 
-DRIVER = 'devops.driver.libvirt.libvirt_driver'
+DRIVER = 'devops.driver.libvirt'
 DRIVER_PARAMETERS = {
     'connection_string': os.environ.get('CONNECTION_STRING', 'qemu:///system'),
     'storage_pool_name': os.environ.get('STORAGE_POOL_NAME', 'default'),
@@ -31,7 +31,7 @@ DRIVER_PARAMETERS = {
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
 }
 
-INSTALLED_APPS = ['south', 'devops']
+INSTALLED_APPS = ['devops']
 
 DATABASES = {
     'default': {
