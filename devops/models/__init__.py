@@ -13,7 +13,17 @@
 #    under the License.
 
 import os
+
+import django
+from django.apps import apps
+from django.core.exceptions import AppRegistryNotReady
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+try:
+    if not apps.is_installed('devops'):
+        django.setup()
+except AppRegistryNotReady:
+    django.setup()
 
 from devops.models.environment import Environment
 from devops.models.network import Address
@@ -22,3 +32,7 @@ from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
+
+__all__ = ['Environment', 'Address', 'Interface',
+           'Network', 'Node',
+           'Volume', 'DiskDevice']

@@ -1,348 +1,155 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
+from __future__ import unicode_literals
+
+from django.db import migrations, models
 import datetime
-from south.db import db
-from south.v2 import SchemaMigration
-from django.db import models
 
 
-class Migration(SchemaMigration):
-    def forwards(self, orm):
-        # Adding model 'Environment'
-        db.create_table(u'devops_environment', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('name', self.gf('django.db.models.fields.CharField')(
-                unique=True,
-                max_length=255)),
-        ))
-        db.send_create_signal(u'devops', ['Environment'])
+class Migration(migrations.Migration):
 
-        # Adding model 'Network'
-        db.create_table(u'devops_network', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('name',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('uuid',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('environment',
-             self.gf('django.db.models.fields.related.ForeignKey')(
-                 to=orm['devops.Environment'], null=True)),
-            ('has_dhcp_server',
-             self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('has_pxe_server',
-             self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('has_reserved_ips',
-             self.gf('django.db.models.fields.BooleanField')(default=True)),
-            ('tftp_root_dir',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('forward',
-             self.gf('django.db.models.fields.CharField')(max_length=255,
-                                                          null=True)),
-            ('ip_network',
-             self.gf('django.db.models.fields.CharField')(unique=True,
-                                                          max_length=255)),
-        ))
-        db.send_create_signal(u'devops', ['Network'])
+    dependencies = [
+    ]
 
-        # Adding unique constraint on 'Network', fields ['name', 'environment']
-        db.create_unique(u'devops_network', ['name', 'environment_id'])
-
-        # Adding model 'Node'
-        db.create_table(u'devops_node', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('name',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('uuid',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('environment',
-             self.gf('django.db.models.fields.related.ForeignKey')(
-                 to=orm['devops.Environment'], null=True)),
-            ('hypervisor',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('os_type',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('architecture',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('boot', self.gf('django.db.models.fields.CharField')(
-                default='[]',
-                max_length=255)),
-            ('metadata',
-             self.gf('django.db.models.fields.CharField')(max_length=255,
-                                                          null=True)),
-            ('role',
-             self.gf('django.db.models.fields.CharField')(max_length=255,
-                                                          null=True)),
-            ('vcpu',
-             self.gf('django.db.models.fields.PositiveSmallIntegerField')(
-                 default=1)),
-            ('memory',
-             self.gf('django.db.models.fields.IntegerField')(default=1024)),
-            ('has_vnc',
-             self.gf('django.db.models.fields.BooleanField')(default=True)),
-        ))
-        db.send_create_signal(u'devops', ['Node'])
-
-        # Adding unique constraint on 'Node', fields ['name', 'environment']
-        db.create_unique(u'devops_node', ['name', 'environment_id'])
-
-        # Adding model 'Volume'
-        db.create_table(u'devops_volume', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('name',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('uuid',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('environment',
-             self.gf('django.db.models.fields.related.ForeignKey')(
-                 to=orm['devops.Environment'], null=True)),
-            ('capacity', self.gf('django.db.models.fields.BigIntegerField')()),
-            ('backing_store',
-             self.gf('django.db.models.fields.related.ForeignKey')(
-                 to=orm['devops.Volume'], null=True)),
-            ('format',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-        ))
-        db.send_create_signal(u'devops', ['Volume'])
-
-        # Adding unique constraint on 'Volume', fields ['name', 'environment']
-        db.create_unique(u'devops_volume', ['name', 'environment_id'])
-
-        # Adding model 'DiskDevice'
-        db.create_table(u'devops_diskdevice', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('device',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('type',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('bus',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('target_dev',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('node', self.gf('django.db.models.fields.related.ForeignKey')(
-                to=orm['devops.Node'])),
-            ('volume', self.gf('django.db.models.fields.related.ForeignKey')(
-                to=orm['devops.Volume'], null=True)),
-        ))
-        db.send_create_signal(u'devops', ['DiskDevice'])
-
-        # Adding model 'Interface'
-        db.create_table(u'devops_interface', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('mac_address',
-             self.gf('django.db.models.fields.CharField')(unique=True,
-                                                          max_length=255)),
-            ('network', self.gf('django.db.models.fields.related.ForeignKey')(
-                to=orm['devops.Network'])),
-            ('node', self.gf('django.db.models.fields.related.ForeignKey')(
-                to=orm['devops.Node'])),
-            ('type',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-            ('model',
-             self.gf('django.db.models.fields.CharField')(max_length=255)),
-        ))
-        db.send_create_signal(u'devops', ['Interface'])
-
-        # Adding model 'Address'
-        db.create_table(u'devops_address', (
-            (u'id',
-             self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('ip_address',
-             self.gf('django.db.models.fields.GenericIPAddressField')(
-                 max_length=39)),
-            ('interface',
-             self.gf('django.db.models.fields.related.ForeignKey')(
-                 to=orm['devops.Interface'])),
-        ))
-        db.send_create_signal(u'devops', ['Address'])
-
-    def backwards(self, orm):
-        # Removing unique constraint on 'Volume', fields [
-        #   'name', 'environment']
-        db.delete_unique(u'devops_volume', ['name', 'environment_id'])
-
-        # Removing unique constraint on 'Node', fields ['name', 'environment']
-        db.delete_unique(u'devops_node', ['name', 'environment_id'])
-
-        # Removing unique constraint on 'Network', fields [
-        #   'name', 'environment']
-        db.delete_unique(u'devops_network', ['name', 'environment_id'])
-
-        # Deleting model 'Environment'
-        db.delete_table(u'devops_environment')
-
-        # Deleting model 'Network'
-        db.delete_table(u'devops_network')
-
-        # Deleting model 'Node'
-        db.delete_table(u'devops_node')
-
-        # Deleting model 'Volume'
-        db.delete_table(u'devops_volume')
-
-        # Deleting model 'DiskDevice'
-        db.delete_table(u'devops_diskdevice')
-
-        # Deleting model 'Interface'
-        db.delete_table(u'devops_interface')
-
-        # Deleting model 'Address'
-        db.delete_table(u'devops_address')
-
-    models = {
-        u'devops.address': {
-            'Meta': {'object_name': 'Address'},
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'interface': ('django.db.models.fields.related.ForeignKey', [],
-                          {'to': u"orm['devops.Interface']"}),
-            'ip_address': ('django.db.models.fields.GenericIPAddressField', [],
-                           {'max_length': '39'})
-        },
-        u'devops.diskdevice': {
-            'Meta': {'object_name': 'DiskDevice'},
-            'bus': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'device': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [],
-                     {'to': u"orm['devops.Node']"}),
-            'target_dev': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'type': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'volume': ('django.db.models.fields.related.ForeignKey', [],
-                       {'to': u"orm['devops.Volume']", 'null': 'True'})
-        },
-        u'devops.environment': {
-            'Meta': {'object_name': 'Environment'},
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [],
-                     {'unique': 'True', 'max_length': '255'})
-        },
-        u'devops.interface': {
-            'Meta': {'object_name': 'Interface'},
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'mac_address': ('django.db.models.fields.CharField', [],
-                            {'unique': 'True', 'max_length': '255'}),
-            'model': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'network': ('django.db.models.fields.related.ForeignKey', [],
-                        {'to': u"orm['devops.Network']"}),
-            'node': ('django.db.models.fields.related.ForeignKey', [],
-                     {'to': u"orm['devops.Node']"}),
-            'type': (
-                'django.db.models.fields.CharField', [], {'max_length': '255'})
-        },
-        u'devops.network': {
-            'Meta': {'unique_together': "(('name', 'environment'),)",
-                     'object_name': 'Network'},
-            'environment': ('django.db.models.fields.related.ForeignKey', [],
-                            {'to': u"orm['devops.Environment']",
-                             'null': 'True'}),
-            'forward': ('django.db.models.fields.CharField', [],
-                        {'max_length': '255', 'null': 'True'}),
-            'has_dhcp_server': (
-                'django.db.models.fields.BooleanField', [],
-                {'default': 'False'}),
-            'has_pxe_server': (
-                'django.db.models.fields.BooleanField', [],
-                {'default': 'False'}),
-            'has_reserved_ips': (
-                'django.db.models.fields.BooleanField', [],
-                {'default': 'True'}),
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'ip_network': ('django.db.models.fields.CharField', [],
-                           {'unique': 'True', 'max_length': '255'}),
-            'name': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'tftp_root_dir': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'uuid': (
-                'django.db.models.fields.CharField', [], {'max_length': '255'})
-        },
-        u'devops.node': {
-            'Meta': {'unique_together': "(('name', 'environment'),)",
-                     'object_name': 'Node'},
-            'architecture': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'boot': ('django.db.models.fields.CharField', [],
-                     {'default': "'[]'", 'max_length': '255'}),
-            'environment': ('django.db.models.fields.related.ForeignKey', [],
-                            {'to': u"orm['devops.Environment']",
-                             'null': 'True'}),
-            'has_vnc': (
-                'django.db.models.fields.BooleanField', [],
-                {'default': 'True'}),
-            'hypervisor': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'memory': (
-                'django.db.models.fields.IntegerField', [],
-                {'default': '1024'}),
-            'metadata': ('django.db.models.fields.CharField', [],
-                         {'max_length': '255', 'null': 'True'}),
-            'name': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'os_type': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'role': ('django.db.models.fields.CharField', [],
-                     {'max_length': '255', 'null': 'True'}),
-            'uuid': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'vcpu': ('django.db.models.fields.PositiveSmallIntegerField', [],
-                     {'default': '1'})
-        },
-        u'devops.volume': {
-            'Meta': {'unique_together': "(('name', 'environment'),)",
-                     'object_name': 'Volume'},
-            'backing_store': ('django.db.models.fields.related.ForeignKey', [],
-                              {'to': u"orm['devops.Volume']", 'null': 'True'}),
-            'capacity': ('django.db.models.fields.BigIntegerField', [], {}),
-            'environment': ('django.db.models.fields.related.ForeignKey', [],
-                            {'to': u"orm['devops.Environment']",
-                             'null': 'True'}),
-            'format': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            u'id': (
-                'django.db.models.fields.AutoField', [],
-                {'primary_key': 'True'}),
-            'name': (
-                'django.db.models.fields.CharField', [],
-                {'max_length': '255'}),
-            'uuid': (
-                'django.db.models.fields.CharField', [], {'max_length': '255'})
-        }
-    }
-
-    complete_apps = ['devops']
+    operations = [
+        migrations.CreateModel(
+            name='Address',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('ip_address', models.GenericIPAddressField()),
+            ],
+            options={
+                'db_table': 'devops_address',
+            },
+        ),
+        migrations.CreateModel(
+            name='DiskDevice',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('device', models.CharField(max_length=255, choices=[(b'disk', b'disk'), (b'cdrom', b'cdrom')])),
+                ('type', models.CharField(max_length=255, choices=[(b'file', b'file')])),
+                ('bus', models.CharField(max_length=255, choices=[(b'virtio', b'virtio'), (b'scsi', b'scsi')])),
+                ('target_dev', models.CharField(max_length=255)),
+            ],
+            options={
+                'db_table': 'devops_diskdevice',
+            },
+        ),
+        migrations.CreateModel(
+            name='Environment',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
+                ('name', models.CharField(unique=True, max_length=255)),
+            ],
+            options={
+                'db_table': 'devops_environment',
+            },
+        ),
+        migrations.CreateModel(
+            name='Interface',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('mac_address', models.CharField(unique=True, max_length=255)),
+                ('type', models.CharField(max_length=255)),
+                ('model', models.CharField(max_length=255, choices=[(b'virtio', b'virtio'), (b'e1000', b'e1000'), (b'pcnet', b'pcnet'), (b'rtl8139', b'rtl8139'), (b'ne2k_pci', b'ne2k_pci')])),
+            ],
+            options={
+                'db_table': 'devops_interface',
+            },
+        ),
+        migrations.CreateModel(
+            name='Network',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
+                ('name', models.CharField(max_length=255)),
+                ('uuid', models.CharField(max_length=255)),
+                ('has_dhcp_server', models.BooleanField()),
+                ('has_pxe_server', models.BooleanField()),
+                ('has_reserved_ips', models.BooleanField(default=True)),
+                ('tftp_root_dir', models.CharField(max_length=255)),
+                ('forward', models.CharField(max_length=255, null=True, choices=[(b'nat', b'nat'), (b'route', b'route'), (b'bridge', b'bridge'), (b'private', b'private'), (b'vepa', b'vepa'), (b'passthrough', b'passthrough'), (b'hostdev', b'hostdev')])),
+                ('ip_network', models.CharField(unique=True, max_length=255)),
+                ('environment', models.ForeignKey(to='devops.Environment', null=True)),
+            ],
+            options={
+                'db_table': 'devops_network',
+            },
+        ),
+        migrations.CreateModel(
+            name='Node',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
+                ('name', models.CharField(max_length=255)),
+                ('uuid', models.CharField(max_length=255)),
+                ('hypervisor', models.CharField(max_length=255, choices=[(b'kvm', b'kvm')])),
+                ('os_type', models.CharField(max_length=255, choices=[(b'hvm', b'hvm')])),
+                ('architecture', models.CharField(max_length=255, choices=[(b'x86_64', b'x86_64'), (b'i686', b'i686')])),
+                ('boot', models.CharField(default=b'[]', max_length=255)),
+                ('metadata', models.CharField(max_length=255, null=True)),
+                ('role', models.CharField(max_length=255, null=True)),
+                ('vcpu', models.PositiveSmallIntegerField(default=1)),
+                ('memory', models.IntegerField(default=1024)),
+                ('has_vnc', models.BooleanField(default=True)),
+                ('environment', models.ForeignKey(to='devops.Environment', null=True)),
+            ],
+            options={
+                'db_table': 'devops_node',
+            },
+        ),
+        migrations.CreateModel(
+            name='Volume',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
+                ('name', models.CharField(max_length=255)),
+                ('uuid', models.CharField(max_length=255)),
+                ('capacity', models.BigIntegerField()),
+                ('format', models.CharField(max_length=255)),
+                ('backing_store', models.ForeignKey(to='devops.Volume', null=True)),
+                ('environment', models.ForeignKey(to='devops.Environment', null=True)),
+            ],
+            options={
+                'db_table': 'devops_volume',
+            },
+        ),
+        migrations.AddField(
+            model_name='interface',
+            name='network',
+            field=models.ForeignKey(to='devops.Network'),
+        ),
+        migrations.AddField(
+            model_name='interface',
+            name='node',
+            field=models.ForeignKey(to='devops.Node'),
+        ),
+        migrations.AddField(
+            model_name='diskdevice',
+            name='node',
+            field=models.ForeignKey(to='devops.Node'),
+        ),
+        migrations.AddField(
+            model_name='diskdevice',
+            name='volume',
+            field=models.ForeignKey(to='devops.Volume', null=True),
+        ),
+        migrations.AddField(
+            model_name='address',
+            name='interface',
+            field=models.ForeignKey(to='devops.Interface'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='volume',
+            unique_together=set([('name', 'environment')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='node',
+            unique_together=set([('name', 'environment')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='network',
+            unique_together=set([('name', 'environment')]),
+        ),
+    ]
