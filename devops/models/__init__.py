@@ -13,7 +13,17 @@
 #    under the License.
 
 import os
+
+import django
+from django.apps import apps
+from django.core.exceptions import AppRegistryNotReady
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+try:
+    if not apps.is_installed('devops'):
+        django.setup()
+except AppRegistryNotReady:
+    django.setup()
 
 from devops.models.driver import Driver
 from devops.models.environment import Environment
@@ -26,3 +36,7 @@ from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
 from devops.models.volume import Volume
 from devops.models.volume import DiskDevice
+
+__all__ = ['Driver', 'Environment', 'Group', 'Address', 'Interface',
+           'AddressPool', 'NetworkPool', 'L2NetworkDevice', 'Node',
+           'Volume', 'DiskDevice']

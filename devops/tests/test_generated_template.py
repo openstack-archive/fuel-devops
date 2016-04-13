@@ -110,7 +110,7 @@ class TestDefaultTemplate(TestCase):
     env_name: fuel_system_test
     groups:
     - driver:
-        name: devops.driver.libvirt.libvirt_driver
+        name: devops.driver.libvirt
         params:
           connection_string: qemu:///system
           enable_acpi: false
@@ -340,7 +340,7 @@ class TestDefaultTemplate(TestCase):
     env_name: fuel_system_test
     groups:
     - driver:
-        name: devops.driver.libvirt.libvirt_driver
+        name: devops.driver.libvirt
         params:
           connection_string: qemu:///system
           enable_acpi: true
