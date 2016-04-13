@@ -34,9 +34,8 @@ setup(
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
         'paramiko>=1.16.0',
-        'django<1.7',
+        'Django>=1.8,<1.9',
         'psycopg2>=2.5',
-        'south',
         'PyYAML>=3.1.0',
         'libvirt-python',
         'tabulate',
@@ -48,6 +47,6 @@ setup(
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
         'mock>=1.2',
-        'tox'
-    ],
+        'tox>=2.0'
+    ]
 )
