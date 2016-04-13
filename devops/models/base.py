@@ -41,7 +41,7 @@ class BaseModel(models.Model):
     class Meta(object):
         abstract = True
 
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
+    created = models.DateTimeField(default=datetime.utcnow)
 
 
 class ParamedModelType(ModelBase):
