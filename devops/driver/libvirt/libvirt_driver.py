@@ -34,10 +34,10 @@ from devops.helpers import scancodes
 from devops import logger
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
-from devops.models.driver import Driver as DriverBase
-from devops.models.network import L2NetworkDevice as L2NetworkDeviceBase
-from devops.models.node import Node as NodeBase
-from devops.models.volume import Volume as VolumeBase
+from devops.models.driver import Driver
+from devops.models.network import L2NetworkDevice
+from devops.models.node import Node
+from devops.models.volume import Volume
 
 
 class _LibvirtManager(object):
@@ -143,7 +143,7 @@ class Snapshot(object):
                                       self.name, self.created)
 
 
-class Driver(DriverBase):
+class LibvirtDriver(Driver):
     """libvirt driver
 
     :param use_host_cpu: When creating nodes, should libvirt's
@@ -207,7 +207,7 @@ class Driver(DriverBase):
         return self.conn.getLibVersion()
 
 
-class L2NetworkDevice(L2NetworkDeviceBase):
+class LibvirtL2NetworkDevice(L2NetworkDevice):
     """L2 network device based on libvirt Network
 
        Template example
@@ -414,7 +414,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         ret.setAutostart(True)
         self.uuid = ret.UUIDString()
 
-        super(L2NetworkDevice, self).define()
+        super(LibvirtL2NetworkDevice, self).define()
 
     def start(self):
         self.create()
@@ -476,7 +476,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
                 # Remove network
                 if self._libvirt_network:
                     self._libvirt_network.undefine()
-        super(L2NetworkDevice, self).remove()
+        super(LibvirtL2NetworkDevice, self).remove()
 
     @retry()
     def exists(self):
@@ -521,7 +521,7 @@ class L2NetworkDevice(L2NetworkDeviceBase):
         iface.undefine()
 
 
-class Volume(VolumeBase):
+class LibvirtVolume(Volume):
 
     uuid = ParamField()
     capacity = ParamField(default=None)
@@ -566,7 +566,7 @@ class Volume(VolumeBase):
         )
         libvirt_volume = pool.createXML(xml, 0)
         self.uuid = libvirt_volume.key()
-        super(Volume, self).define()
+        super(LibvirtVolume, self).define()
 
         # Upload predefined image to the volume
         if self.source_image is not None:
@@ -577,7 +577,7 @@ class Volume(VolumeBase):
         if self.uuid:
             if self.exists():
                 self._libvirt_volume.delete(0)
-        super(Volume, self).remove()
+        super(LibvirtVolume, self).remove()
 
     @retry()
     def get_capacity(self):
@@ -665,7 +665,7 @@ class Volume(VolumeBase):
         return volume
 
 
-class Node(NodeBase):
+class LibvirtNode(Node):
 
     uuid = ParamField()
     hypervisor = ParamField(default='kvm', choices=('kvm', 'test'))
@@ -804,7 +804,7 @@ class Node(NodeBase):
         logger.info(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()
 
-        super(Node, self).define()
+        super(LibvirtNode, self).define()
 
     def start(self):
         self.create()
@@ -833,7 +833,7 @@ class Node(NodeBase):
                 if self._libvirt_node:
                     self._libvirt_node.undefineFlags(
                         libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
-        super(Node, self).remove()
+        super(LibvirtNode, self).remove()
 
     @retry()
     def suspend(self, *args, **kwargs):
