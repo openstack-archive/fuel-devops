@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,4 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = 'vic'
+from devops.driver.libvirt.libvirt_driver import Snapshot
+from devops.driver.libvirt.libvirt_driver import DevopsDriver
+
+__all__ = [
+    'Snapshot',
+    'DevopsDriver',
+]

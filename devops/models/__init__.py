@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2015 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,17 @@
 #    under the License.
 
 import os
+
+import django
+from django.apps import apps
+from django.core.exceptions import AppRegistryNotReady
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+try:
+    if not apps.is_installed('devops'):
+        django.setup()
+except AppRegistryNotReady:
+    django.setup()
 
 from devops.models.environment import Environment
 from devops.models.network import Address
@@ -22,3 +32,7 @@ from devops.models.network import Network
 from devops.models.node import Node
 from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
+
+__all__ = ['Environment', 'Address', 'Interface',
+           'Network', 'Node',
+           'Volume', 'DiskDevice']

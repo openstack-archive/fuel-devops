@@ -22,13 +22,13 @@ from django.utils.importlib import import_module
 def choices(*args, **kwargs):
     defaults = {'max_length': 255, 'null': False}
     defaults.update(kwargs)
-    defaults.update(choices=dict(zip(args, args)))
+    defaults.update(choices=list(zip(args, args)))
     return models.CharField(**defaults)
 
 
 class DriverModel(models.Model):
     _driver = None
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
+    created = models.DateTimeField(default=datetime.utcnow)
 
     class Meta(object):
         abstract = True
