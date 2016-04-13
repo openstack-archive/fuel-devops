@@ -41,7 +41,7 @@ class BaseModel(models.Model):
     class Meta(object):
         abstract = True
 
-    created = models.DateTimeField(auto_now_add=True, default=datetime.utcnow)
+    created = models.DateTimeField(default=datetime.utcnow)
 
 
 class ParamedModelType(ModelBase):
@@ -266,7 +266,7 @@ class ParamMultiField(ParamFieldBase):
 class ParamedModelQuerySet(query.QuerySet):
     """Custom QuerySet for ParamedModel"""
 
-    def filter(self, **kwargs):
+    def filter(self, *args, **kwargs):
         super_filter = super(ParamedModelQuerySet, self).filter
 
         # split kwargs which django db are not aware of
@@ -282,7 +282,7 @@ class ParamedModelQuerySet(query.QuerySet):
                 db_kwargs[param] = kwargs[param]
 
         # filter using db arguments
-        queryset = super_filter(**db_kwargs)
+        queryset = super_filter(*args, **db_kwargs)
 
         if not kwargs_for_params:
             # return db queryset if there is no params

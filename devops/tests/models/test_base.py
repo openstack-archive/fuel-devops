@@ -156,7 +156,7 @@ class TestParamedModel(TestCase):
         assert o.get(name='t2', multi__sub1='abc').id == t2.id
 
     def test_related_queryset(self):
-        d = Driver(name='devops.driver.libvirt.libvirt_driver')
+        d = Driver(name='devops.driver.libvirt')
         d.save()
         g = Group(name='test', driver=d)
         g.save()
