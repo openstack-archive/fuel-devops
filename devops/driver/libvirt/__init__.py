@@ -12,4 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = 'vic'
+from devops.driver.libvirt.libvirt_driver import LibvirtDriver as Driver
+from devops.driver.libvirt.libvirt_driver import \
+    LibvirtL2NetworkDevice as L2NetworkDevice
+from devops.driver.libvirt.libvirt_driver import LibvirtVolume as Volume
+from devops.driver.libvirt.libvirt_driver import LibvirtNode as Node

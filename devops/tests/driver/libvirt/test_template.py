@@ -82,7 +82,7 @@ template:
     groups:
      - name: rack-01
        driver:
-         name: devops.driver.libvirt.libvirt_driver
+         name: devops.driver.libvirt
          params:
            connection_string: test:///default
            storage_pool_name: default-pool
