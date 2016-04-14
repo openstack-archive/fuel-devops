@@ -34,7 +34,6 @@ setup(
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
     install_requires=[
-        'xmlbuilder',
         'netaddr',
         'paramiko',
         'django<1.7',
