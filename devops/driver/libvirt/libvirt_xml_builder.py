@@ -12,19 +12,27 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
+from __future__ import unicode_literals
 
-from xmlbuilder import XMLBuilder
+import hashlib
+from sys import version_info
+from xml.etree import ElementTree as ET
+
+import six
 
 
 class LibvirtXMLBuilder(object):
 
     NAME_SIZE = 80
+    hdr = '<?xml version="1.0" encoding="utf-8" ?>'
 
     @classmethod
     def _crop_name(cls, name):
         if len(name) > cls.NAME_SIZE:
-            hash_str = hashlib.md5(name).hexdigest()
+            if isinstance(name, six.string_types):
+                hash_str = hashlib.md5(name.encode('utf8')).hexdigest()
+            else:
+                hash_str = hashlib.md5(name).hexdigest()
             name = (hash_str + name)[:cls.NAME_SIZE]
         return name
 
@@ -43,40 +51,47 @@ class LibvirtXMLBuilder(object):
         if addresses is None:
             addresses = []
 
-        network_xml = XMLBuilder('network')
-        network_xml.name(cls._crop_name(network_name))
+        network_xml = ET.Element('network')
+        ET.SubElement(network_xml, 'name').text = cls._crop_name(network_name)
 
-        network_xml.bridge(
-            name=bridge_name,
-            stp='on' if stp else 'off',
-            delay='0')
+        ET.SubElement(
+            network_xml, 'bridge',
+            {'name': bridge_name, 'stp': 'on' if stp else 'off', 'delay': '0'})
 
         if forward:
-            network_xml.forward(mode=forward)
+            ET.SubElement(network_xml, 'forward', {'mode': forward})
 
         if ip_network_address is None:
-            return str(network_xml)
+            result = cls.hdr + pretty_dump_xml(network_xml)
+            if version_info.major == 2:
+                return result.encode('utf8')
+            return result
 
-        with network_xml.ip(
-                address=ip_network_address,
-                prefix=ip_network_prefixlen):
-            if has_pxe_server and tftp_root_dir:
-                network_xml.tftp(root=tftp_root_dir)
-            if has_dhcp_server:
-                with network_xml.dhcp:
-                    network_xml.range(
-                        start=dhcp_range_start,
-                        end=dhcp_range_end)
-                    for address in addresses:
-                        network_xml.host(
-                            mac=address['mac'],
-                            ip=address['ip'],
-                            name=address['name'],
-                        )
-                    if has_pxe_server:
-                        network_xml.bootp(file='pxelinux.0')
+        ip = ET.SubElement(
+            network_xml, 'ip',
+            {'address': ip_network_address, 'prefix': ip_network_prefixlen})
+        if has_pxe_server and tftp_root_dir:
+            ET.SubElement(ip, 'tftp', {'root': tftp_root_dir})
 
-        return str(network_xml)
+        if has_dhcp_server:
+            dhcp = ET.SubElement(ip, 'dhcp')
+            ET.SubElement(
+                dhcp, 'range', {
+                    'start': dhcp_range_start,
+                    'end': dhcp_range_end})
+            for address in addresses:
+                ET.SubElement(
+                    dhcp, 'host', {
+                        'mac': address['mac'],
+                        'ip': address['ip'],
+                        'name': address['name']})
+            if has_pxe_server:
+                ET.SubElement(dhcp, 'bootp', {'file': 'pxelinux.0'})
+
+        result = cls.hdr + pretty_dump_xml(network_xml)
+        if version_info.major == 2:
+            return result.encode('utf8')
+        return result
 
     @classmethod
     def build_volume_xml(cls, name, capacity, format, backing_store_path,
@@ -86,17 +101,24 @@ class LibvirtXMLBuilder(object):
         :type volume: Volume
             :rtype : String
         """
-        volume_xml = XMLBuilder('volume')
-        volume_xml.name(cls._crop_name(name))
-        volume_xml.capacity(str(capacity))
-        with volume_xml.target:
-            volume_xml.format(type=format)
-            volume_xml.permissions.mode("0644")
+        volume_xml = ET.Element('volume')
+        ET.SubElement(volume_xml, 'name').text = cls._crop_name(name)
+        ET.SubElement(volume_xml, 'capacity').text = str(capacity)
+        target = ET.SubElement(volume_xml, 'target')
+        ET.SubElement(target, 'format', {'type': format})
+        ET.SubElement(
+            ET.SubElement(target, 'permissions'),
+            'mode').text = "0644"
+
         if backing_store_path:
-            with volume_xml.backingStore:
-                volume_xml.path(backing_store_path)
-                volume_xml.format(type=backing_store_format)
-        return str(volume_xml)
+            backing_store = ET.SubElement(volume_xml, 'backingStore')
+            ET.SubElement(backing_store, 'path').text = backing_store_path
+            ET.SubElement(
+                backing_store, 'format', {'type': backing_store_format})
+        result = cls.hdr + pretty_dump_xml(volume_xml)
+        if version_info.major == 2:
+            return result.encode('utf8')
+        return result
 
     @classmethod
     def build_snapshot_xml(cls, name=None, description=None,
@@ -108,28 +130,36 @@ class LibvirtXMLBuilder(object):
         :type name: String
         :type description: String
         """
-        xml_builder = XMLBuilder('domainsnapshot')
+        domainsnapshot_xml = ET.Element('domainsnapshot')
         if name is not None:
-            xml_builder.name(name)
+            ET.SubElement(domainsnapshot_xml, 'name').text = name
         if description is not None:
-            xml_builder.description(description)
+            ET.SubElement(domainsnapshot_xml, 'description').text = description
 
         # EXTERNAL SNAPSHOT
         if external:
             # Add memory file for active machines
             if domain_isactive and not disk_only:
-                xml_builder.memory(
-                    file=memory_file,
-                    snapshot='external')
+                ET.SubElement(
+                    domainsnapshot_xml, 'memory', {
+                        'file': memory_file,
+                        'snapshot': 'external'})
             else:
-                xml_builder.memory(snapshot='no')
+                ET.SubElement(
+                    domainsnapshot_xml, 'memory', {'snapshot': 'no'})
+
+            disks = ET.SubElement(domainsnapshot_xml, 'disks')
 
             for disk in local_disk_devices or []:
-                with xml_builder.disks:
-                    xml_builder.disk(name=disk['disk_target_dev'],
-                                     file=disk['disk_volume_path'],
-                                     snapshot='external')
-        return str(xml_builder)
+                ET.SubElement(
+                    disks, 'disk', {
+                        'name': disk['disk_target_dev'],
+                        'file': disk['disk_volume_path'],
+                        'snapshot': 'external'})
+        result = cls.hdr + pretty_dump_xml(domainsnapshot_xml)
+        if version_info.major == 2:
+            return result.encode('utf8')
+        return result
 
     @classmethod
     def _build_disk_device(cls, device_xml, disk_type, disk_device,
@@ -141,21 +171,31 @@ class LibvirtXMLBuilder(object):
         :param disk_device: DiskDevice
         """
 
-        with device_xml.disk(type=disk_type, device=disk_device):
-            # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
-            device_xml.driver(type=disk_volume_format, cache="unsafe")
-            device_xml.source(file=disk_volume_path)
-            if disk_bus == 'usb':
-                device_xml.target(
-                    dev=disk_target_dev,
-                    bus=disk_bus,
-                    removable='on')
-                device_xml.readonly()
-            else:
-                device_xml.target(
-                    dev=disk_target_dev,
-                    bus=disk_bus)
-            device_xml.serial(disk_serial)
+        disk = ET.SubElement(
+            device_xml, 'disk', {
+                'type': disk_type, 'device': disk_device})
+
+        # https://bugs.launchpad.net/ubuntu/+source/qemu-kvm/+bug/741887
+        ET.SubElement(
+            disk, 'driver', {'type': disk_volume_format, 'cache': "unsafe"})
+
+        ET.SubElement(disk, 'source', {'file': disk_volume_path})
+
+        if disk_bus == 'usb':
+            ET.SubElement(
+                disk, 'target', {
+                    'dev': disk_target_dev,
+                    'bus': disk_bus,
+                    'removable': 'on'})
+
+            ET.SubElement(disk, 'readonly')
+        else:
+            ET.SubElement(
+                disk, 'target', {
+                    'dev': disk_target_dev,
+                    'bus': disk_bus})
+
+        ET.SubElement(disk, 'serial').text = disk_serial
 
     @classmethod
     def _build_interface_device(cls, device_xml, interface_type,
@@ -166,14 +206,16 @@ class LibvirtXMLBuilder(object):
         :param device_xml: XMLBuilder
         :param interface: Network
         """
+        interface = ET.SubElement(
+            device_xml, 'interface', {'type': interface_type})
 
-        with device_xml.interface(type=interface_type):
-            device_xml.mac(address=interface_mac_address)
-            device_xml.source(
-                network=interface_network_name)
-            device_xml.target(dev="virnet{0}".format(interface_id))
-            if interface_model is not None:
-                device_xml.model(type=interface_model)
+        ET.SubElement(interface, 'mac', {'address': interface_mac_address})
+        ET.SubElement(interface, 'source', {'network': interface_network_name})
+        ET.SubElement(
+            interface, 'target', {'dev': "virnet{0}".format(interface_id)})
+
+        if interface_model is not None:
+            ET.SubElement(interface, 'model', {'type': interface_model})
 
     @classmethod
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
@@ -186,67 +228,99 @@ class LibvirtXMLBuilder(object):
         :type emulator: String
             :rtype : String
         """
-        node_xml = XMLBuilder("domain", type=hypervisor)
-        node_xml.name(cls._crop_name(name))
+        node_xml = ET.Element('domain', {'type': hypervisor})
+        ET.SubElement(node_xml, 'name').text = cls._crop_name(name)
         if use_host_cpu:
-            node_xml.cpu(mode='host-passthrough')
-        node_xml.vcpu(str(vcpu))
-        node_xml.memory(str(memory * 1024), unit='KiB')
+            ET.SubElement(node_xml, 'cpu', {'mode': 'host-passthrough'})
+        ET.SubElement(node_xml, 'vcpu').text = str(vcpu)
+        ET.SubElement(
+            node_xml, 'memory', {'unit': 'KiB'}).text = str(memory * 1024)
 
         if use_hugepages:
-            with node_xml.memoryBacking:
-                node_xml.hugepages
+            ET.SubElement(
+                ET.SubElement(node_xml, 'memoryBacking'),
+                'hugepages')
 
-        node_xml.clock(offset='utc')
-        with node_xml.clock.timer(name='rtc',
-                                  tickpolicy='catchup', track='wall'):
-            node_xml.catchup(
-                threshold='123',
-                slew='120',
-                limit='10000')
-        node_xml.clock.timer(
-            name='pit',
-            tickpolicy='delay')
-        node_xml.clock.timer(
-            name='hpet',
-            present='yes' if hpet else 'no')
+        ET.SubElement(node_xml, 'clock', {'offset': 'utc'})
 
-        with node_xml.os:
-            node_xml.type(os_type, arch=architecture)
-            for boot_dev in boot:
-                node_xml.boot(dev=boot_dev)
-            if reboot_timeout:
-                node_xml.bios(rebootTimeout=str(reboot_timeout))
-            if bootmenu_timeout:
-                node_xml.bootmenu(enable='yes', timeout=str(bootmenu_timeout))
+        ET.SubElement(
+            ET.SubElement(
+                ET.SubElement(node_xml, 'clock'),
+                'timer', {
+                    'name': 'rtc',
+                    'tickpolicy': 'catchup',
+                    'track': 'wall'}),
+            'catchup', {
+                'threshold': '123',
+                'slew': '120',
+                'limit': '10000'}
+        )
 
-        with node_xml.devices:
-            node_xml.controller(type='usb', model='nec-xhci')
-            node_xml.emulator(emulator)
-            if has_vnc:
-                if vnc_password:
-                    node_xml.graphics(
-                        type='vnc',
-                        listen='0.0.0.0',
-                        autoport='yes',
-                        passwd=vnc_password)
-                else:
-                    node_xml.graphics(
-                        type='vnc',
-                        listen='0.0.0.0',
-                        autoport='yes')
+        ET.SubElement(
+            ET.SubElement(node_xml, 'clock'),
+            'timer', {
+                'name': 'pit',
+                'tickpolicy': 'delay'})
+
+        ET.SubElement(
+            ET.SubElement(node_xml, 'clock'),
+            'timer', {
+                'name': 'hpet',
+                'present': 'yes' if hpet else 'no'})
+
+        os = ET.SubElement(node_xml, 'os')
+        ET.SubElement(os, 'type', {'arch': architecture}).text = 'hvm'
+        for boot_dev in boot:
+            ET.SubElement(os, 'boot', {'dev': boot_dev})
+
+        if reboot_timeout:
+            ET.SubElement(os, 'bios', {'rebootTimeout': str(reboot_timeout)})
+
+        if bootmenu_timeout:
+            ET.SubElement(
+                os, 'bootmenu', {
+                    'enable': 'yes',
+                    'timeout': str(bootmenu_timeout)})
+
+        devices = ET.SubElement(node_xml, 'devices')
+        ET.SubElement(
+            devices, 'controller', {'type': 'usb', 'model': 'nec-xhci'})
+        ET.SubElement(
+            devices, 'emulator').text = emulator
+
+        if has_vnc:
+            if vnc_password:
+                ET.SubElement(
+                    devices, 'graphics', {
+                        'type': 'vnc',
+                        'listen': '0.0.0.0',
+                        'autoport': 'yes',
+                        'passwd': vnc_password})
+            else:
+                ET.SubElement(
+                    devices, 'graphics', {
+                        'type': 'vnc',
+                        'listen': '0.0.0.0',
+                        'autoport': 'yes'})
 
             for disk_device in local_disk_devices:
-                cls._build_disk_device(node_xml, **disk_device)
+                cls._build_disk_device(devices, **disk_device)
             for interface in interfaces:
-                cls._build_interface_device(node_xml, **interface)
-            with node_xml.video:
-                node_xml.model(type='vga', vram='9216', heads='1')
-            with node_xml.serial(type='pty'):
-                node_xml.target(port='0')
-            with node_xml.console(type='pty'):
-                node_xml.target(type='serial', port='0')
-        return str(node_xml)
+                cls._build_interface_device(devices, **interface)
+
+            ET.SubElement(
+                ET.SubElement(devices, 'video'),
+                'model', {'type': 'vga', 'vram': '9216', 'heads': '1'})
+            ET.SubElement(
+                ET.SubElement(devices, 'serial', {'type': 'pty'}),
+                'target', {'port': '0'})
+            ET.SubElement(
+                ET.SubElement(devices, 'console', {'type': 'pty'}),
+                'target', {'type': 'serial', 'port': '0'})
+        result = cls.hdr + pretty_dump_xml(node_xml)
+        if version_info.major == 2:
+            return result.encode('utf8')
+        return result
 
     @classmethod
     def build_iface_xml(cls, name, ip=None, prefix=None, vlanid=None):
@@ -265,16 +339,49 @@ class LibvirtXMLBuilder(object):
             iface_type = 'ethernet'
             iface_name = "{0}".format(name)
 
-        interface_xml = XMLBuilder('interface',
-                                   type=iface_type,
-                                   name=iface_name)
-        interface_xml.start(mode="onboot")
+        interface_xml = ET.Element(
+            'interface', {'type': iface_type, 'name': iface_name})
+        ET.SubElement(interface_xml, 'start', {'mode': "onboot"})
 
         if vlanid:
-            with interface_xml.vlan(tag=str(vlanid)):
-                interface_xml.interface(name=name)
+            ET.SubElement(
+                ET.SubElement(interface_xml, 'vlan', {'tag': str(vlanid)}),
+                'interface', {'name': name})
 
         if (ip is not None) and (prefix is not None):
-            with interface_xml.protocol(family='ipv4'):
-                interface_xml.ip(address=ip, prefix=prefix)
-        return str(interface_xml)
+            ET.SubElement(
+                ET.SubElement(interface_xml, 'protocol', {'family': 'ipv4'}),
+                'ip', {'address': ip, 'prefix': prefix})
+
+        result = cls.hdr + pretty_dump_xml(interface_xml)
+        if version_info.major == 2:
+            return result.encode('utf8')
+        return result
+
+
+def pretty_dump_xml(src):
+    result = ''
+    indent = 0
+    newline = True
+    tags = ET.tostring(src).decode('utf-8')\
+        .replace('>', '>|').replace('<', '|<').split('|')
+    for tag in tags:
+        if tag == '':
+            continue
+        indent_diff = 0
+        if tag.startswith('</'):
+            indent -= 4
+        elif not (tag.startswith('<') and tag.endswith('>')):
+            result += "{item}".format(item=tag)
+            newline = False
+            continue
+        elif tag.endswith('>') and not tag.endswith('/>'):
+            indent_diff += 4
+        result += "{nl}{spc:>{indent}}{item}".format(
+            nl='\n' if newline else '',
+            spc='',
+            indent=indent if newline else 0,
+            item=tag)
+        indent += indent_diff
+        newline = True
+    return result
