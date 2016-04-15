@@ -32,7 +32,6 @@ setup(
              'bin/libvirt_functions.sh'],
     install_requires=[
         'keystoneauth1>=2.1.0',
-        'xmlbuilder',
         'netaddr>=0.7.12,!=0.7.16',
         'paramiko>=1.16.0',
         'django<1.7',

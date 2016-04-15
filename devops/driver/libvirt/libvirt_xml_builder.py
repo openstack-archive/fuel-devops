@@ -11,6 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from __future__ import unicode_literals
 
 import json
 import os
@@ -18,7 +19,8 @@ import uuid
 
 from netaddr import IPAddress
 from netaddr import IPNetwork
-from xmlbuilder import XMLBuilder
+
+from devops.helpers.xmlgenerator import XMLGenerator
 
 
 class LibvirtXMLBuilder(object):
@@ -41,7 +43,7 @@ class LibvirtXMLBuilder(object):
         :type network: Network
             :rtype : String
         """
-        network_xml = XMLBuilder('network')
+        network_xml = XMLGenerator('network')
         network_xml.name(self._get_name(
             network.environment and network.environment.name or '',
             network.name))
@@ -85,7 +87,7 @@ class LibvirtXMLBuilder(object):
         :type volume: Volume
             :rtype : String
         """
-        volume_xml = XMLBuilder('volume')
+        volume_xml = XMLGenerator('volume')
         volume_xml.name(
             self._get_name(
                 volume.environment and volume.environment.name or '',
@@ -108,7 +110,7 @@ class LibvirtXMLBuilder(object):
         :type name: String
         :type description: String
         """
-        xml_builder = XMLBuilder('domainsnapshot')
+        xml_builder = XMLGenerator('domainsnapshot')
         if name is not None:
             xml_builder.name(name)
         if description is not None:
@@ -168,7 +170,7 @@ class LibvirtXMLBuilder(object):
     def _build_disk_device(self, device_xml, disk_device, disk_uuids):
         """Build xml for disk
 
-        :param device_xml: XMLBuilder
+        :param device_xml: XMLGenerator
         :param disk_device: DiskDevice
         """
 
@@ -194,7 +196,7 @@ class LibvirtXMLBuilder(object):
     def _build_interface_device(self, device_xml, interface, if_prefix):
         """Build xml for interface
 
-        :param device_xml: XMLBuilder
+        :param device_xml: XMLGenerator
         :param interface: Network
         """
 
@@ -225,7 +227,7 @@ class LibvirtXMLBuilder(object):
         :type state: String accept | drop
             :rtype : String
         """
-        filter_xml = XMLBuilder(
+        filter_xml = XMLGenerator(
             'filter',
             name="{}_{}".format(network.environment.name, network.name))
 
@@ -238,7 +240,7 @@ class LibvirtXMLBuilder(object):
         :type state: String accept | drop
             :rtype : String
         """
-        filter_xml = XMLBuilder(
+        filter_xml = XMLGenerator(
             'filter',
             name="{}_{}_{}".format(
                 interface.network.environment.name,
@@ -258,7 +260,7 @@ class LibvirtXMLBuilder(object):
         :type emulator: String
             :rtype : String
         """
-        node_xml = XMLBuilder("domain", type=node.hypervisor)
+        node_xml = XMLGenerator("domain", type=node.hypervisor)
         node_xml.name(
             self._get_name(node.environment and node.environment.name or '',
                            node.name))
