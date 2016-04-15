@@ -14,7 +14,7 @@
 
 import hashlib
 
-from xmlbuilder import XMLBuilder
+from devops.helpers.xmlbuilder import XMLBuilder
 
 
 class LibvirtXMLBuilder(object):
