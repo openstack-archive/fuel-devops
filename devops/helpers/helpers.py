@@ -191,7 +191,7 @@ def get_slave_ip(env, node_mac_address):
 
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
-             build_images, centos_version='7', static_interface='enp0s3'):
+             build_images, centos_version=7, static_interface='enp0s3'):
     if centos_version < 7:
         ip_format = ' ip={ip}'
     else:
