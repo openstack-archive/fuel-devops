@@ -11,10 +11,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from __future__ import unicode_literals
 
 import hashlib
 
-from xmlbuilder import XMLBuilder
+import six
+
+from devops.helpers.xmlgenerator import XMLGenerator
 
 
 class LibvirtXMLBuilder(object):
@@ -24,7 +27,10 @@ class LibvirtXMLBuilder(object):
     @classmethod
     def _crop_name(cls, name):
         if len(name) > cls.NAME_SIZE:
-            hash_str = hashlib.md5(name).hexdigest()
+            if isinstance(name, six.string_types):
+                hash_str = hashlib.md5(name.encode('utf8')).hexdigest()
+            else:
+                hash_str = hashlib.md5(name).hexdigest()
             name = (hash_str + name)[:cls.NAME_SIZE]
         return name
 
@@ -43,7 +49,7 @@ class LibvirtXMLBuilder(object):
         if addresses is None:
             addresses = []
 
-        network_xml = XMLBuilder('network')
+        network_xml = XMLGenerator('network')
         network_xml.name(cls._crop_name(network_name))
 
         network_xml.bridge(
@@ -86,7 +92,7 @@ class LibvirtXMLBuilder(object):
         :type volume: Volume
             :rtype : String
         """
-        volume_xml = XMLBuilder('volume')
+        volume_xml = XMLGenerator('volume')
         volume_xml.name(cls._crop_name(name))
         volume_xml.capacity(str(capacity))
         with volume_xml.target:
@@ -108,7 +114,7 @@ class LibvirtXMLBuilder(object):
         :type name: String
         :type description: String
         """
-        xml_builder = XMLBuilder('domainsnapshot')
+        xml_builder = XMLGenerator('domainsnapshot')
         if name is not None:
             xml_builder.name(name)
         if description is not None:
@@ -186,7 +192,7 @@ class LibvirtXMLBuilder(object):
         :type emulator: String
             :rtype : String
         """
-        node_xml = XMLBuilder("domain", type=hypervisor)
+        node_xml = XMLGenerator("domain", type=hypervisor)
         node_xml.name(cls._crop_name(name))
         if use_host_cpu:
             node_xml.cpu(mode='host-passthrough')
@@ -265,9 +271,9 @@ class LibvirtXMLBuilder(object):
             iface_type = 'ethernet'
             iface_name = "{0}".format(name)
 
-        interface_xml = XMLBuilder('interface',
-                                   type=iface_type,
-                                   name=iface_name)
+        interface_xml = XMLGenerator('interface',
+                                     type=iface_type,
+                                     name=iface_name)
         interface_xml.start(mode="onboot")
 
         if vlanid:

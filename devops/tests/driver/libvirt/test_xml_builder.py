@@ -68,11 +68,12 @@ class TestNetworkXml(BaseTestXMLBuilder):
             network_name='test_name',
             bridge_name='virbr13',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '</network>')
+                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '</network>\n')
 
     def test_stp_off(self):
         xml = self.xml_builder.build_network_xml(
@@ -80,11 +81,11 @@ class TestNetworkXml(BaseTestXMLBuilder):
             bridge_name='virbr13',
             stp=False,
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="off" />\n'
-                       '</network>')
+                       '    <bridge delay="0" name="virbr13" stp="off"/>\n'
+                       '</network>\n')
 
     def test_ip_network_bridge(self):
         xml = self.xml_builder.build_network_xml(
@@ -92,12 +93,12 @@ class TestNetworkXml(BaseTestXMLBuilder):
             bridge_name='virbr13',
             forward='bridge',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '    <forward mode="bridge" />\n'
-                       '</network>')
+                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <forward mode="bridge"/>\n'
+                       '</network>\n')
 
     def test_ip_network_nat(self):
         xml = self.xml_builder.build_network_xml(
@@ -107,13 +108,13 @@ class TestNetworkXml(BaseTestXMLBuilder):
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '    <forward mode="nat" />\n'
-                       '    <ip address="172.0.1.1" prefix="24" />\n'
-                       '</network>')
+                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <forward mode="nat"/>\n'
+                       '    <ip address="172.0.1.1" prefix="24"/>\n'
+                       '</network>\n')
 
     def test_ip_network_route(self):
         xml = self.xml_builder.build_network_xml(
@@ -123,13 +124,13 @@ class TestNetworkXml(BaseTestXMLBuilder):
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '    <forward mode="route" />\n'
-                       '    <ip address="172.0.1.1" prefix="24" />\n'
-                       '</network>')
+                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <forward mode="route"/>\n'
+                       '    <ip address="172.0.1.1" prefix="24"/>\n'
+                       '</network>\n')
 
     def test_pxe_server(self):
         xml = self.xml_builder.build_network_xml(
@@ -141,15 +142,15 @@ class TestNetworkXml(BaseTestXMLBuilder):
             has_pxe_server=True,
             tftp_root_dir='/tmp',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on" />\n'
-                       '    <forward mode="nat" />\n'
+                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <forward mode="nat"/>\n'
                        '    <ip address="172.0.1.1" prefix="24">\n'
-                       '        <tftp root="/tmp" />\n'
+                       '        <tftp root="/tmp"/>\n'
                        '    </ip>\n'
-                       '</network>')
+                       '</network>\n')
 
     def test_dhcp_server(self):
         xml = self.xml_builder.build_network_xml(
@@ -163,19 +164,20 @@ class TestNetworkXml(BaseTestXMLBuilder):
             dhcp_range_start=self.dhcp_range_start,
             dhcp_range_end=self.dhcp_range_end,
         )
-        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+        assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <network>
     <name>test_name</name>
-    <bridge delay="0" name="virbr13" stp="on" />
-    <forward mode="nat" />
+    <bridge delay="0" name="virbr13" stp="on"/>
+    <forward mode="nat"/>
     <ip address="172.0.1.1" prefix="24">
         <dhcp>
-            <range end="172.0.1.254" start="172.0.1.2" />
-            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin" />
-            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public" />
+            <range end="172.0.1.254" start="172.0.1.2"/>
+            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin"/>
+            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public"/>
         </dhcp>
     </ip>
-</network>"""
+</network>
+"""
 
     def test_dhcp_server_plus_pxe(self):
         xml = self.xml_builder.build_network_xml(
@@ -191,21 +193,22 @@ class TestNetworkXml(BaseTestXMLBuilder):
             has_pxe_server=True,
             tftp_root_dir='/tmp',
         )
-        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+        assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <network>
     <name>test_name</name>
-    <bridge delay="0" name="virbr13" stp="on" />
-    <forward mode="nat" />
+    <bridge delay="0" name="virbr13" stp="on"/>
+    <forward mode="nat"/>
     <ip address="172.0.1.1" prefix="24">
-        <tftp root="/tmp" />
+        <tftp root="/tmp"/>
         <dhcp>
-            <range end="172.0.1.254" start="172.0.1.2" />
-            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin" />
-            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public" />
-            <bootp file="pxelinux.0" />
+            <range end="172.0.1.254" start="172.0.1.2"/>
+            <host ip="172.0.1.61" mac="64:65:f3:5c:a5:a2" name="test_admin"/>
+            <host ip="172.0.1.62" mac="64:70:8d:b0:4c:ad" name="test_public"/>
+            <bootp file="pxelinux.0"/>
         </dhcp>
     </ip>
-</network>"""
+</network>
+"""
 
 
 class TestVolumeXml(BaseTestXMLBuilder):
@@ -218,17 +221,17 @@ class TestVolumeXml(BaseTestXMLBuilder):
             backing_store_path=None,
             backing_store_format=None,
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<volume>\n'
                        '    <name>test_name</name>\n'
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
-                       '        <format type="qcow2" />\n'
+                       '        <format type="qcow2"/>\n'
                        '        <permissions>\n'
                        '            <mode>0644</mode>\n'
                        '        </permissions>\n'
                        '    </target>\n'
-                       '</volume>')
+                       '</volume>\n')
 
     def test_format(self):
         xml = self.xml_builder.build_volume_xml(
@@ -238,17 +241,17 @@ class TestVolumeXml(BaseTestXMLBuilder):
             backing_store_path=None,
             backing_store_format=None,
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<volume>\n'
                        '    <name>test_name</name>\n'
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
-                       '        <format type="raw" />\n'
+                       '        <format type="raw"/>\n'
                        '        <permissions>\n'
                        '            <mode>0644</mode>\n'
                        '        </permissions>\n'
                        '    </target>\n'
-                       '</volume>')
+                       '</volume>\n')
 
     def test_backing_store(self):
         xml = self.xml_builder.build_volume_xml(
@@ -258,58 +261,58 @@ class TestVolumeXml(BaseTestXMLBuilder):
             backing_store_path='/tmp/master.img',
             backing_store_format='raw',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<volume>\n'
                        '    <name>test_name</name>\n'
                        '    <capacity>1048576</capacity>\n'
                        '    <target>\n'
-                       '        <format type="qcow2" />\n'
+                       '        <format type="qcow2"/>\n'
                        '        <permissions>\n'
                        '            <mode>0644</mode>\n'
                        '        </permissions>\n'
                        '    </target>\n'
                        '    <backingStore>\n'
                        '        <path>/tmp/master.img</path>\n'
-                       '        <format type="raw" />\n'
+                       '        <format type="raw"/>\n'
                        '    </backingStore>\n'
-                       '</volume>')
+                       '</volume>\n')
 
 
 class TestSnapshotXml(BaseTestXMLBuilder):
 
     def test_default(self):
         xml = self.xml_builder.build_snapshot_xml()
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
-                       '<domainsnapshot />')
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
+                       '<domainsnapshot/>\n')
 
     def test_name(self):
         xml = self.xml_builder.build_snapshot_xml(
             name='test_name',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<domainsnapshot>\n'
                        '    <name>test_name</name>\n'
-                       '</domainsnapshot>')
+                       '</domainsnapshot>\n')
 
     def test_description(self):
         xml = self.xml_builder.build_snapshot_xml(
             description='test_description',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<domainsnapshot>\n'
                        '    <description>test_description</description>\n'
-                       '</domainsnapshot>')
+                       '</domainsnapshot>\n')
 
     def test_name_description(self):
         xml = self.xml_builder.build_snapshot_xml(
             name='test_name',
             description='test_description',
         )
-        assert xml == ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<domainsnapshot>\n'
                        '    <name>test_name</name>\n'
                        '    <description>test_description</description>\n'
-                       '</domainsnapshot>')
+                       '</domainsnapshot>\n')
 
 
 class TestNodeXml(BaseTestXMLBuilder):
@@ -376,45 +379,46 @@ class TestNodeXml(BaseTestXMLBuilder):
             interfaces=[],
         )
 
-        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+        assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <domain type="test_description">
     <name>test_name</name>
     <vcpu>1</vcpu>
     <memory unit="KiB">1048576</memory>
-    <clock offset="utc" />
+    <clock offset="utc"/>
     <clock>
         <timer name="rtc" tickpolicy="catchup" track="wall">
-            <catchup limit="10000" slew="120" threshold="123" />
+            <catchup limit="10000" slew="120" threshold="123"/>
         </timer>
     </clock>
     <clock>
-        <timer name="pit" tickpolicy="delay" />
+        <timer name="pit" tickpolicy="delay"/>
     </clock>
     <clock>
-        <timer name="hpet" present="yes" />
+        <timer name="hpet" present="yes"/>
     </clock>
     <os>
         <type arch="x86_64">hvm</type>
-        <boot dev="network" />
-        <boot dev="cdrom" />
-        <boot dev="hd" />
-        <bios rebootTimeout="10" />
+        <boot dev="network"/>
+        <boot dev="cdrom"/>
+        <boot dev="hd"/>
+        <bios rebootTimeout="10"/>
     </os>
     <devices>
-        <controller model="nec-xhci" type="usb" />
+        <controller model="nec-xhci" type="usb"/>
         <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
-        <graphics autoport="yes" listen="0.0.0.0" passwd="123456" type="vnc" />
+        <graphics autoport="yes" listen="0.0.0.0" passwd="123456" type="vnc"/>
         <video>
-            <model heads="1" type="vga" vram="9216" />
+            <model heads="1" type="vga" vram="9216"/>
         </video>
         <serial type="pty">
-            <target port="0" />
+            <target port="0"/>
         </serial>
         <console type="pty">
-            <target port="0" type="serial" />
+            <target port="0" type="serial"/>
         </console>
     </devices>
-</domain>"""
+</domain>
+"""
 
     def test_with_devices(self):
         xml = self.xml_builder.build_node_xml(
@@ -437,71 +441,72 @@ class TestNodeXml(BaseTestXMLBuilder):
             interfaces=self.interfaces,
         )
 
-        assert xml == """<?xml version="1.0" encoding="utf-8" ?>
+        assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <domain type="test_description">
     <name>test_name</name>
-    <cpu mode="host-passthrough" />
+    <cpu mode="host-passthrough"/>
     <vcpu>4</vcpu>
     <memory unit="KiB">1048576</memory>
     <memoryBacking>
-        <hugepages />
+        <hugepages/>
     </memoryBacking>
-    <clock offset="utc" />
+    <clock offset="utc"/>
     <clock>
         <timer name="rtc" tickpolicy="catchup" track="wall">
-            <catchup limit="10000" slew="120" threshold="123" />
+            <catchup limit="10000" slew="120" threshold="123"/>
         </timer>
     </clock>
     <clock>
-        <timer name="pit" tickpolicy="delay" />
+        <timer name="pit" tickpolicy="delay"/>
     </clock>
     <clock>
-        <timer name="hpet" present="no" />
+        <timer name="hpet" present="no"/>
     </clock>
     <os>
         <type arch="i686">hvm</type>
-        <boot dev="cdrom" />
-        <boot dev="hd" />
-        <bios rebootTimeout="10" />
-        <bootmenu enable="yes" timeout="3000" />
+        <boot dev="cdrom"/>
+        <boot dev="hd"/>
+        <bios rebootTimeout="10"/>
+        <bootmenu enable="yes" timeout="3000"/>
     </os>
     <devices>
-        <controller model="nec-xhci" type="usb" />
+        <controller model="nec-xhci" type="usb"/>
         <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
-        <graphics autoport="yes" listen="0.0.0.0" type="vnc" />
+        <graphics autoport="yes" listen="0.0.0.0" type="vnc"/>
         <disk device="disk" type="file">
-            <driver cache="unsafe" type="raw" />
-            <source file="/tmp/volume.img" />
-            <target bus="usb" dev="sda" removable="on" />
-            <readonly />
+            <driver cache="unsafe" type="raw"/>
+            <source file="/tmp/volume.img"/>
+            <target bus="usb" dev="sda" removable="on"/>
+            <readonly/>
             <serial>ca9dcfe5a48540f39537eb3cbd96f370</serial>
         </disk>
         <disk device="cdrom" type="file">
-            <driver cache="unsafe" type="qcow2" />
-            <source file="/tmp/volume2.img" />
-            <target bus="ide" dev="sdb" />
+            <driver cache="unsafe" type="qcow2"/>
+            <source file="/tmp/volume2.img"/>
+            <target bus="ide" dev="sdb"/>
             <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
         </disk>
         <interface type="network">
-            <mac address="64:70:74:90:bc:84" />
-            <source network="test_admin" />
-            <target dev="virnet132" />
-            <model type="e1000" />
+            <mac address="64:70:74:90:bc:84"/>
+            <source network="test_admin"/>
+            <target dev="virnet132"/>
+            <model type="e1000"/>
         </interface>
         <interface type="network">
-            <mac address="64:de:6c:44:de:46" />
-            <source network="test_public" />
-            <target dev="virnet133" />
-            <model type="pcnet" />
+            <mac address="64:de:6c:44:de:46"/>
+            <source network="test_public"/>
+            <target dev="virnet133"/>
+            <model type="pcnet"/>
         </interface>
         <video>
-            <model heads="1" type="vga" vram="9216" />
+            <model heads="1" type="vga" vram="9216"/>
         </video>
         <serial type="pty">
-            <target port="0" />
+            <target port="0"/>
         </serial>
         <console type="pty">
-            <target port="0" type="serial" />
+            <target port="0" type="serial"/>
         </console>
     </devices>
-</domain>"""
+</domain>
+"""
