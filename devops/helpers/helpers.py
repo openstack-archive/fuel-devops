@@ -34,6 +34,7 @@ from devops.helpers.ssh_client import SSHClient
 from devops import logger
 from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
+from devops.settings import SSH_SLAVE_CREDENTIALS
 
 
 def get_free_port():
@@ -151,7 +152,8 @@ def get_private_keys(env):
     return _ssh_keys
 
 
-def get_admin_remote(env):
+def get_admin_remote(env, login=SSH_CREDENTIALS['login'],
+                     password=SSH_CREDENTIALS['password']):
     admin_ip = get_admin_ip(env)
     wait(lambda: tcp_ping(admin_ip, 22),
          timeout=180,
@@ -159,18 +161,19 @@ def get_admin_remote(env):
                       .format(ip=admin_ip)))
     return env.get_node(
         name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
-                             login=SSH_CREDENTIALS['login'],
-                             password=SSH_CREDENTIALS['password'])
+                             login=login,
+                             password=password)
 
 
-def get_node_remote(env, node_name):
+def get_node_remote(env, node_name, login=SSH_SLAVE_CREDENTIALS['login'],
+                    password=SSH_SLAVE_CREDENTIALS['password']):
     ip = get_slave_ip(env, env.get_node(
         name=node_name).interfaces[0].mac_address)
     wait(lambda: tcp_ping(ip, 22), timeout=180,
          timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
     return SSHClient(ip,
-                     username=SSH_CREDENTIALS['login'],
-                     password=SSH_CREDENTIALS['password'],
+                     username=login,
+                     password=password,
                      private_keys=get_private_keys(env))
 
 

@@ -329,7 +329,9 @@ class Environment(BaseModel):
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
-    def get_ssh_to_remote(self, ip):
+    def get_ssh_to_remote(self, ip,
+                          login=settings.SSH_SLAVE_CREDENTIALS['login'],
+                          password=settings.SSH_SLAVE_CREDENTIALS['password']):
         keys = []
         for key_string in ['/root/.ssh/id_rsa',
                            '/root/.ssh/bootstrap.rsa']:
@@ -337,8 +339,8 @@ class Environment(BaseModel):
                 keys.append(RSAKey.from_private_key(f))
 
         return SSHClient(ip,
-                         username=settings.SSH_CREDENTIALS['login'],
-                         password=settings.SSH_CREDENTIALS['password'],
+                         username=login,
+                         password=password,
                          private_keys=keys)
 
     # LEGACY,  for fuel-qa compatibility
