@@ -159,6 +159,7 @@ class Driver(DriverBase):
     reboot_timeout = ParamField()
     use_hugepages = ParamField(default=False)
     vnc_password = ParamField()
+    add_virtio_scsi = ParamField(default=False)
 
     @cached_property
     def conn(self):
@@ -800,6 +801,7 @@ class Node(NodeBase):
             vnc_password=self.driver.vnc_password,
             local_disk_devices=local_disk_devices,
             interfaces=local_interfaces,
+            add_virtio_scsi=self.driver.add_virtio_scsi,
         )
         logger.info(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()

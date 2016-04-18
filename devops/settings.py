@@ -29,6 +29,7 @@ DRIVER_PARAMETERS = {
     'stp': True,
     'hpet': False,
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
+    'add_virtio_scsi': get_var_as_bool('ADD_VIRTIO_SCSI', False)
 }
 
 INSTALLED_APPS = ['south', 'devops']

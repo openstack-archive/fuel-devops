@@ -374,6 +374,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             vnc_password='123456',
             local_disk_devices=[],
             interfaces=[],
+            add_virtio_scsi=False,
         )
 
         assert xml == """<?xml version="1.0" encoding="utf-8" ?>
@@ -435,6 +436,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             vnc_password=None,
             local_disk_devices=self.disk_devices,
             interfaces=self.interfaces,
+            add_virtio_scsi=True,
         )
 
         assert xml == """<?xml version="1.0" encoding="utf-8" ?>
@@ -467,6 +469,7 @@ class TestNodeXml(BaseTestXMLBuilder):
     </os>
     <devices>
         <controller model="nec-xhci" type="usb" />
+        <controller model="virtio-scsi" type="scsi" />
         <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
         <graphics autoport="yes" listen="0.0.0.0" type="vnc" />
         <disk device="disk" type="file">

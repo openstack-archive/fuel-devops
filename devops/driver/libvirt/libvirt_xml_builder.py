@@ -179,7 +179,8 @@ class LibvirtXMLBuilder(object):
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
                        reboot_timeout, bootmenu_timeout, emulator,
-                       has_vnc, vnc_password, local_disk_devices, interfaces):
+                       has_vnc, vnc_password, local_disk_devices, interfaces,
+                       add_virtio_scsi):
         """Generate node XML
 
         :type node: Node
@@ -222,6 +223,8 @@ class LibvirtXMLBuilder(object):
 
         with node_xml.devices:
             node_xml.controller(type='usb', model='nec-xhci')
+            if add_virtio_scsi:
+                node_xml.controller(type='scsi', model='virtio-scsi')
             node_xml.emulator(emulator)
             if has_vnc:
                 if vnc_password:
