@@ -127,6 +127,11 @@ class Migration(SchemaMigration):
                       CharField(max_length=255, null=True),
                       keep_default=False)
 
+        # Adding field 'Interface.params'
+        db.add_column('devops_interface', 'params',
+                      JSONField(default={}),
+                      keep_default=False)
+
         # Deleting field 'Node.uuid'
         db.delete_column('devops_node', 'uuid')
 
@@ -276,6 +281,9 @@ class Migration(SchemaMigration):
 
         # Deleting field 'Interface.label'
         db.delete_column('devops_interface', 'label')
+
+        # Deleting field 'Interface.params'
+        db.delete_column('devops_interface', 'params')
 
         # Adding field 'Node.uuid'
         db.add_column('devops_node', 'uuid',
@@ -467,17 +475,20 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'Interface'},
             'id': ('django.db.models.fields.AutoField', [],
                    {'primary_key': 'True'}),
-            'l2_network_device': ('django.db.models.fields.related.ForeignKey',
-                                  [], {'to': "orm['devops.L2NetworkDevice']",
-                                       'null': 'True'}),
-            'label': ('django.db.models.fields.CharField', [],
-                      {'max_length': '255', 'null': 'True'}),
-            'mac_address': ('django.db.models.fields.CharField', [],
-                            {'unique': 'True', 'max_length': '255'}),
+            'l2_network_device': (
+                'django.db.models.fields.related.ForeignKey',
+                [], {'to': "orm['devops.L2NetworkDevice']", 'null': 'True'}),
+            'label': (
+                'django.db.models.fields.CharField', [],
+                {'max_length': '255', 'null': 'True'}),
+            'mac_address': (
+                'django.db.models.fields.CharField', [],
+                {'unique': 'True', 'max_length': '255'}),
             'model': ('django.db.models.fields.CharField', [],
                       {'max_length': '255'}),
             'node': ('django.db.models.fields.related.ForeignKey', [],
                      {'to': "orm['devops.Node']"}),
+            'params': ('jsonfield.fields.JSONField', [], {'default': '{}'}),
             'type': ('django.db.models.fields.CharField', [],
                      {'max_length': '255'})
         },

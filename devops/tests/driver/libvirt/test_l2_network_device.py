@@ -12,16 +12,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.test import TestCase
 import mock
 from netaddr import IPNetwork
 
 from devops.models import Environment
+from devops.tests.driver.libvirt.base import LibvirtTestCase
 
 
-class TestLibvirtL2NetworkDevice(TestCase):
+class TestLibvirtL2NetworkDevice(LibvirtTestCase):
 
     def setUp(self):
+        super(TestLibvirtL2NetworkDevice, self).setUp()
+
         self.env = Environment.create('test_env')
         self.group = self.env.add_group(
             group_name='test_group',
@@ -48,17 +50,12 @@ class TestLibvirtL2NetworkDevice(TestCase):
 
         self.d = self.group.driver
 
-    def tearDown(self):
-        # undefine all networks
-        for network_name in self.d.conn.listDefinedNetworks():
-            self.d.conn.networkLookupByName(network_name).undefine()
-
     def test_define(self):
         assert self.l2_net_dev.forward.mode == 'nat'
         self.l2_net_dev.define()
         assert isinstance(self.l2_net_dev.uuid, str)
         assert len(self.l2_net_dev.uuid) == 36
-        assert self.l2_net_dev.network_name() == 'test_env_test_l2_net_dev'
+        assert self.l2_net_dev.network_name == 'test_env_test_l2_net_dev'
         assert self.l2_net_dev.exists() is True
         assert self.l2_net_dev.is_active() == 0
         assert self.l2_net_dev.bridge_name() == 'virbr1'
