@@ -185,7 +185,8 @@ class LibvirtXMLBuilder(object):
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
                        reboot_timeout, bootmenu_timeout, emulator,
-                       has_vnc, vnc_password, local_disk_devices, interfaces):
+                       has_vnc, vnc_password, local_disk_devices, interfaces,
+                       acpi, numa):
         """Generate node XML
 
         :type node: Node
@@ -194,8 +195,24 @@ class LibvirtXMLBuilder(object):
         """
         node_xml = XMLGenerator("domain", type=hypervisor)
         node_xml.name(cls._crop_name(name))
+
+        if acpi:
+            with node_xml.features:
+                node_xml.acpi
+
+        cpu_args = {}
         if use_host_cpu:
-            node_xml.cpu(mode='host-passthrough')
+            cpu_args['mode'] = 'host-passthrough'
+        if numa:
+            with node_xml.cpu(**cpu_args):
+                with node_xml.numa:
+                    for cell in numa:
+                        node_xml.cell(
+                            cpus=str(cell['cpus']),
+                            memory=str(cell['memory'] * 1024)
+                        )
+        elif cpu_args:
+            node_xml.cpu(**cpu_args)
         node_xml.vcpu(str(vcpu))
         node_xml.memory(str(memory * 1024), unit='KiB')
 

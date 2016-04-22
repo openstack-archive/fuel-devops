@@ -233,6 +233,7 @@ class Environment(BaseModel):
                 admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
                 admin_iso_path=settings.ISO_PATH,
                 nodes_count=settings.NODES_COUNT,
+                numa_nodes=settings.HARDWARE['numa_nodes'],
                 slave_vcpu=settings.HARDWARE["slave_node_cpu"],
                 slave_memory=settings.HARDWARE["slave_node_memory"],
                 slave_volume_capacity=settings.NODE_VOLUME_SIZE,
@@ -248,6 +249,7 @@ class Environment(BaseModel):
                 networks_pools=settings.POOLS,
                 networks_forwarding=settings.FORWARDING,
                 networks_dhcp=settings.DHCP,
+                driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
             )
 
         environment = cls.create_environment(config)

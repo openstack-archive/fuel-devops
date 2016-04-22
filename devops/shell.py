@@ -182,6 +182,7 @@ class Shell(object):
             admin_sysvolume_capacity=self.params.admin_disk_size,
             admin_iso_path=self.params.iso_path,
             nodes_count=self.params.node_count,
+            numa_nodes=settings.HARDWARE['numa_nodes'],
             slave_vcpu=self.params.vcpu_count,
             slave_memory=self.params.ram_size,
             slave_volume_capacity=settings.NODE_VOLUME_SIZE,
@@ -201,6 +202,7 @@ class Shell(object):
                                 storage=self.params.net_pool.split(':')),
             networks_forwarding=settings.FORWARDING,
             networks_dhcp=settings.DHCP,
+            driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
         )
         self._create_env_from_config(config)
 
@@ -239,6 +241,7 @@ class Shell(object):
                 second_volume_capacity=self.params.second_disk_size,
                 third_volume_capacity=self.params.third_disk_size,
                 interfaceorder=settings.INTERFACE_ORDER,
+                numa_nodes=settings.HARDWARE['numa_nodes'],
                 use_all_disks=True,
                 networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
                 networks_nodegroups=settings.NODEGROUPS,
