@@ -156,6 +156,7 @@ class Driver(DriverBase):
     stp = ParamField(default=True)
     hpet = ParamField(default=True)
     use_host_cpu = ParamField(default=True)
+    enable_acpi = ParamField(default=False)
     reboot_timeout = ParamField()
     use_hugepages = ParamField(default=False)
     vnc_password = ParamField()
@@ -676,6 +677,7 @@ class Node(NodeBase):
     memory = ParamField(default=1024)
     has_vnc = ParamField(default=True)
     bootmenu_timeout = ParamField(default=0)
+    numa = ParamField(default=[])
 
     @property
     def _libvirt_node(self):
@@ -800,6 +802,8 @@ class Node(NodeBase):
             vnc_password=self.driver.vnc_password,
             local_disk_devices=local_disk_devices,
             interfaces=local_interfaces,
+            acpi=self.driver.enable_acpi,
+            numa=self.numa,
         )
         logger.info(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()

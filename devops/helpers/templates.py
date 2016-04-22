@@ -19,6 +19,8 @@ import os
 from netaddr import IPNetwork
 import yaml
 
+from devops.error import DevopsError
+
 
 def yaml_template_load(config_file):
     def yaml_include(loader, node):
@@ -79,6 +81,7 @@ def get_devops_config(filename):
 
 def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
                         admin_iso_path, boot_from, interfaceorder,
+                        numa_nodes,
                         networks_bonding=None,
                         networks_bondinginterfaces=None):
 
@@ -151,6 +154,12 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
         iso_bus = 'ide'
         bootmenu_timeout = 0
 
+    numa = _calculate_numa(
+        numa_nodes=numa_nodes,
+        vcpu=admin_vcpu,
+        memory=admin_memory,
+        name='admin')
+
     admin_config = {
         'name': 'admin',  # Custom name of VM for Fuel admin node
         'role': 'fuel_master',  # Fixed role for (Fuel admin) node properties
@@ -159,6 +168,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
             'memory': admin_memory,
             'boot': boot_device_order,
             'bootmenu_timeout': bootmenu_timeout,
+            'numa': numa,
             'volumes': [
                 {
                     'name': 'system',
@@ -183,6 +193,7 @@ def create_admin_config(admin_vcpu, admin_memory, admin_sysvolume_capacity,
 def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                         slave_volume_capacity,
                         interfaceorder,
+                        numa_nodes,
                         second_volume_capacity=None,
                         third_volume_capacity=None,
                         use_all_disks=False,
@@ -290,6 +301,12 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                 }
             )
 
+    numa = _calculate_numa(
+        numa_nodes=numa_nodes,
+        vcpu=slave_vcpu,
+        memory=slave_memory,
+        name=slave_name)
+
     slave_config = {
         'name': slave_name,
         'role': slave_role,
@@ -297,6 +314,7 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
             'vcpu': slave_vcpu,
             'memory': slave_memory,
             'boot': ['network', 'hd'],
+            'numa': numa,
             'volumes': volumes,
             'interfaces': slave_interfaces,
             'network_config': network_config,
@@ -368,6 +386,33 @@ def create_l2_network_devices(interfaceorder,
     return l2_network_devices
 
 
+def _calculate_numa(numa_nodes, vcpu, memory, name):
+    numa = []
+    if numa_nodes:
+        cpus_per_numa = vcpu // numa_nodes
+        if cpus_per_numa * numa_nodes != vcpu:
+            raise DevopsError(
+                "NUMA_NODES={0} is not a multiple of the number of CPU={1}"
+                " for node '{2}'".format(numa_nodes, vcpu, name))
+        memory_per_numa = memory // numa_nodes
+        if memory_per_numa * numa_nodes != memory:
+            raise DevopsError(
+                "NUMA_NODES={0} is not a multiple of the amount of "
+                "MEMORY={1} for node '{2}'".format(numa_nodes,
+                                                   memory,
+                                                   name))
+        for x in range(numa_nodes):
+            # List of cpu IDs for the numa node
+            cpus = range(x * cpus_per_numa, (x + 1) * cpus_per_numa)
+            cell = {
+                'cpus': ','.join(map(str, cpus)),
+                'memory': memory_per_numa,
+            }
+            numa.append(cell)
+
+    return numa
+
+
 def create_devops_config(boot_from,
                          env_name,
                          admin_vcpu,
@@ -375,6 +420,7 @@ def create_devops_config(boot_from,
                          admin_sysvolume_capacity,
                          admin_iso_path,
                          nodes_count,
+                         numa_nodes,
                          slave_vcpu,
                          slave_memory,
                          slave_volume_capacity,
@@ -389,7 +435,8 @@ def create_devops_config(boot_from,
                          networks_interfaceorder,
                          networks_pools,
                          networks_forwarding,
-                         networks_dhcp):
+                         networks_dhcp,
+                         driver_enable_acpi):
     """Creates devops config object
 
     This method is used for backward compatibility with old-style
@@ -423,6 +470,7 @@ def create_devops_config(boot_from,
         admin_sysvolume_capacity=admin_sysvolume_capacity,
         admin_iso_path=admin_iso_path,
         boot_from=boot_from,
+        numa_nodes=numa_nodes,
         interfaceorder=interfaceorder,
         networks_bonding=networks_bonding,
         networks_bondinginterfaces=networks_bondinginterfaces)
@@ -441,6 +489,7 @@ def create_devops_config(boot_from,
             second_volume_capacity=second_volume_capacity,
             third_volume_capacity=third_volume_capacity,
             interfaceorder=interfaceorder,
+            numa_nodes=numa_nodes,
             use_all_disks=use_all_disks,
             networks_multiplenetworks=networks_multiplenetworks,
             networks_nodegroups=networks_nodegroups,
@@ -479,6 +528,7 @@ def create_devops_config(boot_from,
                                 'stp': True,
                                 'hpet': False,
                                 'use_host_cpu': True,
+                                'enable_acpi': driver_enable_acpi,
                             },
                         },
                         'name': 'default',
