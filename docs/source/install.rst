@@ -172,7 +172,7 @@ Export the path to the SQLite3 database as the database name:
 
 .. code-block:: bash
 
-    export DEVOPS_DB_NAME=$WORKING_DIR/fuel-devops
+    export DEVOPS_DB_NAME=fuel-devops
     export DEVOPS_DB_ENGINE="django.db.backends.sqlite3
 
 Configuring Django
