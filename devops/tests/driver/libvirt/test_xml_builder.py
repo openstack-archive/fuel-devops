@@ -377,6 +377,8 @@ class TestNodeXml(BaseTestXMLBuilder):
             vnc_password='123456',
             local_disk_devices=[],
             interfaces=[],
+            acpi=False,
+            numa=[],
         )
 
         assert xml == """<?xml version="1.0" encoding="utf-8"?>
@@ -439,12 +441,116 @@ class TestNodeXml(BaseTestXMLBuilder):
             vnc_password=None,
             local_disk_devices=self.disk_devices,
             interfaces=self.interfaces,
+            acpi=False,
+            numa=[],
         )
 
         assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <domain type="test_description">
     <name>test_name</name>
     <cpu mode="host-passthrough"/>
+    <vcpu>4</vcpu>
+    <memory unit="KiB">1048576</memory>
+    <memoryBacking>
+        <hugepages/>
+    </memoryBacking>
+    <clock offset="utc"/>
+    <clock>
+        <timer name="rtc" tickpolicy="catchup" track="wall">
+            <catchup limit="10000" slew="120" threshold="123"/>
+        </timer>
+    </clock>
+    <clock>
+        <timer name="pit" tickpolicy="delay"/>
+    </clock>
+    <clock>
+        <timer name="hpet" present="no"/>
+    </clock>
+    <os>
+        <type arch="i686">hvm</type>
+        <boot dev="cdrom"/>
+        <boot dev="hd"/>
+        <bios rebootTimeout="10"/>
+        <bootmenu enable="yes" timeout="3000"/>
+    </os>
+    <devices>
+        <controller model="nec-xhci" type="usb"/>
+        <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
+        <graphics autoport="yes" listen="0.0.0.0" type="vnc"/>
+        <disk device="disk" type="file">
+            <driver cache="unsafe" type="raw"/>
+            <source file="/tmp/volume.img"/>
+            <target bus="usb" dev="sda" removable="on"/>
+            <readonly/>
+            <serial>ca9dcfe5a48540f39537eb3cbd96f370</serial>
+        </disk>
+        <disk device="cdrom" type="file">
+            <driver cache="unsafe" type="qcow2"/>
+            <source file="/tmp/volume2.img"/>
+            <target bus="ide" dev="sdb"/>
+            <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
+        </disk>
+        <interface type="network">
+            <mac address="64:70:74:90:bc:84"/>
+            <source network="test_admin"/>
+            <target dev="virnet132"/>
+            <model type="e1000"/>
+        </interface>
+        <interface type="network">
+            <mac address="64:de:6c:44:de:46"/>
+            <source network="test_public"/>
+            <target dev="virnet133"/>
+            <model type="pcnet"/>
+        </interface>
+        <video>
+            <model heads="1" type="vga" vram="9216"/>
+        </video>
+        <serial type="pty">
+            <target port="0"/>
+        </serial>
+        <console type="pty">
+            <target port="0" type="serial"/>
+        </console>
+    </devices>
+</domain>
+"""
+
+    def test_acpi_and_numa(self):
+        xml = self.xml_builder.build_node_xml(
+            name='test_name',
+            hypervisor='test_description',
+            use_host_cpu=True,
+            vcpu=4,
+            memory=1024,
+            use_hugepages=True,
+            hpet=False,
+            os_type='hvm',
+            architecture='i686',
+            boot=['cdrom', 'hd'],
+            reboot_timeout=10,
+            bootmenu_timeout=3000,
+            emulator='/usr/lib64/xen/bin/qemu-dm',
+            has_vnc=True,
+            vnc_password=None,
+            local_disk_devices=self.disk_devices,
+            interfaces=self.interfaces,
+            acpi=True,
+            numa=[dict(cpus='0,1', memory=512),
+                  dict(cpus='2,3', memory=512)],
+        )
+
+        assert xml == """<?xml version="1.0" encoding="utf-8"?>
+<domain type="test_description">
+    <name>test_name</name>
+    <features>
+        <acpi/>
+    </features>
+    <cpu mode="host-passthrough">
+        <numa>
+            <cell cpus="0,1" memory="524288" unit="KiB"/>
+            <cell cpus="2,3" memory="524288" unit="KiB"/>
+        </numa>
+    </cpu>
     <vcpu>4</vcpu>
     <memory unit="KiB">1048576</memory>
     <memoryBacking>
