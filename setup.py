@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2015 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -34,20 +34,24 @@ setup(
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
     install_requires=[
+        'keystoneauth1>=2.1.0',
         'xmlbuilder',
-        'netaddr',
-        'paramiko',
+        'netaddr>=0.7.12,!=0.7.16',
+        'paramiko>=1.16.0',
         'django<1.7',
-        'psycopg2',
+        'psycopg2>=2.5',
         'south',
-        'PyYAML',
+        'PyYAML>=3.1.0',
         'libvirt-python',
         'tabulate',
+        'six>=1.9.0',
+        'lxml>=2.3',
+    ],
+    tests_require=[
         'factory_boy>=2.4.1',
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
-        'mock>=1.0.1',
-        'sphinx',
-        'six'
-    ]
+        'mock>=1.2',
+        'tox'
+    ],
 )

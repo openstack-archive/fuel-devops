@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,19 +14,20 @@
 
 from __future__ import absolute_import
 
-import json
 import logging
 import os
 import posixpath
 import socket
-import ssl
 import stat
 import time
 
+from keystoneauth1.identity import V2Password
+from keystoneauth1.session import Session as KeystoneSession
 import paramiko
 # pylint: disable=import-error
+# noinspection PyUnresolvedReferences
 from six.moves import http_client
-from six.moves.urllib import request
+# noinspection PyUnresolvedReferences
 from six.moves import xmlrpc_client
 # pylint: enable=import-error
 
@@ -493,32 +494,14 @@ def _get_file_size(path):
 
 
 def get_nodes(admin_ip):
-    auth_data =\
-        '{{"auth": {{"tenantName": "{0}", ' \
-        '"passwordCredentials": {{"username": "{1}", ' \
-        '"password": "{2}"}}}}}}'.format(
-            KEYSTONE_CREDS['tenant_name'],
-            KEYSTONE_CREDS['username'],
-            KEYSTONE_CREDS['password'])
-    url = "https://{}:8443".format(admin_ip)
-    endpoint = '/api/nodes/'
-    keystone_url = "http://{}:5000/v2.0/tokens".format(admin_ip)
-    tokens_request = request.Request(keystone_url)
-    tokens_request.add_header('Content-Type', 'application/json')
-    tokens_request.add_data(auth_data)
-    tokens_response = request.urlopen(tokens_request)
-    tokens_dct = json.load(tokens_response)
-    token = tokens_dct['access']['token']['id']
-    nodes_request = request.Request(url + endpoint)
-    nodes_request.add_header('X-Auth-Token', token)
-    # pylint: disable=protected-access
-    # Note: this API is accessible not on all Python 2.7 versions,
-    # so use if-else
-    if hasattr(ssl, '_create_unverified_context'):
-        nodes_response = request.urlopen(
-            nodes_request, context=ssl._create_unverified_context())
-    else:
-        nodes_response = request.urlopen(nodes_request)
-    # pylint: enable=protected-access
-    nodes = json.load(nodes_response)
-    return nodes
+    keystone_auth = V2Password(
+        auth_url="http://{}:5000/v2.0".format(admin_ip),
+        username=KEYSTONE_CREDS['username'],
+        password=KEYSTONE_CREDS['password'],
+        tenant_name=KEYSTONE_CREDS['tenant_name'])
+    keystone_session = KeystoneSession(auth=keystone_auth, verify=False)
+    nodes = keystone_session.get(
+        '/nodes',
+        endpoint_filter={'service_type': 'fuel'}
+    )
+    return nodes.json()
