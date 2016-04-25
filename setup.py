@@ -34,8 +34,9 @@ setup(
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
     install_requires=[
-        'netaddr',
-        'paramiko',
+        'keystoneauth1>=2.1.0',
+        'netaddr>=0.7.12,!=0.7.16',
+        'paramiko>=1.16.0',
         'django<1.7',
         'jsonfield',
         'psycopg2',
@@ -46,8 +47,7 @@ setup(
         'factory_boy>=2.4.1',
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
-        'mock>=1.0.1',
-        'sphinx',
-        'six',
+        'mock>=1.2',
+        'six>=1.9.0',
     ]
 )
