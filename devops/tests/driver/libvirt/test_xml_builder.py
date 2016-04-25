@@ -329,6 +329,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 disk_bus='usb',
                 disk_target_dev='sda',
                 disk_serial='ca9dcfe5a48540f39537eb3cbd96f370',
+                disk_wwn=None,
             ),
             dict(
                 disk_type='file',
@@ -338,6 +339,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 disk_bus='ide',
                 disk_target_dev='sdb',
                 disk_serial='8c81c0e0aba448fabcb54c34f61d8d07',
+                disk_wwn='013fb0aefb9e64ee',
             ),
         ]
 
@@ -489,6 +491,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source file="/tmp/volume2.img"/>
             <target bus="ide" dev="sdb"/>
             <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
+            <wwn>013fb0aefb9e64ee</wwn>
         </disk>
         <interface type="network">
             <mac address="64:70:74:90:bc:84"/>
@@ -532,8 +535,8 @@ class TestNodeXml(BaseTestXMLBuilder):
             emulator='/usr/lib64/xen/bin/qemu-dm',
             has_vnc=True,
             vnc_password=None,
-            local_disk_devices=self.disk_devices,
-            interfaces=self.interfaces,
+            local_disk_devices=[],
+            interfaces=[],
             acpi=True,
             numa=[dict(cpus='0,1', memory=512),
                   dict(cpus='2,3', memory=512)],
@@ -579,31 +582,6 @@ class TestNodeXml(BaseTestXMLBuilder):
         <controller model="nec-xhci" type="usb"/>
         <emulator>/usr/lib64/xen/bin/qemu-dm</emulator>
         <graphics autoport="yes" listen="0.0.0.0" type="vnc"/>
-        <disk device="disk" type="file">
-            <driver cache="unsafe" type="raw"/>
-            <source file="/tmp/volume.img"/>
-            <target bus="usb" dev="sda" removable="on"/>
-            <readonly/>
-            <serial>ca9dcfe5a48540f39537eb3cbd96f370</serial>
-        </disk>
-        <disk device="cdrom" type="file">
-            <driver cache="unsafe" type="qcow2"/>
-            <source file="/tmp/volume2.img"/>
-            <target bus="ide" dev="sdb"/>
-            <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
-        </disk>
-        <interface type="network">
-            <mac address="64:70:74:90:bc:84"/>
-            <source network="test_admin"/>
-            <target dev="virnet132"/>
-            <model type="e1000"/>
-        </interface>
-        <interface type="network">
-            <mac address="64:de:6c:44:de:46"/>
-            <source network="test_public"/>
-            <target dev="virnet133"/>
-            <model type="pcnet"/>
-        </interface>
         <video>
             <model heads="1" type="vga" vram="9216"/>
         </video>
