@@ -203,6 +203,23 @@ class Migration(SchemaMigration):
                         'interface_id',
                         ForeignKey(to=orm['devops.Interface'], null=True))
 
+        # Deleting field 'DiskDevice.target_dev'
+        db.delete_column('devops_diskdevice', 'target_dev')
+
+        # Deleting field 'DiskDevice.device'
+        db.delete_column('devops_diskdevice', 'device')
+
+        # Deleting field 'DiskDevice.bus'
+        db.delete_column('devops_diskdevice', 'bus')
+
+        # Deleting field 'DiskDevice.type'
+        db.delete_column('devops_diskdevice', 'type')
+
+        # Adding field 'DiskDevice.params'
+        db.add_column('devops_diskdevice', 'params',
+                      JSONField(default={}),
+                      keep_default=False)
+
     def backwards(self, orm):
         # Removing unique constraint on 'Volume', fields ['name', 'group']
         db.delete_unique('devops_volume', ['name', 'node_id'])
@@ -377,6 +394,13 @@ class Migration(SchemaMigration):
                         'interface_id',
                         ForeignKey(default=None, to=orm['devops.Interface']))
 
+        raise RuntimeError(
+            "Cannot reverse this migration. 'DiskDevice.target_dev'"
+            " and its values cannot be restored.")
+
+        # Deleting field 'DiskDevice.params'
+        db.delete_column('devops_diskdevice', 'params')
+
     models = {
         'devops.address': {
             'Meta': {'object_name': 'Address'},
@@ -408,20 +432,13 @@ class Migration(SchemaMigration):
         },
         'devops.diskdevice': {
             'Meta': {'object_name': 'DiskDevice'},
-            'bus': ('django.db.models.fields.CharField', [],
-                    {'max_length': '255'}),
-            'device': ('django.db.models.fields.CharField', [],
-                       {'max_length': '255'}),
             'id': ('django.db.models.fields.AutoField', [],
                    {'primary_key': 'True'}),
             'node': ('django.db.models.fields.related.ForeignKey', [],
                      {'to': "orm['devops.Node']"}),
-            'target_dev': ('django.db.models.fields.CharField', [],
-                           {'max_length': '255'}),
-            'type': ('django.db.models.fields.CharField', [],
-                     {'max_length': '255'}),
             'volume': ('django.db.models.fields.related.ForeignKey', [],
-                       {'to': "orm['devops.Volume']", 'null': 'True'})
+                       {'to': "orm['devops.Volume']", 'null': 'True'}),
+            'params': ('jsonfield.fields.JSONField', [], {'default': '{}'}),
         },
         'devops.driver': {
             'Meta': {'object_name': 'Driver'},

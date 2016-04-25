@@ -329,6 +329,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 disk_bus='usb',
                 disk_target_dev='sda',
                 disk_serial='ca9dcfe5a48540f39537eb3cbd96f370',
+                disk_wwn=None,
             ),
             dict(
                 disk_type='file',
@@ -338,6 +339,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 disk_bus='ide',
                 disk_target_dev='sdb',
                 disk_serial='8c81c0e0aba448fabcb54c34f61d8d07',
+                disk_wwn='013fb0aefb9e64ee',
             ),
         ]
 
@@ -485,6 +487,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source file="/tmp/volume2.img"/>
             <target bus="ide" dev="sdb"/>
             <serial>8c81c0e0aba448fabcb54c34f61d8d07</serial>
+            <wwn>013fb0aefb9e64ee</wwn>
         </disk>
         <interface type="network">
             <mac address="64:70:74:90:bc:84"/>
