@@ -48,7 +48,8 @@ DATABASES = {
 }
 
 KEYSTONE_CREDS = {'username': os.environ.get('KEYSTONE_USERNAME', 'admin'),
-                  'password': os.environ.get('KEYSTONE_PASSWORD', 'admin')}
+                  'password': os.environ.get('KEYSTONE_PASSWORD', 'admin'),
+                  'tenant_name': os.environ.get('KEYSTONE_TENANT', 'admin')}
 
 SSH_CREDENTIALS = {
     'admin_network': os.environ.get('ENV_ADMIN_NETWORK', 'admin'),

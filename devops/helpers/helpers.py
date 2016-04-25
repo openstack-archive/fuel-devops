@@ -12,17 +12,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import absolute_import
+
 # pylint: disable=redefined-builtin
 from functools import reduce
 # pylint: enable=redefined-builtin
+import json
 import os
 import socket
+import ssl
 import time
 from warnings import warn
 
 import paramiko
 # pylint: disable=import-error
 from six.moves import http_client
+from six.moves.urllib import request
 from six.moves import xmlrpc_client
 # pylint: enable=import-error
 
@@ -182,16 +187,26 @@ def get_admin_ip(env):
     return env.get_node(name='admin').get_ip_address_by_network_name('admin')
 
 
+def get_ip_from_json(js, mac):
+    def poor_mac(mac_addr):
+        return \
+            [m.lower() for m in mac_addr if m.lower() in '01234546789abcdef']
+
+    for node in js:
+        for interface in node['meta']['interfaces']:
+            if poor_mac(interface['mac']) == poor_mac(mac):
+                logger.debug("For mac {0} found ip {1}".format(
+                    mac, node['ip']))
+                return node['ip']
+    raise DevopsError(
+        'There is no match between MAC {} and Nailgun MACs')\
+        .format(mac)
+
+
 def get_slave_ip(env, node_mac_address):
-    with get_admin_remote(env) as remote:
-        ip = remote.execute(
-            "KEYSTONE_USER={user} KEYSTONE_PASS={passwd} "
-            "fuel nodes --node-id {mac} | awk -F'|' "
-            "'END{{gsub(\" \", \"\", $5); print $5}}'".format(
-                user=KEYSTONE_CREDS['username'],
-                passwd=KEYSTONE_CREDS['password'],
-                mac=node_mac_address))['stdout']
-    return ip[0].rstrip()
+    admin_ip = get_admin_ip(env)
+    js = get_nodes(admin_ip)
+    return get_ip_from_json(js, node_mac_address)
 
 
 def get_keys(ip, mask, gw, hostname, nat_interface, dns1, showmenu,
@@ -333,3 +348,35 @@ def _underscored(*args):
         '_underscored has been deprecated in favor of underscored',
         DeprecationWarning)
     return underscored(*args)
+
+
+def get_nodes(admin_ip):
+    auth_data =\
+        '{{"auth": {{"tenantName": "{0}", ' \
+        '"passwordCredentials": {{"username": "{1}", ' \
+        '"password": "{2}"}}}}}}'.format(
+            KEYSTONE_CREDS['tenant_name'],
+            KEYSTONE_CREDS['username'],
+            KEYSTONE_CREDS['password'])
+    url = "https://{}:8443".format(admin_ip)
+    endpoint = '/api/nodes/'
+    keystone_url = "http://{}:5000/v2.0/tokens".format(admin_ip)
+    tokens_request = request.Request(keystone_url)
+    tokens_request.add_header('Content-Type', 'application/json')
+    tokens_request.add_data(auth_data)
+    tokens_response = request.urlopen(tokens_request)
+    tokens_dct = json.load(tokens_response)
+    token = tokens_dct['access']['token']['id']
+    nodes_request = request.Request(url + endpoint)
+    nodes_request.add_header('X-Auth-Token', token)
+    # pylint: disable=protected-access
+    # Note: this API is accessible not on all Python 2.7 versions,
+    # so use if-else
+    if hasattr(ssl, '_create_unverified_context'):
+        nodes_response = request.urlopen(
+            nodes_request, context=ssl._create_unverified_context())
+    else:
+        nodes_response = request.urlopen(nodes_request)
+    # pylint: enable=protected-access
+    nodes = json.load(nodes_response)
+    return nodes
