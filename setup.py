@@ -34,6 +34,7 @@ setup(
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
     install_requires=[
+        'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
         'paramiko>=1.16.0',
         'Django>=1.8,<1.9',
@@ -46,7 +47,6 @@ setup(
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
         'mock>=1.2',
-        'sphinx>=1.4',
         'six>=1.9.0',
     ]
 )
