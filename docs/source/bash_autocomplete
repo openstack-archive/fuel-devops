@@ -1,0 +1,57 @@
+_listenv()
+{
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  COMPREPLY=( $( compgen -W "$(dos.py list | tail -n +3 | tr '\n' ' ')" -- $cur ) )
+  return 0
+}
+
+_listsnapshots()
+{
+  # $1 is env name
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  COMPREPLY=( $( compgen -W "$(dos.py snapshot-list $1 | tail -n +3 | cut -d' ' -f1 | tr '\n' ' ')" -- $cur ) )
+  return 0
+}
+
+_dospy()
+{
+    local cur prev
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+    pprev=${COMP_WORDS[COMP_CWORD-2]}
+
+    case ${COMP_CWORD} in
+        1)
+            COMPREPLY=($(compgen -W "list show erase start destroy suspend resume\
+             revert snapshot sync snapshot-list snapshot-delete net-list time-sync\
+             revert-resume version create slave-add slave-change slave-remove admin-setup\
+             admin-setup-centos7 admin-change node-start node-destroy node-reset" ${cur}))
+            ;;
+        2)
+            case ${prev} in
+                show | erase | start | destroy | suspend | resume | revert | snapshot | sync | snapshot-list | snapshot-delete | net-list | time-sync | revert-resume)
+                    _listenv
+                    ;;
+                list)
+                    COMPREPLY=()
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            ;;
+        3)
+            case ${pprev} in
+                revert | revert-resume | snapshot-delete)
+                    _listsnapshots ${prev}
+                    ;;
+            esac
+            ;;
+        *)
+            COMPREPLY=()
+            ;;
+    esac
+}
+
+complete -F _dospy dos.py
