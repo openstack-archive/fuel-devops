@@ -179,6 +179,10 @@ class Environment(BaseModel):
         for node in self.get_nodes():
             node.revert(name)
 
+        for group in self.get_groups():
+            for l2netdev in group.get_l2_network_devices():
+                l2netdev.unblock()
+
     # TO REWRITE FOR LIBVIRT DRIVER ONLY
     @classmethod
     def synchronize_all(cls):

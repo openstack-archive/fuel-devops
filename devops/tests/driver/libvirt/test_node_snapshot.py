@@ -34,6 +34,19 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
         self.libvirt_sleep_mock = self.patch(
             'devops.driver.libvirt.libvirt_driver.sleep')
 
+        self.nwfilter = self.libvirt_nwfilter_lookup_mock.return_value
+        self.nwfilter.XMLDesc.return_value = (
+            '<?xml version="1.0" encoding="utf-8" ?>\n'
+            '<filter name="tenv_test_l2_net_dev_64:5d:8b:a9:ac:ec">\n'
+            '    <filterref filter="tenv_test_l2_net_dev" />\n'
+            '    <rule action="drop" direction="inout" priority="-950">\n'
+            '        <all />\n'
+            '    </rule>\n'
+            '</filter>'
+        )
+        self.nwfilter.UUIDString.return_value = \
+            'e3db79b5-717c-4b15-9198-ecad569c1ea2'
+
         self.env = Environment.create('tenv')
         self.group = self.env.add_group(
             group_name='test_group',
@@ -73,6 +86,8 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
             l2_network_device_name='test_l2_net_dev',
             interface_model='virtio',
         )
+        self.interface.mac_address = '64:5d:8b:a9:ac:ec'
+        self.interface.save()
 
         self.volume = self.node.add_volume(
             name='tvol',
@@ -248,6 +263,26 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
         with mock.patch('libvirt.virDomain.revertToSnapshot') as rev_mock:
             self.node.revert(name='test1')
             assert rev_mock.called
+
+    def test_revert_block(self):
+        with self.assertRaises(DevopsError):
+            self.node.revert(name='test1')
+
+        self.node.start()
+        self.node.snapshot(name='test1')
+        self.interface.block()
+
+        self.libvirt_nwfilter_define_mock.reset_mock()
+        with mock.patch('libvirt.virDomain.revertToSnapshot') as rev_mock:
+            self.node.revert(name='test1')
+            assert rev_mock.called
+            self.libvirt_nwfilter_define_mock.assert_called_once_with(
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<filter name="tenv_test_l2_net_dev_64:5d:8b:a9:ac:ec">\n'
+                '    <filterref filter="tenv_test_l2_net_dev"/>\n'
+                '    <uuid>e3db79b5-717c-4b15-9198-ecad569c1ea2</uuid>\n'
+                '</filter>\n'
+            )
 
     def test_revert_destroy(self):
         self.node.start()
