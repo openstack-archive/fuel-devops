@@ -30,6 +30,7 @@ setup(
     include_package_data=True,
     packages=find_packages(),
     data_files=[
+        ('/etc/bash_completion.d', ['dospy-bashautocomplete']),
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
     scripts=['bin/dos.py'],
