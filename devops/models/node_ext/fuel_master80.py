@@ -14,7 +14,7 @@
 
 
 class NodeExtension(object):
-    """Extension for Fuel 6.1"""
+    """Extension for Fuel 8.0"""
 
     def __init__(self, node):
         self.node = node
@@ -30,16 +30,12 @@ class NodeExtension(object):
                 '2\n'
                 '<Esc><Enter>\n'
                 '<Wait>\n'
-                'vmlinuz'
-                ' initrd=initrd.img ks=hd:LABEL="Mirantis_Fuel":/ks.cfg\n'
-                ' repo=hd:LABEL="Mirantis_Fuel":/\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={nameserver}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
+                'vmlinuz initrd=initrd.img ks=hd:LABEL=Mirantis_Fuel:/ks.cfg\n'
+                ' repo=hd:LABEL=Mirantis_Fuel:/\n'
+                ' ip={ip}::{gw}:{mask}:{hostname}'
+                ':' + iface + ':off::: dns1={nameserver}'
                 ' showmenu=no\n'
+                ' wait_for_external_config=' + wait_for_external_config + '\n'
                 ' build_images=0\n'
                 ' <Enter>\n')
         else:
@@ -50,13 +46,10 @@ class NodeExtension(object):
                 '<Esc>\n'
                 '<Wait>\n'
                 'vmlinuz initrd=initrd.img ks=cdrom:/ks.cfg\n'
-                ' ip={ip}\n'
-                ' netmask={mask}\n'
-                ' gw={gw}\n'
-                ' dns1={nameserver}\n'
-                ' hostname={hostname}\n'
-                ' dhcp_interface=' + iface + '\n'
+                ' ip={ip}::{gw}:{mask}:{hostname}'
+                ':' + iface + ':off::: dns1={nameserver}'
                 ' showmenu=no\n'
+                ' wait_for_external_config=' + wait_for_external_config + '\n'
                 ' build_images=0\n'
                 ' <Enter>\n')
 

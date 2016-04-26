@@ -14,7 +14,7 @@
 
 
 class NodeExtension(object):
-    """Extension for Fuel 5.0"""
+    """Extension for Fuel 5.1"""
 
     def __init__(self, node):
         self.node = node

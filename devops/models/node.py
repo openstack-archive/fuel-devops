@@ -12,15 +12,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from django.conf import settings
 from django.db import models
 from django.utils.functional import cached_property
 
+from devops.error import DevopsError
 from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
+from devops.helpers.helpers import wait_ssh_cmd
+from devops.helpers.helpers import wait_tcp
 from devops.helpers import loader
 from devops.helpers.ssh_client import SSHClient
+from devops import logger
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
+from devops.models.base import ParamField
 from devops.models.network import Interface
 from devops.models.network import NetworkConfig
 from devops.models.volume import DiskDevice
@@ -35,6 +41,12 @@ class Node(ParamedModel, BaseModel):
     group = models.ForeignKey('Group', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
     role = models.CharField(max_length=255, null=True)
+
+    kernel_cmd = ParamField()
+    ssh_port = ParamField(default=22)
+    bootstrap_timeout = ParamField(default=600)
+    deploy_timeout = ParamField(default=3600)
+    deploy_check_cmd = ParamField()
 
     @property
     def driver(self):
@@ -106,7 +118,7 @@ class Node(ParamedModel, BaseModel):
     # LEGACY, for fuel-qa compatibility
     @property
     def is_admin(self):
-        return self.role == 'fuel_master'
+        return self.role.startswith('fuel_master')
 
     # LEGACY, for fuel-qa compatibility
     @property
@@ -120,7 +132,13 @@ class Node(ParamedModel, BaseModel):
                 return disk_name
 
     def interface_by_network_name(self, network_name):
-        return self.interface_set.filter(
+        logger.warning('_tcp_ping is deprecated in favor of tcp_ping')
+        raise DeprecationWarning(
+            "'Node.interface_by_network_name' is deprecated. "
+            "Use 'Node.get_interface_by_network_name' instead.")
+
+    def get_interface_by_network_name(self, network_name):
+        return self.interface_set.get(
             l2_network_device__name=network_name)
 
     def get_interface_by_nailgun_network_name(self, name):
@@ -244,3 +262,51 @@ class Node(ParamedModel, BaseModel):
     def erase_volumes(self):
         for volume in self.get_volumes():
             volume.erase()
+
+    def _start_setup(self):
+        if self.kernel_cmd is None:
+            raise DevopsError('kernel_cmd is None')
+
+        self.start()
+        self.send_kernel_keys(self.kernel_cmd)
+
+    def send_kernel_keys(self, kernel_cmd):
+        """Provide variables data to kernel cmd format template"""
+
+        ip = self.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        master_iface = self.get_interface_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        admin_ap = master_iface.l2_network_device.address_pool
+
+        result_kernel_cmd = kernel_cmd.format(
+            ip=ip,
+            mask=admin_ap.ip_network.netmask,
+            gw=admin_ap.gateway,
+            hostname=settings.DEFAULT_MASTER_FQDN,
+            nameserver=settings.DEFAULT_DNS,
+        )
+        self.send_keys(result_kernel_cmd)
+
+    def bootstrap_and_wait(self):
+        if self.kernel_cmd is None:
+            self.kernel_cmd = self.ext.get_kernel_cmd()
+            self.save()
+        self._start_setup()
+        ip = self.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        wait_tcp(host=ip, port=self.ssh_port,
+                 timeout=self.bootstrap_timeout)
+
+    def deploy_wait(self):
+        ip = self.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        if self.deploy_check_cmd is None:
+            self.deploy_check_cmd = self.ext.get_deploy_check_cmd()
+            self.save()
+        wait_ssh_cmd(host=ip,
+                     port=self.ssh_port,
+                     check_cmd=self.deploy_check_cmd,
+                     username=settings.SSH_CREDENTIALS['login'],
+                     password=settings.SSH_CREDENTIALS['password'],
+                     timeout=self.deploy_timeout)
