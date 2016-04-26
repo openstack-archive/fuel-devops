@@ -14,7 +14,7 @@
 
 
 class NodeExtension(object):
-    """Extension for Fuel 5.0"""
+    """Extension for Fuel 4.1"""
 
     def __init__(self, node):
         self.node = node
@@ -37,5 +37,5 @@ class NodeExtension(object):
             ' <Enter>\n')
 
     def get_deploy_check_cmd(self):
-        return ("grep 'Fuel node deployment complete' "
+        return ("grep 'Finished catalog run' "
                 "'/var/log/puppet/bootstrap_admin_node.log'")
