@@ -32,7 +32,7 @@ setup(
     data_files=[
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
-    scripts=['bin/dos.py'],
+    scripts=['bin/dos.py', 'bash_autocomplete'],
     install_requires=[
         'netaddr',
         'paramiko',
