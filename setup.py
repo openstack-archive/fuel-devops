@@ -30,9 +30,10 @@ setup(
     include_package_data=True,
     packages=find_packages(),
     data_files=[
+        (os.path.expanduser('~/.bash_completion.d'), ['bash_autocomplete']),
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
-    scripts=['bin/dos.py'],
+    scripts=['bin/dos.py', 'bash_autocomplete'],
     install_requires=[
         'netaddr',
         'paramiko',
