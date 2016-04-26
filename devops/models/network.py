@@ -128,6 +128,18 @@ class AddressPool(ParamedModel, BaseModel):
         """
         return IPNetwork(self.net)
 
+    @property
+    def gateway(self):
+        """Get the default network gateway
+
+        This property returns only default network gateway.
+
+        :return: reserved IP address with key 'gateway', or
+                 the first address in the address pool
+                 (for fuel-qa compatibility).
+        """
+        return (self.get_ip('gateway') or str(self.ip_network[1]))
+
     def ip_range_start(self, range_name):
         """Return the IP address of start the IP range 'range_name'
 
@@ -364,8 +376,7 @@ class NetworkPool(BaseModel):
                  the first address in the address pool
                  (for fuel-qa compatibility).
         """
-        return (self.address_pool.get_ip('gateway') or
-                str(self.address_pool.ip_network[1]))
+        return self.address_pool.gateway
 
     @property
     def vlan_start(self):
@@ -466,6 +477,10 @@ class Interface(models.Model):
     @property
     def addresses(self):
         return self.address_set.all()
+
+    @property
+    def network_config(self):
+        return self.node.networkconfig_set.get(label=self.label)
 
     def add_address(self):
         ip = self.l2_network_device.address_pool.next_ip()

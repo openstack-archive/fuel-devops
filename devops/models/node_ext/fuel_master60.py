@@ -14,7 +14,7 @@
 
 
 class NodeExtension(object):
-    """Extension for Fuel 5.0"""
+    """Extension for Fuel 6.0"""
 
     def __init__(self, node):
         self.node = node
@@ -34,6 +34,7 @@ class NodeExtension(object):
             ' dns1={nameserver}\n'
             ' hostname={hostname}\n'
             ' dhcp_interface=' + iface + '\n'
+            ' showmenu=no\n'
             ' <Enter>\n')
 
     def get_deploy_check_cmd(self):
