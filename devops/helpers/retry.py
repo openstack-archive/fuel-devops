@@ -18,6 +18,8 @@ from time import sleep
 
 def retry(count=10, delay=1):
     def decorator(func):
+        return func
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             i = 0
