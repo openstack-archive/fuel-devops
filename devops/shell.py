@@ -299,13 +299,21 @@ class Shell(object):
         node_manager.admin_wait_bootstrap(3000, self.env)
 
     def do_node_start(self):
+        self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).start()
 
     def do_node_destroy(self):
+        self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).destroy()
 
     def do_node_reset(self):
+        self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).reset()
+
+    def check_param_show_help(self, parameter):
+        if not parameter:
+            self.args.append('-h')
+            self.get_params()
 
     commands = {
         'list': do_list,
