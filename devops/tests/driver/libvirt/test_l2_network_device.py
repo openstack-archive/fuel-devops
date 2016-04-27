@@ -58,7 +58,7 @@ class TestLibvirtL2NetworkDevice(LibvirtTestCase):
         assert self.l2_net_dev.network_name == 'test_env_test_l2_net_dev'
         assert self.l2_net_dev.exists() is True
         assert self.l2_net_dev.is_active() == 0
-        assert self.l2_net_dev.bridge_name() == 'virbr1'
+        assert self.l2_net_dev.bridge_name() == 'virbr0'
         assert self.l2_net_dev._libvirt_network.autostart() == 1
 
         xml = self.l2_net_dev._libvirt_network.XMLDesc(0)
@@ -67,7 +67,7 @@ class TestLibvirtL2NetworkDevice(LibvirtTestCase):
             "  <name>test_env_test_l2_net_dev</name>\n"
             "  <uuid>{0}</uuid>\n"
             "  <forward mode='nat'/>\n"
-            "  <bridge name='virbr1' stp='on' delay='0'/>\n"
+            "  <bridge name='virbr0' stp='on' delay='0'/>\n"
             "  <ip address='172.0.0.1' prefix='24'>\n"
             "  </ip>\n"
             "</network>\n".format(self.l2_net_dev.uuid))

@@ -166,7 +166,7 @@ class LibvirtXMLBuilder(object):
     @classmethod
     def _build_interface_device(cls, device_xml, interface_type,
                                 interface_mac_address, interface_network_name,
-                                interface_id, interface_model,
+                                interface_target_dev, interface_model,
                                 interface_filter):
         """Build xml for interface
 
@@ -177,7 +177,7 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface_mac_address)
             device_xml.source(
                 network=interface_network_name)
-            device_xml.target(dev="virnet{0}".format(interface_id))
+            device_xml.target(dev=interface_target_dev)
             if interface_model is not None:
                 device_xml.model(type=interface_model)
             device_xml.filterref(filter=interface_filter)
