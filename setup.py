@@ -42,11 +42,13 @@ setup(
         'PyYAML>=3.1.0',
         'libvirt-python',
         'tabulate',
+        'six>=1.9.0',
+    ],
+    tests_require=[
         'factory_boy>=2.4.1',
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
         'mock>=1.2',
-        'sphinx>=1.4',
-        'six>=1.9.0',
-    ]
+        'tox'
+    ],
 )

@@ -16,7 +16,9 @@
 
 import uuid
 
+# noinspection PyPackageRequirements
 import factory
+# noinspection PyPackageRequirements
 from factory import fuzzy
 
 from devops import models
