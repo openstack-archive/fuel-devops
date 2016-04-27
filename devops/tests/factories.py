@@ -16,6 +16,7 @@
 
 import uuid
 
+# noinspection PyPackageRequirements
 import factory
 from factory import fuzzy
 
