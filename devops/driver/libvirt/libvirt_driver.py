@@ -23,6 +23,9 @@ from django.conf import settings
 from django.utils.functional import cached_property
 import libvirt
 import netaddr
+# pylint: disable=redefined-builtin
+from six.moves import xrange
+# pylint: enable=redefined-builtin
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
@@ -164,6 +167,8 @@ class LibvirtDriver(Driver):
     use_hugepages = ParamField(default=False)
     vnc_password = ParamField()
 
+    _device_name_generators = {}
+
     @cached_property
     def conn(self):
         """Connection to libvirt api"""
@@ -206,6 +211,44 @@ class LibvirtDriver(Driver):
                 allocated_networks.append(netaddr.IPNetwork(
                     "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
         return allocated_networks
+
+    def get_allocated_device_names(self):
+        """Get list of existing bridge names and network devices
+
+        :rtype : List
+        """
+        names = []
+        for dev in self.conn.listAllDevices():
+            if 'net' not in dev.listCaps():
+                # skip other than network devices
+                continue
+
+            xml = ET.fromstring(dev.XMLDesc())
+            name_el = xml.find('./capability/interface')
+            if name_el is None:
+                continue
+            name = name_el.text
+            names.append(name)
+
+        return names
+
+    def get_available_device_name(self, prefix):
+        """Get available name for network device or bridge
+
+        :rtype : String
+        """
+        allocated_names = self.get_allocated_device_names()
+        if prefix not in self._device_name_generators:
+            self._device_name_generators[prefix] = (
+                prefix + str(i) for i in xrange(10000))
+        all_names = self._device_name_generators[prefix]
+
+        for name in all_names:
+            if name in allocated_names:
+                continue
+            return name
+        raise DevopsError('All names with prefix {!r} are already in use'
+                          .format(prefix))
 
     def get_libvirt_version(self):
         return self.conn.getLibVersion()
@@ -370,7 +413,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             name=self.network_name)
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
-        bridge_name = 'virbr{0}'.format(self.id)
+        bridge_name = self.driver.get_available_device_name(prefix='virbr')
 
         # TODO(ddmitriev): check if 'vlan' package installed
         # Define tagged interfaces on the bridge
@@ -824,11 +867,12 @@ class LibvirtNode(Node):
                 l2_dev.name,
                 interface.mac_address
             )
+            target_dev = self.driver.get_available_device_name('virnet')
             local_interfaces.append(dict(
                 interface_type=interface.type,
                 interface_mac_address=interface.mac_address,
                 interface_network_name=l2_dev.network_name,
-                interface_id=interface.id,
+                interface_target_dev=target_dev,
                 interface_model=interface.model,
                 interface_filter=filter_name,
             ))
