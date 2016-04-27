@@ -12,6 +12,14 @@ devops.helpers.helpers module
     :undoc-members:
     :show-inheritance:
 
+devops.helpers.loader module
+----------------------------
+
+.. automodule:: devops.helpers.loader
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 devops.helpers.network module
 -----------------------------
 
@@ -52,10 +60,26 @@ devops.helpers.scancodes module
     :undoc-members:
     :show-inheritance:
 
+devops.helpers.ssh_client module
+--------------------------------
+
+.. automodule:: devops.helpers.ssh_client
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 devops.helpers.templates module
 -------------------------------
 
 .. automodule:: devops.helpers.templates
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+devops.helpers.xmlgenerator module
+----------------------------------
+
+.. automodule:: devops.helpers.xmlgenerator
     :members:
     :undoc-members:
     :show-inheritance:

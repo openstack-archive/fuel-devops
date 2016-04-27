@@ -39,6 +39,14 @@ devops.shell module
     :undoc-members:
     :show-inheritance:
 
+devops.test_settings module
+---------------------------
+
+.. automodule:: devops.test_settings
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
