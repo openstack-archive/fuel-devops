@@ -166,11 +166,11 @@ class LibvirtXMLBuilder(object):
     @classmethod
     def _build_interface_device(cls, device_xml, interface_type,
                                 interface_mac_address, interface_network_name,
-                                interface_id, interface_model):
+                                interface_id, interface_model,
+                                interface_filter):
         """Build xml for interface
 
         :param device_xml: XMLBuilder
-        :param interface: Network
         """
 
         with device_xml.interface(type=interface_type):
@@ -180,6 +180,43 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev="virnet{0}".format(interface_id))
             if interface_model is not None:
                 device_xml.model(type=interface_model)
+            device_xml.filterref(filter=interface_filter)
+
+    @classmethod
+    def build_network_filter(cls, name, uuid=None, rule=None):
+        """Generate nwfilter XML for network
+
+        :type name: String
+        :type uuid: String
+        :type rule: dict
+           :rtype : String
+        """
+        filter_xml = XMLGenerator('filter', name=name)
+        if uuid:
+            filter_xml.uuid(uuid)
+        if rule:
+            with filter_xml.rule(**rule):
+                filter_xml.all()
+        return str(filter_xml)
+
+    @classmethod
+    def build_interface_filter(cls, name, filterref, uuid=None, rule=None):
+        """Generate nwfilter XML for interface
+
+        :type name: String
+        :type filterref: String
+        :type uuid: String
+        :type rule: dict
+           :rtype : String
+        """
+        filter_xml = XMLGenerator('filter', name=name)
+        filter_xml.filterref(filter=filterref)
+        if uuid:
+            filter_xml.uuid(uuid)
+        if rule:
+            with filter_xml.rule(**rule):
+                filter_xml.all()
+        return str(filter_xml)
 
     @classmethod
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,

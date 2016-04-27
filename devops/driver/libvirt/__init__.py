@@ -13,6 +13,7 @@
 #    under the License.
 
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver as Driver
+from devops.driver.libvirt.libvirt_driver import LibvirtInterface as Interface
 from devops.driver.libvirt.libvirt_driver import \
     LibvirtL2NetworkDevice as L2NetworkDevice
 from devops.driver.libvirt.libvirt_driver import LibvirtVolume as Volume
