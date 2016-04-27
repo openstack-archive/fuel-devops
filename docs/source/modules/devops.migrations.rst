@@ -12,14 +12,6 @@ devops.migrations.0001_initial module
     :undoc-members:
     :show-inheritance:
 
-devops.migrations.0002_add_field_created module
------------------------------------------------
-
-.. automodule:: devops.migrations.0002_add_field_created
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

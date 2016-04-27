@@ -1,6 +1,13 @@
 devops.models package
 =====================
 
+Subpackages
+-----------
+
+.. toctree::
+
+    devops.models.node_ext
+
 Submodules
 ----------
 
@@ -12,10 +19,26 @@ devops.models.base module
     :undoc-members:
     :show-inheritance:
 
+devops.models.driver module
+---------------------------
+
+.. automodule:: devops.models.driver
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 devops.models.environment module
 --------------------------------
 
 .. automodule:: devops.models.environment
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+devops.models.group module
+--------------------------
+
+.. automodule:: devops.models.group
     :members:
     :undoc-members:
     :show-inheritance:

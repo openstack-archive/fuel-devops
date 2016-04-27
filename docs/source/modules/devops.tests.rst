@@ -1,13 +1,21 @@
 devops.tests package
 ====================
 
+Subpackages
+-----------
+
+.. toctree::
+
+    devops.tests.driver
+    devops.tests.models
+
 Submodules
 ----------
 
-devops.tests.factories module
------------------------------
+devops.tests.test_generated_template module
+-------------------------------------------
 
-.. automodule:: devops.tests.factories
+.. automodule:: devops.tests.test_generated_template
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,14 +48,6 @@ devops.tests.test_shell module
 ------------------------------
 
 .. automodule:: devops.tests.test_shell
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-devops.tests.use_cases module
------------------------------
-
-.. automodule:: devops.tests.use_cases
     :members:
     :undoc-members:
     :show-inheritance:
