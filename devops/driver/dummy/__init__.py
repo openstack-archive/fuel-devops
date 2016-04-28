@@ -13,9 +13,16 @@
 #    under the License.
 
 from devops.driver.dummy.dummy_driver import DummyDriver as Driver
+from devops.models import Interface
 from devops.driver.dummy.dummy_driver import \
     DummyL2NetworkDevice as L2NetworkDevice
 from devops.driver.dummy.dummy_driver import DummyVolume as Volume
 from devops.driver.dummy.dummy_driver import DummyNode as Node
 
-__all__ = ['Driver', 'L2NetworkDevice', 'Volume', 'Node']
+__all__ = [
+    'Driver',
+    'Interface',
+    'L2NetworkDevice',
+    'Volume',
+    'Node',
+]

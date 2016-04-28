@@ -429,6 +429,19 @@ class L2NetworkDevice(ParamedModel, BaseModel):
     def remove(self, **kwargs):
         self.delete()
 
+    @property
+    def is_blocked(self):
+        """Returns state of network"""
+        return False
+
+    def block(self):
+        """Block all traffic in network"""
+        pass
+
+    def unblock(self):
+        """Unblock all traffic in network"""
+        pass
+
 
 class NetworkConfig(models.Model):
     class Meta(object):
@@ -442,7 +455,7 @@ class NetworkConfig(models.Model):
     parents = jsonfield.JSONField(default=[])
 
 
-class Interface(models.Model):
+class Interface(ParamedModel):
     class Meta(object):
         db_table = 'devops_interface'
         app_label = 'devops'
@@ -453,6 +466,10 @@ class Interface(models.Model):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
     type = models.CharField(max_length=255, null=False)
     model = choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
+
+    @property
+    def driver(self):
+        return self.node.driver
 
     # LEGACY, for fuel-qa compatibility if MULTIPLE_NETWORKS enabled
     @property
@@ -467,6 +484,12 @@ class Interface(models.Model):
     def addresses(self):
         return self.address_set.all()
 
+    def define(self):
+        self.save()
+
+    def remove(self):
+        self.delete()
+
     def add_address(self):
         ip = self.l2_network_device.address_pool.next_ip()
         Address.objects.create(
@@ -474,14 +497,27 @@ class Interface(models.Model):
             interface=self,
         )
 
-    @staticmethod
-    def interface_create(l2_network_device, node, label, type='network',
+    @property
+    def is_blocked(self):
+        """Show state of interface"""
+        return False
+
+    def block(self):
+        """Block traffic on interface"""
+        pass
+
+    def unblock(self):
+        """Unblock traffic on interface"""
+        pass
+
+    @classmethod
+    def interface_create(cls, l2_network_device, node, label, type='network',
                          mac_address=None, model='virtio'):
         """Create interface
 
         :rtype : Interface
         """
-        interface = Interface.objects.create(
+        interface = cls.objects.create(
             l2_network_device=l2_network_device,
             node=node,
             label=label,

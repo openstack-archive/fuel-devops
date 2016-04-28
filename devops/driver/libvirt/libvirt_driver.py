@@ -35,6 +35,7 @@ from devops import logger
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
 from devops.models.driver import Driver
+from devops.models.network import Interface
 from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
 from devops.models.volume import Volume
@@ -340,13 +341,15 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
     def bridge_name(self):
         return self._libvirt_network.bridgeName()
 
-    @retry()
+    @property
     def network_name(self):
         """Get network name
 
             :rtype : String
         """
-        return self._libvirt_network.name()
+        return underscored(
+            deepgetattr(self, 'group.environment.name'),
+            self.name)
 
     @retry()
     def is_active(self):
@@ -359,10 +362,10 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
     @retry()
     def define(self):
-        network_name = underscored(
-            deepgetattr(self, 'group.environment.name'),
-            self.name,
-        )
+        # define filter first
+        filter_xml = LibvirtXMLBuilder.build_network_filter(
+            name=self.network_name)
+        self.driver.conn.nwfilterDefineXML(filter_xml)
 
         bridge_name = 'virbr{0}'.format(self.id)
 
@@ -401,7 +404,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                         ))
 
         xml = LibvirtXMLBuilder.build_network_xml(
-            network_name=network_name,
+            network_name=self.network_name,
             bridge_name=bridge_name,
             addresses=addresses,
             forward=self.forward.mode,
@@ -480,6 +483,9 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                 # Remove network
                 if self._libvirt_network:
                     self._libvirt_network.undefine()
+                # Remove nwfiler
+                if self._nwfilter:
+                    self._nwfilter.undefine()
         super(LibvirtL2NetworkDevice, self).remove()
 
     @retry()
@@ -523,6 +529,39 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         except libvirt.libvirtError:
             return None
         iface.undefine()
+
+    @property
+    def _nwfilter(self):
+        """Returns NWFilter object"""
+        try:
+            return self.driver.conn.nwfilterLookupByName(self.network_name)
+        except libvirt.libvirtError:
+            logger.error("NWFilter not found by name: {}".format(
+                self.network_name))
+            return None
+
+    @property
+    def is_blocked(self):
+        """Returns state of network"""
+        filter_xml = ET.fromstring(self._nwfilter.XMLDesc())
+        return filter_xml.find('./rule') is not None
+
+    def block(self):
+        """Block all traffic in network"""
+        filter_xml = LibvirtXMLBuilder.build_network_filter(
+            name=self.network_name,
+            uuid=self._nwfilter.UUIDString(),
+            rule=dict(action='drop',
+                      direction='inout',
+                      priority='-1000'))
+        self.driver.conn.nwfilterDefineXML(filter_xml)
+
+    def unblock(self):
+        """Unblock all traffic in network"""
+        filter_xml = LibvirtXMLBuilder.build_network_filter(
+            name=self.network_name,
+            uuid=self._nwfilter.UUIDString())
+        self.driver.conn.nwfilterDefineXML(filter_xml)
 
 
 class LibvirtVolume(Volume):
@@ -777,12 +816,18 @@ class LibvirtNode(Node):
                             'implemented yet')
 
             l2_dev = interface.l2_network_device
+            filter_name = underscored(
+                deepgetattr(self, 'group.environment.name'),
+                l2_dev.name,
+                interface.mac_address
+            )
             local_interfaces.append(dict(
                 interface_type=interface.type,
                 interface_mac_address=interface.mac_address,
-                interface_network_name=l2_dev.network_name(),
+                interface_network_name=l2_dev.network_name,
                 interface_id=interface.id,
                 interface_model=interface.model,
+                interface_filter=filter_name,
             ))
 
         emulator = self.driver.get_capabilities().find(
@@ -1215,6 +1260,15 @@ class LibvirtNode(Node):
                 'snapshot with matching'
                 ' name {1}'.format(self.name, name))
 
+        # unblock all interfaces
+        for iface in self.interfaces:
+            if iface.is_blocked:
+                logger.info("Interface({}) in {} network has "
+                            "been unblocked".format(
+                                iface.mac_address,
+                                iface.l2_network_device.name))
+                iface.unblock()
+
     def _get_snapshot(self, name):
         """Get snapshot
 
@@ -1316,3 +1370,60 @@ class LibvirtNode(Node):
 #                libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
 #            snapshot = self._get_snapshot(name)
 #            snapshot.delete(libvirt.VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN)
+
+
+class LibvirtInterface(Interface):
+
+    def define(self):
+        filter_xml = LibvirtXMLBuilder.build_interface_filter(
+            name=self.nwfilter_name,
+            filterref=self.l2_network_device.network_name)
+        self.driver.conn.nwfilterDefineXML(filter_xml)
+
+        super(LibvirtInterface, self).define()
+
+    def remove(self):
+        if self._nwfilter:
+            self._nwfilter.undefine()
+        super(LibvirtInterface, self).remove()
+
+    @property
+    def nwfilter_name(self):
+        return underscored(
+            self.node.group.environment.name,
+            self.l2_network_device.name,
+            self.mac_address)
+
+    @property
+    def _nwfilter(self):
+        try:
+            return self.driver.conn.nwfilterLookupByName(self.nwfilter_name)
+        except libvirt.libvirtError:
+            logger.error("NWFilter not found by name: {}".format(
+                self.nwfilter_name))
+
+    @property
+    def is_blocked(self):
+        """Show state of interface"""
+        filter_xml = ET.fromstring(self._nwfilter.XMLDesc())
+        return filter_xml.find('./rule') is not None
+
+    def block(self):
+        """Block traffic on interface"""
+        filter_xml = LibvirtXMLBuilder.build_interface_filter(
+            name=self.nwfilter_name,
+            filterref=self.l2_network_device.network_name,
+            uuid=self._nwfilter.UUIDString(),
+            rule=dict(
+                action='drop',
+                direction='inout',
+                priority='-950'))
+        self.driver.conn.nwfilterDefineXML(filter_xml)
+
+    def unblock(self):
+        """Unblock traffic on interface"""
+        filter_xml = LibvirtXMLBuilder.build_interface_filter(
+            name=self.nwfilter_name,
+            filterref=self.l2_network_device.network_name,
+            uuid=self._nwfilter.UUIDString())
+        self.driver.conn.nwfilterDefineXML(filter_xml)
