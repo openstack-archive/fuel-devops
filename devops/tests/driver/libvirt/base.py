@@ -92,6 +92,11 @@ class LibvirtTestCase(TestCase):
         self.libvirt_stream_snd_mock = self.patch('libvirt.virStream.sendAll')
         self.libvirt_stream_fin_mock = self.patch('libvirt.virStream.finish')
 
+        self.libvirt_nwfilter_define_mock = self.patch(
+            'libvirt.virConnect.nwfilterDefineXML')
+        self.libvirt_nwfilter_lookup_mock = self.patch(
+            'libvirt.virConnect.nwfilterLookupByName')
+
         self._libvirt_clear_all()
         conn = LibvirtManager.get_connection('test:///default')
 
