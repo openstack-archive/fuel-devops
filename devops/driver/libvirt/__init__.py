@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from devops.driver.libvirt.libvirt_driver import \
+    LibvirtDiskDevice as DiskDevice
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver as Driver
 from devops.driver.libvirt.libvirt_driver import LibvirtInterface as Interface
 from devops.driver.libvirt.libvirt_driver import \
@@ -20,6 +22,7 @@ from devops.driver.libvirt.libvirt_driver import LibvirtVolume as Volume
 from devops.driver.libvirt.libvirt_driver import LibvirtNode as Node
 
 __all__ = [
+    'DiskDevice',
     'Driver',
     'Interface',
     'L2NetworkDevice',

@@ -41,6 +41,7 @@ from devops.models.driver import Driver
 from devops.models.network import Interface
 from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
+from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
 
 
@@ -623,6 +624,8 @@ class LibvirtVolume(Volume):
     capacity = ParamField(default=None)
     format = ParamField(default='qcow2', choices=('qcow2', 'raw'))
     source_image = ParamField(default=None)
+    serial = ParamField()
+    multipath_count = ParamField(default=0)
 
     @property
     def _libvirt_volume(self):
@@ -662,6 +665,8 @@ class LibvirtVolume(Volume):
         )
         libvirt_volume = pool.createXML(xml, 0)
         self.uuid = libvirt_volume.key()
+        if not self.serial:
+            self.serial = uuid.uuid4().hex
         super(LibvirtVolume, self).define()
 
         # Upload predefined image to the volume
@@ -850,6 +855,7 @@ class LibvirtNode(Node):
 
         local_disk_devices = []
         for disk in self.disk_devices:
+            wwn = '0' + ''.join(uuid.uuid4().hex)[:15]
             local_disk_devices.append(dict(
                 disk_type=disk.type,
                 disk_device=disk.device,
@@ -857,7 +863,8 @@ class LibvirtNode(Node):
                 disk_volume_path=disk.volume.get_path(),
                 disk_bus=disk.bus,
                 disk_target_dev=disk.target_dev,
-                disk_serial=uuid.uuid4().hex,
+                disk_serial=disk.volume.serial,
+                disk_wwn=wwn if disk.multipath_enabled else None
             ))
 
         local_interfaces = []
@@ -1412,6 +1419,26 @@ class LibvirtNode(Node):
         if target is not None:
             return target.get('dev')
 
+    def attach_volume(self, volume, device='disk', type='file',
+                      bus='virtio', target_dev=None):
+        """Attach volume to node
+
+        :rtype : DiskDevice
+        """
+        cls = self.driver.get_model_class('DiskDevice')
+
+        if volume.multipath_count:
+            for x in range(volume.multipath_count):
+                cls.objects.create(
+                    device=device, type=type, bus='scsi',
+                    target_dev=target_dev or self.next_disk_name(),
+                    volume=volume, node=self)
+        else:
+            return cls.objects.create(
+                device=device, type=type, bus=bus,
+                target_dev=target_dev or self.next_disk_name(),
+                volume=volume, node=self)
+
 
 #    #LEGACY, TO REMOVE, NOT USED ANYWHERE
 #    @retry()
@@ -1480,3 +1507,15 @@ class LibvirtInterface(Interface):
             filterref=self.l2_network_device.network_name,
             uuid=self._nwfilter.UUIDString())
         self.driver.conn.nwfilterDefineXML(filter_xml)
+
+
+class LibvirtDiskDevice(DiskDevice):
+
+    device = ParamField(default='disk', choices=('disk', 'cdrom'))
+    type = ParamField(default='file', choices=('file'))
+    bus = ParamField(default='virtio', choices=('virtio', 'ide', 'scsi'))
+    target_dev = ParamField()
+
+    @property
+    def multipath_enabled(self):
+        return self.volume.multipath_count > 0

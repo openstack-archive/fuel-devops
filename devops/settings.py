@@ -32,6 +32,8 @@ DRIVER_PARAMETERS = {
     'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
 
+MIDDLEWARE_CLASSES = []  # required for django
+
 INSTALLED_APPS = ['devops']
 
 DATABASES = {
