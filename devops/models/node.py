@@ -22,7 +22,6 @@ from devops.helpers.ssh_client import SSHClient
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
 from devops.models.network import NetworkConfig
-from devops.models.volume import DiskDevice
 
 
 class Node(ParamedModel, BaseModel):
@@ -228,13 +227,26 @@ class Node(ParamedModel, BaseModel):
             name=name,
             **params
         )
-        DiskDevice.node_attach_volume(
-            node=self,
+        # TODO(astudenov): make a separete section in template for disk devices
+        self.attach_volume(
             volume=volume,
             device=device,
             bus=bus,
         )
         return volume
+
+    # NEW
+    def attach_volume(self, volume, device='disk', type='file',
+                      bus='virtio', target_dev=None):
+        """Attach volume to node
+
+        :rtype : DiskDevice
+        """
+        cls = self.driver.get_model_class('DiskDevice')
+        return cls.objects.create(
+            device=device, type=type, bus=bus,
+            target_dev=target_dev or self.next_disk_name(),
+            volume=volume, node=self)
 
     # NEW
     def get_volume(self, **kwargs):

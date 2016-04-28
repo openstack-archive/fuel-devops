@@ -15,7 +15,6 @@
 from django.db import models
 
 from devops.models.base import BaseModel
-from devops.models.base import choices
 from devops.models.base import ParamedModel
 
 
@@ -43,26 +42,10 @@ class Volume(ParamedModel, BaseModel):
         self.delete()
 
 
-class DiskDevice(models.Model):
+class DiskDevice(ParamedModel):
     class Meta(object):
         db_table = 'devops_diskdevice'
         app_label = 'devops'
 
     node = models.ForeignKey('Node', null=False)
     volume = models.ForeignKey('Volume', null=True)
-    device = choices('disk', 'cdrom')
-    type = choices('file')
-    bus = choices('virtio')
-    target_dev = models.CharField(max_length=255, null=False)
-
-    @classmethod
-    def node_attach_volume(cls, node, volume, device='disk', type='file',
-                           bus='virtio', target_dev=None):
-        """Attach volume to node
-
-        :rtype : DiskDevice
-        """
-        return cls.objects.create(
-            device=device, type=type, bus=bus,
-            target_dev=target_dev or node.next_disk_name(),
-            volume=volume, node=node)

@@ -177,8 +177,6 @@ class TestLibvirtDriverDeviceNames(LibvirtTestCase):
 
         self.d = self.group.driver
 
-        self.d._device_name_generators = dict()
-
         self.dev_mock = mock.Mock(spec=libvirt.virNodeDevice)
         self.dev_mock.listCaps.return_value = ['net']
         self.dev_mock.XMLDesc.return_value = """
