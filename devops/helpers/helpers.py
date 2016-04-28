@@ -292,7 +292,7 @@ def get_file_size(path):
     """Get size of file-like object
 
     :type path: str
-    :rtype : int
+    :rtype: int
     """
 
     return os.stat(path).st_size

@@ -215,94 +215,96 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
        Template example
        ----------------
-       # Nodes should have at least two interfaces connected to the following
-       # L2 networks:
-       # admin: for admin/PXE network
-       # openstack_br: for all other tagged networks.
+       .. code-block::yaml
+           # Nodes should have at least two interfaces connected to the
+           # following L2 networks:
+           # admin: for admin/PXE network
+           # openstack_br: for all other tagged networks.
 
-       l2_network_devices:  # Libvirt bridges. It is *NOT* Nailgun networks
+           l2_network_devices:  # Libvirt bridges. It is *NOT* Nailgun networks
 
-         # Admin/PXE network
-         # Virtual nodes can be connected here (Fuel master, OpenStack nodes).
-         # A physical interface ${BAREMETAL_ADMIN_IFACE} will be added
-         # to the libvirt network with name 'admin' to allow connectivity
-         # between VMs, baremetal servers and system tests on this server.
-         admin:
-           address_pool: fuelweb_admin-pool01
-           dhcp: false
-           forward:
-             mode: nat
-           parent_iface:
-             phys_dev: !os_env BAREMETAL_ADMIN_IFACE
+             # Admin/PXE network
+             # Virtual nodes can be connected here
+             # (Fuel master, OpenStack nodes).
+             # A physical interface ${BAREMETAL_ADMIN_IFACE} will be added
+             # to the libvirt network with name 'admin' to allow connectivity
+             # between VMs, baremetal servers and system tests on this server.
+             admin:
+               address_pool: fuelweb_admin-pool01
+               dhcp: false
+               forward:
+                 mode: nat
+               parent_iface:
+                 phys_dev: !os_env BAREMETAL_ADMIN_IFACE
 
-         # Libvirt bridge dedicated for access to a baremetal network
-         # ${BAREMETAL_OS_NETS_IFACE} with tagged OpenStack networks.
-         # This is intermediate bridge, where tagged interfaces with tags
-         # 100, 101 and 102 will be created, to get untagged access
-         # to the tagged networks.
-         # IT IS *NOT* FOR ADDING ADDRESS POOLS!
-         # ONLY FOR CONNECTING VM's INTERFACES!
-         openstack_br:
-           vlan_ifaces:
-            - 100
-            - 101
-            - 102
-            - 103
-           parent_iface:
-             phys_dev: !os_env BAREMETAL_OS_NETS_IFACE
+             # Libvirt bridge dedicated for access to a baremetal network
+             # ${BAREMETAL_OS_NETS_IFACE} with tagged OpenStack networks.
+             # This is intermediate bridge, where tagged interfaces with tags
+             # 100, 101 and 102 will be created, to get untagged access
+             # to the tagged networks.
+             # IT IS *NOT* FOR ADDING ADDRESS POOLS!
+             # ONLY FOR CONNECTING VM's INTERFACES!
+             openstack_br:
+               vlan_ifaces:
+                - 100
+                - 101
+                - 102
+                - 103
+               parent_iface:
+                 phys_dev: !os_env BAREMETAL_OS_NETS_IFACE
 
-         # Public libvirt bridge, only for keeping IP address.
-         # 'nat' forward can be ommited if the baremetal network has
-         # it's own gateway.
-         # This l2 libvirt network can be ommited if no access required
-         # from system tests to the nodes via public addresses.
-         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
-         # ONLY FOR ACCESS TO THE PUBLIC NETWORK ADDRESSES
-         # AND 'NAT' FROM PUBLIC TO WAN.
-         public:
-           address_pool: public-pool01
-           dhcp: false
-           forward:
-             mode: nat
-           parent_iface:
-             l2_net_dev: openstack_br
-             tag: 100
+             # Public libvirt bridge, only for keeping IP address.
+             # 'nat' forward can be omitted if the baremetal network has
+             # it's own gateway.
+             # This l2 libvirt network can be omitted if no access required
+             # from system tests to the nodes via public addresses.
+             # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+             # ONLY FOR ACCESS TO THE PUBLIC NETWORK ADDRESSES
+             # AND 'NAT' FROM PUBLIC TO WAN.
+             public:
+               address_pool: public-pool01
+               dhcp: false
+               forward:
+                 mode: nat
+               parent_iface:
+                 l2_net_dev: openstack_br
+                 tag: 100
 
-         # Storage libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
-         # from system tests to the nodes via storage addresses.
-         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
-         # ONLY FOR ACCESS TO THE STORAGE NETWORK ADDRESSES
-         storage:
-           address_pool: storage-pool01
-           dhcp: false
-           parent_iface:
-             l2_net_dev: openstack_br
-             tag: 101
+             # Storage libvirt bridge, only for keeping IP address.
+             # This l2 libvirt network can be omitted if no access required
+             # from system tests to the nodes via storage addresses.
+             # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+             # ONLY FOR ACCESS TO THE STORAGE NETWORK ADDRESSES
+             storage:
+               address_pool: storage-pool01
+               dhcp: false
+               parent_iface:
+                 l2_net_dev: openstack_br
+                 tag: 101
 
-         # Management libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
-         # from system tests to the nodes via management addresses.
-         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
-         # ONLY FOR ACCESS TO THE MANAGEMENT NETWORK ADDRESSES
-         management:
-           address_pool: management-pool01
-           dhcp: false
-           parent_iface:
-             l2_net_dev: openstack_br
-             tag: 102
+             # Management libvirt bridge, only for keeping IP address.
+             # This l2 libvirt network can be omitted if no access required
+             # from system tests to the nodes via management addresses.
+             # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+             # ONLY FOR ACCESS TO THE MANAGEMENT NETWORK ADDRESSES
+             management:
+               address_pool: management-pool01
+               dhcp: false
+               parent_iface:
+                 l2_net_dev: openstack_br
+                 tag: 102
 
-         # Private libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
-         # from system tests to the nodes via private addresses.
-         # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
-         # ONLY FOR ACCESS TO THE PRIVATE NETWORK ADDRESSES
-         private:
-           address_pool: private-pool01
-           dhcp: false
-           parent_iface:
-             l2_net_dev: openstack_br
-             tag: 103
+             # Private libvirt bridge, only for keeping IP address.
+             # This l2 libvirt network can be omitted if no access required
+             # from system tests to the nodes via private addresses.
+             # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
+             # ONLY FOR ACCESS TO THE PRIVATE NETWORK ADDRESSES
+             private:
+               address_pool: private-pool01
+               dhcp: false
+               parent_iface:
+                 l2_net_dev: openstack_br
+                 tag: 103
 
     Note: This class is imported as L2NetworkDevice at .__init__.py
     """

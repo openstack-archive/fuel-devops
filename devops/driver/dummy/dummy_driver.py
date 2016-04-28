@@ -39,16 +39,16 @@ class DummyDriver(Driver):
     group['driver']['params']
 
     yaml example:
-
-    groups:
-    - name: rack-01
-      driver:
-        name: devops.driver.dummy.dummy_driver
-        params:
-          dummy_parameter: 15
-          choice_parameter: two
-          nested:
-            parameter: abc
+    .. code-block::yaml
+        groups:
+        - name: rack-01
+          driver:
+            name: devops.driver.dummy.dummy_driver
+            params:
+              dummy_parameter: 15
+              choice_parameter: two
+              nested:
+                parameter: abc
 
     """
 
@@ -78,17 +78,17 @@ class DummyL2NetworkDevice(L2NetworkDevice):
     L2NetworkDevice represents node/device which acts like switch or router
 
     yaml example:
+    .. code-block::yaml
+        l2_network_devices:
+          admin:
+            address_pool: fuelweb_admin-pool01
+            dhcp: false
+            other: abcd
 
-    l2_network_devices:
-      admin:
-        address_pool: fuelweb_admin-pool01
-        dhcp: false
-        other: abcd
-
-      public:
-        address_pool: public-pool01
-        dhcp: false
-        other: efgh
+          public:
+            address_pool: public-pool01
+            dhcp: false
+            other: efgh
 
     """
 
@@ -201,28 +201,31 @@ class DummyNode(Node):
     node role
 
     yaml example:
+    .. code-block::yaml
+        nodes:
+        - name: slave
+          role: fuel_slave
+          params:
+            cpu: 2
+            memory: 3072
+            boot:
+              - hd
+              - cdrom
 
-    nodes:
-    - name: slave
-      role: fuel_slave
-      params:
-        cpu: 2
-        memory: 3072
-        boot:
-          - hd
-          - cdrom
-        volumes:
-         - name: system
-           size: 75
-           format: qcow2
-        interfaces:
-         - label: eth0
-           l2_network_device: admin
-           interface_model: e1000
-        network_config:
-          eth0:
-            networks:
-             - fuelweb_admin
+            volumes:
+             - name: system
+               size: 75
+               format: qcow2
+
+            interfaces:
+             - label: eth0
+               l2_network_device: admin
+               interface_model: e1000
+
+            network_config:
+              eth0:
+                networks:
+                 - fuelweb_admin
     """
 
     cpu = ParamField(default=1)

@@ -33,70 +33,75 @@ from devops.models.base import ParamField
 class AddressPool(ParamedModel, BaseModel):
     """Address pool
 
-    address_pools:
-      <address_pool_name>:
-        net: <IPNetwork[:prefix]>
-        params:  # Optional params for the address pool
-          vlan_start: <int>
-          vlan_end: <int>
-          ip_reserved:
-            <'gateway'>:<int|IPAddress>            # Reserved for gateway.
-            <'l2_network_device'>:<int|IPAddress>  # Reserved for local IP
-                                                   # for libvirt networks.
-            ...  # user-defined IPs (for fuel-qa)
-          ip_ranges:
-            <group_name>: [<int|IPAddress>, <int|IPAddress>]
-            ...  # user-defined ranges (for fuel-qa, 'floating' for example)
+    .. code-block::yaml
+        address_pools:
+          <address_pool_name>:
+            net: <IPNetwork[:prefix]>
+            params:  # Optional params for the address pool
+              vlan_start: <int>
+              vlan_end: <int>
+              ip_reserved:
+                <'gateway'>:<int|IPAddress>            # Reserved for gateway.
+                <'l2_network_device'>:<int|IPAddress>  # Reserved for local IP
+                                                       # for libvirt networks.
+                ...  # user-defined IPs (for fuel-qa)
+              ip_ranges:
+                <group_name>: [<int|IPAddress>, <int|IPAddress>]
+                ...  # user-defined ranges
+                ...  # (for fuel-qa, 'floating' for example)
 
 
     Template example (address_pools):
     ---------------------------------
-    address_pools:
+    .. code-block::yaml
+        address_pools:
 
-      fuelweb_admin-pool01:
-        net: 172.0.0.0/16:24
-        params:
-          ip_reserved:
-            gateway: 1
-            l2_network_device: 1  # l2_network_device will get the
-                                  # IP address = 172.0.*.1  (net + 1)
-          ip_ranges:
-            default: [2, -2]     # admin IP range for 'default' nodegroup name
+          fuelweb_admin-pool01:
+            net: 172.0.0.0/16:24
+            params:
+              ip_reserved:
+                gateway: 1
+                l2_network_device: 1  # l2_network_device will get the
+                                      # IP address = 172.0.*.1  (net + 1)
+              ip_ranges:
+                default: [2, -2]  # admin IP range for 'default' nodegroup name
 
-      public-pool01:
-        net: 12.34.56.0/26    # Some WAN routed to the test host.
-        params:
-          vlan_start: 100
-          ip_reserved:
-            gateway: 12.34.56.1
-            l2_network_device: 12.34.56.62 # l2_network_device will be assumed
-                                           # with this IP address.
-                                           # It will be used for create libvirt
-                                           # network if libvirt driver is used.
-          ip_ranges:
-            default: [2, 127]   # public IP range for 'default' nodegroup name
-            floating: [128, -2] # floating IP range
+          public-pool01:
+            net: 12.34.56.0/26    # Some WAN routed to the test host.
+            params:
+              vlan_start: 100
+              ip_reserved:
+                gateway: 12.34.56.1
+                l2_network_device: 12.34.56.62
+                # l2_network_device will be assumed
+                # with this IP address.
+                # It will be used for create libvirt
+                # network if libvirt driver is used.
+              ip_ranges:
+                default: [2, 127]
+                # public IP range for 'default' nodegroup name
+                floating: [128, -2] # floating IP range
 
-      storage-pool01:
-        net: 172.0.0.0/16:24
-        params:
-          vlan_start: 101
-          ip_reserved:
-            l2_network_device: 1  # 172.0.*.1
+          storage-pool01:
+            net: 172.0.0.0/16:24
+            params:
+              vlan_start: 101
+              ip_reserved:
+                l2_network_device: 1  # 172.0.*.1
 
-      management-pool01:
-        net: 172.0.0.0/16:24
-        params:
-          vlan_start: 102
-          ip_reserved:
-            l2_network_device: 1  # 172.0.*.1
+          management-pool01:
+            net: 172.0.0.0/16:24
+            params:
+              vlan_start: 102
+              ip_reserved:
+                l2_network_device: 1  # 172.0.*.1
 
-      private-pool01:
-        net: 192.168.0.0/24:26
-        params:
-          vlan_start: 103
-          ip_reserved:
-            l2_network_device: 1  # 192.168.*.1
+          private-pool01:
+            net: 192.168.0.0/24:26
+            params:
+              vlan_start: 103
+              ip_reserved:
+                l2_network_device: 1  # 192.168.*.1
 
     """
     class Meta(object):
@@ -282,32 +287,32 @@ class NetworkPool(BaseModel):
     different AddressPools can be specified for each node group:
 
     Template example (network_pools):
-    -----------------
+    ---------------------------------
+    .. code-block::yaml
+        groups:
+         - name: default
 
-    groups:
-     - name: default
+           network_pools:  # Address pools for OpenStack networks.
+             # Actual names should be used for keys
+             # (the same as in Nailgun, for example)
 
-       network_pools:  # Address pools for OpenStack networks.
-         # Actual names should be used for keys
-         # (the same as in Nailgun, for example)
+             fuelweb_admin: fuelweb_admin-pool01
+             public: public-pool01
+             storage: storage-pool01
+             management: management-pool01
+             private: private-pool01
 
-         fuelweb_admin: fuelweb_admin-pool01
-         public: public-pool01
-         storage: storage-pool01
-         management: management-pool01
-         private: private-pool01
+         - name: second_node_group
 
-     - name: second_node_group
+           network_pools:
+             # The same address pools for admin/PXE and management networks
+             fuelweb_admin: fuelweb_admin-pool01
+             management: management-pool01
 
-       network_pools:
-         # The same address pools for admin/PXE and management networks
-         fuelweb_admin: fuelweb_admin-pool01
-         management: management-pool01
-
-         # Another address pools for public, storage and private
-         public: public-pool02
-         storage: storage-pool02
-         private: private-pool02
+             # Another address pools for public, storage and private
+             public: public-pool02
+             storage: storage-pool02
+             private: private-pool02
 
 
     :attribute name: name of one of the OpenStack(Nailgun) networks
@@ -331,10 +336,11 @@ class NetworkPool(BaseModel):
         was not set:
         :param relative_start: int, default value for start of 'range_name'.
                                relative from address_pool.ip_network, default=2
-        :param relavite_end: int, default value for end of 'range_name'.
+
+        :param relative_end: int, default value for end of 'range_name'.
                              relative from address_pool.ip_network, default=-2
 
-        :return: touple of two IPs for the range - ('x.x.x.x', 'y.y.y.y')
+        :return: tuple of two IPs for the range - ('x.x.x.x', 'y.y.y.y')
 
         If 'range_name' is None: group.name is used as a default range.
         If 'range_name' not found in self.address_pool.ip_ranges:

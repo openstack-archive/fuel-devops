@@ -47,8 +47,8 @@ class BaseModel(models.Model):
 class ParamedModelType(ModelBase):
     """Metaclass of parameterizable class.
 
-    It implements the following functinality:
-    * Automaticlly sets Meta.abstract = True for all derived classes
+    It implements the following functionality:
+    * Automatically sets Meta.abstract = True for all derived classes
     except the first one.
     * Initializes :class:`ParamFieldBase` classes with `param_key`.
     * Saves the keys of :class:`ParamFieldBase` attributes in
@@ -56,7 +56,7 @@ class ParamedModelType(ModelBase):
     * Gives an ability to set :class:`ParamFieldBase` values in
     constructor and combine the with other attributes defined in djano
     model.
-    * Automaticlly replaces `instance.__class__` fter creation of
+    * Automatically replaces `instance.__class__` fter creation of
     instance in method `__call__`. It is the major thing to make the
     derived models polymorphic.
     """
@@ -154,7 +154,7 @@ class ParamField(ParamFieldBase):
     * to set default value.
     * to limit values using a list of allowed values.
 
-    Examples of ussage::
+    Examples of usage::
 
         class A(ParamedModel):
             foo = ParamField(default=10)
@@ -200,7 +200,7 @@ class ParamMultiField(ParamFieldBase):
     Acts the same way as :class:`ParamField` but should be used in case
     if you want to use nested fields.
 
-    Examples of ussage::
+    Examples of usage::
 
         class A(ParamedModel):
             foo = ParamMultiField(
@@ -345,13 +345,14 @@ class ParamedModel(six.with_metaclass(ParamedModelType, models.Model)):
     by extra fields by using :class:`ParamField` and :class:`ParamMultiField`.
     First derived class of :class:`ParamModel` must be non-abstract to
     create a real database table and all subsequent derived classes are
-    atomaticlly marked as abstract by :class:`ParamedModelType`. This is
+    automatically marked as abstract by :class:`ParamedModelType`. This is
     made to avoid creation of db tables for derived classes. See mode
     info about how it is implemented in metaclass :class:`ParamedModelType`.
 
     The class has two fields:
     * params - this is a jsonfield where all extra fields are stored and
                serialized to json string when the instance is saved to db
+
     * _class - a :class:`ParamField` which stores path to the derived
                class. It allows to load the same derived class after
                loading data from db.
