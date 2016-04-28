@@ -185,8 +185,7 @@ def get_ip_from_json(js, mac):
                     mac, node['ip']))
                 return node['ip']
     raise DevopsError(
-        'There is no match between MAC {} and Nailgun MACs')\
-        .format(mac)
+        'There is no match between MAC {0} and Nailgun MACs'.format(mac))
 
 
 def get_slave_ip(env, node_mac_address):
