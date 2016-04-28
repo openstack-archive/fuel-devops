@@ -27,7 +27,6 @@ from devops import logger
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
 from devops.models.base import ParamField
-from devops.models.network import Interface
 from devops.models.network import NetworkConfig
 from devops.models.volume import DiskDevice
 
@@ -67,6 +66,8 @@ class Node(ParamedModel, BaseModel):
         return ExtCls(node=self)
 
     def define(self, *args, **kwargs):
+        for iface in self.interfaces:
+            iface.define()
         self.save()
 
     def start(self, *args, **kwargs):
@@ -80,6 +81,8 @@ class Node(ParamedModel, BaseModel):
 
     def remove(self, *args, **kwargs):
         self.erase_volumes()
+        for iface in self.interfaces:
+            iface.remove()
         self.delete()
 
     def suspend(self, *args, **kwargs):
@@ -197,7 +200,8 @@ class Node(ParamedModel, BaseModel):
         else:
             l2_network_device = None
 
-        Interface.interface_create(
+        cls = self.driver.get_model_class('Interface')
+        return cls.interface_create(
             node=self,
             label=label,
             l2_network_device=l2_network_device,
