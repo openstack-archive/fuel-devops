@@ -96,6 +96,8 @@ class LibvirtTestCase(TestCase):
             'libvirt.virConnect.nwfilterDefineXML')
         self.libvirt_nwfilter_lookup_mock = self.patch(
             'libvirt.virConnect.nwfilterLookupByName')
+        self.libvirt_list_all_devs_mock = self.patch(
+            'libvirt.virConnect.listAllDevices')
 
         self._libvirt_clear_all()
         conn = LibvirtManager.get_connection('test:///default')
