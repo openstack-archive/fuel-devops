@@ -272,7 +272,7 @@ class Environment(BaseModel):
 
         :param full_config: object that describes all the parameters of
                             created environment
-            :rtype: Environment
+        :rtype: Environment
         """
 
         config = full_config['template']['devops_settings']

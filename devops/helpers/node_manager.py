@@ -29,7 +29,7 @@ def admin_wait_bootstrap(puppet_timeout, env):
 
     param: puppet_timeout: Integer
     param: env: Environment
-        :rtype : None
+    :rtype : None
     """
 
     print("Waiting while bootstrapping is in progress")
@@ -48,7 +48,7 @@ def admin_prepare_disks(node, disk_size):
 
     param: node: Node
     param: disk_size: Integer
-        :rtype : None
+    :rtype : None
     """
 
     disks = node.disk_devices
@@ -83,7 +83,7 @@ def admin_change_config(admin_node,
     param: admin_node: Node
     param: hostname: String
     param: dns1: String
-        :rtype : None
+    :rtype : None
     """
     admin_net = admin_node.environment.get_network(name='admin')
     keys = get_keys(
