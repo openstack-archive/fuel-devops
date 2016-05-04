@@ -103,7 +103,11 @@ class Shell(object):
         self.env.revert(self.snapshot_name, flag=False)
 
     def do_snapshot(self):
-        self.env.snapshot(self.snapshot_name)
+        if self.env.has_snapshot(self.snapshot_name):
+            sys.exit("Snapshot with name {0} already exists."
+                     .format(self.snapshot_name))
+        else:
+            self.env.snapshot(self.snapshot_name)
 
     def do_synchronize(self):
         Environment.synchronize_all()
