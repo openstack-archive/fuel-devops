@@ -299,3 +299,6 @@ LIBVIRT_IF_PREFIX = os.environ.get("LIBVIRT_IF_PREFIX",
 # Allow to create networks with the same CIDR for different environments.
 # All other libvirt networks should be destroyed before creating new networks.
 REUSE_NETWORK_POOLS = os.environ.get("REUSE_NETWORK_POOLS", False)
+
+# Enable creating nwfilters for libvirt networks and interfaces
+ENABLE_LIBVIRT_NWFILTERS = get_var_as_bool('ENABLE_LIBVIRT_NWFILTERS', False)
