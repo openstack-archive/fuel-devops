@@ -140,7 +140,7 @@ class LibvirtXMLBuilder(object):
     @classmethod
     def _build_disk_device(cls, device_xml, disk_type, disk_device,
                            disk_volume_format, disk_volume_path, disk_bus,
-                           disk_target_dev, disk_serial):
+                           disk_target_dev, disk_serial, disk_wwn):
         """Build xml for disk
 
         :param device_xml: XMLBuilder
@@ -162,6 +162,8 @@ class LibvirtXMLBuilder(object):
                     dev=disk_target_dev,
                     bus=disk_bus)
             device_xml.serial(disk_serial)
+            if disk_wwn:
+                device_xml.wwn(disk_wwn)
 
     @classmethod
     def _build_interface_device(cls, device_xml, interface_type,
