@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from devops.models import DiskDevice
 from devops.driver.dummy.dummy_driver import DummyDriver as Driver
 from devops.models import Interface
 from devops.driver.dummy.dummy_driver import \
@@ -20,6 +21,7 @@ from devops.driver.dummy.dummy_driver import DummyVolume as Volume
 from devops.driver.dummy.dummy_driver import DummyNode as Node
 
 __all__ = [
+    'DiskDevice',
     'Driver',
     'Interface',
     'L2NetworkDevice',

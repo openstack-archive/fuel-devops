@@ -16,7 +16,7 @@
 from django.test import TestCase
 import mock
 
-
+from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from devops.driver.libvirt.libvirt_driver import LibvirtManager
 
 CAPS_XML = """
@@ -88,6 +88,9 @@ class LibvirtTestCase(TestCase):
         return m
 
     def setUp(self):
+        # reset device names
+        LibvirtDriver._device_name_generators = {}
+
         self.libvirt_vol_up_mock = self.patch('libvirt.virStorageVol.upload')
         self.libvirt_stream_snd_mock = self.patch('libvirt.virStream.sendAll')
         self.libvirt_stream_fin_mock = self.patch('libvirt.virStream.finish')

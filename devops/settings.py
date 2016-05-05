@@ -32,6 +32,8 @@ DRIVER_PARAMETERS = {
     'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
 
+MIDDLEWARE_CLASSES = []  # required for django
+
 INSTALLED_APPS = ['devops']
 
 DATABASES = {
@@ -212,6 +214,8 @@ HARDWARE = {
 }
 
 USE_ALL_DISKS = get_var_as_bool('USE_ALL_DISKS', True)
+SLAVE_MULTIPATH_DISKS_COUNT = int(
+    os.environ.get("SLAVE_MULTIPATH_DISKS_COUNT", 0))
 ISO_PATH = os.environ.get('ISO_PATH')
 
 IRONIC_ENABLED = get_var_as_bool('IRONIC_ENABLED', False)
