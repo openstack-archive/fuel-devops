@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
-                ('net', models.CharField(unique=True, max_length=255)),
+                ('net', models.CharField(max_length=255, unique=True)),
             ],
             options={
                 'db_table': 'devops_address_pool',
@@ -41,10 +41,7 @@ class Migration(migrations.Migration):
             name='DiskDevice',
             fields=[
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
-                ('device', models.CharField(choices=[('disk', 'disk'), ('cdrom', 'cdrom')], max_length=255)),
-                ('type', models.CharField(choices=[('file', 'file')], max_length=255)),
-                ('bus', models.CharField(choices=[('virtio', 'virtio')], max_length=255)),
-                ('target_dev', models.CharField(max_length=255)),
+                ('params', jsonfield.fields.JSONField(default={})),
             ],
             options={
                 'db_table': 'devops_diskdevice',
@@ -67,7 +64,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
-                ('name', models.CharField(unique=True, max_length=255)),
+                ('name', models.CharField(max_length=255, unique=True)),
             ],
             options={
                 'db_table': 'devops_environment',
@@ -78,8 +75,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('params', jsonfield.fields.JSONField(default={})),
-                ('label', models.CharField(null=True, max_length=255)),
-                ('mac_address', models.CharField(unique=True, max_length=255)),
+                ('label', models.CharField(max_length=255, null=True)),
+                ('mac_address', models.CharField(max_length=255, unique=True)),
                 ('type', models.CharField(max_length=255)),
                 ('model', models.CharField(choices=[('virtio', 'virtio'), ('e1000', 'e1000'), ('pcnet', 'pcnet'), ('rtl8139', 'rtl8139'), ('ne2k_pci', 'ne2k_pci')], max_length=255)),
             ],
@@ -94,7 +91,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
-                ('address_pool', models.ForeignKey(null=True, to='devops.AddressPool')),
+                ('address_pool', models.ForeignKey(to='devops.AddressPool', null=True)),
             ],
             options={
                 'db_table': 'devops_l2_network_device',
@@ -106,7 +103,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('label', models.CharField(max_length=255)),
                 ('networks', jsonfield.fields.JSONField(default=[])),
-                ('aggregation', models.CharField(null=True, max_length=255)),
+                ('aggregation', models.CharField(max_length=255, null=True)),
                 ('parents', jsonfield.fields.JSONField(default=[])),
             ],
             options={
@@ -119,7 +116,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('name', models.CharField(max_length=255)),
-                ('address_pool', models.ForeignKey(null=True, to='devops.AddressPool')),
+                ('address_pool', models.ForeignKey(to='devops.AddressPool', null=True)),
             ],
             options={
                 'db_table': 'devops_network_pool',
@@ -132,7 +129,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
-                ('role', models.CharField(null=True, max_length=255)),
+                ('role', models.CharField(max_length=255, null=True)),
             ],
             options={
                 'db_table': 'devops_node',
@@ -145,8 +142,8 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
-                ('backing_store', models.ForeignKey(null=True, to='devops.Volume')),
-                ('node', models.ForeignKey(null=True, to='devops.Node')),
+                ('backing_store', models.ForeignKey(to='devops.Volume', null=True)),
+                ('node', models.ForeignKey(to='devops.Node', null=True)),
             ],
             options={
                 'db_table': 'devops_volume',
@@ -157,8 +154,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('name', models.CharField(max_length=255)),
-                ('driver', models.OneToOneField(serialize=False, primary_key=True, to='devops.Driver')),
-                ('environment', models.ForeignKey(null=True, to='devops.Environment')),
+                ('driver', models.OneToOneField(serialize=False, to='devops.Driver', primary_key=True)),
+                ('environment', models.ForeignKey(to='devops.Environment', null=True)),
             ],
             options={
                 'db_table': 'devops_group',
@@ -172,7 +169,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='interface',
             name='l2_network_device',
-            field=models.ForeignKey(null=True, to='devops.L2NetworkDevice'),
+            field=models.ForeignKey(to='devops.L2NetworkDevice', null=True),
         ),
         migrations.AddField(
             model_name='interface',
@@ -187,7 +184,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='diskdevice',
             name='volume',
-            field=models.ForeignKey(null=True, to='devops.Volume'),
+            field=models.ForeignKey(to='devops.Volume', null=True),
         ),
         migrations.AddField(
             model_name='addresspool',
@@ -197,7 +194,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='address',
             name='interface',
-            field=models.ForeignKey(null=True, to='devops.Interface'),
+            field=models.ForeignKey(to='devops.Interface', null=True),
         ),
         migrations.AlterUniqueTogether(
             name='volume',
@@ -206,17 +203,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='group',
-            field=models.ForeignKey(null=True, to='devops.Group'),
+            field=models.ForeignKey(to='devops.Group', null=True),
         ),
         migrations.AddField(
             model_name='networkpool',
             name='group',
-            field=models.ForeignKey(null=True, to='devops.Group'),
+            field=models.ForeignKey(to='devops.Group', null=True),
         ),
         migrations.AddField(
             model_name='l2networkdevice',
             name='group',
-            field=models.ForeignKey(null=True, to='devops.Group'),
+            field=models.ForeignKey(to='devops.Group', null=True),
         ),
         migrations.AlterUniqueTogether(
             name='addresspool',
