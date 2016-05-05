@@ -313,31 +313,41 @@ class DevopsDriver(object):
         return self.conn.nwfilterDefineXML(
             self.xml_builder.build_network_filter(network))
 
+    def get_network_filter(self, network):
+        network_name = "{}_{}".format(network.environment.name, network.name)
+        try:
+            return self.conn.nwfilterLookupByName(network_name)
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_NWFILTER:
+                return None
+            else:
+                raise
+
     @retry()
     def network_filter_undefine(self, network):
         """Undefine network filter"""
-        network_name = "{}_{}".format(network.environment.name, network.name)
-        try:
-            nwfilter = self.conn.nwfilterLookupByName(network_name)
-        except libvirt.libvirtError:
-            logger.error("Network filter {} not found.".format(network_name))
-            return
-        return nwfilter.undefine()
+        nwfilter = self.get_network_filter(network)
+        if nwfilter is not None:
+            nwfilter.undefine()
 
     @retry()
     def network_block_status(self, network):
         """Return network block status"""
-        filter_xml = self.conn.nwfilterLookupByName(
-            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_network_filter(network)
+        if nwfilter is None:
+            return False
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         return filter_xml.find('./rule') is not None
 
     @retry()
     def network_block(self, network):
         """Block all traffic in network"""
-        filter_xml = self.conn.nwfilterLookupByName(
-            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_network_filter(network)
+        if nwfilter is None:
+            raise DevopsError(
+                "Unable to block network {0}: nwfilter not found!"
+                .format(network.name))
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         rule = ET.Element(
             'rule',
             {'action': 'drop', 'direction': "inout", 'priority': '-1000'})
@@ -348,9 +358,12 @@ class DevopsDriver(object):
     @retry()
     def network_unblock(self, network):
         """Unblock all traffic in network"""
-        filter_xml = self.conn.nwfilterLookupByName(
-            "{}_{}".format(network.environment.name, network.name)).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_network_filter(network)
+        if nwfilter is None:
+            raise DevopsError(
+                "Unable to unblock network {0}: nwfilter not found!"
+                .format(network.name))
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         filter_xml.find('.').remove(filter_xml.find('./rule'))
         self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
 
@@ -359,42 +372,45 @@ class DevopsDriver(object):
         self.conn.nwfilterDefineXML(
             self.xml_builder.build_interface_filter(interface))
 
-    @retry()
-    def interface_filter_undefine(self, interface):
-        """Undefine interface filter"""
+    def get_interface_filter(self, interface):
         iface_name = "{}_{}_{}".format(
             interface.network.environment.name,
             interface.network.name,
             interface.mac_address)
         try:
-            nwfilter = self.conn.nwfilterLookupByName(iface_name)
-        except libvirt.libvirtError:
-            logger.error("Interface filter {} not found.".format(iface_name))
-            return
+            return self.conn.nwfilterLookupByName(iface_name)
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_NWFILTER:
+                return None
+            else:
+                raise
 
-        nwfilter.undefine()
+    @retry()
+    def interface_filter_undefine(self, interface):
+        """Undefine interface filter"""
+        nwfilter = self.get_interface_filter(interface)
+        if nwfilter is not None:
+            nwfilter.undefine()
 
     @retry()
     def interface_block_status(self, interface):
         """Return block status of interface"""
-        filter_xml = self.conn.nwfilterLookupByName(
-            "{}_{}_{}".format(
-                interface.network.environment.name,
-                interface.network.name,
-                interface.mac_address)).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_interface_filter(interface)
+        if nwfilter is None:
+            return False
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         return filter_xml.find('./rule') is not None
 
     @retry()
     def interface_block(self, interface):
         """Block traffic on interface"""
-        net_filter_name = "{}_{}".format(interface.network.environment.name,
-                                         interface.network.name)
-        iface_filter_name = "{}_{}".format(net_filter_name,
-                                           interface.mac_address)
-        filter_xml = self.conn.nwfilterLookupByName(
-            iface_filter_name).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_interface_filter(interface)
+        if nwfilter is None:
+            raise DevopsError(
+                "Unable to block interface {0}_{1} on node {2}: nwfilter not"
+                " found!".format(interface.name, interface.mac_address,
+                                 interface.node.name))
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         rule = ET.Element(
             'rule',
             {'action': 'drop', 'direction': "inout", 'priority': '-950'})
@@ -405,13 +421,13 @@ class DevopsDriver(object):
     @retry()
     def interface_unblock(self, interface):
         """Unblock traffic on interface"""
-        net_filter_name = "{}_{}".format(interface.network.environment.name,
-                                         interface.network.name)
-        iface_filter_name = "{}_{}".format(net_filter_name,
-                                           interface.mac_address)
-        filter_xml = self.conn.nwfilterLookupByName(
-            iface_filter_name).XMLDesc()
-        filter_xml = ET.fromstring(filter_xml)
+        nwfilter = self.get_interface_filter(interface)
+        if nwfilter is None:
+            raise DevopsError(
+                "Unable to unblock interface {0}_{1} on node {2}: nwfilter not"
+                " found!".format(interface.name, interface.mac_address,
+                                 interface.node.name))
+        filter_xml = ET.fromstring(nwfilter.XMLDesc())
         filter_xml.find('.').remove(filter_xml.find('./rule'))
         self.conn.nwfilterDefineXML(ET.tostring(filter_xml))
 

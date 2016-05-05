@@ -209,10 +209,13 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev="{0}{1}".format(if_prefix, interface.id))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
-            device_xml.filterref(filter='{}_{}_{}'.format(
-                interface.network.environment.name,
-                interface.network.name,
-                interface.mac_address))
+
+            # Add interface filter only if nwfilter enabled for network
+            if interface.network.is_filter_exists:
+                device_xml.filterref(filter='{}_{}_{}'.format(
+                    interface.network.environment.name,
+                    interface.network.name,
+                    interface.mac_address))
 
     def build_network_filter(self, network):
         """Generate nwfilter XML for network
@@ -230,7 +233,7 @@ class LibvirtXMLBuilder(object):
     def build_interface_filter(self, interface):
         """Generate nwfilter XML for interface
 
-        :type network: Interface
+        :type interface: Interface
         :type state: String accept | drop
             :rtype : String
         """
