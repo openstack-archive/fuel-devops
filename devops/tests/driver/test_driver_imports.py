@@ -18,6 +18,7 @@ import pkgutil
 from django.test import TestCase
 
 from devops import driver
+from devops.models import DiskDevice
 from devops.models import Driver
 from devops.models import Interface
 from devops.models import L2NetworkDevice
@@ -38,6 +39,7 @@ class TestDriverImport(TestCase):
 
             mod = importlib.import_module('devops.driver.{}'.format(modname))
 
+            assert issubclass(getattr(mod, 'DiskDevice'), DiskDevice)
             assert issubclass(getattr(mod, 'Driver'), Driver)
             assert issubclass(getattr(mod, 'Interface'), Interface)
             assert issubclass(getattr(mod, 'L2NetworkDevice'), L2NetworkDevice)

@@ -197,6 +197,7 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                         second_volume_capacity=None,
                         third_volume_capacity=None,
                         use_all_disks=False,
+                        multipath_count=0,
                         networks_multiplenetworks=None,
                         networks_nodegroups=None,
                         networks_bonding=None,
@@ -272,17 +273,19 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
         {
             'name': 'system',
             'capacity': slave_volume_capacity,
+            'multipath_count': multipath_count,
         }
     ]
     if use_all_disks:
         volumes.extend([
             {
                 'name': 'cinder',
-                'capacity': second_volume_capacity or slave_volume_capacity
+                'capacity': second_volume_capacity or slave_volume_capacity,
+                'multipath_count': multipath_count,
             },
             {
                 'name': 'swift',
-                'capacity': third_volume_capacity or slave_volume_capacity
+                'capacity': third_volume_capacity or slave_volume_capacity,
             }
         ])
     else:
@@ -290,14 +293,15 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
             volumes.append(
                 {
                     'name': 'cinder',
-                    'capacity': second_volume_capacity
+                    'capacity': second_volume_capacity,
+                    'multipath_count': multipath_count,
                 }
             )
         if third_volume_capacity:
             volumes.append(
                 {
                     'name': 'swift',
-                    'capacity': third_volume_capacity
+                    'capacity': third_volume_capacity,
                 }
             )
 
@@ -427,6 +431,7 @@ def create_devops_config(boot_from,
                          second_volume_capacity,
                          third_volume_capacity,
                          use_all_disks,
+                         multipath_count,
                          ironic_nodes_count,
                          networks_bonding,
                          networks_bondinginterfaces,
@@ -491,6 +496,7 @@ def create_devops_config(boot_from,
             interfaceorder=interfaceorder,
             numa_nodes=numa_nodes,
             use_all_disks=use_all_disks,
+            multipath_count=multipath_count,
             networks_multiplenetworks=networks_multiplenetworks,
             networks_nodegroups=networks_nodegroups,
             networks_bonding=networks_bonding,
