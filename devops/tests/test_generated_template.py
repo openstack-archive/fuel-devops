@@ -39,6 +39,7 @@ class TestDefaultTemplate(TestCase):
             second_volume_capacity=settings.NODE_VOLUME_SIZE,
             third_volume_capacity=settings.NODE_VOLUME_SIZE,
             use_all_disks=settings.USE_ALL_DISKS,
+            multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
             ironic_nodes_count=settings.IRONIC_NODES_COUNT,
             networks_bonding=settings.BONDING,
             networks_bondinginterfaces=settings.BONDING_INTERFACES,
@@ -245,8 +246,10 @@ class TestDefaultTemplate(TestCase):
           vcpu: 2
           volumes:
           - capacity: 50
+            multipath_count: 0
             name: system
           - capacity: 50
+            multipath_count: 0
             name: cinder
           - capacity: 50
             name: swift
@@ -269,6 +272,7 @@ class TestDefaultTemplate(TestCase):
             second_volume_capacity=settings.NODE_VOLUME_SIZE,
             third_volume_capacity=settings.NODE_VOLUME_SIZE,
             use_all_disks=settings.USE_ALL_DISKS,
+            multipath_count=2,
             ironic_nodes_count=settings.IRONIC_NODES_COUNT,
             networks_bonding=settings.BONDING,
             networks_bondinginterfaces=settings.BONDING_INTERFACES,
@@ -483,8 +487,10 @@ class TestDefaultTemplate(TestCase):
           vcpu: 8
           volumes:
           - capacity: 50
+            multipath_count: 2
             name: system
           - capacity: 50
+            multipath_count: 2
             name: cinder
           - capacity: 50
             name: swift
