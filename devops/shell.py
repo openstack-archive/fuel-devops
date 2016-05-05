@@ -192,6 +192,7 @@ class Shell(object):
             second_volume_capacity=self.params.second_disk_size,
             third_volume_capacity=self.params.third_disk_size,
             use_all_disks=settings.USE_ALL_DISKS,
+            multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
             ironic_nodes_count=settings.IRONIC_NODES_COUNT,
             networks_bonding=settings.BONDING,
             networks_bondinginterfaces=settings.BONDING_INTERFACES,

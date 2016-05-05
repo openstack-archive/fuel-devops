@@ -255,6 +255,7 @@ class Environment(BaseModel):
                 second_volume_capacity=settings.NODE_VOLUME_SIZE,
                 third_volume_capacity=settings.NODE_VOLUME_SIZE,
                 use_all_disks=settings.USE_ALL_DISKS,
+                multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
                 ironic_nodes_count=settings.IRONIC_NODES_COUNT,
                 networks_bonding=settings.BONDING,
                 networks_bondinginterfaces=settings.BONDING_INTERFACES,
