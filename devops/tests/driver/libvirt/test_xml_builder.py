@@ -348,6 +348,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 interface_network_name='test_admin',
                 interface_id=132,
                 interface_model='e1000',
+                interface_filter='test_filter1',
             ),
             dict(
                 interface_type='network',
@@ -355,6 +356,7 @@ class TestNodeXml(BaseTestXMLBuilder):
                 interface_network_name='test_public',
                 interface_id=133,
                 interface_model='pcnet',
+                interface_filter='test_filter2',
             ),
         ]
 
@@ -495,12 +497,14 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source network="test_admin"/>
             <target dev="virnet132"/>
             <model type="e1000"/>
+            <filterref filter="test_filter1"/>
         </interface>
         <interface type="network">
             <mac address="64:de:6c:44:de:46"/>
             <source network="test_public"/>
             <target dev="virnet133"/>
             <model type="pcnet"/>
+            <filterref filter="test_filter2"/>
         </interface>
         <video>
             <model heads="1" type="vga" vram="9216"/>
@@ -597,12 +601,14 @@ class TestNodeXml(BaseTestXMLBuilder):
             <source network="test_admin"/>
             <target dev="virnet132"/>
             <model type="e1000"/>
+            <filterref filter="test_filter1"/>
         </interface>
         <interface type="network">
             <mac address="64:de:6c:44:de:46"/>
             <source network="test_public"/>
             <target dev="virnet133"/>
             <model type="pcnet"/>
+            <filterref filter="test_filter2"/>
         </interface>
         <video>
             <model heads="1" type="vga" vram="9216"/>
@@ -616,3 +622,61 @@ class TestNodeXml(BaseTestXMLBuilder):
     </devices>
 </domain>
 """
+
+
+class TestNWfilterXml(BaseTestXMLBuilder):
+
+    def test_network_filter_default(self):
+        xml = self.xml_builder.build_network_filter(
+            name='test_filter')
+        assert xml == (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<filter name="test_filter"/>\n')
+
+    def test_network_filter(self):
+        xml = self.xml_builder.build_network_filter(
+            name='test_filter',
+            uuid='fede1b90-7a8b-49de-97a0-c32d19db6f9f',
+            rule=dict(
+                action='drop',
+                direction='inout',
+                priority='-950'),
+        )
+        assert xml == (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<filter name="test_filter">\n'
+            '    <uuid>fede1b90-7a8b-49de-97a0-c32d19db6f9f</uuid>\n'
+            '    <rule action="drop" direction="inout" priority="-950">\n'
+            '        <all/>\n'
+            '    </rule>\n'
+            '</filter>\n')
+
+    def test_interface_filter_default(self):
+        xml = self.xml_builder.build_interface_filter(
+            name='test_filter',
+            filterref='test_filter_name')
+        assert xml == (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<filter name="test_filter">\n'
+            '    <filterref filter="test_filter_name"/>\n'
+            '</filter>\n')
+
+    def test_interface_filter(self):
+        xml = self.xml_builder.build_interface_filter(
+            name='test_filter',
+            filterref='test_ref',
+            uuid='fede1b90-7a8b-49de-97a0-c32d19db6f9f',
+            rule=dict(
+                action='drop',
+                direction='inout',
+                priority='-950'),
+        )
+        assert xml == (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<filter name="test_filter">\n'
+            '    <filterref filter="test_ref"/>\n'
+            '    <uuid>fede1b90-7a8b-49de-97a0-c32d19db6f9f</uuid>\n'
+            '    <rule action="drop" direction="inout" priority="-950">\n'
+            '        <all/>\n'
+            '    </rule>\n'
+            '</filter>\n')
