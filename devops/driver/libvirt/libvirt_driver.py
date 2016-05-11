@@ -653,7 +653,7 @@ class LibvirtVolume(Volume):
         xml = LibvirtXMLBuilder.build_volume_xml(
             name=name,
             capacity=capacity,
-            format=self.format,
+            vol_format=self.format,
             backing_store_path=backing_store_path,
             backing_store_format=backing_store_format,
         )

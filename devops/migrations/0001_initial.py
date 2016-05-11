@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa
-# pylint: disable=line-too-long
+# pylint: skip-file
 from __future__ import unicode_literals
 
 from django.db import migrations, models
