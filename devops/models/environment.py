@@ -77,7 +77,7 @@ class Environment(BaseModel):
                     "has been renamed to 'devops.driver.libvirt', "
                     "please update the tests!",
                     DeprecationWarning)
-                logger.warn(
+                logger.warning(
                     "Driver 'devops.driver.libvirt.libvirt_driver' "
                     "has been renamed to 'devops.driver.libvirt', "
                     "please update the tests!")
