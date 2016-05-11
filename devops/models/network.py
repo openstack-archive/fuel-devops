@@ -138,7 +138,7 @@ class AddressPool(ParamedModel, BaseModel):
                  the first address in the address pool
                  (for fuel-qa compatibility).
         """
-        return (self.get_ip('gateway') or str(self.ip_network[1]))
+        return self.get_ip('gateway') or str(self.ip_network[1])
 
     def ip_range_start(self, range_name):
         """Return the IP address of start the IP range 'range_name'
@@ -526,8 +526,8 @@ class Interface(ParamedModel):
         pass
 
     @classmethod
-    def interface_create(cls, l2_network_device, node, label, type='network',
-                         mac_address=None, model='virtio'):
+    def interface_create(cls, l2_network_device, node, label,
+                         if_type='network', mac_address=None, model='virtio'):
         """Create interface
 
         :rtype : Interface
@@ -536,7 +536,7 @@ class Interface(ParamedModel):
             l2_network_device=l2_network_device,
             node=node,
             label=label,
-            type=type,
+            type=if_type,
             mac_address=mac_address or generate_mac(),
             model=model)
         if (interface.l2_network_device and

@@ -508,7 +508,7 @@ def create_devops_config(boot_from,
             slave_memory=slave_memory,
             slave_volume_capacity=slave_volume_capacity,
             interfaceorder=['ironic'],
-            use_all_disks=None)
+            use_all_disks=False)
 
         config_nodes.append(ironic_config)
 
