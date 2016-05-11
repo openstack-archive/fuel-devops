@@ -101,6 +101,8 @@ class TestLibvirtDriver(LibvirtTestCase):
 
         self.d = self.group.driver
 
+        self.node = None
+
     def test_create(self):
         assert isinstance(self.d, LibvirtDriver)
         assert self.d.connection_string == 'test:///default'

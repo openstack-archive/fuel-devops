@@ -56,13 +56,13 @@ class DiskDevice(models.Model):
     target_dev = models.CharField(max_length=255, null=False)
 
     @classmethod
-    def node_attach_volume(cls, node, volume, device='disk', type='file',
+    def node_attach_volume(cls, node, volume, device='disk', vol_type='file',
                            bus='virtio', target_dev=None):
         """Attach volume to node
 
         :rtype : DiskDevice
         """
         return cls.objects.create(
-            device=device, type=type, bus=bus,
+            device=device, type=vol_type, bus=bus,
             target_dev=target_dev or node.next_disk_name(),
             volume=volume, node=node)

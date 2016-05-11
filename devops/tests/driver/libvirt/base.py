@@ -110,7 +110,8 @@ class LibvirtTestCase(TestCase):
     def tearDown(self):
         self._libvirt_clear_all()
 
-    def _libvirt_clear_all(self):
+    @staticmethod
+    def _libvirt_clear_all():
         conn = LibvirtManager.get_connection('test:///default')
         pool = conn.storagePoolLookupByName('default-pool')
 

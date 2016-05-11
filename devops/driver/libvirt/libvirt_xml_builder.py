@@ -85,7 +85,7 @@ class LibvirtXMLBuilder(object):
         return str(network_xml)
 
     @classmethod
-    def build_volume_xml(cls, name, capacity, format, backing_store_path,
+    def build_volume_xml(cls, name, capacity, vol_format, backing_store_path,
                          backing_store_format):
         """Generate volume XML
 
@@ -96,7 +96,7 @@ class LibvirtXMLBuilder(object):
         volume_xml.name(cls._crop_name(name))
         volume_xml.capacity(str(capacity))
         with volume_xml.target:
-            volume_xml.format(type=format)
+            volume_xml.format(type=vol_format)
             volume_xml.permissions.mode("0644")
         if backing_store_path:
             with volume_xml.backingStore:

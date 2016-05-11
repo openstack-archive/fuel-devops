@@ -17,6 +17,7 @@ import os
 import subprocess
 from time import sleep
 import uuid
+from warnings import warn
 import xml.etree.ElementTree as ET
 
 from django.conf import settings
@@ -66,6 +67,33 @@ class Snapshot(object):
 
     def __init__(self, snapshot):
         self._snapshot = snapshot
+
+    @property
+    def __snapshot_files(self):
+        """Return snapshot files"""
+        snap_files = []
+        snap_memory = self._xml_tree.findall('./memory')[0]
+        if snap_memory.get('file') is not None:
+            snap_files.append(snap_memory.get('file'))
+        return snap_files
+
+    def delete_snapshot_files(self):
+        """Delete snapshot external files
+        """
+        snap_type = self.get_type
+        if snap_type == 'external':
+            for snap_file in self.__snapshot_files:
+                if os.path.isfile(snap_file):
+                    try:
+                        os.remove(snap_file)
+                        logger.info(
+                            "Delete external snapshot file {0}".format(
+                                snap_file))
+                    except Exception:
+                        logger.info(
+                            "Cannot delete external snapshot file {0}"
+                            " must be deleted from cron script".format(
+                                snap_file))
 
     @property
     def xml(self):
@@ -653,7 +681,7 @@ class LibvirtVolume(Volume):
         xml = LibvirtXMLBuilder.build_volume_xml(
             name=name,
             capacity=capacity,
-            format=self.format,
+            vol_format=self.format,
             backing_store_path=backing_store_path,
             backing_store_format=backing_store_format,
         )
@@ -692,17 +720,16 @@ class LibvirtVolume(Volume):
 
     @retry(count=2)
     def upload(self, path):
+        def chunk_render(_, _size, _fd):
+            return _fd.read(_size)
         size = get_file_size(path)
         with open(path, 'rb') as fd:
             stream = self.driver.conn.newStream(0)
             self._libvirt_volume.upload(
                 stream=stream, offset=0,
                 length=size, flags=0)
-            stream.sendAll(self.chunk_render, fd)
+            stream.sendAll(chunk_render, fd)
             stream.finish()
-
-    def chunk_render(self, stream, size, fd):
-        return fd.read(size)
 
     @retry()
     def get_allocation(self):
@@ -931,7 +958,7 @@ class LibvirtNode(Node):
 
                 # EXTERNAL SNAPSHOTS
                 for snapshot in self.get_snapshots():
-                    self._delete_snapshot_files(snapshot)
+                    snapshot.delete_snapshot_files()
 
                 # ORIGINAL SNAPSHOTS
                 if self._libvirt_node:
@@ -1117,31 +1144,15 @@ class LibvirtNode(Node):
         logger.info(domain.state(0))
 
     # EXTERNAL SNAPSHOT
-    def _delete_snapshot_files(self, snapshot):
-        """Delete snapshot external files"""
-        snap_type = snapshot.get_type
-        if snap_type == 'external':
-            for snap_file in self._get_snapshot_files(snapshot):
-                if os.path.isfile(snap_file):
-                    try:
-                        os.remove(snap_file)
-                        logger.info(
-                            "Delete external snapshot file {0}".format(
-                                snap_file))
-                    except Exception:
-                        logger.info(
-                            "Cannot delete external snapshot file {0}"
-                            " must be deleted from cron script".format(
-                                snap_file))
-
-    # EXTERNAL SNAPSHOT
-    def _get_snapshot_files(self, snapshot):
-        """Return snapshot files"""
-        snap_files = []
-        snap_memory = snapshot._xml_tree.findall('./memory')[0]
-        if snap_memory.get('file') is not None:
-            snap_files.append(snap_memory.get('file'))
-        return snap_files
+    @staticmethod
+    def _delete_snapshot_files(snapshot):
+        """Delete snapshot external files
+        :type snapshot: Snapshot
+        """
+        warn(
+            '_delete_snapshot_files(snapshot) has been deprecated in favor of '
+            'snapshot.delete_snapshot_files()', DeprecationWarning)
+        return snapshot.delete_snapshot_files()
 
     # EXTERNAL SNAPSHOT
     def _redefine_external_snapshot(self, name=None):
@@ -1354,7 +1365,7 @@ class LibvirtNode(Node):
                 # Update domain to snapshot state
                 xml_domain = snapshot._xml_tree.find('domain')
                 self.driver.conn.defineXML(ET.tostring(xml_domain))
-                self._delete_snapshot_files(snapshot)
+                snapshot.delete_snapshot_files()
                 snapshot.delete(2)
 
                 for disk in self.disk_devices:
@@ -1408,18 +1419,6 @@ class LibvirtNode(Node):
         target = xml_desc.find('.//mac[@address="%s"]/../target' % mac)
         if target is not None:
             return target.get('dev')
-
-
-#    #LEGACY, TO REMOVE, NOT USED ANYWHERE
-#    @retry()
-#    def delete_all_snapshots(self):
-#        """Delete all snapshots for node
-#        """
-#        domain = self._libvirt_node
-#        for name in domain.snapshotListNames(
-#                libvirt.VIR_DOMAIN_SNAPSHOT_LIST_ROOTS):
-#            snapshot = self._get_snapshot(name)
-#            snapshot.delete(libvirt.VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN)
 
 
 class LibvirtInterface(Interface):
