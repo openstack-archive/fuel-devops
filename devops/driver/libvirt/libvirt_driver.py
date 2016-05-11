@@ -653,7 +653,7 @@ class LibvirtVolume(Volume):
         xml = LibvirtXMLBuilder.build_volume_xml(
             name=name,
             capacity=capacity,
-            format=self.format,
+            vol_format=self.format,
             backing_store_path=backing_store_path,
             backing_store_format=backing_store_format,
         )
@@ -701,7 +701,8 @@ class LibvirtVolume(Volume):
             stream.sendAll(self.chunk_render, fd)
             stream.finish()
 
-    def chunk_render(self, stream, size, fd):
+    @staticmethod
+    def chunk_render(stream, size, fd):
         return fd.read(size)
 
     @retry()
@@ -1135,7 +1136,8 @@ class LibvirtNode(Node):
                                 snap_file))
 
     # EXTERNAL SNAPSHOT
-    def _get_snapshot_files(self, snapshot):
+    @staticmethod
+    def _get_snapshot_files(snapshot):
         """Return snapshot files"""
         snap_files = []
         snap_memory = snapshot._xml_tree.findall('./memory')[0]
