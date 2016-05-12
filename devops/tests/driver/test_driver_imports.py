@@ -28,7 +28,7 @@ from devops.models import Volume
 class TestDriverImport(TestCase):
 
     def test_driver_imports(self):
-        for importer, modname, ispkg in pkgutil.iter_modules(driver.__path__):
+        for _, modname, ispkg in pkgutil.iter_modules(driver.__path__):
             if not ispkg:
                 continue
 

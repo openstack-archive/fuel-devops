@@ -217,7 +217,7 @@ class TestVolumeXml(BaseTestXMLBuilder):
         xml = self.xml_builder.build_volume_xml(
             name='test_name',
             capacity=1048576,
-            format='qcow2',
+            vol_format='qcow2',
             backing_store_path=None,
             backing_store_format=None,
         )
@@ -237,7 +237,7 @@ class TestVolumeXml(BaseTestXMLBuilder):
         xml = self.xml_builder.build_volume_xml(
             name='test_name',
             capacity=1048576,
-            format='raw',
+            vol_format='raw',
             backing_store_path=None,
             backing_store_format=None,
         )
@@ -257,7 +257,7 @@ class TestVolumeXml(BaseTestXMLBuilder):
         xml = self.xml_builder.build_volume_xml(
             name='test_name',
             capacity=1048576,
-            format='qcow2',
+            vol_format='qcow2',
             backing_store_path='/tmp/master.img',
             backing_store_format='raw',
         )

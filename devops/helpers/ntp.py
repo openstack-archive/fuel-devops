@@ -111,6 +111,7 @@ class AbstractNtp(object):
 
 
 # pylint: disable=abstract-method
+# noinspection PyAbstractClass
 class BaseNtp(AbstractNtp):
     def __init__(self, remote, node_name='node', admin_ip=None):
         self.__remote = remote

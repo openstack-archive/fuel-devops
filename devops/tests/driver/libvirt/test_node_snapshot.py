@@ -249,7 +249,7 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
         self.node.snapshot(name='test1')
 
         snap = self.node._get_snapshot('test1')
-        self.node._delete_snapshot_files(snap)
+        snap.delete_snapshot_files()
 
         assert self.os_mock.remove.called is False
 
@@ -604,7 +604,7 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
         snap_mock.numChildren.return_value = 0
 
         snap = self.node._get_snapshot('test1')
-        self.node._delete_snapshot_files(snap)
+        snap.delete_snapshot_files()
 
         self.os_mock.remove.assert_called_once_with(
             '/tmp/snap/snapshot-memory-tenv_tnode.test1')

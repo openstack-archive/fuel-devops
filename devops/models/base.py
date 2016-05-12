@@ -61,6 +61,8 @@ class ParamedModelType(ModelBase):
     derived models polymorphic.
     """
 
+    # pylint: disable=bad-mcs-classmethod-argument
+    # noinspection PyMethodParameters
     def __new__(cls, name, bases, attrs):
         super_new = super(ParamedModelType, cls).__new__
 
@@ -90,6 +92,8 @@ class ParamedModelType(ModelBase):
                 new_class._param_field_names.append(attr_name)
 
         return new_class
+
+    # pylint: enable=bad-mcs-classmethod-argument
 
     def __call__(cls, *args, **kwargs):
         # split kwargs which django db are not aware of
