@@ -201,9 +201,9 @@ class LibvirtDriver(Driver):
             :rtype : List
         """
         allocated_networks = []
-        for network_name in self.conn.listDefinedNetworks():
+        for network in self.conn.listAllNetworks():
             et = ET.fromstring(
-                self.conn.networkLookupByName(network_name).XMLDesc(0))
+                self.conn.networkLookupByName(network.name()).XMLDesc(0))
             ip = et.find('ip[@address]')
             if ip is not None:
                 address = ip.get('address')
