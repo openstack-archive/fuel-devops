@@ -13,10 +13,13 @@
 #    under the License.
 
 import abc
+from collections import defaultdict
 import time
+from warnings import warn
 
 from six import add_metaclass
 
+from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.helpers import get_admin_ip
 from devops.helpers.helpers import get_admin_remote
@@ -35,6 +38,10 @@ def sync_time(env, node_names, skip_sync=False):
        param: skip_sync - only get the current time without sync
        return: dict{node_name: node_time, ...}
     """
+    logger.warning('sync_time is deprecated. Use DevopsClient instead')
+    warn('sync_time is deprecated. Use DevopsClient instead',
+         DeprecationWarning)
+
     with GroupNtpSync(env, node_names) as g_ntp:
 
         if not skip_sync:
@@ -122,6 +129,11 @@ class BaseNtp(AbstractNtp):
         # Get IP of a server from which the time will be synchronized.
         cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
         self.__server = remote.execute(cmd)['stdout'][0]
+
+    def __repr__(self):
+        return "{0}(remote={1}, node_name={2}, admin_ip={3})".format(
+            self.__class__.__name__, self.remote, self.node_name, self.admin_ip
+        )
 
     @property
     def server(self):
@@ -237,11 +249,6 @@ class NtpInitscript(BaseNtp):
     def is_pacemaker(self):
         return False
 
-    def __repr__(self):
-        return "{0}(remote={1}, node_name={2}, admin_ip={3})".format(
-            self.__class__.__name__, self.remote, self.node_name, self.admin_ip
-        )
-
 
 class NtpPacemaker(BaseNtp):
     """NtpPacemaker."""  # TODO(ddmitriev) documentation
@@ -266,11 +273,6 @@ class NtpPacemaker(BaseNtp):
     def is_pacemaker(self):
         return True
 
-    def __repr__(self):
-        return "{0}(remote={1}, node_name={2}, admin_ip={3})".format(
-            self.__class__.__name__, self.remote, self.node_name, self.admin_ip
-        )
-
 
 class NtpSystemd(BaseNtp):
     """NtpSystemd."""  # TODO(ddmitriev) documentation
@@ -290,14 +292,12 @@ class NtpSystemd(BaseNtp):
     def is_pacemaker(self):
         return False
 
-    def __repr__(self):
-        return "{0}(remote={1}, node_name={2}, admin_ip={3})".format(
-            self.__class__.__name__, self.remote, self.node_name, self.admin_ip
-        )
-
 
 class GroupNtpSync(object):
-    """Synchronize a group of nodes."""
+    """Synchronize a group of nodes.
+
+    DEPRECATED
+    """
     @staticmethod
     def get_ntp(remote, node_name='node', admin_ip=None):
         # Detect how NTPD is managed - by init script or by pacemaker.
@@ -330,6 +330,12 @@ class GroupNtpSync(object):
            param: env - environment object
            param: node_names - list of devops node names
         """
+        logger.warning(
+            'GroupNtpSync has been deprecated in favor of NtpGroup')
+        warn(
+            'GroupNtpSync has been deprecated in favor of NtpGroup',
+            DeprecationWarning)
+
         if not env:
             raise Exception("'env' is not set, failed to initialize"
                             " connections to {0}".format(node_names))
@@ -431,3 +437,132 @@ class GroupNtpSync(object):
         if not self.is_connected(ntps):
             raise TimeoutError("NTPD on nodes was not synchronized:\n"
                                "{0}".format(self.report_not_connected(ntps)))
+
+
+class NtpList(list):
+
+    @property
+    def is_synchronized(self):
+        return all([ntp.is_synchronized for ntp in self])
+
+    @property
+    def is_connected(self):
+        return all([ntp.is_connected for ntp in self])
+
+    def start(self):
+        for ntp in self:
+            ntp.start()
+
+    def stop(self):
+        for ntp in self:
+            ntp.stop()
+
+    def set_actual_time(self):
+        for ntp in self:
+            ntp.set_actual_time()
+
+    def wait_peer(self):
+        for ntp in self:
+            ntp.wait_peer()
+
+    def clear_remote(self):
+        for ntp in self:
+            ntp.remote.clear()
+
+    def report_not_synchronized(self):
+        return [(ntp.node_name, ntp.date)
+                for ntp in self if not ntp.is_synchronized]
+
+    def report_not_connected(self):
+        return [(ntp.node_name, ntp.peers)
+                for ntp in self if not ntp.is_connected]
+
+    def report_node_names(self):
+        return [ntp.node_name for ntp in self]
+
+
+class NtpGroup(object):
+
+    def __init__(self):
+        self.ntp_groups = defaultdict(NtpList)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exp_type, exp_value, traceback):
+        for ntps in self.ntp_groups.values():
+            ntps.clear_remote()
+
+    def add_node(self, remote, node_name, admin_ip):
+        group = 'other'
+        if node_name == 'admin':
+            group = 'admin'
+            ntp = self.get_ntp(remote, 'admin')
+        else:
+            ntp = self.get_ntp(remote, node_name, admin_ip)
+            if ntp.is_pacemaker:
+                group = 'pacemaker'
+
+        self.ntp_groups[group].append(ntp)
+
+    @staticmethod
+    def get_ntp(remote, node_name='node', admin_ip=None):
+        # Detect how NTPD is managed - by init script or by pacemaker.
+        pcs_cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        systemd_cmd = "systemctl list-unit-files| grep ntpd"
+
+        # pylint: disable=redefined-variable-type
+        if remote.execute(pcs_cmd)['exit_code'] == 0:
+            # Pacemaker service found
+            ntp = NtpPacemaker(remote, node_name, admin_ip)
+        elif remote.execute(systemd_cmd)['exit_code'] == 0:
+            ntp = NtpSystemd(remote, node_name, admin_ip)
+        else:
+            # Pacemaker not found, using native ntpd
+            ntp = NtpInitscript(remote, node_name, admin_ip)
+        # pylint: enable=redefined-variable-type
+
+        # Speedup time synchronization for slaves that use admin node as a peer
+        if admin_ip:
+            cmd = (
+                "sed -i 's/^server {0} .*/server {0} minpoll 3 maxpoll 5 "
+                "iburst/' /etc/ntp.conf".format(admin_ip))
+            remote.execute(cmd)
+
+        return ntp
+
+    def get_curr_time(self):
+        return {ntp.node_name: ntp.date[0].rstrip()
+                for ntps in self.ntp_groups.values() for ntp in ntps}
+
+    def sync_time(self, group_name):
+        if group_name not in self.ntp_groups:
+            return
+
+        ntps = self.ntp_groups[group_name]
+
+        if not ntps:
+            return
+
+        logger.debug("Stop NTPD service on nodes {0}".format(
+            ntps.report_node_names()))
+
+        ntps.stop()  # Stop NTPD service on nodes
+        ntps.set_actual_time()  # Set actual time on all nodes via 'ntpdate'
+
+        if not ntps.is_synchronized():
+            raise DevopsError("Time on nodes was not set with 'ntpdate':\n"
+                              "{0}".format(self.report_not_synchronized(ntps)))
+
+        logger.debug("Start NTPD service on nodes {0}"
+                     .format(self.report_node_names(ntps)))
+        ntps.start()  # Start NTPD service on nodes
+
+        logger.debug("Wait for established peers on nodes {0}"
+                     .format(self.report_node_names(ntps)))
+
+        ntps.wait_peer()  # Wait for established peers
+
+        if not ntps.is_connected():
+            raise DevopsError("NTPD on nodes was not synchronized:\n"
+                              "{0}".format(self.report_not_connected(ntps)))

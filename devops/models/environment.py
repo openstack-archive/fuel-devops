@@ -21,6 +21,7 @@ from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
+from devops.error import DevopsError
 from devops.helpers.network import IpNetworksPool
 from devops.helpers.ssh_client import SSHClient
 from devops.helpers.templates import create_devops_config
@@ -179,6 +180,9 @@ class Environment(BaseModel):
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
+        if self.has_snapshot(name):
+            raise DevopsError('Snapshot with name {0} already exists.'
+                              .format(self.params.snapshot_name))
         for node in self.get_nodes():
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)

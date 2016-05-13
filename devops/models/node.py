@@ -196,6 +196,12 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     def resume(self, *args, **kwargs):
         pass
 
+    def reset(self):
+        pass
+
+    def is_active(self):
+        return False
+
     def snapshot(self, *args, **kwargs):
         pass
 
