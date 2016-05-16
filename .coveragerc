@@ -1,0 +1,6 @@
+[run]
+source =
+    devops
+omit =
+    devops/tests/*
+    devops/driver/dummy/*
