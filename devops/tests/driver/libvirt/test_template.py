@@ -19,8 +19,10 @@ import mock
 from netaddr import IPAddress
 import yaml
 
+from devops.error import DevopsObjNotFound
 from devops.models import AddressPool
 from devops.models import Environment
+from devops.models import Group
 from devops.tests.driver.libvirt.base import LibvirtTestCase
 
 
@@ -518,3 +520,35 @@ class TestLibvirtTemplate(LibvirtTestCase):
         assert len(self.d.get_allocated_networks()) == 0
         assert len(self.d.conn.listAllNetworks()) == 0
         assert len(self.d.conn.listAllDomains()) == 0
+
+    def test_object_not_found_exceptions(self):
+        with self.assertRaises(DevopsObjNotFound):
+            Environment.get(name='other-env')
+
+        with self.assertRaises(DevopsObjNotFound):
+            self.env.get_group(name='other-rack')
+
+        with self.assertRaises(DevopsObjNotFound):
+            self.env.get_address_pool(name='other-pool')
+
+        with self.assertRaises(DevopsObjNotFound):
+            self.env.get_node(name='other-node')
+
+        group = self.env.get_group(name='rack-01')
+
+        with self.assertRaises(DevopsObjNotFound):
+            group.get_l2_network_device(name='other-device')
+
+        with self.assertRaises(DevopsObjNotFound):
+            group.get_network_pool(name='other-pool')
+
+        with self.assertRaises(DevopsObjNotFound):
+            group.get_node(name='other-node')
+
+        with self.assertRaises(DevopsObjNotFound):
+            Group.get(name='other-group')
+
+        node = self.env.get_node(name='slave-01')
+
+        with self.assertRaises(DevopsObjNotFound):
+            node.get_volume(name='other-volume')
