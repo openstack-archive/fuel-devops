@@ -17,6 +17,7 @@ from django.db import models
 from django.utils.functional import cached_property
 
 from devops.error import DevopsError
+from devops.error import DevopsObjNotFound
 from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
 from devops.helpers.helpers import wait_ssh_cmd
@@ -29,6 +30,7 @@ from devops.models.base import ParamedModel
 from devops.models.base import ParamField
 from devops.models.network import NetworkConfig
 from devops.models.volume import DiskDevice
+from devops.models.volume import Volume
 
 
 class Node(ParamedModel, BaseModel):
@@ -258,7 +260,10 @@ class Node(ParamedModel, BaseModel):
 
     # NEW
     def get_volume(self, **kwargs):
-        return self.volume_set.get(**kwargs)
+        try:
+            return self.volume_set.get(**kwargs)
+        except Volume.DoesNotExist:
+            raise DevopsObjNotFound(Volume, **kwargs)
 
     # NEW
     def get_volumes(self, **kwargs):

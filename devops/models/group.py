@@ -16,9 +16,12 @@ from copy import deepcopy
 
 from django.db import models
 
+from devops.error import DevopsObjNotFound
 from devops import logger
 from devops.models.base import BaseModel
+from devops.models.network import L2NetworkDevice
 from devops.models.network import NetworkPool
+from devops.models.node import Node
 
 
 class Group(BaseModel):
@@ -33,19 +36,28 @@ class Group(BaseModel):
     driver = models.OneToOneField('Driver', primary_key=True)
 
     def get_l2_network_device(self, **kwargs):
-        return self.l2networkdevice_set.get(**kwargs)
+        try:
+            return self.l2networkdevice_set.get(**kwargs)
+        except L2NetworkDevice.DoesNotExist:
+            raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
 
     def get_l2_network_devices(self, **kwargs):
         return self.l2networkdevice_set.filter(**kwargs)
 
     def get_network_pool(self, **kwargs):
-        return self.networkpool_set.get(**kwargs)
+        try:
+            return self.networkpool_set.get(**kwargs)
+        except NetworkPool.DoesNotExist:
+            raise DevopsObjNotFound(NetworkPool, **kwargs)
 
     def get_network_pools(self, **kwargs):
         return self.networkpool_set.filter(**kwargs)
 
     def get_node(self, **kwargs):
-        return self.node_set.get(**kwargs)
+        try:
+            return self.node_set.get(**kwargs)
+        except Node.DoesNotExist:
+            raise DevopsObjNotFound(Node, **kwargs)
 
     def get_nodes(self, **kwargs):
         return self.node_set.filter(**kwargs)
@@ -63,7 +75,10 @@ class Group(BaseModel):
 
     @classmethod
     def get(cls, **kwargs):
-        return cls.objects.get(**kwargs)
+        try:
+            return cls.objects.get(**kwargs)
+        except Group.DoesNotExist:
+            raise DevopsObjNotFound(Group, **kwargs)
 
     @classmethod
     def list_all(cls):
