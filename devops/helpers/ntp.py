@@ -107,7 +107,11 @@ class AbstractNtp(object):
 
     @abc.abstractproperty
     def server(self):
-        """IP of a server from which the time will be synchronized."""
+        """IP of a server from which the time will be synchronized"""
+
+    @abc.abstractproperty
+    def last_error_msg(self):
+        """Last error message, empty string by default"""
 
 
 # pylint: disable=abstract-method
@@ -122,6 +126,7 @@ class BaseNtp(AbstractNtp):
         # Get IP of a server from which the time will be synchronized.
         cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
         self.__server = remote.execute(cmd)['stdout'][0]
+        self.__last_error_msg = ''
 
     @property
     def server(self):
@@ -156,6 +161,14 @@ class BaseNtp(AbstractNtp):
         return self.__admin_ip
 
     @property
+    def last_error_msg(self):
+        return self.__last_error_msg
+
+    @last_error_msg.setter
+    def last_error_msg(self, msg):
+        self.__last_error_msg = msg
+
+    @property
     def peers(self):
         return self.get_peers()[2:]
 
@@ -169,10 +182,20 @@ class BaseNtp(AbstractNtp):
         self.is_synchronized = False
         try:
             wait(lambda: not self.remote.execute(cmd)['exit_code'], timeout)
-            self.remote.execute('hwclock -w')
             self.is_synchronized = True
-        except TimeoutError as e:
-            logger.debug('Time sync failed with {}'.format(e))
+        except TimeoutError:
+            result = self.remote.execute(cmd)
+            self.last_error_msg = (
+                "Execution of the command '{cmd}' failed on the node "
+                "{node_name} with exit_code = {ec} : {stderr}"
+                .format(cmd=cmd, node_name=self.node_name,
+                        ec=result['exit_code'],
+                        stderr='\n'.join(result['stderr'])))
+            logger.debug(self.last_error_msg)
+
+        if self.is_synchronized:
+            self.remote.execute('hwclock -w')
+            self.last_error_msg = ''
 
         return self.is_synchronized
 
@@ -181,10 +204,10 @@ class BaseNtp(AbstractNtp):
 
         start_time = time.time()
         while start_time + timeout > time.time():
-            # peer = `ntpq -pn 127.0.0.1`
-            logger.debug(
-                "Node: {0}, ntpd peers: {1}".format(self.node_name, self.peers)
-            )
+            # self.peers = `ntpq -pn 127.0.0.1`
+            self.last_error_msg = "Node: {0}, ntpd peers: {1}".format(
+                self.node_name, self.peers)
+            logger.debug(self.last_error_msg)
 
             for peer in self.peers:
                 p = peer.split()
@@ -206,6 +229,7 @@ class BaseNtp(AbstractNtp):
                 # two lower bits as the last two successful checks
                 if reach & 3 == 3:
                     self.is_connected = True
+                    self.last_error_msg = ''
                     return self.is_connected
 
             time.sleep(interval)
@@ -381,12 +405,12 @@ class GroupNtpSync(object):
 
     @staticmethod
     def report_not_synchronized(ntps):
-        return [(ntp.node_name, ntp.date)
+        return [(ntp.node_name, ntp.last_error_msg, ntp.date)
                 for ntp in ntps if not ntp.is_synchronized]
 
     @staticmethod
     def report_not_connected(ntps):
-        return [(ntp.node_name, ntp.peers)
+        return [(ntp.node_name, ntp.last_error_msg, ntp.peers)
                 for ntp in ntps if not ntp.is_connected]
 
     @staticmethod
