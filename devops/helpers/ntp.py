@@ -104,11 +104,11 @@ class GroupNtpSync(object):
         return all([ntp.is_connected for ntp in ntps])
 
     def report_not_synchronized(self, ntps):
-        return [(ntp.node_name, ntp.date())
+        return [(ntp.node_name, ntp.last_error_msg, ntp.date())
                 for ntp in ntps if not ntp.is_synchronized]
 
     def report_not_connected(self, ntps):
-        return [(ntp.node_name, ntp.peers)
+        return [(ntp.node_name, ntp.last_error_msg, ntp.peers)
                 for ntp in ntps if not ntp.is_connected]
 
     def report_node_names(self, ntps):
@@ -178,6 +178,7 @@ class Ntp(object):
         cls.remote = remote
         cls.node_name = node_name
         cls.peers = []
+        cls.last_error_msg = ''
 
         # Get IP of a server from which the time will be synchronized.
         cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
@@ -197,10 +198,20 @@ class Ntp(object):
         self.is_synchronized = False
         try:
             wait(lambda: not self.remote.execute(cmd)['exit_code'], timeout)
-            self.remote.execute('hwclock -w')
             self.is_synchronized = True
         except TimeoutError:
-            pass
+            result = self.remote.execute(cmd)
+            self.last_error_msg = (
+                "Execution of the command '{cmd}' failed on the node "
+                "{node_name} with exit_code = {ec} : {stderr}"
+                .format(cmd=cmd, node_name=self.node_name,
+                        ec=result['exit_code'],
+                        stderr='\n'.join(result['stderr'])))
+            logger.debug(self.last_error_msg)
+
+        if self.is_synchronized:
+            self.remote.execute('hwclock -w')
+            self.last_error_msg = ''
 
         return self.is_synchronized
 
@@ -211,8 +222,10 @@ class Ntp(object):
         while start_time + timeout > time.time():
             # peer = `ntpq -pn 127.0.0.1`
             self.peers = self.get_peers()[2:]  # skip the header
-            logger.debug("Node: {0}, ntpd peers: {1}".format(
-                self.node_name, self.peers))
+
+            self.last_error_msg = "Node: {0}, ntpd peers: {1}".format(
+                self.node_name, self.peers)
+            logger.debug(self.last_error_msg)
 
             for peer in self.peers:
                 p = peer.split()
@@ -234,6 +247,7 @@ class Ntp(object):
                 # two lower bits as the last two successful checks
                 if reach & 3 == 3:
                     self.is_connected = True
+                    self.last_error_msg = ''
                     return self.is_connected
 
             time.sleep(interval)
