@@ -454,6 +454,12 @@ class Nodes(object):
         )
         self.slaves = self.others
         self.all = self.slaves + self.admins + self.ironics
+        if len(self.admins) == 0:
+            raise EnvironmentError(
+                "No nodes with role 'fuel_master' found in the environment "
+                "{env_name}, please check environment configuration".format(
+                    env_name=environment.name
+                ))
         self.admin = self.admins[0]
 
     def __iter__(self):
