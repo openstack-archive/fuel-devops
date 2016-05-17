@@ -20,6 +20,7 @@ from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
+from devops.error import DevopsEnvironmentError
 from devops.helpers.helpers import get_file_size
 from devops.helpers.helpers import SSHClient
 from devops.helpers.templates import create_devops_config
@@ -454,6 +455,12 @@ class Nodes(object):
         )
         self.slaves = self.others
         self.all = self.slaves + self.admins + self.ironics
+        if len(self.admins) == 0:
+            raise DevopsEnvironmentError(
+                "No nodes with role 'fuel_master' found in the environment "
+                "{env_name}, please check environment configuration".format(
+                    env_name=environment.name
+                ))
         self.admin = self.admins[0]
 
     def __iter__(self):
