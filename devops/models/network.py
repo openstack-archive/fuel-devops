@@ -81,6 +81,11 @@ class Network(DriverModel):
         """Show state of network"""
         return self.driver.network_block_status(self)
 
+    @property
+    def is_filter_exists(self):
+        """Show presence of the network filter"""
+        return self.driver.get_network_filter(self) is not None
+
     def block(self):
         """Block all traffic in network"""
         return self.driver.network_block(self)
@@ -105,7 +110,8 @@ class Network(DriverModel):
         return self.driver.network_bridge_name(self)
 
     def define(self):
-        self.define_filter()
+        if settings.ENABLE_LIBVIRT_NWFILTERS:
+            self.define_filter()
         self.driver.network_define(self)
         self.save()
 
@@ -267,6 +273,11 @@ class Interface(models.Model):
     def is_blocked(self):
         """Show state of interface"""
         return self.network.driver.interface_block_status(self)
+
+    @property
+    def is_filter_exists(self):
+        """Show presence of the interface filter"""
+        return self.network.driver.get_interface_filter(self) is not None
 
     def block(self):
         """Block traffic on interface"""

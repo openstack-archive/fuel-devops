@@ -183,8 +183,9 @@ class Node(DriverModel):
 
     def define(self):
         """Define node and interface filter"""
-        for iface in self.interfaces:
-            iface.define_filter()
+        if settings.ENABLE_LIBVIRT_NWFILTERS:
+            for iface in self.interfaces:
+                iface.define_filter()
         self.driver.node_define(self)
         self.save()
 
