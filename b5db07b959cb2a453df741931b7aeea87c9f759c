@@ -1,0 +1,13 @@
+Verified+1: Fuel CI <fuel-ci-bot@mirantis.com>
+Code-Review+1: Anton Studenov <astudenov@mirantis.com>
+Code-Review+1: Egor Kotko <ykotko@mirantis.com>
+Code-Review+2: Dennis Dmitriev <ddmitriev@mirantis.com>
+Workflow+1: Andrey Sledzinskiy <asledzinskiy@mirantis.com>
+Code-Review+1: Dmitry Tyzhnenko <dtyzhnenko@mirantis.com>
+Code-Review+1: Alexey Stepanov <astepanov@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 18 May 2016 10:27:34 +0000
+Reviewed-on: https://review.openstack.org/313082
+Project: openstack/fuel-devops
+Branch: refs/heads/release/2.9
