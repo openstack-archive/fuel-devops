@@ -132,12 +132,12 @@ class LibvirtXMLBuilder(object):
                     snapshot='external')
             else:
                 xml_builder.memory(snapshot='no')
-            for disk in node.disk_devices:
-                if disk.device == 'disk':
-                    with xml_builder.disks:
-                        xml_builder.disk(name=disk.target_dev,
-                                         file=disk.volume.get_path(),
-                                         snapshot='external')
+            with xml_builder.disks:
+                for disk in node.disk_devices:
+                    if disk.device == 'disk':
+                        with xml_builder.disk(name=disk.target_dev,
+                                              snapshot='external'):
+                            xml_builder.source(file=disk.volume.get_path())
         return str(xml_builder)
 
     def _pre_generate_disk_uuids(self, disk_devices):
