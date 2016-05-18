@@ -37,7 +37,7 @@ INSTALLED_APPS = ['devops']
 DATABASES = {
     'default': {
         'ENGINE': os.environ.get('DEVOPS_DB_ENGINE',
-                                 'django.db.backends.postgresql_psycopg2'),
+                                 'django.db.backends.sqlite3'),
         'NAME': os.environ.get('DEVOPS_DB_NAME', 'fuel_devops'),
         'USER': os.environ.get('DEVOPS_DB_USER', 'fuel_devops'),
         'PASSWORD': os.environ.get('DEVOPS_DB_PASSWORD', 'fuel_devops'),
