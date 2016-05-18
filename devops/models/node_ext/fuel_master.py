@@ -12,12 +12,66 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from django.conf import settings
+
+from devops.error import DevopsError
+from devops.helpers.helpers import wait_ssh_cmd
+from devops.helpers.helpers import wait_tcp
+
 
 class NodeExtension(object):
     """Extension for the latest Fuel development build"""
 
     def __init__(self, node):
         self.node = node
+
+    def _start_setup(self):
+        if self.node.kernel_cmd is None:
+            raise DevopsError('kernel_cmd is None')
+
+        self.node.start()
+        self.send_kernel_keys(self.node.kernel_cmd)
+
+    def send_kernel_keys(self, kernel_cmd):
+        """Provide variables data to kernel cmd format template"""
+
+        ip = self.node.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        master_iface = self.node.get_interface_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        admin_ap = master_iface.l2_network_device.address_pool
+
+        result_kernel_cmd = kernel_cmd.format(
+            ip=ip,
+            mask=admin_ap.ip_network.netmask,
+            gw=admin_ap.gateway,
+            hostname=settings.DEFAULT_MASTER_FQDN,
+            nameserver=settings.DEFAULT_DNS,
+        )
+        self.node.send_keys(result_kernel_cmd)
+
+    def bootstrap_and_wait(self):
+        if self.node.kernel_cmd is None:
+            self.node.kernel_cmd = self.get_kernel_cmd()
+            self.node.save()
+        self._start_setup()
+        ip = self.node.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        wait_tcp(host=ip, port=self.node.ssh_port,
+                 timeout=self.node.bootstrap_timeout)
+
+    def deploy_wait(self):
+        ip = self.node.get_ip_address_by_network_name(
+            settings.SSH_CREDENTIALS['admin_network'])
+        if self.node.deploy_check_cmd is None:
+            self.node.deploy_check_cmd = self.get_deploy_check_cmd()
+            self.node.save()
+        wait_ssh_cmd(host=ip,
+                     port=self.node.ssh_port,
+                     check_cmd=self.node.deploy_check_cmd,
+                     username=settings.SSH_CREDENTIALS['login'],
+                     password=settings.SSH_CREDENTIALS['password'],
+                     timeout=self.node.deploy_timeout)
 
     def get_kernel_cmd(self, boot_from='cdrom', iface='enp0s3',
                        wait_for_external_config='yes'):
