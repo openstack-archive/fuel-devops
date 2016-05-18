@@ -34,7 +34,6 @@ setup(
         'paramiko>=1.16.0',
         'Django>=1.8,<1.9',
         'jsonfield',
-        'psycopg2>=2.5',
         'PyYAML>=3.1.0',
         'libvirt-python',
         'tabulate',
@@ -46,4 +45,7 @@ setup(
         'mock>=1.2',
         'tox>=2.0'
     ],
+    extras_require={
+        'postgre': ["psycopg2"],
+    }
 )
