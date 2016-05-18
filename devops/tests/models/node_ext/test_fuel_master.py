@@ -63,13 +63,15 @@ class TestFuelMasterNewtonExt(DriverlessTestCase):
 
         self.send_keys_mock = self.patch('devops.models.Node.send_keys',
                                          create=True)
-        self.wait_tcp_mock = self.patch('devops.models.node.wait_tcp')
-        self.wait_ssh_cmd_mock = self.patch('devops.models.node.wait_ssh_cmd')
+        self.wait_tcp_mock = self.patch(
+            'devops.models.node_ext.fuel_master.wait_tcp')
+        self.wait_ssh_cmd_mock = self.patch(
+            'devops.models.node_ext.fuel_master.wait_ssh_cmd')
 
         self.node_ext = self.node.ext
 
     def test_send_keys(self):
-        self.node.send_kernel_keys(self.node.kernel_cmd)
+        self.node_ext.send_kernel_keys(self.node.kernel_cmd)
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -131,7 +133,7 @@ class TestFuelMasterNewtonExt(DriverlessTestCase):
             'timeout 15 fuel-utils check_all')
 
     def test_bootstrap(self):
-        self.node.bootstrap_and_wait()
+        self.node_ext.bootstrap_and_wait()
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -152,7 +154,7 @@ class TestFuelMasterNewtonExt(DriverlessTestCase):
 
     def test_bootstrap_default(self):
         self.node.kernel_cmd = None
-        self.node.bootstrap_and_wait()
+        self.node_ext.bootstrap_and_wait()
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -172,7 +174,7 @@ class TestFuelMasterNewtonExt(DriverlessTestCase):
             host='10.109.0.2', port=22, timeout=600)
 
     def test_deploy_wait(self):
-        self.node.deploy_wait()
+        self.node_ext.deploy_wait()
         self.wait_ssh_cmd_mock.assert_called_once_with(
             check_cmd='timeout 15 fuel-utils check_all',
             host='10.109.0.2', password='r00tme',

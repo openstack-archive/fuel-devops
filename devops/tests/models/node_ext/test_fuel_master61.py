@@ -65,13 +65,15 @@ class TestFuelMaster61Ext(DriverlessTestCase):
 
         self.send_keys_mock = self.patch('devops.models.Node.send_keys',
                                          create=True)
-        self.wait_tcp_mock = self.patch('devops.models.node.wait_tcp')
-        self.wait_ssh_cmd_mock = self.patch('devops.models.node.wait_ssh_cmd')
+        self.wait_tcp_mock = self.patch(
+            'devops.models.node_ext.fuel_master.wait_tcp')
+        self.wait_ssh_cmd_mock = self.patch(
+            'devops.models.node_ext.fuel_master.wait_ssh_cmd')
 
         self.node_ext = NodeExtension(self.node)
 
     def test_send_keys(self):
-        self.node.send_kernel_keys(self.node.kernel_cmd)
+        self.node_ext.send_kernel_keys(self.node.kernel_cmd)
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -138,7 +140,7 @@ class TestFuelMaster61Ext(DriverlessTestCase):
             "'/var/log/puppet/bootstrap_admin_node.log'")
 
     def test_bootstrap(self):
-        self.node.bootstrap_and_wait()
+        self.node_ext.bootstrap_and_wait()
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -160,7 +162,7 @@ class TestFuelMaster61Ext(DriverlessTestCase):
 
     def test_bootstrap_default(self):
         self.node.kernel_cmd = None
-        self.node.bootstrap_and_wait()
+        self.node_ext.bootstrap_and_wait()
         self.send_keys_mock.assert_called_once_with(
             '<Wait>\n'
             '<Wait>\n'
@@ -181,7 +183,7 @@ class TestFuelMaster61Ext(DriverlessTestCase):
             host='10.109.0.2', port=22, timeout=600)
 
     def test_deploy_wait(self):
-        self.node.deploy_wait()
+        self.node_ext.deploy_wait()
         check_cmd = ("grep 'Fuel node deployment complete' "
                      "'/var/log/puppet/bootstrap_admin_node.log'")
         self.wait_ssh_cmd_mock.assert_called_once_with(
