@@ -22,10 +22,12 @@ import os
 import socket
 import time
 from warnings import warn
+import xml.etree.ElementTree as ET
 
 from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
 import paramiko
+import six
 # pylint: disable=import-error
 # noinspection PyUnresolvedReferences
 from six.moves import http_client
@@ -340,3 +342,11 @@ def get_nodes(admin_ip):
         endpoint_filter={'service_type': 'fuel'}
     )
     return nodes.json()
+
+
+def xml_tostring(tree):
+    """Converts ElementTree object to string"""
+    if six.PY2:
+        return ET.tostring(tree)
+    else:
+        return ET.tostring(tree, encoding='unicode')

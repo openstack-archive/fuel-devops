@@ -15,7 +15,6 @@
 import re
 
 import mock
-import pytest
 
 from devops.models import Environment
 from devops.tests.driver.libvirt.base import LibvirtTestCase
@@ -30,7 +29,7 @@ class TestLibvirtNode(LibvirtTestCase):
         self.libvirt_sleep_mock = self.patch(
             'devops.driver.libvirt.libvirt_driver.sleep')
 
-        self.env = Environment.create('test_env')
+        self.env = Environment.create('tenv')
         self.group = self.env.add_group(
             group_name='test_group',
             driver_name='devops.driver.libvirt',
@@ -52,7 +51,7 @@ class TestLibvirtNode(LibvirtTestCase):
         )
 
         self.l2_net_dev = self.group.add_l2_network_device(
-            name='test_l2_net_dev',
+            name='l2nd',
             address_pool='test_ap',
             forward=dict(mode='nat'),
         )
@@ -66,7 +65,7 @@ class TestLibvirtNode(LibvirtTestCase):
 
         self.interface = self.node.add_interface(
             label='eth0',
-            l2_network_device_name='test_l2_net_dev',
+            l2_network_device_name='l2nd',
             interface_model='virtio',
         )
 
@@ -80,12 +79,11 @@ class TestLibvirtNode(LibvirtTestCase):
         self.l2_net_dev.define()
         self.volume.define()
 
-    @pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
     def test_define_xml(self):
         self.node.define()
         xml = self.node._libvirt_node.XMLDesc(0)
         assert re.match(r"""<domain type='test'>
-  <name>test_env_test_node</name>
+  <name>tenv_test_node</name>
   <uuid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}</uuid>
   <memory unit='KiB'>1048576</memory>
   <currentMemory unit='KiB'>1048576</currentMemory>
@@ -112,16 +110,17 @@ class TestLibvirtNode(LibvirtTestCase):
     <emulator>/usr/bin/test-emulator</emulator>
     <disk type='file' device='disk'>
       <driver type='qcow2' cache='unsafe'/>
-      <source file='/default-pool/test_env_test_node_test_volume'/>
+      <source file='/default-pool/tenv_test_node_test_volume'/>
       <target dev='sda' bus='virtio'/>
       <serial>[0-9a-f]{32}</serial>
     </disk>
     <controller type='usb' index='0' model='nec-xhci'/>
     <interface type='network'>
       <mac address='(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}'/>
-      <source network='test_env_test_l2_net_dev'/>
-      <target dev='virnet1'/>
+      <source network='tenv_l2nd'/>
+      <target dev='virnet0'/>
       <model type='virtio'/>
+      <filterref filter='tenv_l2nd_(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}'/>
     </interface>
     <serial type='pty'>
       <target port='0'/>

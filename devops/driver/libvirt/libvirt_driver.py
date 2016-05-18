@@ -33,6 +33,7 @@ from devops.error import DevopsError
 from devops.helpers.helpers import deepgetattr
 from devops.helpers.helpers import get_file_size
 from devops.helpers.helpers import underscored
+from devops.helpers.helpers import xml_tostring
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
@@ -125,7 +126,7 @@ class Snapshot(object):
                 domain_element.remove(domain_element.findall('./cpu')[0])
                 domain_element.append(cpu_element)
 
-        return ET.tostring(snapshot_xmltree)
+        return xml_tostring(snapshot_xmltree)
 
     @property
     def _xml_tree(self):
@@ -1193,11 +1194,11 @@ class LibvirtNode(Node):
 
         if snapshot.state == 'shutoff':
             # Redefine domain for snapshot without memory save
-            self.driver.conn.defineXML(ET.tostring(xml_domain))
+            self.driver.conn.defineXML(xml_tostring(xml_domain))
         else:
             self.driver.conn.restoreFlags(
                 snapshot.memory_file,
-                dxml=ET.tostring(xml_domain),
+                dxml=xml_tostring(xml_domain),
                 flags=libvirt.VIR_DOMAIN_SAVE_PAUSED)
 
         # set snapshot as current
@@ -1374,7 +1375,7 @@ class LibvirtNode(Node):
 
                 # Update domain to snapshot state
                 xml_domain = snapshot._xml_tree.find('domain')
-                self.driver.conn.defineXML(ET.tostring(xml_domain))
+                self.driver.conn.defineXML(xml_tostring(xml_domain))
                 snapshot.delete_snapshot_files()
                 snapshot.delete(2)
 

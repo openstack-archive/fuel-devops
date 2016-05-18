@@ -15,7 +15,6 @@
 import collections
 
 import mock
-import pytest
 
 from devops.models import Environment
 from devops.tests.driver.libvirt.base import LibvirtTestCase
@@ -55,19 +54,18 @@ class TestLibvirtVolume(LibvirtTestCase):
 
         self.d = self.group.driver
 
-    @pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
     def test_define_erase(self):
         volume = self.node.add_volume(
             name='test_volume',
-            capacity=512,
+            capacity=2,
         )
 
         volume.define()
 
-        assert volume.get_capacity() == 512
+        assert volume.get_capacity() == 2147483648
         assert volume.get_path() == (
             '/default-pool/test_env_test_node_test_volume')
-        assert volume.get_allocation() == 512
+        assert volume.get_allocation() == 2147483648
 
         xml = volume._libvirt_volume.XMLDesc(0)
         assert xml == """<volume type='file'>
@@ -75,8 +73,8 @@ class TestLibvirtVolume(LibvirtTestCase):
   <key>/default-pool/test_env_test_node_test_volume</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>2147483648</capacity>
+  <allocation unit='bytes'>2147483648</allocation>
   <target>
     <path>/default-pool/test_env_test_node_test_volume</path>
     <format type='qcow2'/>
@@ -92,11 +90,10 @@ class TestLibvirtVolume(LibvirtTestCase):
 
         assert not volume.exists()
 
-    @pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
     def test_child(self):
         volume = self.node.add_volume(
             name='test_volume',
-            capacity=512,
+            capacity=2,
         )
 
         volume.define()
@@ -105,10 +102,10 @@ class TestLibvirtVolume(LibvirtTestCase):
 
         child.define()
 
-        assert child.get_capacity() == 512
+        assert child.get_capacity() == 2147483648
         assert child.get_path() == (
             '/default-pool/test_env_test_node_test_child')
-        assert child.get_allocation() == 512
+        assert child.get_allocation() == 2147483648
 
         xml = child._libvirt_volume.XMLDesc(0)
 
@@ -117,8 +114,8 @@ class TestLibvirtVolume(LibvirtTestCase):
   <key>/default-pool/test_env_test_node_test_child</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>2147483648</capacity>
+  <allocation unit='bytes'>2147483648</allocation>
   <target>
     <path>/default-pool/test_env_test_node_test_child</path>
     <format type='qcow2'/>
@@ -132,7 +129,7 @@ class TestLibvirtVolume(LibvirtTestCase):
     <path>/default-pool/test_env_test_node_test_volume</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0644</mode>
+      <mode>0600</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>

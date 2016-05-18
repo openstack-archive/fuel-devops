@@ -17,7 +17,6 @@ import xml.etree.ElementTree as ET
 
 import libvirt
 import mock
-import pytest
 
 from devops.error import DevopsError
 from devops.models import Environment
@@ -37,8 +36,8 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
         self.nwfilter = self.libvirt_nwfilter_lookup_mock.return_value
         self.nwfilter.XMLDesc.return_value = (
             '<?xml version="1.0" encoding="utf-8" ?>\n'
-            '<filter name="tenv_test_l2_net_dev_64:5d:8b:a9:ac:ec">\n'
-            '    <filterref filter="tenv_test_l2_net_dev" />\n'
+            '<filter name="tenv_l2nd_64:5d:8b:a9:ac:ec">\n'
+            '    <filterref filter="tenv_l2nd" />\n'
             '    <rule action="drop" direction="inout" priority="-950">\n'
             '        <all />\n'
             '    </rule>\n'
@@ -69,7 +68,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
         )
 
         self.l2_net_dev = self.group.add_l2_network_device(
-            name='test_l2_net_dev',
+            name='l2nd',
             address_pool='test_ap',
             forward=dict(mode='nat'),
         )
@@ -83,7 +82,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
 
         self.interface = self.node.add_interface(
             label='eth0',
-            l2_network_device_name='test_l2_net_dev',
+            l2_network_device_name='l2nd',
             interface_model='virtio',
         )
         self.interface.mac_address = '64:5d:8b:a9:ac:ec'
@@ -108,7 +107,6 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
 
         self.os_mock = self.patch('devops.driver.libvirt.libvirt_driver.os')
 
-    @pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
     def test_snapshot_class(self):
         self.node.snapshot(name='test1')
         assert self.node.has_snapshot('test1')
@@ -167,9 +165,10 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
       <controller index="0" model="nec-xhci" type="usb" />
       <interface type="network">
         <mac address="(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" />
-        <source network="tenv_test_l2_net_dev" />
-        <target dev="virnet1" />
+        <source network="tenv_l2nd" />
+        <target dev="virnet0" />
         <model type="virtio" />
+        <filterref filter="tenv_l2nd_(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" />
       </interface>
       <serial type="pty">
         <target port="0" />
@@ -278,8 +277,8 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
             assert rev_mock.called
             self.libvirt_nwfilter_define_mock.assert_called_once_with(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
-                '<filter name="tenv_test_l2_net_dev_64:5d:8b:a9:ac:ec">\n'
-                '    <filterref filter="tenv_test_l2_net_dev"/>\n'
+                '<filter name="tenv_l2nd_64:5d:8b:a9:ac:ec">\n'
+                '    <filterref filter="tenv_l2nd"/>\n'
                 '    <uuid>e3db79b5-717c-4b15-9198-ecad569c1ea2</uuid>\n'
                 '</filter>\n'
             )
@@ -293,7 +292,6 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
             dest_mock.assert_called_once_with()
 
 
-@pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
 class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
 
     def setUp(self):
@@ -368,16 +366,16 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
 
         assert len(self.snap_create_xml_mock.mock_calls) == 2
 
-        xml = ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        xml = ('<?xml version="1.0" encoding="utf-8"?>\n'
                '<domainsnapshot>\n'
                '    <name>test1</name>\n'
-               '    <memory snapshot="no" />\n'
+               '    <memory snapshot="no"/>\n'
                '    <disks>\n'
                '        <disk file="/default-pool/'
                'tenv_tnode_tvol.test1" name="sda" '
-               'snapshot="external" />\n'
+               'snapshot="external"/>\n'
                '    </disks>\n'
-               '</domainsnapshot>')
+               '</domainsnapshot>\n')
         xml1 = ('<domainsnapshot>\n'
                 '    <name>test1</name>\n'
                 '    <memory snapshot="no" />\n'
@@ -426,18 +424,18 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
         assert len(pool.listAllVolumes()) == 2
         assert len(self.snap_create_xml_mock.mock_calls) == 2
 
-        xml = ('<?xml version="1.0" encoding="utf-8" ?>\n'
+        xml = ('<?xml version="1.0" encoding="utf-8"?>\n'
                '<domainsnapshot>\n'
                '    <name>test1</name>\n'
                '    <memory file="/tmp/snap/'
                'snapshot-memory-tenv_tnode.test1-1" '
-               'snapshot="external" />\n'
+               'snapshot="external"/>\n'
                '    <disks>\n'
                '        <disk file="/default-pool/'
                'tenv_tnode_tvol.test1" name="sda" '
-               'snapshot="external" />\n'
+               'snapshot="external"/>\n'
                '    </disks>\n'
-               '</domainsnapshot>')
+               '</domainsnapshot>\n')
         xml1 = ('<domainsnapshot>\n'
                 '    <name>test1</name>\n'
                 '    <memory snapshot="no" />\n'
@@ -754,13 +752,13 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
   <key>/default-pool/tenv_tnode_tvol</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>5368709120</capacity>
+  <allocation unit='bytes'>5368709120</allocation>
   <target>
     <path>/default-pool/tenv_tnode_tvol</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
@@ -856,13 +854,13 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
   <key>/default-pool/tenv_tnode_tvol</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>5368709120</capacity>
+  <allocation unit='bytes'>5368709120</allocation>
   <target>
     <path>/default-pool/tenv_tnode_tvol</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
@@ -1022,16 +1020,16 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
         assert len(pool.listAllVolumes()) == 4
         assert len(self.snap_create_xml_mock.mock_calls) == 3
         snapshot1r_xml = (
-            '<?xml version="1.0" encoding="utf-8" ?>\n'
+            '<?xml version="1.0" encoding="utf-8"?>\n'
             '<domainsnapshot>\n'
             '    <name>test1-revert</name>\n'
-            '    <memory snapshot="no" />\n'
+            '    <memory snapshot="no"/>\n'
             '    <disks>\n'
             '        <disk '
             'file="/default-pool/tenv_tnode_tvol.test1-revert" '
-            'name="sda" snapshot="external" />\n'
+            'name="sda" snapshot="external"/>\n'
             '    </disks>\n'
-            '</domainsnapshot>')
+            '</domainsnapshot>\n')
         xml1 = (
             '<domainsnapshot>\n'
             '  <name>test1</name>\n'
@@ -1113,13 +1111,13 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
   <key>/default-pool/tenv_tnode_tvol.test1-revert</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>5368709120</capacity>
+  <allocation unit='bytes'>5368709120</allocation>
   <target>
     <path>/default-pool/tenv_tnode_tvol.test1-revert</path>
     <format type='qcow2'/>
     <permissions>
-      <mode>0600</mode>
+      <mode>0644</mode>
       <owner>-1</owner>
       <group>-1</group>
     </permissions>
@@ -1211,15 +1209,15 @@ class TestLibvirtNodeExternalSnapshot(TestLibvirtNodeSnapshotBase):
             '</domainsnapshot>')
 
         xml2 = (
-            '<?xml version="1.0" encoding="utf-8" ?>\n'
+            '<?xml version="1.0" encoding="utf-8"?>\n'
             '<domainsnapshot>\n'
             '    <name>test1-revert0</name>\n'
-            '    <memory snapshot="no" />\n'
+            '    <memory snapshot="no"/>\n'
             '    <disks>\n'
             '        <disk file="/default-pool/tenv_tnode_tvol.test1-revert0"'
-            ' name="sda" snapshot="external" />\n'
+            ' name="sda" snapshot="external"/>\n'
             '    </disks>\n'
-            '</domainsnapshot>')
+            '</domainsnapshot>\n')
 
         xml3 = (
             '<domainsnapshot>\n'
