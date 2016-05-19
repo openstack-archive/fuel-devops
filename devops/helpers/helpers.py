@@ -70,8 +70,8 @@ def tcp_ping_(host, port, timeout=None):
 
 
 def _tcp_ping(*args, **kwargs):
-    logger.warning('_tcp_ping is deprecated in favor of tcp_ping')
-    warn('_tcp_ping is deprecated in favor of tcp_ping', DeprecationWarning)
+    logger.warning('_tcp_ping is deprecated in favor of tcp_ping_')
+    warn('_tcp_ping is deprecated in favor of tcp_ping_', DeprecationWarning)
     return tcp_ping_(*args, **kwargs)
 
 
