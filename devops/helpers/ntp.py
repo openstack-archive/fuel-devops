@@ -69,7 +69,7 @@ class AbstractNtp(object):
 
     @abc.abstractmethod
     def set_actual_time(self, timeout=600):
-        pass
+        """enforce time sync"""
 
     @abc.abstractmethod
     def wait_peer(self, interval=8, timeout=600):
