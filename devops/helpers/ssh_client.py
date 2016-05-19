@@ -182,6 +182,48 @@ class SSHClient(object):
             chan.exec_command(cmd)
         return chan, stdin, stderr, stdout
 
+    def execute_through_host(
+            self,
+            proxy_host,
+            cmd,
+            creds=('cirros', 'cubswin:)'),
+            proxy_port=22):
+        logger.debug("Making intermediate transport")
+        intermediate_transport = self._ssh.get_transport()
+
+        logger.debug("Opening channel to proxy")
+        intermediate_channel = intermediate_transport.open_channel(
+            'direct-tcpip', (proxy_host, proxy_port), (self.host, 0))
+        logger.debug("Opening paramiko transport")
+        transport = paramiko.Transport(intermediate_channel)
+        logger.debug("Starting client")
+        transport.start_client()
+        logger.info("Passing authentication to VM: {}".format(creds))
+        transport.auth_password(creds[0], creds[1])
+
+        logger.debug("Opening session")
+        channel = transport.open_session()
+        logger.info("Executing command: {}".format(cmd))
+        channel.exec_command(cmd)
+
+        result = {
+            'stdout': [],
+            'stderr': [],
+            'exit_code': 0
+        }
+
+        logger.debug("Receiving exit_code")
+        result['exit_code'] = channel.recv_exit_status()
+        logger.debug("Receiving stdout")
+        result['stdout'] = channel.recv(1024)
+        logger.debug("Receiving stderr")
+        result['stderr'] = channel.recv_stderr(1024)
+
+        logger.debug("Closing channel")
+        channel.close()
+
+        return result
+
     def mkdir(self, path):
         if self.exists(path):
             return
