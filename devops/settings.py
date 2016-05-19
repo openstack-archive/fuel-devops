@@ -34,6 +34,9 @@ DRIVER_PARAMETERS = {
 
 INSTALLED_APPS = ['devops']
 
+LOGS_DIR = os.environ.get('LOGS_DIR', os.path.expanduser('~/.devops'))
+LOGS_SIZE = int(os.environ.get('LOGS_SIZE', 10485760))
+
 DATABASES = {
     'default': {
         'ENGINE': os.environ.get('DEVOPS_DB_ENGINE',
