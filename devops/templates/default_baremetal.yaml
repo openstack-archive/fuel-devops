@@ -1,0 +1,75 @@
+aliases:
+
+  dynamic_address_pool:
+   - &pool_default !os_env POOL_DEFAULT, 10.109.0.0/16:24
+
+  default_interface_model:
+   - &interface_model !os_env INTERFACE_MODEL, e1000
+
+template:
+  devops_settings:
+    env_name: test_ipmi
+
+    address_pools:
+    # Network pools used by the environment
+      fuelweb_admin-pool01:         ###### <<< pool name for fuelweb_admin OpenStack network
+        net: *pool_default
+        params:
+          tag: 0
+
+    groups:
+     - name: baremetal-rack-01
+       driver:
+         name: devops.driver.baremetal
+
+       network_pools:  # Address pools for OpenStack networks.
+         # Actual names should be used for keys
+         # (the same as in Nailgun, for example)
+         fuelweb_admin: fuelweb_admin-pool01  ###### <<< pool name for fuelweb_admin OpenStack network
+
+       l2_network_devices:  # bridges. It is *NOT* Nailgun networks
+         switch01:
+           address_pool: fuelweb_admin-pool01  ###### <<< pool name for fuelweb_admin OpenStack network
+
+       nodes:
+        - name: slave-01  # Custom name of baremetal for Fuel slave node
+          role: fuel_slave  # Fixed role for Fuel master node properties
+          params:
+            ipmi_user: user1
+            ipmi_password: pass2
+            ipmi_previlegies: OPERATOR
+            ipmi_host: ipmi-1.host.address.net
+            ipmi_lan_interface: lanplus
+            ipmi_port: 623
+
+            # so, interfaces can be turn on in one or in a different switches.
+            interfaces:
+             - # First interface is not used
+             - label: iface2
+               l2_network_device: switch01    # switch name. It is *NOT* a Nailgun network
+               mac_address: xx:xx:xx:xx:xx:xx
+            network_config:
+              iface2:
+                networks:
+                 - fuelweb_admin  ## OpenStack network, NOT switch name
+
+        - name: slave-02  # Custom name of baremetal for Fuel slave node
+          role: fuel_slave  # Fixed role for Fuel master node properties
+          params:
+            ipmi_user: user2
+            ipmi_password: pass2
+            ipmi_previlegies: OPERATOR
+            ipmi_host: ipmi-2.host.address.net
+            ipmi_lan_interface: lanplus
+            ipmi_port: 623
+
+            # so, interfaces can be turn on in one or in a different switches.
+            interfaces:
+             - # First interface is not used
+             - label: iface2
+               l2_network_device: switch01    # switch name. It is *NOT* a Nailgun network
+               mac_address: xx:xx:xx:xx:xx:xx
+            network_config:
+              iface2:
+                networks:
+                 - fuelweb_admin  ## OpenStack network, NOT switch name
