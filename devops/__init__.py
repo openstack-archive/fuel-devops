@@ -14,26 +14,41 @@
 
 import os
 import logging
-import logging.config
+import logging.handlers
+from devops.settings import LOGS_DIR
+from devops.settings import LOGS_SIZE
+from logging.config import dictConfig
 
-import yaml
 
 __version__ = '3.0.0'
+DEFAULT_LOGGING = {'version': 1,
+                   'disable_existing_loggers': False}
 
-log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
-            os.path.expanduser('~/.devops'),
-            '/etc/devops')
-for loc in log_path:
-    try:
-        with open(os.path.join(loc, 'log.yaml')) as f:
-            config = yaml.load(f.read())
-            for h in config['handlers'].values():
-                if h.get('filename'):
-                    h['filename'] = os.path.expanduser(h['filename'])
-            logging.config.dictConfig(config)
-            break
-    except (IOError, ValueError):
-        pass
+dictConfig(DEFAULT_LOGGING)
 
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s %(filename)s:'
+                    '%(lineno)d -- %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    filename=os.path.join(LOGS_DIR, 'devops.log'),
+                    filemode='a')
+
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s %(filename)s:'
+                              '%(lineno)d -- %(message)s')
+console.setFormatter(formatter)
+filename = os.path.join(LOGS_DIR, 'devops.log')
+log_file = logging.handlers.RotatingFileHandler(filename,
+                                                encoding='utf8',
+                                                maxBytes=LOGS_SIZE,
+                                                backupCount=5)
+log_file.setLevel(logging.DEBUG)
+log_file.setFormatter(formatter)
 logger = logging.getLogger(__name__)
+logger.addHandler(console)
+logger.addHandler(log_file)
+logger.setLevel(logging.DEBUG)
