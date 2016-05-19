@@ -143,10 +143,16 @@ def wait_tcp(host, port, timeout):
     wait(is_port_active, timeout=timeout)
 
 
-def wait_ssh_cmd(host, port, check_cmd, username, password, timeout):
+def wait_ssh_cmd(
+        host,
+        port,
+        check_cmd,
+        username=SSH_CREDENTIALS['login'],
+        password=SSH_CREDENTIALS['password'],
+        timeout=0):
     ssh_client = SSHClient(host=host, port=port,
-                           username=SSH_CREDENTIALS['login'],
-                           password=SSH_CREDENTIALS['password'])
+                           username=username,
+                           password=password)
     wait(lambda: not ssh_client.execute(check_cmd)['exit_code'],
          timeout=timeout)
 
