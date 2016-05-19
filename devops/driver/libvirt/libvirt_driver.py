@@ -941,7 +941,7 @@ class LibvirtNode(Node):
             acpi=self.driver.enable_acpi,
             numa=self.numa,
         )
-        logger.info(node_xml)
+        logger.debug(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()
 
         super(LibvirtNode, self).define()
@@ -1142,15 +1142,15 @@ class LibvirtNode(Node):
         )
 
         domain = self._libvirt_node
-        logger.info(xml)
-        logger.info(domain.state(0))
+        logger.debug(xml)
+        logger.debug(domain.state(0))
 
         domain.snapshotCreateXML(xml, create_xml_flag)
 
         if external:
             self.set_snapshot_current(name)
 
-        logger.info(domain.state(0))
+        logger.debug(domain.state(0))
 
     # EXTERNAL SNAPSHOT
     @staticmethod
