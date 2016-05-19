@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-
 from setuptools import find_packages
 from setuptools import setup
 
@@ -29,12 +27,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     packages=find_packages(),
-    data_files=[
-        (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
-        (os.path.expanduser('~/.devops/log'), [])],
-    scripts=['bin/dos.py',
-             'bin/env_export.sh', 'bin/env_import.sh',
-             'bin/libvirt_functions.sh'],
+    scripts=['bin/dos.py'],
     install_requires=[
         'keystoneauth1>=2.1.0',
         'xmlbuilder',
