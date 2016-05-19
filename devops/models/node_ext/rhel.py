@@ -12,8 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from devops.models.node import NodeExtensionBase
 
+class NodeExtension(object):
 
-class NodeExtension(NodeExtensionBase):
-    pass
+    def __init__(self, node):
+        self.node = node
