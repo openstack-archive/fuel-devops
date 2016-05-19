@@ -12,13 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-import logging
 import os
 import posixpath
 import stat
 
 import paramiko
+# noinspection PyUnresolvedReferences
+from six.moves import cStringIO
 
 from devops.error import DevopsCalledProcessError
 from devops.helpers.retry import retry
@@ -41,10 +41,11 @@ class SSHClient(object):
         self.host = str(host)
         self.port = int(port)
         self.username = username
-        self.password = password
+        self.__password = password
         if not private_keys:
             private_keys = []
-        self.private_keys = private_keys
+        self.__private_keys = private_keys
+        self.__actual_pkey = None
 
         self.sudo_mode = False
         self.sudo = self.get_sudo(self)
@@ -52,6 +53,40 @@ class SSHClient(object):
         self.__sftp = None
 
         self.reconnect()
+
+    @property
+    def password(self):
+        return self.__password
+
+    @password.setter
+    def password(self, new_val):
+        self.__password = new_val
+        self.reconnect()
+
+    @property
+    def private_keys(self):
+        return self.__private_keys
+
+    @private_keys.setter
+    def private_keys(self, new_val):
+        self.__private_keys = new_val
+        self.reconnect()
+
+    @private_keys.deleter
+    def private_keys(self):
+        self.__private_keys = []
+        self.reconnect()
+
+    @property
+    def private_key(self):
+        return self.__actual_pkey
+
+    @property
+    def public_key(self):
+        if self.private_key is None:
+            return None
+        key = paramiko.RSAKey(file_obj=cStringIO(self.private_key))
+        return '{0} {1}'.format(key.get_name(), key.get_base64())
 
     @property
     def _sftp(self):
@@ -85,20 +120,23 @@ class SSHClient(object):
 
     @retry(count=3, delay=3)
     def connect(self):
-        logging.debug(
+        logger.debug(
             "Connect to '{0}:{1}' as '{2}:{3}'".format(
                 self.host, self.port, self.username, self.password))
         for private_key in self.private_keys:
             try:
-                return self._ssh.connect(
+                self._ssh.connect(
                     self.host, port=self.port, username=self.username,
                     password=self.password, pkey=private_key)
+                self.__actual_pkey = private_key
+                return
             except paramiko.AuthenticationException:
                 continue
         if self.private_keys:
-            logging.error("Authentication with keys failed")
+            logger.error("Authentication with keys failed")
 
-        return self._ssh.connect(
+        self.__actual_pkey = None
+        self._ssh.connect(
             self.host, port=self.port, username=self.username,
             password=self.password)
 
@@ -114,18 +152,22 @@ class SSHClient(object):
         self.connect()
         self._connect_sftp()
 
-    def check_call(self, command, verbose=False):
+    def check_call(self, command, verbose=False, excpected=0):
         ret = self.execute(command, verbose)
-        if ret['exit_code'] != 0:
-            raise DevopsCalledProcessError(command, ret['exit_code'],
-                                           ret['stdout'] + ret['stderr'])
+        if ret['exit_code'] != excpected:
+            raise DevopsCalledProcessError(
+                command, ret['exit_code'],
+                expected=excpected,
+                stdout=ret['stdout_str'],
+                stderr=ret['stderr_str'])
         return ret
 
     def check_stderr(self, command, verbose=False):
         ret = self.check_call(command, verbose)
         if ret['stderr']:
             raise DevopsCalledProcessError(command, ret['exit_code'],
-                                           ret['stdout'] + ret['stderr'])
+                                           stdout=ret['stdout_str'],
+                                           stderr=ret['stderr_str'])
         return ret
 
     @classmethod
@@ -133,14 +175,11 @@ class SSHClient(object):
         futures = {}
         errors = {}
         for remote in remotes:
-            cmd = "%s\n" % command
-            if remote.sudo_mode:
-                cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
-            chan = remote._ssh.get_transport().open_session()
-            chan.exec_command(cmd)
+            chan, _, _, _ = remote.execute_async(command)
             futures[remote] = chan
         for remote, chan in futures.items():
             ret = chan.recv_exit_status()
+            chan.close()
             if ret != 0:
                 errors[remote.host] = ret
         if errors:
@@ -163,10 +202,12 @@ class SSHClient(object):
                 logger.info(line)
         result['exit_code'] = chan.recv_exit_status()
         chan.close()
+        result['stdout_str'] = ''.join(result['stdout']).strip()
+        result['stderr_str'] = ''.join(result['stderr']).strip()
         return result
 
     def execute_async(self, command):
-        logging.debug("Executing command: '{}'".format(command.rstrip()))
+        logger.debug("Executing command: '{}'".format(command.rstrip()))
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
@@ -182,14 +223,59 @@ class SSHClient(object):
             chan.exec_command(cmd)
         return chan, stdin, stderr, stdout
 
+    def execute_through_host(
+            self,
+            target_host,
+            cmd,
+            username=None,
+            password=None,
+            key=None,
+            target_port=22):
+        if username is None and password is None and key is None:
+            username = self.username
+            password = self.__password
+            key = self.public_key
+
+        intermediate_channel = self._ssh.get_transport().open_channel(
+            'direct-tcpip', (target_host, target_port), (self.host, 0))
+        transport = paramiko.Transport(intermediate_channel)
+        transport.start_client()
+        logger.info("Passing authentication to: {}".format(target_host))
+        if password is None and key is None:
+            logger.debug('auth_none')
+            transport.auth_none(username=username)
+        elif key is not None:
+            logger.debug('auth_publickey')
+            transport.auth_publickey(username=username, key=key)
+        else:
+            logger.debug('auth_password')
+            transport.auth_password(username=username, password=password)
+
+        logger.debug("Opening session")
+        channel = transport.open_session()
+        logger.info("Executing command: {}".format(cmd))
+        channel.exec_command(cmd)
+
+        result = {
+            'stdout': channel.recv(1024),
+            'stderr': channel.recv_stderr(1024),
+            'exit_code': channel.recv_exit_status()}
+
+        logger.debug("Closing channel")
+        channel.close()
+        result['stdout_str'] = ''.join(result['stdout']).strip()
+        result['stderr_str'] = ''.join(result['stderr']).strip()
+
+        return result
+
     def mkdir(self, path):
         if self.exists(path):
             return
-        logger.debug("Creating directory: %s", path)
-        self.execute("mkdir -p %s\n" % path)
+        logger.debug("Creating directory: {}".format(path))
+        self.execute("mkdir -p {}\n".format(path))
 
     def rm_rf(self, path):
-        logger.debug("Removing directory: %s", path)
+        logger.debug("rm -rf {}".format(path))
         self.execute("rm -rf %s" % path)
 
     def open(self, path, mode='r'):
