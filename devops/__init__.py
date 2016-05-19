@@ -13,26 +13,50 @@
 #    under the License.
 
 import os
-import yaml
 import logging
 import logging.config
+from devops.settings import LOGS_DIR
+from devops.settings import LOGS_SIZE
 
 __version__ = '2.9.20'
 
-log_path = (os.environ.get('DEVOPS_CONFIG', os.curdir),
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'),
-            os.path.expanduser('~/.devops'),
-            '/etc/devops')
-for loc in log_path:
-    try:
-        with open(os.path.join(loc, 'log.yaml')) as f:
-            config = yaml.load(f.read())
-            for h in config['handlers'].values():
-                if h.get('filename'):
-                    h['filename'] = os.path.expanduser(h['filename'])
-            logging.config.dictConfig(config)
-            break
-    except (IOError, ValueError):
-        pass
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
 
+LOGGER_SETTINGS = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'loggers': {
+        'devops': {
+            'handlers': ['log_file', 'console_output'],
+        },
+    },
+    'handlers': {
+        'console_output': {
+            'class': 'logging.StreamHandler',
+            'level': 'INFO',
+            'formatter': 'default',
+            'stream': 'ext://sys.stdout',
+        },
+        'log_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'level': 'DEBUG',
+            'formatter': 'default',
+            'filename': os.path.join(LOGS_DIR, 'devops.log'),
+            'encoding': 'utf8',
+            'mode': 'a',
+            'maxBytes': LOGS_SIZE,
+            'backupCount': 5,
+        },
+    },
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s - %(levelname)s - %(filename)s:'
+                      '%(lineno)d -- %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+}
+
+logging.config.dictConfig(LOGGER_SETTINGS)
 logger = logging.getLogger(__name__)
