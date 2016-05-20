@@ -70,7 +70,7 @@ class Environment(BaseModel):
             raise DevopsObjNotFound(AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
-        return self.addresspool_set.filter(**kwargs)
+        return sorted(self.addresspool_set.filter(**kwargs))
 
     def get_group(self, **kwargs):
         try:
@@ -79,7 +79,7 @@ class Environment(BaseModel):
             raise DevopsObjNotFound(Group, **kwargs)
 
     def get_groups(self, **kwargs):
-        return self.group_set.filter(**kwargs)
+        return sorted(self.group_set.filter(**kwargs))
 
     def add_groups(self, groups):
         for group_data in groups:

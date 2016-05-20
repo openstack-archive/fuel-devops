@@ -42,7 +42,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
 
     def get_l2_network_devices(self, **kwargs):
-        return self.l2networkdevice_set.filter(**kwargs)
+        return sorted(self.l2networkdevice_set.filter(**kwargs))
 
     def get_network_pool(self, **kwargs):
         try:
@@ -51,7 +51,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(NetworkPool, **kwargs)
 
     def get_network_pools(self, **kwargs):
-        return self.networkpool_set.filter(**kwargs)
+        return sorted(self.networkpool_set.filter(**kwargs))
 
     def get_node(self, **kwargs):
         try:
@@ -60,7 +60,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(Node, **kwargs)
 
     def get_nodes(self, **kwargs):
-        return self.node_set.filter(**kwargs)
+        return sorted(self.node_set.filter(**kwargs))
 
     def get_allocated_networks(self):
         return self.driver.get_allocated_networks()
