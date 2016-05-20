@@ -33,7 +33,7 @@ class Group(BaseModel):
 
     environment = models.ForeignKey('Environment', null=True)
     name = models.CharField(max_length=255)
-    driver = models.OneToOneField('Driver', primary_key=True)
+    driver = models.OneToOneField('Driver')
 
     def get_l2_network_device(self, **kwargs):
         try:
@@ -42,7 +42,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
 
     def get_l2_network_devices(self, **kwargs):
-        return self.l2networkdevice_set.filter(**kwargs)
+        return self.l2networkdevice_set.filter(**kwargs).order_by('id')
 
     def get_network_pool(self, **kwargs):
         try:
@@ -51,7 +51,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(NetworkPool, **kwargs)
 
     def get_network_pools(self, **kwargs):
-        return self.networkpool_set.filter(**kwargs)
+        return self.networkpool_set.filter(**kwargs).order_by('id')
 
     def get_node(self, **kwargs):
         try:
@@ -60,7 +60,7 @@ class Group(BaseModel):
             raise DevopsObjNotFound(Node, **kwargs)
 
     def get_nodes(self, **kwargs):
-        return self.node_set.filter(**kwargs)
+        return self.node_set.filter(**kwargs).order_by('id')
 
     def get_allocated_networks(self):
         return self.driver.get_allocated_networks()
@@ -155,7 +155,7 @@ class Group(BaseModel):
         ))
 
     def add_l2_network_devices(self, l2_network_devices):
-        for name, params in l2_network_devices.items():
+        for name, params in sorted(l2_network_devices.items()):
             self.add_l2_network_device(
                 name=name,
                 **params
@@ -199,7 +199,7 @@ class Group(BaseModel):
         return node
 
     def add_network_pools(self, network_pools):
-        for pool_name, address_pool_name in network_pools.items():
+        for pool_name, address_pool_name in sorted(network_pools.items()):
             self.add_network_pool(
                 name=pool_name,
                 address_pool_name=address_pool_name,
