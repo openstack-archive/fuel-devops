@@ -32,7 +32,10 @@ setup(
     data_files=[
         (os.path.expanduser('~/.devops'), ['devops/log.yaml']),
         (os.path.expanduser('~/.devops/log'), [])],
-    scripts=['bin/dos.py'],
+    scripts=[
+        'bin/dos.py',
+        'bin/dos-manage.py',
+    ],
     install_requires=[
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
