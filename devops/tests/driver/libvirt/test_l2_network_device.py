@@ -15,6 +15,7 @@
 import mock
 from netaddr import IPNetwork
 
+from devops.error import DevopsObjNotFound
 from devops.models import Environment
 from devops.tests.driver.libvirt.base import LibvirtTestCase
 
@@ -105,3 +106,14 @@ class TestLibvirtL2NetworkDevice(LibvirtTestCase):
         ret = self.d.get_allocated_networks()
         assert len(ret) == 1
         assert ret[0] == IPNetwork('172.0.0.1/24')
+
+    def test_lagacy_env_get_network(self):
+        self.group.add_l2_network_device(name='no_ap')
+
+        assert len(self.env.get_networks()) == 1
+        with self.assertRaises(DevopsObjNotFound):
+            self.env.get_network(name='no_ap')
+
+        assert len(self.env.get_networks()) == 1
+        l2dev = self.env.get_network(name='test_l2_net_dev')
+        assert l2dev.id == self.l2_net_dev.id
