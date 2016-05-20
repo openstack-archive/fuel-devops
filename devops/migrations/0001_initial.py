@@ -152,6 +152,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Group',
             fields=[
+                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('name', models.CharField(max_length=255)),
                 ('driver', models.OneToOneField(serialize=False, to='devops.Driver', primary_key=True)),
