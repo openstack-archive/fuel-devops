@@ -24,7 +24,8 @@ by most of fuel-qa system tests:
    * STORAGE_POOL_NAME: Pool name for images of VMs
    * DRIVER_USE_HOST_CPU: CPU type used by VMs can be copied from the host
 
-.. code-block::yaml
+.. code-block:: yaml
+
     ---
     aliases:
 
