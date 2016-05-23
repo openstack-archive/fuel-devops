@@ -12,14 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+from warnings import warn
+
 
 class DevopsError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super(DevopsError, self).__init__()
-
-    def __str__(self):
-        return self.message
+    """Base class for errors"""
 
 
 class AuthenticationError(DevopsError):
@@ -27,15 +25,32 @@ class AuthenticationError(DevopsError):
 
 
 class DevopsCalledProcessError(DevopsError):
-    def __init__(self, command, returncode, output=None):
+    def __init__(
+            self, command, returncode, expected=0, stdout=None, stderr=None):
         self.returncode = returncode
+        self.expected = expected
         self.cmd = command
-        self.output = output
-        message = "Command '%s' returned non-zero exit status %s" % (
-            self.cmd, self.returncode)
-        if self.output:
-            message += "\n{}".format('\n'.join(self.output))
+        self.stdout = stdout
+        self.stderr = stderr
+        message = (
+            "Command '{cmd}' returned exit code {code} while "
+            "expected {expected}".format(
+                cmd=self.cmd,
+                code=self.returncode,
+                expected=self.expected
+            ))
+        if self.stdout:
+            message += "\n\tSTDOUT: {}".format(self.stdout)
+        if self.stderr:
+            message += "\n\tSTDERR: {}".format(self.stderr)
         super(DevopsCalledProcessError, self).__init__(message)
+
+    @property
+    def output(self):
+        warn(
+            'output is deprecated, please use stdout and stderr separately',
+            DeprecationWarning)
+        return self.stdout + self.stderr
 
 
 class DevopsNotImplementedError(DevopsError):
