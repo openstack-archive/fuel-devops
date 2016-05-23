@@ -138,9 +138,9 @@ def _wait(*args, **kwargs):
     return wait_pass(*args, **kwargs)
 
 
-def wait_tcp(host, port, timeout):
+def wait_tcp(host, port, timeout, timeout_msg="Waiting timed out"):
     is_port_active = partial(tcp_ping, host=host, port=port)
-    wait(is_port_active, timeout=timeout)
+    wait(is_port_active, timeout=timeout, timeout_msg=timeout_msg)
 
 
 def wait_ssh_cmd(
@@ -169,6 +169,11 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
 
 
 def get_private_keys(env):
+    logger.warning(
+        'get_private_keys has been deprecated in favor of DevopsClient')
+    warn(
+        'get_private_keys has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
     _ssh_keys = []
     admin_remote = get_admin_remote(env)
     for key_string in ['/root/.ssh/id_rsa',
@@ -181,6 +186,11 @@ def get_private_keys(env):
 
 def get_admin_remote(env, login=SSH_CREDENTIALS['login'],
                      password=SSH_CREDENTIALS['password']):
+    logger.warning(
+        'get_admin_remote has been deprecated in favor of DevopsClient')
+    warn(
+        'get_admin_remote has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
     admin_ip = get_admin_ip(env)
     wait(lambda: tcp_ping(admin_ip, 22),
          timeout=180,
@@ -194,6 +204,11 @@ def get_admin_remote(env, login=SSH_CREDENTIALS['login'],
 
 def get_node_remote(env, node_name, login=SSH_SLAVE_CREDENTIALS['login'],
                     password=SSH_SLAVE_CREDENTIALS['password']):
+    logger.warning(
+        'get_node_remote has been deprecated in favor of DevopsClient')
+    warn(
+        'get_node_remote has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
     ip = get_slave_ip(env, env.get_node(
         name=node_name).interfaces[0].mac_address)
     wait(lambda: tcp_ping(ip, 22), timeout=180,
@@ -205,10 +220,22 @@ def get_node_remote(env, node_name, login=SSH_SLAVE_CREDENTIALS['login'],
 
 
 def get_admin_ip(env):
+    logger.warning(
+        'get_admin_ip has been deprecated in favor of DevopsClient')
+    warn(
+        'get_admin_ip has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
+
     return env.get_node(name='admin').get_ip_address_by_network_name('admin')
 
 
 def get_ip_from_json(js, mac):
+    logger.warning(
+        'get_ip_from_json has been deprecated in favor of DevopsClient')
+    warn(
+        'get_ip_from_json has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
+
     def poor_mac(mac_addr):
         return \
             [m.lower() for m in mac_addr if m.lower() in '01234546789abcdef']
@@ -224,6 +251,12 @@ def get_ip_from_json(js, mac):
 
 
 def get_slave_ip(env, node_mac_address):
+    logger.warning(
+        'get_slave_ip has been deprecated in favor of DevopsClient')
+    warn(
+        'get_slave_ip has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
+
     admin_ip = get_admin_ip(env)
     js = get_nodes(admin_ip)
     return get_ip_from_json(js, node_mac_address)
@@ -335,6 +368,12 @@ def _underscored(*args):
 
 
 def get_nodes(admin_ip):
+    logger.warning(
+        'get_nodes has been deprecated in favor of DevopsClient')
+    warn(
+        'get_nodes has been deprecated in favor of DevopsClient',
+        DeprecationWarning)
+
     keystone_auth = V2Password(
         auth_url="http://{}:5000/v2.0".format(admin_ip),
         username=KEYSTONE_CREDS['username'],
