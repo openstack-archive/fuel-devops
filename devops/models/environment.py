@@ -146,7 +146,8 @@ class Environment(BaseModel):
         try:
             return cls.objects.create(name=name)
         except IntegrityError:
-            raise DevopsError('Environment with name {!r} already exists'
+            raise DevopsError('Environment with name {!r} already exists. '
+                              'Please, set another environment name.'
                               ''.format(name))
 
     @classmethod
@@ -199,6 +200,9 @@ class Environment(BaseModel):
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
+        if self.has_snapshot(name):
+            raise DevopsError('Snapshot with name {0} already exists.'
+                              .format(self.params.snapshot_name))
         for node in self.get_nodes():
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)
