@@ -1,15 +1,18 @@
 .. _templates:
 
+Templates
+=========
+
 YAML fuel-devops templates are used for creating virtual environments
-which describe 
+which describe
+
 
 Structure of the YAML template for environment creation
 =======================================================
 
-
 YAML template for fuel-devops contains the following objects:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     # In the 'template' can be stored all data related to the environment.
     # There are stored such keys like 'devops_settings' (for fuel-devops)
@@ -59,9 +62,10 @@ YAML template for fuel-devops contains the following objects:
 See detailed examples here:
 
 .. toctree::
-   :maxdepth: 2
+   :glob:
+   :maxdepth: 1
 
-   templates
+   template_examples/*
 
 
 ===============================
@@ -84,13 +88,13 @@ Example 1:
 
 I want to specify the name of a node from the environment variable:
 
-.. code-block::bash
+.. code-block:: bash
 
     export MY_SLAVE09_NAME=contrail_slave_node-1
 
 , and in the template, for node #9:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     - name: !os_env MY_SLAVE09_NAME
       role: fuel_slave
@@ -101,13 +105,13 @@ Example 2:
 I want to override some names of keys in a dictionary, specifying,
 for example, the name of the bond interface from environment variable:
 
-.. code-block::bash
+.. code-block:: bash
 
     export MY_FIRST_BOND_IFACE=bond99
 
 , and in the template, for necessary nodes:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     network_config:
         !os_env MY_FIRST_BOND_IFACE :
@@ -122,7 +126,7 @@ Example 3:
 I want to specify the whole list of slave interfaces from environment
 variable:
 
-.. code-block::bash
+.. code-block:: bash
 
   export MY_SLAVE_INTERFACES="\
     [\
@@ -135,7 +139,7 @@ variable:
 
 , and in the template for required nodes:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     - name: slave-05
       role: fuel-slave
@@ -149,19 +153,19 @@ Example 4:
 You can !include some parts of the yaml file from other yamls like
 interfaces_schema1.yaml, interfaces_schema2.yaml or interfaces_schema3.yaml:
 
-.. code-block::yaml
+.. code-block:: yaml
 
   interfaces:  !include  interfaces_schema2.yaml
 
 , or specifying it with an environment variable:
 
-.. code-block::bash
+.. code-block:: bash
 
   export LOAD_MY_INTERFACES='!include ./interfaces_schema2.yaml'
 
 , and use this variable in the template:
 
-.. code-block::yaml
+.. code-block:: yaml
 
    interfaces:  !os_env LOAD_MY_INTERFACES
 
