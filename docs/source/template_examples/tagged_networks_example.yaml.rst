@@ -14,7 +14,8 @@ All slave nodes have only two network interfaces:
    from this bridge, and getting untagged packets on the libvirt networks
    'public', 'management', 'storage' and 'private'.
 
-.. code-block::yaml
+.. code-block:: yaml
+
     ---
     aliases:
 
