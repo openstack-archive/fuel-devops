@@ -14,6 +14,7 @@
 
 # pylint: disable=no-self-use
 
+import base64
 from contextlib import closing
 from os.path import basename
 import posixpath
@@ -50,6 +51,12 @@ username = 'user'
 password = 'pass'
 private_keys = []
 command = 'ls ~ '
+if PY2:
+    encoded_cmd = base64.b64encode("{}\n".format(command))
+else:
+    encoded_cmd = base64.b64encode(
+        "{}\n".format(command).encode('utf-8')
+    ).decode('utf-8')
 
 
 class TestSSHAuth(TestCase):
@@ -913,7 +920,9 @@ class TestExecute(TestCase):
             mock.call.makefile('wb'),
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('sudo -S bash -c "{}\n"'.format(command))
+            mock.call.exec_command(
+                "sudo -S bash -c '"
+                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
@@ -946,7 +955,9 @@ class TestExecute(TestCase):
             mock.call.makefile('wb'),
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('sudo -S bash -c "{}\n"'.format(command))
+            mock.call.exec_command(
+                "sudo -S bash -c '"
+                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
@@ -988,7 +999,9 @@ class TestExecute(TestCase):
             mock.call.makefile('wb'),
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('sudo -S bash -c "{}\n"'.format(command))
+            mock.call.exec_command(
+                "sudo -S bash -c '"
+                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
