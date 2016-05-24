@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import os
 import posixpath
 import stat
@@ -638,7 +639,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         stderr = chan.makefile_stderr('rb')
         cmd = "{}\n".format(command)
         if self.sudo_mode:
-            cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
+            encoded_cmd = base64.b64encode(cmd)
+            cmd = "sudo -S bash -c 'eval $(base64 -d <(echo \"{0}\"))'".format(
+                encoded_cmd
+            )
             chan.exec_command(cmd)
             if stdout.channel.closed is False:
                 self.auth.enter_password(stdin)
