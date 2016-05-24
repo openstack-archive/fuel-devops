@@ -239,7 +239,9 @@ class TestSnapshotXml(BaseTestXMLBuilder):
     <name>{0}</name>
     <memory snapshot="no"/>
     <disks>
-        <disk file="{1}" name="{2}" snapshot="external"/>
+        <disk name="{2}" snapshot="external">
+            <source file="{1}"/>
+        </disk>
     </disks>
 </domainsnapshot>'''.format(name, self.disk1_volume_path,
                             self.disk1.target_dev)
@@ -256,7 +258,9 @@ class TestSnapshotXml(BaseTestXMLBuilder):
     <name>{0}</name>
     <memory snapshot="no"/>
     <disks>
-        <disk file="{1}" name="{2}" snapshot="external"/>
+        <disk name="{2}" snapshot="external">
+            <source file="{1}"/>
+        </disk>
     </disks>
 </domainsnapshot>'''.format(name, self.disk1_volume_path,
                             self.disk1.target_dev)
@@ -274,7 +278,9 @@ class TestSnapshotXml(BaseTestXMLBuilder):
     <description>{1}</description>
     <memory file="{2}/snapshot-memory-{3}_{4}.{5}" snapshot="external"/>
     <disks>
-        <disk file="{6}" name="{7}" snapshot="external"/>
+        <disk name="{7}" snapshot="external">
+            <source file="{6}"/>
+        </disk>
     </disks>
 </domainsnapshot>'''.format(name, description, external_dir,
                             self.node.environment.name, self.node.name, name,
@@ -301,7 +307,9 @@ class TestSnapshotXml(BaseTestXMLBuilder):
     <description>{1}</description>
     <memory file="{2}/snapshot-memory-{3}_{4}.{5}-0" snapshot="external"/>
     <disks>
-        <disk file="{6}" name="{7}" snapshot="external"/>
+        <disk name="{7}" snapshot="external">
+            <source file="{6}"/>
+        </disk>
     </disks>
 </domainsnapshot>'''.format(name, description, external_dir,
                             self.node.environment.name, self.node.name, name,
