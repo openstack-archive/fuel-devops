@@ -214,7 +214,8 @@ class SSHClient(object):
         stderr = chan.makefile_stderr('rb')
         cmd = "%s\n" % command
         if self.sudo_mode:
-            cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
+            cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"') \
+                                              .replace('$', '\\$')
             chan.exec_command(cmd)
             if stdout.channel.closed is False:
                 stdin.write('%s\n' % self.password)
