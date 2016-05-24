@@ -14,6 +14,7 @@
 
 # pylint: disable=no-self-use
 
+import base64
 from contextlib import closing
 from os.path import basename
 import posixpath
@@ -52,6 +53,7 @@ username = 'user'
 password = 'pass'
 private_keys = []
 command = 'ls ~ '
+encoded_cmd = base64.b64encode("%s\n" % command)
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
@@ -340,7 +342,9 @@ class TestSSHClient(TestCase):
             mock.call.makefile('wb'),
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('sudo -S bash -c "{}\n"'.format(command))
+            mock.call.exec_command(
+                "sudo -S bash -c '"
+                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
@@ -373,7 +377,9 @@ class TestSSHClient(TestCase):
             mock.call.makefile('wb'),
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('sudo -S bash -c "{}\n"'.format(command))
+            mock.call.exec_command(
+                "sudo -S bash -c '"
+                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
