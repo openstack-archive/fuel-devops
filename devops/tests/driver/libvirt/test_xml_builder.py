@@ -160,7 +160,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
             addresses=self.address,
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
-            has_dhcp_server=True,
+            dhcp=True,
             dhcp_range_start=self.dhcp_range_start,
             dhcp_range_end=self.dhcp_range_end,
         )

@@ -438,7 +438,7 @@ class Environment(BaseModel):
                 self.name = l2_network_device.name
                 self.uuid = l2_network_device.uuid
                 self.environment = self
-                self.has_dhcp_server = l2_network_device.has_dhcp_server
+                self.has_dhcp_server = l2_network_device.dhcp
                 self.has_pxe_server = l2_network_device.has_pxe_server
                 self.has_reserved_ips = True
                 self.tftp_root_dir = ''
