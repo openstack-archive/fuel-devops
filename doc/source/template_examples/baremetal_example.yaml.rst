@@ -29,7 +29,9 @@ a baremetal lab (requires the [1] merged to fuel-qa).
 
 [1] https://review.openstack.org/#/c/292977/
 
-.. code-block::yaml
+
+.. code-block:: yaml
+
     ---
     aliases:
 
