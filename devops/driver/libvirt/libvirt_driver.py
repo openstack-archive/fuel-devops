@@ -402,11 +402,9 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                      'vepa', 'passthrough', 'hostdev'),
         )
     )
-    #  TODO(ddmitriev): use 'dhcp atttibute' instead of has_dhcp_server
     dhcp = ParamField(default=False)
 
     has_pxe_server = ParamField(default=False)
-    has_dhcp_server = ParamField(default=False)
     tftp_root_dir = ParamField()
 
     vlan_ifaces = ParamField(default=[])
@@ -500,7 +498,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             dhcp_range_end=dhcp_range_end,
             stp=self.driver.stp,
             has_pxe_server=self.has_pxe_server,
-            has_dhcp_server=self.has_dhcp_server,
+            dhcp=self.dhcp,
             tftp_root_dir=self.tftp_root_dir,
         )
         ret = self.driver.conn.networkDefineXML(xml)
