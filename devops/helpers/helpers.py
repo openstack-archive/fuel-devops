@@ -229,21 +229,6 @@ def get_slave_ip(env, node_mac_address):
     return get_ip_from_json(js, node_mac_address)
 
 
-class KeyPolicy(paramiko.WarningPolicy):
-    def __init__(self):
-        warn(
-            'devops.helpers.KeyPolicy is deprecated '
-            'and will be removed soon', DeprecationWarning)
-        logger.warning(
-            'devops.helpers.KeyPolicy is deprecated '
-            'and will be removed soon'
-        )
-        super(KeyPolicy, self).__init__()
-
-    def missing_host_key(self, client, hostname, key):
-        return
-
-
 def ssh(*args, **kwargs):
     warn(
         'devops.helpers.ssh is deprecated '
@@ -323,15 +308,6 @@ def underscored(*args):
        Skips empty strings.
     """
     return '_'.join(filter(bool, list(args)))
-
-
-def _underscored(*args):
-    logger.warning(
-        '_underscored has been deprecated in favor of underscored')
-    warn(
-        '_underscored has been deprecated in favor of underscored',
-        DeprecationWarning)
-    return underscored(*args)
 
 
 def get_nodes(admin_ip):
