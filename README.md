@@ -12,7 +12,7 @@ other customizations with a few lines of code in system tests.
 
 Installation
 -------------
-The installation procedure can be implemented via PyPI in Python virtual environment (suppose you are using Ubuntu 12.04 or Ubuntu 14.04):
+The installation procedure can be implemented via PyPI in Python virtual environment (suppose you are using Ubuntu 12.04, Ubuntu 14.04 or Ubuntu 16.04):
 
 Before using it, please install the following required dependencies:
 
@@ -116,5 +116,11 @@ Testing
 ==========
 There are next test targets that can be run to validate the code.
 
-    tox -e pep8 - style guidelines enforcement
-    tox -e py27 - unit and integration testing
+    tox -e pep8   - style guidelines enforcement
+    tox -e pylint - static analisys of code quality
+    tox -e py27   - unit and integration testing on Python 2.7 (if available)
+    tox -e py34   - unit and integration testing on Python 3.4 (if available)
+    tox -e py35   - unit and integration testing on Python 3.5 (if available)
+    tox -r cover  - tests coverage check
+    tox -e docs   - documentation consistency check
+

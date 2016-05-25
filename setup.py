@@ -49,6 +49,6 @@ setup(
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
         'mock>=1.2',
-        'tox'
+        'tox>=2.0'
     ],
 )

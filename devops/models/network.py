@@ -51,6 +51,7 @@ class AddressPool(ParamedModel, BaseModel):
 
     Template example (address_pools):
     ---------------------------------
+
     address_pools:
 
       fuelweb_admin-pool01:
@@ -341,19 +342,24 @@ class NetworkPool(BaseModel):
 
         For fuel-qa compatibility, default values are used if the range_name
         was not set:
-        :param relative_start: int, default value for start of 'range_name'.
-                               relative from address_pool.ip_network, default=2
-        :param relavite_end: int, default value for end of 'range_name'.
-                             relative from address_pool.ip_network, default=-2
 
-        :return: touple of two IPs for the range - ('x.x.x.x', 'y.y.y.y')
+        :param relative_start:
+            int, default value for start of 'range_name'.
+            relative from address_pool.ip_network, default=2
+
+        :param relative_end:
+            int, default value for end of 'range_name'.
+            relative from address_pool.ip_network, default=-2
+
+        :return: tuple of two IPs for the range - ('x.x.x.x', 'y.y.y.y')
 
         If 'range_name' is None: group.name is used as a default range.
         If 'range_name' not found in self.address_pool.ip_ranges:
-         - IPs for the range are calculated using relative_start and
-           relative_end values for the self.address_pool.ip_network.
-         - Calculated range is stored in self.address_pool.ip_ranges for
-           further usage. (for fuel-qa compatibility)
+        - IPs for the range are calculated using relative_start and
+            relative_end values for the self.address_pool.ip_network.
+
+        - Calculated range is stored in self.address_pool.ip_ranges for
+            further usage. (for fuel-qa compatibility)
         """
         if range_name is None:
             range_name = self.group.name
