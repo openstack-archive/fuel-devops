@@ -97,7 +97,7 @@ setup.py in fuel-devops repository does everything required.
 .. _DevOpsConf:
 
 Configuration
---------------
+-------------
 
 Basically *devops* requires that the following system-wide settings are
 configured:
@@ -108,7 +108,7 @@ configured:
  * [Optional] Nested Paging is enabled
 
 Configuring libvirt pool
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create libvirt's pool
 
@@ -119,7 +119,7 @@ Create libvirt's pool
     sudo virsh pool-start default
 
 Permissions to run KVM VMs with libvirt with current user
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Give current user permissions to use libvirt: do not forget to log out and log
 back in.
@@ -129,12 +129,12 @@ back in.
     sudo usermod $(whoami) -a -G libvirtd,sudo
 
 Configuring database
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 You can configure PostgreSQL database or as an alternative SQLite.
 
 Configuring PostgreSQL
-+++++++++++++++++++++++
+++++++++++++++++++++++
 
 Install postgresql package:
 
@@ -160,7 +160,7 @@ Set local peers to be trusted by default, create user and db and load fixtures.
       sudo -u postgres createdb fuel_devops -O fuel_devops
 
 Configuring SQLite3 database
-+++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++
 
 Install SQLite3 library:
 
@@ -176,14 +176,24 @@ Export the path to the SQLite3 database as the database name:
     export DEVOPS_DB_ENGINE="django.db.backends.sqlite3
 
 Configuring Django
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 After the database setup, we can install the django tables and data:
 
 .. code-block:: bash
 
+    # For fuel-devops < 3.0 only:
     django-admin.py syncdb --settings=devops.settings
+
+    # For all versions of fuel-devops:
     django-admin.py migrate devops --settings=devops.settings
+
+.. note:: Devops 3.0.0 is still allows to start both commands in queue, but
+    in later versions command ::
+
+        syncdb
+
+    will be dropped and run of it will cause exception.
 
 .. note:: Depending on your Linux distribution,
     `django-admin <http://django-admin-tools.readthedocs.org>`_ may refer
@@ -226,7 +236,7 @@ The result should be:
 
 
 Environment creation via Devops + Fuel_QA or Fuel_main
--------------------------------------------------------
+------------------------------------------------------
 
 Depending on the Fuel release, you may need a different repository.
 
@@ -380,7 +390,7 @@ Run tests ::
 .. _How to migrate:
 
 Upgrade from system-wide devops to devops in Python virtual environment
-------------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 To migrate from older devops, follow these steps:
 
@@ -413,9 +423,11 @@ see the section :ref:`_DevOpsSystemDependencies`
 
 2. Update fuel-devops and Python venv on CI servers
 
-To update fuel-devops, you can use the following examples:
+* Update fuel-devops versions 2.5 - 2.9
 
-.. code-block:: bash
+  To update fuel-devops, you can use the following examples:
+
+  .. code-block:: bash
 
     # DevOps 2.5.x for system tests from 'fuel-main' repository
     if [ -f ~/venv-nailgun-tests/bin/activate ]; then
@@ -440,6 +452,59 @@ To update fuel-devops, you can use the following examples:
     source ~/venv-nailgun-tests-2.9/bin/activate
     pip install -r https://raw.githubusercontent.com/openstack/fuel-qa/master/fuelweb_test/requirements.txt --upgrade
     django-admin.py syncdb --settings=devops.settings --noinput
+    django-admin.py migrate devops --settings=devops.settings --noinput
+    deactivate
+
+  .. note:: Devops 3.0 has incompatible internal API with previous versions, so upgrade procedure is different.
+
+* Upgrade fuel-devops 3.0 and upper
+
+  * Upgrade from devops versions < 3.0 requires additional step and it's always destructive:
+
+    .. note:: You should drop **ALL** virtual environments before processing!
+      If you want to use both 2.9 and 3.0 environments - you should use separate databases.
+
+    Drop environments:
+
+    .. code-block:: bash
+
+      -f ~/venv-nailgun-tests-2.9/bin/activate
+      dos.py list  # get environments
+      dos.py erase $env_name  # substitute correct $env name manually
+      deactivate
+
+    Recreate database:
+
+    .. code-block:: bash
+
+      sudo -u postgres dropdb fuel_devops
+      sudo -u postgres createdb fuel_devops -O fuel_devops
+
+  Update:
+
+  .. code-block:: bash
+
+    # DevOps 3.0.x for system tests from 'fuel-qa' repository using old dir
+    if [ -f ~/venv-nailgun-tests-2.9/bin/activate ]; then
+      echo "Python virtual env exist"
+    else
+      rm -rf ~/venv-nailgun-tests-2.9
+      virtualenv --no-site-packages ~/venv-nailgun-tests-2.9
+    fi
+    source ~/venv-nailgun-tests-2.9/bin/activate
+    pip install -r https://raw.githubusercontent.com/openstack/fuel-qa/master/fuelweb_test/requirements.txt --upgrade
+    django-admin.py migrate devops --settings=devops.settings --noinput
+    deactivate
+
+    # DevOps 3.0.x for system tests from 'fuel-qa' repository using new dir
+    if [ -f ~/venv-nailgun-tests-3.0/bin/activate ]; then
+      echo "Python virtual env exist"
+    else
+      rm -rf ~/venv-nailgun-tests-3.0
+      virtualenv --no-site-packages ~/venv-nailgun-tests-3.0
+    fi
+    source ~/venv-nailgun-tests-3.0/bin/activate
+    pip install -r https://raw.githubusercontent.com/openstack/fuel-qa/master/fuelweb_test/requirements.txt --upgrade
     django-admin.py migrate devops --settings=devops.settings --noinput
     deactivate
 
