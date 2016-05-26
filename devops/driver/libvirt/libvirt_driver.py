@@ -484,7 +484,7 @@ class DevopsDriver(object):
 
         node_xml = self.xml_builder.build_node_xml(
             node, emulator, numa, if_prefix=settings.LIBVIRT_IF_PREFIX)
-        logger.info(node_xml)
+        logger.debug(node_xml)
         node.uuid = self.conn.defineXML(node_xml).UUIDString()
 
     @retry()
@@ -684,11 +684,11 @@ class DevopsDriver(object):
                     "Cannot create internal snapshot when external exists")
                 return
 
-        logger.info(domain.state(0))
+        logger.debug(domain.state(0))
         xml = self.xml_builder.build_snapshot_xml(
             name, description, node, disk_only, external,
             settings.SNAPSHOTS_EXTERNAL_DIR)
-        logger.info(xml)
+        logger.debug(xml)
         if external:
             # Check whether we have directory for snapshots, if not
             # create it
@@ -707,7 +707,7 @@ class DevopsDriver(object):
             self.node_set_snapshot_current(node, name)
         else:
             domain.snapshotCreateXML(xml)
-        logger.info(domain.state(0))
+        logger.debug(domain.state(0))
 
     def _delete_snapshot_files(self, snapshot):
         """Delete snapshot external files"""
