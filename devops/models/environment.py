@@ -26,6 +26,7 @@ from devops.error import DevopsEnvironmentError
 from devops.error import DevopsError
 from devops.error import DevopsObjNotFound
 from devops.helpers.network import IpNetworksPool
+from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
@@ -361,30 +362,36 @@ class Environment(BaseModel):
             key=lambda node: node.name
         )[0]
         return admin.remote(
-            self.admin_net,
-            login=login,
-            password=password)
+            self.admin_net, auth=SSHAuth(
+                username=login,
+                password=password))
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
     def get_ssh_to_remote(self, ip,
                           login=settings.SSH_SLAVE_CREDENTIALS['login'],
                           password=settings.SSH_SLAVE_CREDENTIALS['password']):
+        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
         keys = []
+        remote = self.get_admin_remote()
         for key_string in ['/root/.ssh/id_rsa',
                            '/root/.ssh/bootstrap.rsa']:
-            if self.get_admin_remote().isfile(key_string):
-                with self.get_admin_remote().open(key_string) as f:
+            if remote.isfile(key_string):
+                with remote.open(key_string) as f:
                     keys.append(RSAKey.from_private_key(f))
 
-        return SSHClient(ip,
-                         username=login,
-                         password=password,
-                         private_keys=keys)
+        return SSHClient(
+            ip,
+            auth=SSHAuth(
+                username=login,
+                password=password,
+                keys=keys))
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
-    def get_ssh_to_remote_by_key(self, ip, keyfile):
+    @staticmethod
+    def get_ssh_to_remote_by_key(ip, keyfile):
+        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
         try:
             with open(keyfile) as f:
                 keys = [RSAKey.from_private_key(f)]
@@ -392,7 +399,7 @@ class Environment(BaseModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = Agent().get_keys()
-        return SSHClient(ip, private_keys=keys)
+        return SSHClient(ip, auth=SSHAuth(keys=keys))
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
