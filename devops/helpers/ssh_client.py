@@ -15,155 +15,401 @@
 import os
 import posixpath
 import stat
+from warnings import warn
 
 import paramiko
-# noinspection PyUnresolvedReferences
-from six.moves import cStringIO
+import six
 
 from devops.error import DevopsCalledProcessError
 from devops.helpers.retry import retry
 from devops import logger
 
 
+class SSHAuth(object):
+    __slots__ = ['__username', '__password', '__key']
+
+    def __init__(
+            self,
+            username=None, password=None, key=None):
+        """SSH authorisation object
+
+        Used to authorize SSHClient.
+        Single SSHAuth object is associated with single host:port.
+        Password and key is private, other data is read-only.
+
+        :type username: str
+        :type password: str
+        :type key: paramiko.RSAKey
+        """
+        self.__username = username
+        self.__password = password
+        self.__key = key
+
+    @property
+    def username(self):
+        """Username for auth
+
+        :rtype: str
+        """
+        return self.__username
+
+    @property
+    def public_key(self):
+        """public key for stored private key if presents else None
+
+        :rtype: str
+        """
+        if self.__key is None:
+            return None
+        return '{0} {1}'.format(self.__key.get_name(), self.__key.get_base64())
+
+    def enter_password(self, tgt):
+        """Enter password to STDIN
+
+        Note: required for 'sudo' call
+
+        :type tgt: file
+        :rtype: str
+        """
+        return tgt.write('{}\n'.format(self.__password))
+
+    def connect(self, client, hostname=None, port=22, log=True):
+        """Connect SSH client object using credentials
+
+        :type client:
+            paramiko.client.SSHClient
+            paramiko.transport.Transport
+        :type log: bool
+        :raises paramiko.AuthenticationException
+        """
+        kwargs = {
+            'username': self.username,
+            'password': self.__password,
+            'pkey': self.__key}
+        if hostname is not None:
+            kwargs['hostname'] = hostname
+            kwargs['port'] = port
+        try:
+            client.connect(**kwargs)
+        except paramiko.PasswordRequiredException:
+            if self.__password is None:
+                logger.exception('No password has been set!')
+                raise
+            else:
+                logger.critical(
+                    'Unexpected PasswordRequiredException, '
+                    'when password is set!')
+                raise
+        except paramiko.AuthenticationException:
+            if self.__key is None:
+                if log:
+                    logger.exception(
+                        'Connection using stored authentication info failed!')
+                raise
+            try:
+                if log:
+                    logger.warning(
+                        'Connection using stored authentication info failed! '
+                        'Retry without private key...')
+                del kwargs['pkey']
+                client.connect(**kwargs)
+                self.__key = None
+                if log:
+                    logger.warning(
+                        'Private key has been deleted '
+                        'from auth info as invalid')
+            except paramiko.AuthenticationException:
+                if log:
+                    logger.exception(
+                        'Connection using stored authentication info failed!')
+                raise
+
+    def __hash__(self):
+        return hash((
+            self.__class__,
+            self.username,
+            self.__password,
+            self.__key
+        ))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __repr__(self):
+        return (
+            '{cls}(username={username}, '
+            'password=<*masked*>, key={key})'.format(
+                cls=self.__class__.__name__,
+                username=self.username,
+                key=(
+                    None if self.__key is None else
+                    '<private for pub: {}>'.format(self.public_key))
+            ))
+
+    def __str__(self):
+        return (
+            '{cls} for {username}'.format(
+                cls=self.__class__.__name__,
+                username=self.username,
+            )
+        )
+
+
 class SSHClient(object):
+    __slots__ = [
+        '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
+    ]
+
     class get_sudo(object):
+        """Context manager for call commands with sudo"""
         def __init__(self, ssh):
             self.ssh = ssh
 
         def __enter__(self):
             self.ssh.sudo_mode = True
 
-        def __exit__(self, exc_type, value, traceback):
+        def __exit__(self, exc_type, exc_val, exc_tb):
             self.ssh.sudo_mode = False
 
-    def __init__(self, host, port=22, username=None, password=None,
-                 private_keys=None):
-        self.host = str(host)
-        self.port = int(port)
-        self.username = username
-        self.__password = password
-        if not private_keys:
-            private_keys = []
-        self.__private_keys = private_keys
-        self.__actual_pkey = None
+    def __hash__(self):
+        return hash((
+            self.__class__,
+            self.hostname,
+            self.port,
+            self.auth))
+
+    def __init__(
+            self,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """SSHClient helper
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        """
+        self.__hostname = host
+        self.__port = port
 
         self.sudo_mode = False
-        self.sudo = self.get_sudo(self)
-        self._ssh = None
+        self.__ssh = None
         self.__sftp = None
 
-        self.reconnect()
+        self.__auth = auth
+
+        if auth is None:
+            msg = (
+                'SSHClient(host={host}, port={port}, username={username}) '
+                'initialization by username/password/private_keys '
+                'is deprecated in favor of SSHAuth usage. '
+                'Please update your code'.format(
+                    host=host, port=port, username=username
+                ))
+            warn(msg, DeprecationWarning)
+            logger.warning(msg)
+
+        if private_keys is not None and len(private_keys) == 0:
+            private_keys = None
+
+        if auth is not None:
+            self.__connect()
+        elif private_keys is None or len(private_keys) == 1:
+            self.__auth = SSHAuth(
+                username=username,
+                password=password,
+                key=None if private_keys is None else private_keys[0]
+            )
+            logger.info(
+                'SSHAuth was made from old style creds: '
+                '{}'.format(self.auth))
+            self.__connect()
+        else:
+            logger.info(
+                'Multiple private keys ({}) has been set, using brute-force.'
+                ''.format(len(private_keys)))
+            auth_list = [
+                SSHAuth(
+                    username=username,
+                    password=password,
+                    key=key
+                ) for key in private_keys
+            ]
+            self.__auth = self.__brute_force_connect(auth_list=auth_list)
+
+        self.__connect_sftp()
 
     @property
-    def password(self):
-        return self.__password
+    def auth(self):
+        """Internal authorisation object
 
-    @password.setter
-    def password(self, new_val):
-        self.__password = new_val
-        self.reconnect()
+        Attention: this public property is mainly for inheritance,
+        debug and information purposes.
+        Calls outside SSHClient and child classes is sign of icorrect design.
+        Change is completely disallowed.
 
-    @property
-    def private_keys(self):
-        return self.__private_keys
-
-    @private_keys.setter
-    def private_keys(self, new_val):
-        self.__private_keys = new_val
-        self.reconnect()
-
-    @private_keys.deleter
-    def private_keys(self):
-        self.__private_keys = []
-        self.reconnect()
+        :rtype: SSHAuth
+        """
+        return self.__auth
 
     @property
-    def private_key(self):
-        return self.__actual_pkey
+    def hostname(self):
+        """Connected remote host name
+
+        :rtype: str
+        """
+        return self.__hostname
 
     @property
-    def public_key(self):
-        if self.private_key is None:
-            return None
-        key = paramiko.RSAKey(file_obj=cStringIO(self.private_key))
-        return '{0} {1}'.format(key.get_name(), key.get_base64())
+    def port(self):
+        """Connected remote port number
+
+        :rtype: int
+        """
+        return self.__port
+
+    def __repr__(self):
+        return '{cls}(host={host}, port={port}, auth={auth!r})'.format(
+            cls=self.__class__.__name__, host=self.hostname, port=self.port,
+            auth=self.auth
+        )
+
+    @property
+    def _ssh(self):
+        """ssh client object getter for inheritance support only
+
+        Attention: ssh client object creation and change
+        is allowed only by __init__ and reconnect call.
+
+        :rtype: paramiko.SSHClient
+        """
+        return self.__ssh
+
+    @retry(count=3, delay=3)
+    def __connect(self):
+        """Main method for connection open"""
+        self.__ssh = paramiko.SSHClient()
+        self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.auth.connect(
+            client=self.__ssh,
+            hostname=self.hostname, port=self.port,
+            log=True)
+
+    @retry(count=3, delay=3)
+    def __brute_force_connect(self, auth_list):
+        """Brute force connection method. Only for legacy use.
+
+        :type auth_list: list
+        :rtype: SSHAuth
+        :raises: paramiko.AuthenticationException
+        """
+        self.__ssh = paramiko.SSHClient()
+        self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        for auth in auth_list:
+            try:
+                auth.connect(
+                    client=self.__ssh,
+                    hostname=self.hostname, port=self.port,
+                    log=False)
+                return auth
+            except paramiko.AuthenticationException:
+                continue
+        msg = (
+            'No any correct authentication credentials accessible:\n'
+            '\t{} keys failed\n'
+            '\tconnect without private key failed'.format(len(auth_list)))
+        logger.critical(msg)
+        raise paramiko.AuthenticationException(msg)
+
+    def __connect_sftp(self):
+        """SFTP connection opener"""
+        try:
+            self.__sftp = self.__ssh.open_sftp()
+        except paramiko.SSHException:
+            logger.warning('SFTP enable failed! SSH only is accessible.')
 
     @property
     def _sftp(self):
+        """SFTP channel access for inheritance
+
+        :raises: paramiko.SSHException
+        """
         if self.__sftp is not None:
             return self.__sftp
         logger.warning('SFTP is not connected, try to reconnect')
-        self._connect_sftp()
+        self.__connect_sftp()
         if self.__sftp is not None:
             return self.__sftp
         raise paramiko.SSHException('SFTP connection failed')
 
     def clear(self):
-        if self.__sftp is not None:
+        if self.__ssh is not None:
             try:
-                self.__sftp.close()
+                self.__ssh.close()
+                self.__sftp = None
             except Exception:
-                logger.exception("Could not close sftp connection")
-        try:
-            self._ssh.close()
-        except Exception:
-            logger.exception("Could not close ssh connection")
+                logger.exception("Could not close ssh connection")
+                if self.__sftp is not None:
+                    try:
+                        self.__sftp.close()
+                    except Exception:
+                        logger.exception("Could not close sftp connection")
 
     def __del__(self):
-        self.clear()
+        if self.__ssh is not None:
+            self.__ssh.close()
+            self.__sftp = None
 
     def __enter__(self):
         return self
 
-    def __exit__(self, *err):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.clear()
 
-    @retry(count=3, delay=3)
-    def connect(self):
-        logger.debug(
-            "Connect to '{0}:{1}' as '{2}:{3}'".format(
-                self.host, self.port, self.username, self.password))
-        for private_key in self.private_keys:
-            try:
-                self._ssh.connect(
-                    self.host, port=self.port, username=self.username,
-                    password=self.password, pkey=private_key)
-                self.__actual_pkey = private_key
-                return
-            except paramiko.AuthenticationException:
-                continue
-        if self.private_keys:
-            logger.error("Authentication with keys failed")
-
-        self.__actual_pkey = None
-        self._ssh.connect(
-            self.host, port=self.port, username=self.username,
-            password=self.password)
-
-    def _connect_sftp(self):
-        try:
-            self.__sftp = self._ssh.open_sftp()
-        except paramiko.SSHException:
-            logger.warning('SFTP enable failed! SSH only is accessible.')
-
     def reconnect(self):
-        self._ssh = paramiko.SSHClient()
-        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.connect()
-        self._connect_sftp()
+        """Reconnect SSH and SFTP session"""
+        self.clear()
+        self.__connect()
+        self.__connect_sftp()
 
-    def check_call(self, command, verbose=False, excpected=0):
+    def check_call(
+            self,
+            command, verbose=False,
+            expected=None, raise_on_err=True):
+        """Execute command and check for return code
+
+        :type command: str
+        :type verbose: bool
+        :type expected: list
+        :type raise_on_err: bool
+        :rtype: dict
+        :raises: DevopsCalledProcessError
+        """
+        if expected is None:
+            expected = [0]
         ret = self.execute(command, verbose)
-        if ret['exit_code'] != excpected:
+        if ret['exit_code'] not in expected and raise_on_err:
             raise DevopsCalledProcessError(
                 command, ret['exit_code'],
-                expected=excpected,
+                expected=expected,
                 stdout=ret['stdout_str'],
                 stderr=ret['stderr_str'])
         return ret
 
-    def check_stderr(self, command, verbose=False):
-        ret = self.check_call(command, verbose)
+    def check_stderr(self, command, verbose=False, raise_on_err=True):
+        """Execute command expecting return code 0 and empty STDERR
+
+        :type command: str
+        :type verbose: bool
+        :type raise_on_err: bool
+        :rtype: dict
+        :raises: DevopsCalledProcessError
+        """
+        ret = self.check_call(command, verbose, raise_on_err=raise_on_err)
         if ret['stderr']:
             raise DevopsCalledProcessError(command, ret['exit_code'],
                                            stdout=ret['stdout_str'],
@@ -171,53 +417,94 @@ class SSHClient(object):
         return ret
 
     @classmethod
-    def execute_together(cls, remotes, command):
+    def execute_together(
+            cls, remotes, command, expected=None, raise_on_err=True):
+        """Execute command on multiple remotes in async mode
+
+        :type remotes: list
+        :type command: str
+        :type expected: list
+        :type raise_on_err: bool
+        :raises: DevopsCalledProcessError
+        """
+        if expected is None:
+            expected = [0]
         futures = {}
         errors = {}
-        for remote in remotes:
+        for remote in set(remotes):  # Use distinct remotes
             chan, _, _, _ = remote.execute_async(command)
             futures[remote] = chan
         for remote, chan in futures.items():
             ret = chan.recv_exit_status()
             chan.close()
-            if ret != 0:
-                errors[remote.host] = ret
-        if errors:
+            if ret not in expected:
+                errors[remote.hostname] = ret
+        if errors and raise_on_err:
             raise DevopsCalledProcessError(command, errors)
 
     def execute(self, command, verbose=False):
+        """Execute command and wait for return code
+
+        :type command: str
+        :type verbose: bool
+        :rtype: dict
+        """
         chan, _, stderr, stdout = self.execute_async(command)
+
+        # noinspection PyDictCreation
         result = {
-            'stdout': [],
-            'stderr': [],
-            'exit_code': 0
+            'exit_code': chan.recv_exit_status()
         }
-        for line in stdout:
-            result['stdout'].append(line)
-            if verbose:
-                logger.info(line)
-        for line in stderr:
-            result['stderr'].append(line)
-            if verbose:
-                logger.info(line)
-        result['exit_code'] = chan.recv_exit_status()
+        result['stdout'] = stdout.readlines()
+        result['stderr'] = stderr.readlines()
+
         chan.close()
-        result['stdout_str'] = ''.join(result['stdout']).strip()
-        result['stderr_str'] = ''.join(result['stderr']).strip()
+
+        result['stdout_str'] = self._get_str_from_list(result['stdout'])
+        result['stderr_str'] = self._get_str_from_list(result['stderr'])
+
+        if verbose:
+            logger.info(
+                '{cmd} execution results:\n'
+                'Exit code: {code}\n'
+                'STDOUT:\n'
+                '{stdout}\n'
+                'STDERR:\n'
+                '{stderr}'.format(
+                    cmd=command,
+                    code=result['exit_code'],
+                    stdout=result['stdout_str'],
+                    stderr=result['stderr_str']
+                ))
+            logger.info(result['stdout_str'])
+            logger.info(result['stderr_str'])
+
         return result
 
+    @staticmethod
+    def _get_str_from_list(src):
+        if six.PY2:
+            return b''.join(src).strip()
+        else:
+            return b''.join(src).strip().decode(encoding='utf-8')
+
     def execute_async(self, command):
+        """Execute command in async mode and return channel with IO objects
+
+        :type command: str
+        :rtype: tuple
+        """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
         stderr = chan.makefile_stderr('rb')
-        cmd = "%s\n" % command
+        cmd = "{}\n".format(command)
         if self.sudo_mode:
             cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
             chan.exec_command(cmd)
             if stdout.channel.closed is False:
-                stdin.write('%s\n' % self.password)
+                self.auth.enter_password(stdin)
                 stdin.flush()
         else:
             chan.exec_command(cmd)
@@ -225,33 +512,31 @@ class SSHClient(object):
 
     def execute_through_host(
             self,
-            target_host,
+            hostname,
             cmd,
-            username=None,
-            password=None,
-            key=None,
+            auth=None,
             target_port=22):
-        if username is None and password is None and key is None:
-            username = self.username
-            password = self.__password
-            key = self.private_key
+        """Execute command on remote host throw currently connected host
+
+        :type hostname: str
+        :type cmd: str
+        :type auth: SSHAuth
+        :type target_port: int
+        :rtype: dict
+        """
+        if auth is None:
+            auth = self.auth
 
         intermediate_channel = self._ssh.get_transport().open_channel(
-            'direct-tcpip', (target_host, target_port), (self.host, 0))
-        transport = paramiko.Transport(intermediate_channel)
-        transport.start_client()
-        logger.info("Passing authentication to: {}".format(target_host))
-        if password is None and key is None:
-            logger.debug('auth_none')
-            transport.auth_none(username=username)
-        elif key is not None:
-            logger.debug('auth_publickey')
-            transport.auth_publickey(username=username, key=key)
-        else:
-            logger.debug('auth_password')
-            transport.auth_password(username=username, password=password)
+            kind='direct-tcpip',
+            dest_addr=(hostname, target_port),
+            src_addr=(self.hostname, 0))
+        transport = paramiko.Transport(sock=intermediate_channel)
 
-        logger.debug("Opening session")
+        # start client and authenticate transport
+        auth.connect(transport)
+
+        # open ssh session
         channel = transport.open_session()
 
         # Make proxy objects for read
@@ -266,29 +551,48 @@ class SSHClient(object):
         result = {}
         result['exit_code'] = channel.recv_exit_status()
 
-        result['stdout'] = stdout.read()
-        result['stderr'] = stderr.read()
+        result['stdout'] = stdout.readlines()
+        result['stderr'] = stderr.readlines()
         channel.close()
 
-        result['stdout_str'] = ''.join(result['stdout']).strip()
-        result['stderr_str'] = ''.join(result['stderr']).strip()
+        result['stdout_str'] = self._get_str_from_list(result['stdout'])
+        result['stderr_str'] = self._get_str_from_list(result['stderr'])
 
         return result
 
     def mkdir(self, path):
+        """run 'mkdir -p path' on remote
+
+        :type path: str
+        """
         if self.exists(path):
             return
         logger.debug("Creating directory: {}".format(path))
         self.execute("mkdir -p {}\n".format(path))
 
     def rm_rf(self, path):
+        """run 'rm -rf path' on remote
+
+        :type path: str
+        """
         logger.debug("rm -rf {}".format(path))
-        self.execute("rm -rf %s" % path)
+        self.execute("rm -rf {}".format(path))
 
     def open(self, path, mode='r'):
+        """Open file on remote using SFTP session
+
+        :type path: str
+        :type mode: str
+        :return: file.open() stream
+        """
         return self._sftp.open(path, mode)
 
     def upload(self, source, target):
+        """Upload file(s) from source to target using SFTP session
+
+        :type source: str
+        :type target: str
+        """
         logger.debug("Copying '%s' -> '%s'", source, target)
 
         if self.isdir(target):
@@ -315,6 +619,12 @@ class SSHClient(object):
                 self._sftp.put(local_path, remote_path)
 
     def download(self, destination, target):
+        """Download file(s) to target from destination
+
+        :type destination: str
+        :type target: str
+        :rtype: bool
+        """
         logger.debug(
             "Copying '%s' -> '%s' from remote to local host",
             destination, target
@@ -337,6 +647,11 @@ class SSHClient(object):
         return os.path.exists(target)
 
     def exists(self, path):
+        """Check for file existence using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             self._sftp.lstat(path)
             return True
@@ -344,6 +659,11 @@ class SSHClient(object):
             return False
 
     def isfile(self, path):
+        """Check, that path is file using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             attrs = self._sftp.lstat(path)
             return attrs.st_mode & stat.S_IFREG != 0
@@ -351,6 +671,11 @@ class SSHClient(object):
             return False
 
     def isdir(self, path):
+        """Check, that path is directory using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             attrs = self._sftp.lstat(path)
             return attrs.st_mode & stat.S_IFDIR != 0
