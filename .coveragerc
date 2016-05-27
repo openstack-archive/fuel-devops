@@ -7,3 +7,6 @@ omit =
     devops/driver/dummy/*
     devops/settings.py
     devops/test_settings.py
+
+[html]
+directory = coverage
