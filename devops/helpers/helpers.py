@@ -37,6 +37,7 @@ from six.moves import xmlrpc_client
 from devops.error import AuthenticationError
 from devops.error import DevopsError
 from devops.error import TimeoutError
+from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 from devops import logger
 from devops.settings import KEYSTONE_CREDS
@@ -151,8 +152,9 @@ def wait_ssh_cmd(
         password=SSH_CREDENTIALS['password'],
         timeout=0):
     ssh_client = SSHClient(host=host, port=port,
-                           username=username,
-                           password=password)
+                           auth=SSHAuth(
+                               username=username,
+                               password=password))
     wait(lambda: not ssh_client.execute(check_cmd)['exit_code'],
          timeout=timeout)
 
