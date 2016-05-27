@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2015 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,6 +13,7 @@
 #    under the License.
 
 import time
+from warnings import warn
 
 from django.conf import settings
 from django.db import models
@@ -22,7 +23,8 @@ from paramiko import RSAKey
 
 from devops.error import DevopsEnvironmentError
 from devops.helpers.helpers import get_file_size
-from devops.helpers.helpers import SSHClient
+from devops.helpers.ssh_client import SSHAuth
+from devops.helpers.ssh_client import SSHClient
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import get_devops_config
 from devops import logger
@@ -402,29 +404,39 @@ class Environment(DriverModel):
 
         :rtype : SSHClient
         """
-        return self.nodes().admin.remote(
-            self.admin_net,
-            login=login,
-            password=password)
+        admin = sorted(
+            list(self.get_nodes(role='fuel_master')),
+            key=lambda node: node.name
+        )[0]
+        return admin.remote(
+            self.admin_net, auth=SSHAuth(
+                username=login,
+                password=password))
 
     # @logwrap
     def get_ssh_to_remote(self, ip,
                           login=settings.SSH_SLAVE_CREDENTIALS['login'],
                           password=settings.SSH_SLAVE_CREDENTIALS['password']):
+        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
         keys = []
+        remote = self.get_admin_remote()
         for key_string in ['/root/.ssh/id_rsa',
                            '/root/.ssh/bootstrap.rsa']:
-            if self.get_admin_remote().isfile(key_string):
-                with self.get_admin_remote().open(key_string) as f:
+            if remote.isfile(key_string):
+                with remote.open(key_string) as f:
                     keys.append(RSAKey.from_private_key(f))
 
-        return SSHClient(ip,
-                         username=login,
-                         password=password,
-                         private_keys=keys)
+        return SSHClient(
+            ip,
+            auth=SSHAuth(
+                username=login,
+                password=password,
+                keys=keys))
 
     # @logwrap
-    def get_ssh_to_remote_by_key(self, ip, keyfile):
+    @staticmethod
+    def get_ssh_to_remote_by_key(ip, keyfile):
+        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
         try:
             with open(keyfile) as f:
                 keys = [RSAKey.from_private_key(f)]
@@ -432,7 +444,7 @@ class Environment(DriverModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = Agent().get_keys()
-        return SSHClient(ip, private_keys=keys)
+        return SSHClient(ip, auth=SSHAuth(keys=keys))
 
     def nodes(self):  # migrated from EnvironmentModel.nodes()
         # DEPRECATED. Please use environment.get_nodes() instead.
