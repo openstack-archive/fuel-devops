@@ -536,4 +536,3 @@ Known issues
   `Bug 1133155 <https://bugzilla.redhat.com/show_bug.cgi?id=1133155>`_.
 
   Workaround: upgrade libvirt to the latest version.
-
