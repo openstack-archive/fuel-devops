@@ -162,7 +162,9 @@ class Node(DriverModel):
             network__name=name).order_by('id')[0]
         return interface.address_set.get(interface=interface).ip_address
 
-    def remote(self, network_name, login, password=None, private_keys=None):
+    def remote(
+            self, network_name, login=None, password=None, private_keys=None,
+            auth=None):
         """Create SSH-connection to the network
 
         :rtype : SSHClient
@@ -170,7 +172,7 @@ class Node(DriverModel):
         return SSHClient(
             self.get_ip_address_by_network_name(network_name),
             username=login,
-            password=password, private_keys=private_keys)
+            password=password, private_keys=private_keys, auth=auth)
 
     def send_keys(self, keys):
         self.driver.node_send_keys(self, keys)

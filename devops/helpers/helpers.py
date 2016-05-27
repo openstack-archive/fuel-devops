@@ -32,6 +32,7 @@ from six.moves import xmlrpc_client
 from devops.error import AuthenticationError
 from devops.error import DevopsError
 from devops.error import TimeoutError
+from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 from devops import logger
 from devops.settings import KEYSTONE_CREDS
@@ -174,10 +175,12 @@ def get_node_remote(env, node_name, login=SSH_SLAVE_CREDENTIALS['login'],
         name=node_name).interfaces[0].mac_address)
     wait(lambda: tcp_ping(ip, 22), timeout=180,
          timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
-    return SSHClient(ip,
-                     username=login,
-                     password=password,
-                     private_keys=get_private_keys(env))
+    return SSHClient(
+        ip,
+        auth=SSHAuth(
+            username=login,
+            password=password,
+            keys=get_private_keys(env)))
 
 
 def get_admin_ip(env):

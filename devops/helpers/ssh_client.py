@@ -16,6 +16,7 @@ import base64
 import os
 import posixpath
 import stat
+from warnings import warn
 
 import paramiko
 import six
@@ -25,7 +26,163 @@ from devops.helpers.retry import retry
 from devops import logger
 
 
+class SSHAuth(object):
+    __slots__ = ['__username', '__password', '__key', '__keys']
+
+    def __init__(
+            self,
+            username=None, password=None, key=None, keys=None):
+        """SSH authorisation object
+
+        Used to authorize SSHClient.
+        Single SSHAuth object is associated with single host:port.
+        Password and key is private, other data is read-only.
+
+        :type username: str
+        :type password: str
+        :type key: paramiko.RSAKey
+        :type keys: list
+        """
+        self.__username = username
+        self.__password = password
+        self.__key = key
+        self.__keys = [None]
+        if key is not None:
+            self.__keys.append(key)
+        if keys is not None:
+            for key in keys:
+                if key not in self.__keys:
+                    self.__keys.append(key)
+
+    @property
+    def username(self):
+        """Username for auth
+
+        :rtype: str
+        """
+        return self.__username
+
+    @staticmethod
+    def __get_public_key(key):
+        """Internal method for get public key from private
+
+        :type key: paramiko.RSAKey
+        """
+        if key is None:
+            return None
+        return '{0} {1}'.format(key.get_name(), key.get_base64())
+
+    @property
+    def public_key(self):
+        """public key for stored private key if presents else None
+
+        :rtype: str
+        """
+        return self.__get_public_key(self.__key)
+
+    def enter_password(self, tgt):
+        """Enter password to STDIN
+
+        Note: required for 'sudo' call
+
+        :type tgt: file
+        :rtype: str
+        """
+        return tgt.write('{}\n'.format(self.__password))
+
+    def connect(self, client, hostname=None, port=22, log=True):
+        """Connect SSH client object using credentials
+
+        :type client:
+            paramiko.client.SSHClient
+            paramiko.transport.Transport
+        :type log: bool
+        :raises paramiko.AuthenticationException
+        """
+        kwargs = {
+            'username': self.username,
+            'password': self.__password}
+        if hostname is not None:
+            kwargs['hostname'] = hostname
+            kwargs['port'] = port
+
+        keys = [self.__key]
+        keys.extend([k for k in self.__keys if k != self.__key])
+
+        for key in keys:
+            kwargs['pkey'] = key
+            try:
+                client.connect(**kwargs)
+                if self.__key != key:
+                    self.__key = key
+                    logger.debug(
+                        'Main key has been updated, public key is: \n'
+                        '{}'.format(self.public_key))
+                return
+            except paramiko.PasswordRequiredException:
+                if self.__password is None:
+                    logger.exception('No password has been set!')
+                    raise
+                else:
+                    logger.critical(
+                        'Unexpected PasswordRequiredException, '
+                        'when password is set!')
+                    raise
+            except paramiko.AuthenticationException:
+                continue
+        msg = 'Connection using stored authentication info failed!'
+        if log:
+            logger.exception(
+                'Connection using stored authentication info failed!')
+        raise paramiko.AuthenticationException(msg)
+
+    def __hash__(self):
+        return hash((
+            self.__class__,
+            self.username,
+            self.__password,
+            tuple(self.__keys)
+        ))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __repr__(self):
+        _key = (
+            None if self.__key is None else
+            '<private for pub: {}>'.format(self.public_key)
+        )
+        _keys = []
+        for k in self.__keys:
+            if k == self.__key:
+                continue
+            _keys.append(
+                '<private for pub: {}>'.format(
+                    self.__get_public_key(key=k)) if k is not None else None)
+
+        return (
+            '{cls}(username={username}, '
+            'password=<*masked*>, key={key}, keys={keys})'.format(
+                cls=self.__class__.__name__,
+                username=self.username,
+                key=_key,
+                keys=_keys)
+        )
+
+    def __str__(self):
+        return (
+            '{cls} for {username}'.format(
+                cls=self.__class__.__name__,
+                username=self.username,
+            )
+        )
+
+
 class SSHClient(object):
+    __slots__ = [
+        '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
+    ]
+
     class get_sudo(object):
         """Context manager for call commands with sudo"""
         def __init__(self, ssh):
@@ -37,42 +194,145 @@ class SSHClient(object):
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.ssh.sudo_mode = False
 
-    def __init__(self, host, port=22, username=None, password=None,
-                 private_keys=None):
-        self.host = str(host)
-        self.port = int(port)
-        self.username = username
-        self.__password = password
-        if not private_keys:
-            private_keys = []
-        self.__private_keys = private_keys
-        self.__actual_pkey = None
+    def __hash__(self):
+        return hash((
+            self.__class__,
+            self.hostname,
+            self.port,
+            self.auth))
+
+    def __init__(
+            self,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """SSHClient helper
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        """
+        self.__hostname = host
+        self.__port = port
 
         self.sudo_mode = False
-        self.sudo = self.get_sudo(self)
-        self._ssh = None
+        self.__ssh = paramiko.SSHClient()
+        self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.__sftp = None
 
-        self.reconnect()
+        self.__auth = auth
+
+        if auth is None:
+            msg = (
+                'SSHClient(host={host}, port={port}, username={username}): '
+                'initialization by username/password/private_keys '
+                'is deprecated in favor of SSHAuth usage. '
+                'Please update your code'.format(
+                    host=host, port=port, username=username
+                ))
+            warn(msg, DeprecationWarning)
+            logger.debug(msg)
+
+            self.__auth = SSHAuth(
+                username=username,
+                password=password,
+                keys=private_keys
+            )
+
+        self.__connect()
+        if auth is None:
+            logger.info(
+                '{0}:{1}> SSHAuth was made from old style creds: '
+                '{2}'.format(self.hostname, self.port, self.auth))
 
     @property
-    def password(self):
-        return self.__password
+    def auth(self):
+        """Internal authorisation object
+
+        Attention: this public property is mainly for inheritance,
+        debug and information purposes.
+        Calls outside SSHClient and child classes is sign of incorrect design.
+        Change is completely disallowed.
+
+        :rtype: SSHAuth
+        """
+        return self.__auth
 
     @property
-    def private_keys(self):
-        return self.__private_keys
+    def hostname(self):
+        """Connected remote host name
+
+        :rtype: str
+        """
+        return self.__hostname
 
     @property
-    def private_key(self):
-        return self.__actual_pkey
+    def host(self):
+        """Hostname access for backward compatibility"""
+        warn(
+            'host has been deprecated in favor of hostname',
+            DeprecationWarning
+        )
+        return self.hostname
 
     @property
-    def public_key(self):
-        if self.private_key is None:
-            return None
-        key = self.private_key
-        return '{0} {1}'.format(key.get_name(), key.get_base64())
+    def port(self):
+        """Connected remote port number
+
+        :rtype: int
+        """
+        return self.__port
+
+    @property
+    def is_alive(self):
+        """Paramiko status: ready to use|reconnect required
+
+        :rtype: bool
+        """
+        return self.__ssh.get_transport() is not None
+
+    def __repr__(self):
+        return '{cls}(host={host}, port={port}, auth={auth!r})'.format(
+            cls=self.__class__.__name__, host=self.hostname, port=self.port,
+            auth=self.auth
+        )
+
+    def __str__(self):
+        return '{cls}(host={host}, port={port}) for user {user}'.format(
+            cls=self.__class__.__name__, host=self.hostname, port=self.port,
+            user=self.auth.username
+        )
+
+    @property
+    def _ssh(self):
+        """ssh client object getter for inheritance support only
+
+        Attention: ssh client object creation and change
+        is allowed only by __init__ and reconnect call.
+
+        :rtype: paramiko.SSHClient
+        """
+        return self.__ssh
+
+    @retry(count=3, delay=3)
+    def __connect(self):
+        """Main method for connection open"""
+        self.auth.connect(
+            client=self.__ssh,
+            hostname=self.hostname, port=self.port,
+            log=True)
+
+    @retry(3, delay=0)
+    def __connect_sftp(self):
+        """SFTP connection opener"""
+        try:
+            self.__sftp = self.__ssh.open_sftp()
+        except paramiko.SSHException:
+            logger.warning('SFTP enable failed! SSH only is accessible.')
 
     @property
     def _sftp(self):
@@ -82,25 +342,33 @@ class SSHClient(object):
         """
         if self.__sftp is not None:
             return self.__sftp
-        logger.warning('SFTP is not connected, try to reconnect')
-        self._connect_sftp()
+        logger.debug('SFTP is not connected, try to connect...')
+        self.__connect_sftp()
         if self.__sftp is not None:
             return self.__sftp
         raise paramiko.SSHException('SFTP connection failed')
 
     def clear(self):
-        if self.__sftp is not None:
-            try:
-                self.__sftp.close()
-            except Exception:
-                logger.exception("Could not close sftp connection")
+        """Clear SSH and SFTP sessions"""
         try:
-            self._ssh.close()
+            self.__ssh.close()
+            self.__sftp = None
         except Exception:
             logger.exception("Could not close ssh connection")
+            if self.__sftp is not None:
+                try:
+                    self.__sftp.close()
+                except Exception:
+                    logger.exception("Could not close sftp connection")
 
     def __del__(self):
-        self.clear()
+        """Destructor helper: close channel and threads BEFORE closing others
+
+        Due to threading in paramiko, default destructor could generate asserts
+        on close, so we calling channel close before closing main ssh object.
+        """
+        self.__ssh.close()
+        self.__sftp = None
 
     def __enter__(self):
         return self
@@ -108,39 +376,14 @@ class SSHClient(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.clear()
 
-    @retry(count=3, delay=3)
-    def connect(self):
-        logger.debug(
-            "Connect to '{0}:{1}' as '{2}:{3}'".format(
-                self.host, self.port, self.username, self.password))
-        for private_key in self.private_keys:
-            try:
-                self._ssh.connect(
-                    self.host, port=self.port, username=self.username,
-                    password=self.password, pkey=private_key)
-                self.__actual_pkey = private_key
-                return
-            except paramiko.AuthenticationException:
-                continue
-        if self.private_keys:
-            logger.error("Authentication with keys failed")
-
-        self.__actual_pkey = None
-        self._ssh.connect(
-            self.host, port=self.port, username=self.username,
-            password=self.password)
-
-    def _connect_sftp(self):
-        try:
-            self.__sftp = self._ssh.open_sftp()
-        except paramiko.SSHException:
-            logger.warning('SFTP enable failed! SSH only is accessible.')
-
     def reconnect(self):
-        self._ssh = paramiko.SSHClient()
-        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.connect()
-        self._connect_sftp()
+        """Reconnect SSH and SFTP session"""
+        self.clear()
+
+        self.__ssh = paramiko.SSHClient()
+        self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        self.__connect()
 
     def check_call(
             self,
@@ -233,7 +476,7 @@ class SSHClient(object):
             ret = chan.recv_exit_status()
             chan.close()
             if ret not in expected:
-                errors[remote.host] = ret
+                errors[remote.hostname] = ret
         if errors and raise_on_err:
             raise DevopsCalledProcessError(command, errors)
 
@@ -293,6 +536,7 @@ class SSHClient(object):
         :rtype: tuple
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
+
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
@@ -305,7 +549,7 @@ class SSHClient(object):
             )
             chan.exec_command(cmd)
             if stdout.channel.closed is False:
-                stdin.write('%s\n' % self.password)
+                self.auth.enter_password(stdin)
                 stdin.flush()
         else:
             chan.exec_command(cmd)
@@ -315,23 +559,27 @@ class SSHClient(object):
             self,
             hostname,
             cmd,
-            username=None,
-            password=None,
-            key=None,
+            auth=None,
             target_port=22):
-        if username is None and password is None and key is None:
-            username = self.username
-            password = self.__password
-            key = self.private_key
+        """Execute command on remote host through currently connected host
+
+        :type hostname: str
+        :type cmd: str
+        :type auth: SSHAuth
+        :type target_port: int
+        :rtype: dict
+        """
+        if auth is None:
+            auth = self.auth
 
         intermediate_channel = self._ssh.get_transport().open_channel(
             kind='direct-tcpip',
             dest_addr=(hostname, target_port),
-            src_addr=(self.host, 0))
+            src_addr=(self.hostname, 0))
         transport = paramiko.Transport(sock=intermediate_channel)
 
         # start client and authenticate transport
-        transport.connect(username=username, password=password, pkey=key)
+        auth.connect(transport)
 
         # open ssh session
         channel = transport.open_session()
@@ -340,7 +588,6 @@ class SSHClient(object):
         stdout = channel.makefile('rb')
         stderr = channel.makefile_stderr('rb')
 
-        logger.info("Executing command: {}".format(cmd))
         channel.exec_command(cmd)
 
         # TODO(astepanov): make a logic for controlling channel state
@@ -478,3 +725,5 @@ class SSHClient(object):
             return attrs.st_mode & stat.S_IFDIR != 0
         except IOError:
             return False
+
+__all__ = ['SSHAuth', 'SSHClient']
