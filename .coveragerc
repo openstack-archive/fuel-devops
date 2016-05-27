@@ -1,0 +1,9 @@
+[run]
+source =
+    devops
+omit =
+    devops/tests/*
+    devops/migrations/*
+    devops/driver/dummy/*
+    devops/settings.py
+    devops/test_settings.py
