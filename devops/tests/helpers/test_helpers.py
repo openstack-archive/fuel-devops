@@ -28,6 +28,7 @@ from six.moves import xrange
 
 from devops import error
 from devops.helpers import helpers
+from devops.helpers.ssh_client import SSHAuth
 
 
 class TestHelpersHelpers(unittest.TestCase):
@@ -198,7 +199,8 @@ class TestHelpersHelpers(unittest.TestCase):
         helpers.wait_ssh_cmd(
             host, port, check_cmd, username, password, timeout)
         ssh.assert_called_once_with(
-            host=host, port=port, username=username, password=password
+            host=host, port=port,
+            auth=SSHAuth(username=username, password=password)
         )
         wait.assert_called_once()
         # Todo: cover ssh_client.execute
@@ -292,13 +294,12 @@ class TestHelpersHelpers(unittest.TestCase):
                 raise Exception()
 
         uri = 'http://127.0.0.1'
-        srv.return_value = Success()
+        srv.side_effect = [Success(), Success(), Fail()]
         result = helpers.xmlrpcmethod(uri, 'success')
         self.assertTrue(result)
         srv.assert_called_once_with(uri)
 
         srv.reset_mock()
-        srv.return_value = Success()
         self.assertRaises(
             AttributeError,
             helpers.xmlrpcmethod,
@@ -307,7 +308,6 @@ class TestHelpersHelpers(unittest.TestCase):
         srv.assert_called_once_with(uri)
 
         srv.reset_mock()
-        srv.return_value = Fail()
         self.assertRaises(
             AttributeError,
             helpers.xmlrpcmethod,
@@ -323,11 +323,15 @@ class TestHelpersHelpers(unittest.TestCase):
         rand.assert_called_once_with(5)
 
     def test_deepgetattr(self):
+        # pylint: disable=attribute-defined-outside-init
         class Tst(object):
             one = 1
+
         tst = Tst()
         tst2 = Tst()
         tst2.two = Tst()
+        # pylint: enable=attribute-defined-outside-init
+
         result = helpers.deepgetattr(tst, 'one')
         self.assertEqual(result, 1)
         result = helpers.deepgetattr(tst2, 'two.one')
