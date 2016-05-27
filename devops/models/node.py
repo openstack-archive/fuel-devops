@@ -165,15 +165,20 @@ class Node(ParamedModel, BaseModel):
         interface = self.get_interface_by_nailgun_network_name(name)
         return interface.address_set.first().ip_address
 
-    def remote(self, network_name, login, password=None, private_keys=None):
+    def remote(
+            self, network_name, login=None, password=None, private_keys=None,
+            auth=None):
         """Create SSH-connection to the network
 
         :rtype : SSHClient
         """
+        if auth is None and login is None and private_keys is None:
+            raise DevopsError(
+                'Impossible to authenticate SSH: no credentials accessible!')
         return SSHClient(
             self.get_ip_address_by_network_name(network_name),
             username=login,
-            password=password, private_keys=private_keys)
+            password=password, private_keys=private_keys, auth=auth)
 
     def await(self, network_name, timeout=120, by_port=22):
         wait_pass(
