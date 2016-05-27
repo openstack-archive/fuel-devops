@@ -20,166 +20,285 @@ import unittest
 
 import mock
 
-from devops import error
 from devops.helpers import ntp
+from devops.helpers import ssh_client
 
 
-return_value = {'stdout': [' 0 2 4 ', '1', '2', '3']}
+class NtpTestCase(unittest.TestCase):
+
+    def patch(self, *args, **kwargs):
+        patcher = mock.patch(*args, **kwargs)
+        m = patcher.start()
+        self.addCleanup(patcher.stop)
+        return m
+
+    def setUp(self):
+        self.remote_mock = mock.Mock(spec=ssh_client.SSHClient)
+        self.remote_mock.__repr__ = mock.Mock(return_value='<SSHClient()>')
+
+        self.wait_mock = self.patch('devops.helpers.ntp.wait')
+
+    @staticmethod
+    def make_exec_result(stdout, exit_code=0):
+        return {
+            'exit_code': exit_code,
+            'stderr': [],
+            'stdout': stdout.splitlines(True),
+        }
 
 
-class Remote(object):
-    def __init__(self):
-        self.execute = mock.Mock(return_value=return_value)
+class TestNtpInitscript(NtpTestCase):
 
-    def reset_mock(self):
-        self.execute.reset_mock()
-        self.execute.return_value = return_value
+    def setUp(self):
+        super(TestNtpInitscript, self).setUp()
 
-    def __repr__(self):
-        return self.__class__.__name__
+        self.remote_mock.execute.return_value = self.make_exec_result(
+            '/etc/init.d/ntp')
 
+    def test_init(self):
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        assert ntp_init.remote is self.remote_mock
+        assert ntp_init.node_name == 'node'
+        assert repr(ntp_init) == \
+            "NtpInitscript(remote=<SSHClient()>, node_name='node')"
+        self.remote_mock.execute.assert_called_once_with(
+            "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable")
 
-class TestNtp(unittest.TestCase):
-    @mock.patch('time.time', return_value=1, autospec=True)
-    @mock.patch('devops.helpers.ntp.wait')
-    @mock.patch('devops.helpers.ntp.logger', autospec=True)
-    def test_ntp_common(self, logger, wait, time):
-        remote = Remote()
-        ntp_init = ntp.NtpInitscript(remote)
+    def test_start(self):
+        self.remote_mock.check_call.return_value = self.make_exec_result('')
 
-        remote.reset_mock()
-
-        result = ntp_init.set_actual_time()
-        self.assertTrue(result)
-        self.assertTrue(ntp_init.is_synchronized)
-
-        wait.assert_called_once()
-        remote.execute.assert_called_once_with("hwclock -w")
-
-        wait.reset_mock()
-        logger.reset_mock()
-        debug = mock.Mock()
-        logger.attach_mock(debug, 'debug')
-
-        wait.side_effect = error.TimeoutError('E')
-        result = ntp_init.set_actual_time()
-        self.assertFalse(result)
-        self.assertFalse(ntp_init.is_synchronized)
-        debug.assert_called_once_with('Time sync failed with E')
-
-        result = ntp_init.wait_peer(timeout=-1)
-        self.assertFalse(result)
-        self.assertFalse(ntp_init.is_connected)
-        time.assert_has_calls((mock.call(), mock.call()))
-
-    def check_shared(self, ntp_obj, remote, pacemaker):
-        self.assertEqual(ntp_obj.remote, remote)
-        self.assertEqual(ntp_obj.node_name, 'node')
-        self.assertIsNone(ntp_obj.admin_ip)
-        self.assertEqual(ntp_obj.is_pacemaker, pacemaker)
-        self.assertFalse(ntp_obj.is_synchronized)
-        self.assertFalse(ntp_obj.is_connected)
-        self.assertEqual(ntp_obj.server, ' 0 2 4 ')
-
-    def test_ntp_init(self):
-        remote = Remote()
-        ntp_init = ntp.NtpInitscript(remote)
-        self.check_shared(ntp_obj=ntp_init, remote=remote, pacemaker=False)
-
-        remote.execute.assert_has_calls((
-            mock.call(
-                "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"),
-            mock.call("find /etc/init.d/ -regex '/etc/init.d/ntp.?'")
-        ))
-        self.assertEqual(
-            str(ntp_init),
-            'NtpInitscript(remote=Remote, node_name=node, admin_ip=None)')
-
-        remote.reset_mock()
-
-        peers = ntp_init.peers
-        self.assertEqual(peers, ['2', '3'])
-        remote.execute.assert_called_once_with('ntpq -pn 127.0.0.1')
-
-        remote.reset_mock()
-
-        date = ntp_init.date
-        self.assertEqual(date, return_value['stdout'])
-        remote.execute.assert_called_once_with('date')
-
-        remote.reset_mock()
-
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
         ntp_init.start()
-        self.assertFalse(ntp_init.is_connected)
-        remote.execute.assert_called_once_with('0 2 4 start')
 
-        remote.reset_mock()
+        self.remote_mock.check_call.assert_called_once_with(
+            '/etc/init.d/ntp start')
 
+    def test_stop(self):
+        self.remote_mock.check_call.return_value = self.make_exec_result('')
+
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
         ntp_init.stop()
-        self.assertFalse(ntp_init.is_connected)
-        remote.execute.assert_called_once_with('0 2 4 stop')
 
-    def test_ntp_pacemaker(self):
-        remote = Remote()
-        ntp_pcm = ntp.NtpPacemaker(remote)
+        self.remote_mock.check_call.assert_called_once_with(
+            '/etc/init.d/ntp stop')
 
-        self.check_shared(ntp_obj=ntp_pcm, remote=remote, pacemaker=True)
+    def test_get_ntpq(self):
+        self.remote_mock.execute.side_effect = (
+            self.make_exec_result('/etc/init.d/ntp'),
+            self.make_exec_result('Line1\nLine2\nLine3\nLine4\n'),
+        )
 
-        remote.execute.assert_called_once_with(
-            "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf")
-        self.assertEqual(
-            str(ntp_pcm),
-            'NtpPacemaker(remote=Remote, node_name=node, admin_ip=None)')
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        peers = ntp_init._get_ntpq()
 
-        remote.reset_mock()
+        self.remote_mock.execute.assert_has_calls((
+            mock.call(
+                "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"),
+            mock.call('ntpq -pn 127.0.0.1'),
+        ))
+        assert peers == ['Line3\n', 'Line4\n']
 
-        ntp_pcm.start()
-        self.assertFalse(ntp_pcm.is_connected)
-        remote.execute.assert_has_calls((
-            mock.call('ip netns exec vrouter ip l set dev lo up'),
-            mock.call('crm resource start p_ntp')
+    def test_date(self):
+        self.remote_mock.execute.side_effect = (
+            self.make_exec_result('/etc/init.d/ntp'),
+            self.make_exec_result('Thu May 26 13:35:43 MSK 2016'),
+        )
+
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        date = ntp_init.date
+
+        self.remote_mock.execute.assert_has_calls((
+            mock.call(
+                "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"),
+            mock.call('date'),
+        ))
+        assert date == 'Thu May 26 13:35:43 MSK 2016'
+
+    def test_set_actual_time(self):
+        self.remote_mock.execute.side_effect = (
+            self.make_exec_result('/etc/init.d/ntp'),
+            self.make_exec_result('server1.com'),
+            self.make_exec_result(''),
+        )
+
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        ntp_init.set_actual_time()
+
+        self.wait_mock.assert_called_once_with(
+            mock.ANY, timeout=600,
+            timeout_msg="Failed to set actual time on node 'node'")
+
+        waiter = self.wait_mock.call_args[0][0]
+        assert waiter() is True
+        self.remote_mock.execute.assert_has_calls((
+            mock.call(
+                "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"),
+            mock.call("awk '/^server/ && $2 !~ /127.*/ {print $2}' "
+                      "/etc/ntp.conf"),
+            mock.call('ntpdate -p 4 -t 0.2 -bu server1.com'),
         ))
 
-        remote.reset_mock()
+        self.remote_mock.check_call.assert_called_once_with('hwclock -w')
 
+    def test_get_sync_complete(self):
+        self.remote_mock.execute.side_effect = (
+            self.make_exec_result('/etc/init.d/ntp'),
+            self.make_exec_result("""\
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+-95.213.132.250  195.210.189.106  2 u    8   64  377   40.263   -1.379  15.326
+*87.229.205.75   212.51.144.44    2 u   16   64  377   31.288   -1.919   9.969
++31.131.249.26   46.46.152.214    2 u   34   64  377   40.522   -0.988   7.747
+-217.65.8.75     195.3.254.2      3 u   26   64  377   28.758   -4.249  44.240
++91.189.94.4     138.96.64.10     2 u   24   64  377   83.284   -1.810  14.550
+"""))
+
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        assert ntp_init._get_sync_complete() is True
+
+    def test_get_sync_complete_false(self):
+        self.remote_mock.execute.side_effect = (
+            self.make_exec_result('/etc/init.d/ntp'),
+            self.make_exec_result("""\
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
++95.213.132.250  195.210.189.106  2 u    8   64  377   40.263   -1.379  532.46
+-87.229.205.75   212.51.144.44    2 u   16   64  377   31.288   -1.919   9.969
+*31.131.249.26   46.46.152.214    2 u   34   64    1   40.522   -0.988   7.747
+-217.65.8.75     195.3.254.2      3 u   26   64  377   28.758   -4.249  44.240
++91.189.94.4     138.96.64.10     2 u   24   64  377   83.284   -1.810  14.550
+"""))
+
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        assert ntp_init._get_sync_complete() is False
+
+    def test_wait_peer(self):
+        ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
+        ntp_init.wait_peer()
+
+        self.wait_mock.assert_called_once_with(
+            ntp_init._get_sync_complete, interval=8, timeout=600,
+            timeout_msg="Failed to wait peer on node 'node'")
+
+
+class TestNtpPacemaker(NtpTestCase):
+
+    def test_init(self):
+        ntp_pcm = ntp.NtpPacemaker(self.remote_mock, 'node')
+        assert ntp_pcm.remote is self.remote_mock
+        assert ntp_pcm.node_name == 'node'
+        assert repr(ntp_pcm) == \
+            "NtpPacemaker(remote=<SSHClient()>, node_name='node')"
+
+    def test_start(self):
+        ntp_pcm = ntp.NtpPacemaker(self.remote_mock, 'node')
+        ntp_pcm.start()
+
+        self.remote_mock.execute.assert_has_calls((
+            mock.call('ip netns exec vrouter ip l set dev lo up'),
+            mock.call('crm resource start p_ntp'),
+        ))
+
+    def test_stop(self):
+        ntp_pcm = ntp.NtpPacemaker(self.remote_mock, 'node')
         ntp_pcm.stop()
-        self.assertFalse(ntp_pcm.is_connected)
-        remote.execute.assert_called_once_with(
+
+        self.remote_mock.execute.assert_called_once_with(
             'crm resource stop p_ntp; killall ntpd')
 
-        remote.reset_mock()
+    def test_get_ntpq(self):
+        self.remote_mock.execute.return_value = self.make_exec_result(
+            'Line1\nLine2\nLine3\nLine4\n')
 
-        result = ntp_pcm.get_peers()
-        self.assertEqual(result, return_value['stdout'])
-        remote.execute.assert_called_once_with(
+        ntp_pcm = ntp.NtpPacemaker(self.remote_mock, 'node')
+        peers = ntp_pcm._get_ntpq()
+
+        self.remote_mock.execute.assert_called_once_with(
             'ip netns exec vrouter ntpq -pn 127.0.0.1')
+        assert peers == ['Line3\n', 'Line4\n']
 
-    def test_ntp_systemd(self):
-        remote = Remote()
-        ntp_sysd = ntp.NtpSystemd(remote)
 
-        self.check_shared(ntp_obj=ntp_sysd, remote=remote, pacemaker=False)
+class TestNtpSystemd(NtpTestCase):
 
-        remote.execute.assert_called_once_with(
-            "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf")
-        self.assertEqual(
-            str(ntp_sysd),
-            'NtpSystemd(remote=Remote, node_name=node, admin_ip=None)')
+    def test_init(self):
+        ntp_sysd = ntp.NtpSystemd(self.remote_mock, 'node')
+        assert ntp_sysd.remote is self.remote_mock
+        assert ntp_sysd.node_name == 'node'
+        assert repr(ntp_sysd) == \
+            "NtpSystemd(remote=<SSHClient()>, node_name='node')"
 
-        remote.reset_mock()
-
+    def test_start(self):
+        ntp_sysd = ntp.NtpSystemd(self.remote_mock, 'node')
         ntp_sysd.start()
-        self.assertFalse(ntp_sysd.is_connected)
-        remote.execute.assert_called_once_with('systemctl start ntpd')
 
-        remote.reset_mock()
+        self.remote_mock.check_call.assert_called_once_with(
+            'systemctl start ntpd')
 
+    def test_stop(self):
+        ntp_sysd = ntp.NtpSystemd(self.remote_mock, 'node')
         ntp_sysd.stop()
-        self.assertFalse(ntp_sysd.is_connected)
-        remote.execute.assert_called_once_with('systemctl stop ntpd')
 
-        remote.reset_mock()
+        self.remote_mock.check_call.assert_called_once_with(
+            'systemctl stop ntpd')
 
-        result = ntp_sysd.get_peers()
-        self.assertEqual(result, return_value['stdout'])
-        remote.execute.assert_called_once_with('ntpq -pn 127.0.0.1')
+
+class TestNtpChronyd(NtpTestCase):
+
+    def test_init(self):
+        ntp_chrony = ntp.NtpChronyd(self.remote_mock, 'node')
+        assert ntp_chrony.remote is self.remote_mock
+        assert ntp_chrony.node_name == 'node'
+        assert repr(ntp_chrony) == \
+            "NtpChronyd(remote=<SSHClient()>, node_name='node')"
+
+        ntp_chrony.start()
+        ntp_chrony.stop()
+
+    def test_get_burst_complete(self):
+        self.remote_mock.check_call.return_value = \
+            self.make_exec_result("""200 OK
+200 OK
+4 sources online
+0 sources offline
+0 sources doing burst (return to online)
+0 sources doing burst (return to offline)
+0 sources with unknown address""")
+
+        ntp_chrony = ntp.NtpChronyd(self.remote_mock, 'node')
+        r = ntp_chrony._get_burst_complete()
+        self.remote_mock.check_call.assert_called_once_with(
+            'chronyc -a activity')
+        assert r is True
+
+    def test_get_burst_complete_false(self):
+        self.remote_mock.check_call.return_value = \
+            self.make_exec_result("""200 OK
+200 OK
+3 sources online
+0 sources offline
+1 sources doing burst (return to online)
+0 sources doing burst (return to offline)
+0 sources with unknown address""")
+
+        ntp_chrony = ntp.NtpChronyd(self.remote_mock, 'node')
+        r = ntp_chrony._get_burst_complete()
+        self.remote_mock.check_call.assert_called_once_with(
+            'chronyc -a activity')
+        assert r is False
+
+    def test_set_actual_time(self):
+        ntp_chrony = ntp.NtpChronyd(self.remote_mock, 'node')
+        ntp_chrony.set_actual_time()
+        self.remote_mock.check_call.assert_has_calls((
+            mock.call('chronyc -a burst 3/5'),
+            mock.call('chronyc -a makestep'),
+        ))
+        self.wait_mock.assert_called_once_with(
+            ntp_chrony._get_burst_complete, timeout=600,
+            timeout_msg="Failed to set actual time on node 'node'")
+
+    def test_wait_peer(self):
+        ntp_chrony = ntp.NtpChronyd(self.remote_mock, 'node')
+        ntp_chrony.wait_peer()
+        self.remote_mock.check_call.assert_called_once_with(
+            'chronyc -a waitsync 10 0.01')
