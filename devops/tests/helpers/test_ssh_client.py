@@ -14,6 +14,7 @@
 
 # pylint: disable=no-self-use
 
+from contextlib import closing
 from os.path import basename
 import posixpath
 import stat
@@ -21,9 +22,12 @@ from unittest import TestCase
 
 import mock
 import paramiko
+# noinspection PyUnresolvedReferences
+from six.moves import cStringIO
 from six import PY2
 
 from devops.error import DevopsCalledProcessError
+from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 
 
@@ -48,20 +52,97 @@ private_keys = []
 command = 'ls ~ '
 
 
+class TestSSHAuth(TestCase):
+    def init_checks(self, username=None, password=None, key=None):
+        """shared positive init checks
+
+        :type username: str
+        :type password: str
+        :type key: paramiko.RSAKey
+        """
+        auth = SSHAuth(
+            username=username,
+            password=password,
+            key=key
+        )
+        self.assertEqual(auth.username, username)
+        with closing(cStringIO()) as tgt:
+            auth.enter_password(tgt)
+            self.assertEqual(tgt.getvalue(), '{}\n'.format(password))
+        self.assertEqual(
+            auth.public_key,
+            gen_public_key(key) if key is not None else None)
+        self.assertEqual(
+            repr(auth),
+            "{cls}("
+            "username={username}, "
+            "password=<*masked*>, "
+            "key={key})".format(
+                cls=SSHAuth.__name__,
+                username=auth.username,
+                key=key if key is None else '<private for pub: {pub}>'.format(
+                    pub=auth.public_key
+                )
+            )
+        )
+        self.assertEqual(
+            str(auth),
+            '{cls} for {username}'.format(
+                cls=SSHAuth.__name__,
+                username=auth.username,
+            )
+        )
+
+    def test_init_username_only(self):
+        self.init_checks(
+            username=username
+        )
+
+    def test_init_username_password(self):
+        self.init_checks(
+            username=username,
+            password=password
+        )
+
+    def test_init_username_key(self):
+        self.init_checks(
+            username=username,
+            key=gen_private_keys(1).pop()
+        )
+
+    def test_init_username_password_key(self):
+        self.init_checks(
+            username=username,
+            password=password,
+            key=gen_private_keys(1).pop()
+        )
+
+
+@mock.patch('devops.helpers.retry.sleep', autospec=True)
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
-class TestSSHClient(TestCase):
-    def check_defaults(
-            self, obj, host, port, username, password, private_keys):
-        self.assertEqual(obj.host, host)
-        self.assertEqual(obj.port, port)
-        self.assertEqual(obj.username, username)
-        self.assertEqual(obj.password, password)
-        self.assertEqual(obj.private_keys, private_keys)
+class TestSSHClientInit(TestCase):
+    def init_checks(
+            self,
+            client, policy, logger,
+            host=None, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """shared checks for positive cases
 
-    def test_init_passwd(self, client, policy, logger):
+        :type client: mock.Mock
+        :type policy: mock.Mock
+        :type logger: mock.Mock
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        """
         _ssh = mock.call()
 
         ssh = SSHClient(
@@ -69,131 +150,515 @@ class TestSSHClient(TestCase):
             port=port,
             username=username,
             password=password,
-            private_keys=private_keys)
-
+            private_keys=private_keys,
+            auth=auth
+        )
         client.assert_called_once()
         policy.assert_called_once()
 
-        expected_calls = [
-            _ssh,
-            _ssh.set_missing_host_key_policy('AutoAddPolicy'),
-            _ssh.connect(
-                host, password=password,
-                port=port, username=username),
-            _ssh.open_sftp()
-        ]
+        if auth is None:
+            if private_keys is None or len(private_keys) == 1:
+                logger.assert_has_calls((
+                    mock.call.warning(
+                        'SSHClient('
+                        'host={host}, port={port}, username={username}): '
+                        'initialization by username/password/private_keys '
+                        'is deprecated in favor of SSHAuth usage. '
+                        'Please update your code'.format(
+                            host=host, port=port, username=username
+                        )),
+                ))
+            elif len(private_keys) == 0:
+                logger.assert_has_calls((
+                    mock.call.warning(
+                        'SSHClient('
+                        'host={host}, port={port}, username={username}): '
+                        'initialization by username/password/private_keys '
+                        'is deprecated in favor of SSHAuth usage. '
+                        'Please update your code'.format(
+                            host=host, port=port, username=username
+                        )),
+                    mock.call.info(
+                        'SSHAuth was made from old style creds: '
+                        'SSHAuth for {}'.format(username))
+                ))
+            else:
+                logger.assert_has_calls((
+                    mock.call.warning(
+                        'SSHClient('
+                        'host={host}, port={port}, username={username}): '
+                        'initialization by username/password/private_keys '
+                        'is deprecated in favor of SSHAuth usage. '
+                        'Please update your code'.format(
+                            host=host, port=port, username=username
+                        )),
+                    mock.call.info(
+                        'Multiple private keys (2) has been set, '
+                        'using brute-force.')
+                ))
+        else:
+            logger.assert_not_called()
 
-        self.assertIn(expected_calls, client.mock_calls)
-
-        self.check_defaults(ssh, host, port, username, password, private_keys)
-        self.assertIsNone(ssh.private_key)
-        self.assertIsNone(ssh.public_key)
-
-        self.assertIn(
-            mock.call.debug("Connect to '{0}:{1}' as '{2}:{3}'".format(
-                host, port, username, password
-            )),
-            logger.mock_calls
-        )
-        sftp = ssh._sftp
-        self.assertEqual(sftp, client().open_sftp())
-
-    def test_init_keys(self, client, policy, logger):
-        _ssh = mock.call()
-
-        private_keys = gen_private_keys(1)
-
-        ssh = SSHClient(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            private_keys=private_keys)
-
-        client.assert_called_once()
-        policy.assert_called_once()
-
-        expected_calls = [
-            _ssh,
-            _ssh.set_missing_host_key_policy('AutoAddPolicy'),
-            _ssh.connect(
-                host, password=password, pkey=private_keys[0],
-                port=port, username=username),
-            _ssh.open_sftp()
-        ]
-
-        self.assertIn(expected_calls, client.mock_calls)
-
-        self.check_defaults(ssh, host, port, username, password, private_keys)
-        self.assertEqual(ssh.private_key, private_keys[0])
-        self.assertEqual(ssh.public_key, gen_public_key(private_keys[0]))
-
-        self.assertIn(
-            mock.call.debug("Connect to '{0}:{1}' as '{2}:{3}'".format(
-                host, port, username, password
-            )),
-            logger.mock_calls
-        )
-
-    def test_init_as_context(self, client, policy, logger):
-        _ssh = mock.call()
-
-        private_keys = gen_private_keys(1)
-
-        with SSHClient(
-                host=host,
-                port=port,
-                username=username,
-                password=password,
-                private_keys=private_keys) as ssh:
-
-            client.assert_called_once()
-            policy.assert_called_once()
-
+        if auth is None:
+            if private_keys is None or len(private_keys) == 0:
+                pkey = None
+            else:
+                pkey = private_keys[0]
             expected_calls = [
                 _ssh,
                 _ssh.set_missing_host_key_policy('AutoAddPolicy'),
                 _ssh.connect(
-                    host, password=password, pkey=private_keys[0],
+                    hostname=host, password=password,
+                    pkey=pkey,
                     port=port, username=username),
-                _ssh.open_sftp()
             ]
 
             self.assertIn(expected_calls, client.mock_calls)
 
-            self.check_defaults(ssh, host, port, username, password,
-                                private_keys)
+            self.assertEqual(
+                ssh.auth,
+                SSHAuth(
+                    username=username,
+                    password=password,
+                    key=pkey
+                )
+            )
+        else:
+            self.assertEqual(ssh.auth, auth)
 
-            self.assertIn(
-                mock.call.debug("Connect to '{0}:{1}' as '{2}:{3}'".format(
-                    host, port, username, password
-                )),
-                logger.mock_calls
+        sftp = ssh._sftp
+        self.assertEqual(sftp, client().open_sftp())
+
+        self.assertEqual(ssh._ssh, client())
+
+        self.assertEqual(ssh.hostname, host)
+        self.assertEqual(ssh.port, port)
+
+        self.assertEqual(
+            repr(ssh),
+            '{cls}(host={host}, port={port}, auth={auth!r})'.format(
+                cls=ssh.__class__.__name__, host=ssh.hostname,
+                port=ssh.port,
+                auth=ssh.auth
+            )
+        )
+
+    def test_init_host(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host)
+
+    def test_init_alternate_port(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            port=2222
+        )
+
+    def test_init_username(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username
+        )
+
+    def test_init_username_password(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username,
+            password=password
             )
 
-    def test_init_fail_sftp(self, client, policy, logger):
-        _ssh = mock.Mock()
-        client.return_value = _ssh
-        open_sftp = mock.Mock(parent=_ssh, side_effect=paramiko.SSHException)
-        _ssh.attach_mock(open_sftp, 'open_sftp')
-        warning = mock.Mock(parent=logger)
-        logger.attach_mock(warning, 'warning')
-
-        ssh = SSHClient(
+    def test_init_username_password_empty_keys(
+            self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
             host=host,
-            port=port,
             username=username,
             password=password,
-            private_keys=private_keys)
+            private_keys=[]
+        )
+
+    def test_init_username_single_key(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username,
+            private_keys=gen_private_keys(1)
+            )
+
+    def test_init_username_password_single_key(
+            self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username,
+            password=password,
+            private_keys=gen_private_keys(1)
+        )
+
+    def test_init_username_multiple_keys(self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username,
+            private_keys=gen_private_keys(2)
+        )
+
+    def test_init_username_password_multiple_keys(
+            self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username=username,
+            password=password,
+            private_keys=gen_private_keys(2)
+        )
+
+    def test_init_auth(
+            self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            auth=SSHAuth(
+                username=username,
+                password=password,
+                key=gen_private_keys(1).pop()
+            )
+        )
+
+    def test_init_auth_break(
+            self, client, policy, logger, sleep):
+        self.init_checks(
+            client, policy, logger,
+            host=host,
+            username='Invalid',
+            password='Invalid',
+            private_keys=gen_private_keys(1),
+            auth=SSHAuth(
+                username=username,
+                password=password,
+                key=gen_private_keys(1).pop()
+            )
+        )
+
+    def test_init_context(
+            self, client, policy, logger, sleep):
+        with SSHClient(host=host, auth=SSHAuth()) as ssh:
+            client.assert_called_once()
+            policy.assert_called_once()
+
+            logger.assert_not_called()
+
+            self.assertEqual(ssh.auth, SSHAuth())
+
+            sftp = ssh._sftp
+            self.assertEqual(sftp, client().open_sftp())
+
+            self.assertEqual(ssh._ssh, client())
+
+            self.assertEqual(ssh.hostname, host)
+            self.assertEqual(ssh.port, port)
+
+    def test_init_clear_failed(
+            self, client, policy, logger, sleep):
+        """Test reconnect
+
+        :type client: mock.Mock
+        :type policy: mock.Mock
+        :type logger: mock.Mock
+        """
+        _ssh = mock.Mock()
+        _ssh.attach_mock(
+            mock.Mock(
+                side_effect=[
+                    Exception('Mocked SSH close()'),
+                    mock.Mock()
+                ]),
+            'close')
+        _sftp = mock.Mock()
+        _sftp.attach_mock(
+            mock.Mock(
+                side_effect=[
+                    Exception('Mocked SFTP close()'),
+                    mock.Mock()
+                ]),
+            'close')
+        client.return_value = _ssh
+        _ssh.attach_mock(mock.Mock(return_value=_sftp), 'open_sftp')
+
+        ssh = SSHClient(host=host, auth=SSHAuth())
+        client.assert_called_once()
+        policy.assert_called_once()
+
+        logger.assert_not_called()
+
+        self.assertEqual(ssh.auth, SSHAuth())
+
+        sftp = ssh._sftp
+        self.assertEqual(sftp, _sftp)
+
+        self.assertEqual(ssh._ssh, _ssh)
+
+        self.assertEqual(ssh.hostname, host)
+        self.assertEqual(ssh.port, port)
+
+        logger.reset_mock()
+
+        ssh.clear()
+
+        logger.assert_has_calls((
+            mock.call.exception('Could not close ssh connection'),
+            mock.call.exception('Could not close sftp connection'),
+        ))
+
+    def test_init_reconnect(
+            self, client, policy, logger, sleep):
+        """Test reconnect
+
+        :type client: mock.Mock
+        :type policy: mock.Mock
+        :type logger: mock.Mock
+        """
+        ssh = SSHClient(host=host, auth=SSHAuth())
+        client.assert_called_once()
+        policy.assert_called_once()
+
+        logger.assert_not_called()
+
+        self.assertEqual(ssh.auth, SSHAuth())
+
+        sftp = ssh._sftp
+        self.assertEqual(sftp, client().open_sftp())
+
+        self.assertEqual(ssh._ssh, client())
+
+        client.reset_mock()
+        policy.reset_mock()
+
+        self.assertEqual(ssh.hostname, host)
+        self.assertEqual(ssh.port, port)
+
+        ssh.reconnect()
+
+        _ssh = mock.call()
+
+        expected_calls = [
+            _ssh.close(),
+            _ssh,
+            _ssh.set_missing_host_key_policy('AutoAddPolicy'),
+            _ssh.connect(
+                hostname='127.0.0.1',
+                password=None,
+                pkey=None,
+                port=22,
+                username=None),
+            _ssh.open_sftp()
+        ]
+        self.assertIn(
+            expected_calls,
+            client.mock_calls
+        )
 
         client.assert_called_once()
         policy.assert_called_once()
 
-        self.check_defaults(ssh, host, port, username, password, private_keys)
+        logger.assert_not_called()
 
-        warning.assert_called_once_with(
-            'SFTP enable failed! SSH only is accessible.'
+        self.assertEqual(ssh.auth, SSHAuth())
+
+        sftp = ssh._sftp
+        self.assertEqual(sftp, client().open_sftp())
+
+        self.assertEqual(ssh._ssh, client())
+
+    def test_init_password_required(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        with self.assertRaises(paramiko.PasswordRequiredException):
+            SSHClient(host=host, auth=SSHAuth())
+        logger.assert_has_calls((
+            mock.call.exception('No password has been set!'),
+        ))
+
+    def test_init_password_broken(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        with self.assertRaises(paramiko.PasswordRequiredException):
+            SSHClient(host=host, auth=SSHAuth(password=password))
+
+        logger.assert_has_calls((
+            mock.call.critical(
+                'Unexpected PasswordRequiredException, '
+                'when password is set!'
+            ),
+        ))
+
+    def test_init_auth_impossible_password(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(side_effect=paramiko.AuthenticationException)
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        with self.assertRaises(paramiko.AuthenticationException):
+            SSHClient(host=host, auth=SSHAuth(password=password))
+
+        logger.assert_has_calls(
+            (
+                mock.call.exception(
+                    'Connection using stored authentication info failed!'),
+            ) * 3
         )
+
+    def test_init_auth_impossible_key(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(side_effect=paramiko.AuthenticationException)
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        with self.assertRaises(paramiko.AuthenticationException):
+            SSHClient(
+                host=host,
+                auth=SSHAuth(key=gen_private_keys(1).pop())
+            )
+
+        logger.assert_has_calls(
+            (
+                mock.call.warning(
+                    'Connection using stored authentication info failed! '
+                    'Retry without private key...'),
+                mock.call.exception(
+                    'Connection using stored authentication info failed!'),
+            ) * 3
+        )
+
+    def test_init_auth_pass_no_key(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(
+            side_effect=[
+                paramiko.AuthenticationException,
+                mock.Mock()
+            ])
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        ssh = SSHClient(
+            host=host,
+            auth=SSHAuth(
+                username=username,
+                password=password,
+                key=gen_private_keys(1).pop()
+            )
+        )
+
+        client.assert_called_once()
+        policy.assert_called_once()
+
+        logger.assert_has_calls((
+            mock.call.warning(
+                'Connection using stored authentication info failed! '
+                'Retry without private key...'),
+            mock.call.warning(
+                'Private key has been deleted from auth info as invalid')
+        ))
+
+        self.assertEqual(
+            ssh.auth,
+            SSHAuth(
+                username=username,
+                password=password
+            )
+        )
+
+        sftp = ssh._sftp
+        self.assertEqual(sftp, client().open_sftp())
+
+        self.assertEqual(ssh._ssh, client())
+
+    def test_init_auth_brute_impossible(
+            self, client, policy, logger, sleep):
+        connect = mock.Mock(side_effect=paramiko.AuthenticationException)
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(connect, 'connect')
+        client.return_value = _ssh
+
+        with self.assertRaises(paramiko.AuthenticationException):
+            SSHClient(
+                host=host,
+                username=username,
+                private_keys=gen_private_keys(2))
+
+        logger.assert_has_calls(
+            (
+                mock.call.warning(
+                    'SSHClient('
+                    'host={host}, port={port}, username={username}): '
+                    'initialization by username/password/private_keys '
+                    'is deprecated in favor of SSHAuth usage. '
+                    'Please update your code'.format(
+                        host=host, port=port, username=username
+                    )),
+                mock.call.info(
+                    'Multiple private keys (2) has been set, '
+                    'using brute-force.'),
+            ) + (
+                mock.call.critical(
+                    'No any correct authentication credentials accessible:\n'
+                    '\t2 keys failed\n'
+                    '\tconnect without private key failed'),
+            ) * 3
+        )
+
+    def test_init_no_sftp(
+            self, client, policy, logger, sleep):
+        open_sftp = mock.Mock(side_effect=paramiko.SSHException)
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(open_sftp, 'open_sftp')
+        client.return_value = _ssh
+
+        ssh = SSHClient(host=host, auth=SSHAuth(password=password))
+
+        with self.assertRaises(paramiko.SSHException):
+            # pylint: disable=pointless-statement
+            # noinspection PyStatementEffect
+            ssh._sftp
+            # pylint: enable=pointless-statement
+        logger.assert_has_calls((
+            mock.call.warning('SFTP is not connected, try to reconnect'),
+            mock.call.warning(
+                'SFTP enable failed! SSH only is accessible.'),
+        ))
+
+    def test_init_sftp_repair(
+            self, client, policy, logger, sleep):
+        _sftp = mock.Mock()
+        open_sftp = mock.Mock(
+            side_effect=[
+                paramiko.SSHException,
+                _sftp, _sftp])
+
+        _ssh = mock.Mock()
+        _ssh.attach_mock(open_sftp, 'open_sftp')
+        client.return_value = _ssh
+
+        ssh = SSHClient(host=host, auth=SSHAuth(password=password))
 
         with self.assertRaises(paramiko.SSHException):
             # pylint: disable=pointless-statement
@@ -201,18 +666,13 @@ class TestSSHClient(TestCase):
             ssh._sftp
             # pylint: enable=pointless-statement
 
-        warning.assert_has_calls([
-            mock.call('SFTP enable failed! SSH only is accessible.'),
-            mock.call('SFTP is not connected, try to reconnect'),
-            mock.call('SFTP enable failed! SSH only is accessible.')])
+        logger.reset_mock()
 
-        # Unblock sftp connection
-        # (reset_mock is not possible to use in this case)
-        _sftp = mock.Mock()
-        open_sftp = mock.Mock(parent=_ssh, return_value=_sftp)
-        _ssh.attach_mock(open_sftp, 'open_sftp')
         sftp = ssh._sftp
-        self.assertEqual(sftp, _sftp)
+        self.assertEqual(sftp, open_sftp())
+        logger.assert_has_calls((
+            mock.call.warning('SFTP is not connected, try to reconnect'),
+        ))
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
@@ -229,9 +689,10 @@ class TestExecute(TestCase):
         return SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
     def test_execute_async(self, client, policy, logger):
         chan = mock.Mock()
@@ -325,8 +786,9 @@ class TestExecute(TestCase):
             logger.mock_calls
         )
 
+    @mock.patch('devops.helpers.ssh_client.SSHAuth.enter_password')
     def test_execute_async_sudo_password(
-            self, client, policy, logger):
+            self, enter_password, client, policy, logger):
         stdin = mock.Mock(name='stdin')
         stdout = mock.Mock(name='stdout')
         stdout_channel = mock.Mock()
@@ -350,6 +812,7 @@ class TestExecute(TestCase):
         get_transport.assert_called_once()
         open_session.assert_called_once()
         # raise ValueError(closed.mock_calls)
+        enter_password.assert_called_once_with(stdin)
         stdin.assert_has_calls((mock.call.flush(), ))
 
         self.assertIn(chan, result)
@@ -365,8 +828,7 @@ class TestExecute(TestCase):
             logger.mock_calls
         )
 
-    @staticmethod
-    def get_patched_execute_async_retval(ec=0, stderr_val=True):
+    def get_patched_execute_async_retval(self, ec=0, stderr_val=True):
         stderr = mock.Mock()
         stdout = mock.Mock()
 
@@ -464,9 +926,10 @@ class TestExecute(TestCase):
         ssh2 = SSHClient(
             host=host2,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
         remotes = [ssh, ssh2]
 
@@ -615,9 +1078,10 @@ class TestExecuteThrowHost(TestCase):
         ssh = SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
         result = ssh.execute_through_host(target, command)
         self.assertEqual(result, return_value)
@@ -660,13 +1124,14 @@ class TestExecuteThrowHost(TestCase):
         ssh = SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
         result = ssh.execute_through_host(
             target, command,
-            username=_login, password=_password)
+            auth=SSHAuth(username=_login, password=_password))
         self.assertEqual(result, return_value)
         get_transport.assert_called_once()
         open_channel.assert_called_once()
@@ -701,9 +1166,10 @@ class TestSftp(TestCase):
         ssh = SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
         return ssh, _sftp
 
     def test_exists(self, client, policy, logger):
@@ -793,9 +1259,10 @@ class TestSftp(TestCase):
         ssh = SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
         # Path not exists
         ssh.mkdir(path)
@@ -817,9 +1284,10 @@ class TestSftp(TestCase):
         ssh = SSHClient(
             host=host,
             port=port,
-            username=username,
-            password=password
-            )
+            auth=SSHAuth(
+                username=username,
+                password=password
+            ))
 
         # Path not exists
         ssh.rm_rf(path)

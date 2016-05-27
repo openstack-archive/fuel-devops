@@ -28,6 +28,7 @@ from six.moves import xrange
 
 from devops import error
 from devops.helpers import helpers
+from devops.helpers.ssh_client import SSHAuth
 
 
 class TestHelpersHelpers(unittest.TestCase):
@@ -198,7 +199,8 @@ class TestHelpersHelpers(unittest.TestCase):
         helpers.wait_ssh_cmd(
             host, port, check_cmd, username, password, timeout)
         ssh.assert_called_once_with(
-            host=host, port=port, username=username, password=password
+            host=host, port=port,
+            auth=SSHAuth(username=username, password=password)
         )
         wait.assert_called_once()
         # Todo: cover ssh_client.execute
