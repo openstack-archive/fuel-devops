@@ -537,3 +537,8 @@ Known issues
 
   Workaround: upgrade libvirt to the latest version.
 
+* Fuel-devops 3.0 requires libvirt >=1.2.3. With libvirt 1.2.2 there is impossible
+  to run more than one environment at the same time because of conflicting names of
+  network interfaces (virnet*). It is fixed on libvirt >=1.2.3 , but will require
+  to re-create already existing environments.
+  `Bug 1586385 <https://bugs.launchpad.net/fuel/+bug/1586385>`_.
