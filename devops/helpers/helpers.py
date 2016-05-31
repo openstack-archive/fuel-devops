@@ -170,12 +170,12 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
 
 def get_private_keys(env):
     _ssh_keys = []
-    admin_remote = get_admin_remote(env)
-    for key_string in ['/root/.ssh/id_rsa',
-                       '/root/.ssh/bootstrap.rsa']:
-        if admin_remote.isfile(key_string):
-            with admin_remote.open(key_string) as f:
-                _ssh_keys.append(paramiko.RSAKey.from_private_key(f))
+    with get_admin_remote(env) as admin_remote:
+        for key_string in ['/root/.ssh/id_rsa',
+                           '/root/.ssh/bootstrap.rsa']:
+            if admin_remote.isfile(key_string):
+                with admin_remote.open(key_string) as f:
+                    _ssh_keys.append(paramiko.RSAKey.from_private_key(f))
     return _ssh_keys
 
 
