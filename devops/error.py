@@ -39,9 +39,9 @@ class DevopsCalledProcessError(DevopsError):
                 expected=self.expected
             ))
         if self.stdout:
-            message += "\n\tSTDOUT: {}".format(self.stdout)
+            message += "\n\tSTDOUT:\n{}".format(self.stdout)
         if self.stderr:
-            message += "\n\tSTDERR: {}".format(self.stderr)
+            message += "\n\tSTDERR:\n{}".format(self.stderr)
         super(DevopsCalledProcessError, self).__init__(message)
 
     @property
