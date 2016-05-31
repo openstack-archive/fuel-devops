@@ -17,8 +17,7 @@ import posixpath
 import stat
 
 import paramiko
-# noinspection PyUnresolvedReferences
-from six.moves import cStringIO
+import six
 
 from devops.error import DevopsCalledProcessError
 from devops.helpers.retry import retry
@@ -27,13 +26,14 @@ from devops import logger
 
 class SSHClient(object):
     class get_sudo(object):
+        """Context manager for call commands with sudo"""
         def __init__(self, ssh):
             self.ssh = ssh
 
         def __enter__(self):
             self.ssh.sudo_mode = True
 
-        def __exit__(self, exc_type, value, traceback):
+        def __exit__(self, exc_type, exc_val, exc_tb):
             self.ssh.sudo_mode = False
 
     def __init__(self, host, port=22, username=None, password=None,
@@ -58,24 +58,9 @@ class SSHClient(object):
     def password(self):
         return self.__password
 
-    @password.setter
-    def password(self, new_val):
-        self.__password = new_val
-        self.reconnect()
-
     @property
     def private_keys(self):
         return self.__private_keys
-
-    @private_keys.setter
-    def private_keys(self, new_val):
-        self.__private_keys = new_val
-        self.reconnect()
-
-    @private_keys.deleter
-    def private_keys(self):
-        self.__private_keys = []
-        self.reconnect()
 
     @property
     def private_key(self):
@@ -85,11 +70,15 @@ class SSHClient(object):
     def public_key(self):
         if self.private_key is None:
             return None
-        key = paramiko.RSAKey(file_obj=cStringIO(self.private_key))
+        key = self.private_key
         return '{0} {1}'.format(key.get_name(), key.get_base64())
 
     @property
     def _sftp(self):
+        """SFTP channel access for inheritance
+
+        :raises: paramiko.SSHException
+        """
         if self.__sftp is not None:
             return self.__sftp
         logger.warning('SFTP is not connected, try to reconnect')
@@ -115,7 +104,7 @@ class SSHClient(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, *err):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.clear()
 
     @retry(count=3, delay=3)
@@ -152,67 +141,162 @@ class SSHClient(object):
         self.connect()
         self._connect_sftp()
 
-    def check_call(self, command, verbose=False, excpected=0):
+    def check_call(
+            self,
+            command, verbose=False,
+            expected=None, raise_on_err=True):
+        """Execute command and check for return code
+
+        :type command: str
+        :type verbose: bool
+        :type expected: list
+        :type raise_on_err: bool
+        :rtype: dict
+        :raises: DevopsCalledProcessError
+        """
+        if expected is None:
+            expected = [0]
         ret = self.execute(command, verbose)
-        if ret['exit_code'] != excpected:
-            raise DevopsCalledProcessError(
-                command, ret['exit_code'],
-                expected=excpected,
-                stdout=ret['stdout_str'],
-                stderr=ret['stderr_str'])
+        if ret['exit_code'] not in expected:
+            message = (
+                "Command '{cmd}' returned exit code {code} while "
+                "expected {expected}\n"
+                "\tSTDOUT:\n"
+                "{stdout}"
+                "\n\tSTDERR:\n"
+                "{stderr}".format(
+                    cmd=command,
+                    code=ret['exit_code'],
+                    expected=expected,
+                    stdout=ret['stdout_str'],
+                    stderr=ret['stderr_str']
+                ))
+            logger.error(message)
+            if raise_on_err:
+                raise DevopsCalledProcessError(
+                    command, ret['exit_code'],
+                    expected=expected,
+                    stdout=ret['stdout_str'],
+                    stderr=ret['stderr_str'])
         return ret
 
-    def check_stderr(self, command, verbose=False):
-        ret = self.check_call(command, verbose)
+    def check_stderr(self, command, verbose=False, raise_on_err=True):
+        """Execute command expecting return code 0 and empty STDERR
+
+        :type command: str
+        :type verbose: bool
+        :type raise_on_err: bool
+        :rtype: dict
+        :raises: DevopsCalledProcessError
+        """
+        ret = self.check_call(command, verbose, raise_on_err=raise_on_err)
         if ret['stderr']:
-            raise DevopsCalledProcessError(command, ret['exit_code'],
-                                           stdout=ret['stdout_str'],
-                                           stderr=ret['stderr_str'])
+            message = (
+                "Command '{cmd}' STDERR while not expected\n"
+                "\texit code: {code}\n"
+                "\tSTDOUT:\n"
+                "{stdout}"
+                "\n\tSTDERR:\n"
+                "{stderr}".format(
+                    cmd=command,
+                    code=ret['exit_code'],
+                    stdout=ret['stdout_str'],
+                    stderr=ret['stderr_str']
+                ))
+            logger.error(message)
+            if raise_on_err:
+                raise DevopsCalledProcessError(command, ret['exit_code'],
+                                               stdout=ret['stdout_str'],
+                                               stderr=ret['stderr_str'])
         return ret
 
     @classmethod
-    def execute_together(cls, remotes, command):
+    def execute_together(
+            cls, remotes, command, expected=None, raise_on_err=True):
+        """Execute command on multiple remotes in async mode
+
+        :type remotes: list
+        :type command: str
+        :type expected: list
+        :type raise_on_err: bool
+        :raises: DevopsCalledProcessError
+        """
+        if expected is None:
+            expected = [0]
         futures = {}
         errors = {}
-        for remote in remotes:
+        for remote in set(remotes):  # Use distinct remotes
             chan, _, _, _ = remote.execute_async(command)
             futures[remote] = chan
         for remote, chan in futures.items():
             ret = chan.recv_exit_status()
             chan.close()
-            if ret != 0:
+            if ret not in expected:
                 errors[remote.host] = ret
-        if errors:
+        if errors and raise_on_err:
             raise DevopsCalledProcessError(command, errors)
 
     def execute(self, command, verbose=False):
+        """Execute command and wait for return code
+
+        :type command: str
+        :type verbose: bool
+        :rtype: dict
+        """
         chan, _, stderr, stdout = self.execute_async(command)
+
+        # noinspection PyDictCreation
         result = {
-            'stdout': [],
-            'stderr': [],
-            'exit_code': 0
+            'exit_code': chan.recv_exit_status()
         }
-        for line in stdout:
-            result['stdout'].append(line)
-            if verbose:
-                logger.info(line)
-        for line in stderr:
-            result['stderr'].append(line)
-            if verbose:
-                logger.info(line)
-        result['exit_code'] = chan.recv_exit_status()
+        result['stdout'] = stdout.readlines()
+        result['stderr'] = stderr.readlines()
+
         chan.close()
-        result['stdout_str'] = ''.join(result['stdout']).strip()
-        result['stderr_str'] = ''.join(result['stderr']).strip()
+
+        result['stdout_str'] = self._get_str_from_list(result['stdout'])
+        result['stderr_str'] = self._get_str_from_list(result['stderr'])
+
+        if verbose:
+            logger.info(
+                '{cmd} execution results:\n'
+                'Exit code: {code}\n'
+                'STDOUT:\n'
+                '{stdout}\n'
+                'STDERR:\n'
+                '{stderr}'.format(
+                    cmd=command,
+                    code=result['exit_code'],
+                    stdout=result['stdout_str'],
+                    stderr=result['stderr_str']
+                ))
+
         return result
 
+    @staticmethod
+    def _get_str_from_list(src):
+        """Join data in list to the string, with python 2&3 compatibility.
+
+        :type src: list
+        :rtype: str
+        """
+        if six.PY2:
+            return b''.join(src).strip()
+        else:
+            return b''.join(src).strip().decode(encoding='utf-8')
+
     def execute_async(self, command):
+        """Execute command in async mode and return channel with IO objects
+
+        :type command: str
+        :rtype: tuple
+        """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
         stderr = chan.makefile_stderr('rb')
-        cmd = "%s\n" % command
+        cmd = "{}\n".format(command)
         if self.sudo_mode:
             cmd = 'sudo -S bash -c "%s"' % cmd.replace('"', '\\"')
             chan.exec_command(cmd)
@@ -225,7 +309,7 @@ class SSHClient(object):
 
     def execute_through_host(
             self,
-            target_host,
+            hostname,
             cmd,
             username=None,
             password=None,
@@ -237,21 +321,15 @@ class SSHClient(object):
             key = self.private_key
 
         intermediate_channel = self._ssh.get_transport().open_channel(
-            'direct-tcpip', (target_host, target_port), (self.host, 0))
-        transport = paramiko.Transport(intermediate_channel)
-        transport.start_client()
-        logger.info("Passing authentication to: {}".format(target_host))
-        if password is None and key is None:
-            logger.debug('auth_none')
-            transport.auth_none(username=username)
-        elif key is not None:
-            logger.debug('auth_publickey')
-            transport.auth_publickey(username=username, key=key)
-        else:
-            logger.debug('auth_password')
-            transport.auth_password(username=username, password=password)
+            kind='direct-tcpip',
+            dest_addr=(hostname, target_port),
+            src_addr=(self.host, 0))
+        transport = paramiko.Transport(sock=intermediate_channel)
 
-        logger.debug("Opening session")
+        # start client and authenticate transport
+        transport.connect(username=username, password=password, pkey=key)
+
+        # open ssh session
         channel = transport.open_session()
 
         # Make proxy objects for read
@@ -266,29 +344,48 @@ class SSHClient(object):
         result = {}
         result['exit_code'] = channel.recv_exit_status()
 
-        result['stdout'] = stdout.read()
-        result['stderr'] = stderr.read()
+        result['stdout'] = stdout.readlines()
+        result['stderr'] = stderr.readlines()
         channel.close()
 
-        result['stdout_str'] = ''.join(result['stdout']).strip()
-        result['stderr_str'] = ''.join(result['stderr']).strip()
+        result['stdout_str'] = self._get_str_from_list(result['stdout'])
+        result['stderr_str'] = self._get_str_from_list(result['stderr'])
 
         return result
 
     def mkdir(self, path):
+        """run 'mkdir -p path' on remote
+
+        :type path: str
+        """
         if self.exists(path):
             return
         logger.debug("Creating directory: {}".format(path))
         self.execute("mkdir -p {}\n".format(path))
 
     def rm_rf(self, path):
+        """run 'rm -rf path' on remote
+
+        :type path: str
+        """
         logger.debug("rm -rf {}".format(path))
-        self.execute("rm -rf %s" % path)
+        self.execute("rm -rf {}".format(path))
 
     def open(self, path, mode='r'):
+        """Open file on remote using SFTP session
+
+        :type path: str
+        :type mode: str
+        :return: file.open() stream
+        """
         return self._sftp.open(path, mode)
 
     def upload(self, source, target):
+        """Upload file(s) from source to target using SFTP session
+
+        :type source: str
+        :type target: str
+        """
         logger.debug("Copying '%s' -> '%s'", source, target)
 
         if self.isdir(target):
@@ -315,6 +412,12 @@ class SSHClient(object):
                 self._sftp.put(local_path, remote_path)
 
     def download(self, destination, target):
+        """Download file(s) to target from destination
+
+        :type destination: str
+        :type target: str
+        :rtype: bool
+        """
         logger.debug(
             "Copying '%s' -> '%s' from remote to local host",
             destination, target
@@ -337,6 +440,11 @@ class SSHClient(object):
         return os.path.exists(target)
 
     def exists(self, path):
+        """Check for file existence using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             self._sftp.lstat(path)
             return True
@@ -344,6 +452,11 @@ class SSHClient(object):
             return False
 
     def isfile(self, path):
+        """Check, that path is file using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             attrs = self._sftp.lstat(path)
             return attrs.st_mode & stat.S_IFREG != 0
@@ -351,6 +464,11 @@ class SSHClient(object):
             return False
 
     def isdir(self, path):
+        """Check, that path is directory using SFTP session
+
+        :type path: str
+        :rtype: bool
+        """
         try:
             attrs = self._sftp.lstat(path)
             return attrs.st_mode & stat.S_IFDIR != 0
