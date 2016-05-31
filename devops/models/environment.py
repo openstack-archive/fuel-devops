@@ -373,9 +373,10 @@ class Environment(BaseModel):
         keys = []
         for key_string in ['/root/.ssh/id_rsa',
                            '/root/.ssh/bootstrap.rsa']:
-            if self.get_admin_remote().isfile(key_string):
-                with self.get_admin_remote().open(key_string) as f:
-                    keys.append(RSAKey.from_private_key(f))
+            with self.get_admin_remote() as admin_remote:
+                if admin_remote.isfile(key_string):
+                    with admin_remote.open(key_string) as f:
+                        keys.append(RSAKey.from_private_key(f))
 
         return SSHClient(ip,
                          username=login,

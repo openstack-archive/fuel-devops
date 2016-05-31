@@ -50,6 +50,12 @@ def sync_time(env, node_names, skip_sync=False):
         all_ntps = g_ntp.admin_ntps + g_ntp.pacemaker_ntps + g_ntp.other_ntps
         results = {ntp.node_name: ntp.date[0].rstrip() for ntp in all_ntps}
 
+        for ntp in all_ntps:
+            try:
+                ntp.remote.clear()
+            except Exception as e:
+                logger.info("Error closing ntp session: {0}".format(e.message))
+
     return results
 
 
