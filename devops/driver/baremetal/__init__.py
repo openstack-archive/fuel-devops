@@ -13,6 +13,7 @@
 #    under the License.
 
 
+from devops.models import DiskDevice
 from devops.driver.baremetal.ipmi_driver import IpmiDriver as Driver
 from devops.driver.baremetal.ipmi_driver \
     import IpmiL2NetworkDevice as L2NetworkDevice
@@ -20,4 +21,11 @@ from devops.driver.baremetal.ipmi_driver import IpmiNode as Node
 from devops.driver.baremetal.ipmi_driver import IpmiVolume as Volume
 from devops.models import Interface
 
-__all__ = ['Driver', 'L2NetworkDevice', 'Volume', 'Node', 'Interface']
+__all__ = [
+    'DiskDevice',
+    'Driver',
+    'Interface',
+    'L2NetworkDevice',
+    'Volume',
+    'Node',
+]
