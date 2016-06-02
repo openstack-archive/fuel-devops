@@ -18,6 +18,7 @@ import pkgutil
 from django.test import TestCase
 
 from devops import driver
+from devops.models import DiskDevice
 from devops.models import Driver
 from devops.models import Interface
 from devops.models import L2NetworkDevice
@@ -27,19 +28,33 @@ from devops.models import Volume
 
 class TestDriverImport(TestCase):
 
+    @staticmethod
+    def assert_class_present(mod, mod_path, class_name, expected_class):
+        if not hasattr(mod, class_name):
+            raise AssertionError(
+                '{mod_path}.{class_name} does not exist'
+                ''.format(mod_path=mod_path, class_name=class_name))
+
+        klass = getattr(mod, class_name)
+
+        if not issubclass(klass, expected_class):
+            raise AssertionError(
+                '{mod_path}.{class_name} is not subclass of {expected_class}'
+                ''.format(mod_path=mod_path, class_name=class_name,
+                          expected_class=expected_class))
+
     def test_driver_imports(self):
-        for _, modname, ispkg in pkgutil.iter_modules(driver.__path__):
+        for _, mod_name, ispkg in pkgutil.iter_modules(driver.__path__):
             if not ispkg:
                 continue
 
-            if modname == 'ipmi':
-                # skip ipmi
-                continue
+            mod_path = 'devops.driver.{}'.format(mod_name)
+            mod = importlib.import_module(mod_path)
 
-            mod = importlib.import_module('devops.driver.{}'.format(modname))
-
-            assert issubclass(getattr(mod, 'Driver'), Driver)
-            assert issubclass(getattr(mod, 'Interface'), Interface)
-            assert issubclass(getattr(mod, 'L2NetworkDevice'), L2NetworkDevice)
-            assert issubclass(getattr(mod, 'Node'), Node)
-            assert issubclass(getattr(mod, 'Volume'), Volume)
+            self.assert_class_present(mod, mod_path, 'DiskDevice', DiskDevice)
+            self.assert_class_present(mod, mod_path, 'Driver', Driver)
+            self.assert_class_present(mod, mod_path, 'Interface', Interface)
+            self.assert_class_present(
+                mod, mod_path, 'L2NetworkDevice', L2NetworkDevice)
+            self.assert_class_present(mod, mod_path, 'Node', Node)
+            self.assert_class_present(mod, mod_path, 'Volume', Volume)
