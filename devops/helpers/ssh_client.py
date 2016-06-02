@@ -182,6 +182,8 @@ class SSHClient(object):
         '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
     ]
 
+    __cache = {}
+
     class get_sudo(object):
         """Context manager for call commands with sudo"""
         def __init__(self, ssh):
@@ -199,6 +201,34 @@ class SSHClient(object):
             self.hostname,
             self.port,
             self.auth))
+
+    def __new__(
+            cls,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """SSHClient helper
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        :rtype: SSHClient
+        """
+        if (host, port) in cls.__cache:
+            key = host, port
+            if auth is None:
+                auth = SSHAuth(
+                    username=username, password=password, keys=private_keys)
+            if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
+                ssh = cls.__cache[key]
+                ssh.reconnect()
+                return ssh
+            del cls.__cache[key]
+        return super(SSHClient, cls).__new__(cls)
 
     def __init__(
             self,
@@ -227,6 +257,7 @@ class SSHClient(object):
 
         if auth is not None:
             self.__connect()
+            self.__cache[(host, port)] = self
             return
 
         msg = (
@@ -249,6 +280,7 @@ class SSHClient(object):
         logger.info(
             'SSHAuth was made from old style creds: '
             '{}'.format(self.auth))
+        self.__cache[(host, port)] = self
 
     @property
     def auth(self):
@@ -338,6 +370,19 @@ class SSHClient(object):
                     self.__sftp.close()
                 except Exception:
                     logger.exception("Could not close sftp connection")
+
+    @classmethod
+    def clear_cache(cls, hostname=None):
+        """Clear cached connections
+
+        :type hostname: str
+        """
+        if hostname is None:
+            cls.__cache = {}
+            return
+        keys = [(host, port) for host, port in cls.__cache if host == hostname]
+        for key in keys:
+            del cls.__cache[key]
 
     def __del__(self):
         self.__ssh.close()

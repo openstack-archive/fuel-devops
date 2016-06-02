@@ -163,6 +163,9 @@ class TestSSHAuth(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestSSHClientInit(TestCase):
+    def tearDown(self):
+        SSHClient.clear_cache()
+
     def init_checks(
             self,
             client, policy, logger,
@@ -755,6 +758,76 @@ class TestSSHClientInit(TestCase):
         logger.assert_has_calls((
             mock.call.warning('SFTP is not connected, try to reconnect'),
         ))
+
+    def test_init_memorize(self, client, policy, logger, sleep):
+        port1 = 2222
+        host1 = '127.0.0.2'
+
+        ssh01 = SSHClient(host=host)
+        ssh02 = SSHClient(host=host)
+        ssh11 = SSHClient(host=host, port=port1)
+        ssh12 = SSHClient(host=host, port=port1)
+        ssh21 = SSHClient(host=host1)
+        ssh22 = SSHClient(host=host1)
+
+        self.assertTrue(ssh01 is ssh02)
+        self.assertTrue(ssh11 is ssh12)
+        self.assertTrue(ssh21 is ssh22)
+        self.assertFalse(ssh01 is ssh11)
+        self.assertFalse(ssh01 is ssh21)
+        self.assertFalse(ssh11 is ssh21)
+
+        ssh03 = SSHClient(host=host)
+        ssh13 = SSHClient(host=host, port=port1)
+        ssh23 = SSHClient(host=host1)
+        self.assertTrue(ssh01 is ssh03)
+        self.assertTrue(ssh11 is ssh13)
+        self.assertTrue(ssh21 is ssh23)
+
+        SSHClient.clear_cache(ssh21.hostname)
+        ssh31 = SSHClient(host=host1)
+        ssh32 = SSHClient(host=host1)
+        ssh04 = SSHClient(host=host)
+        ssh14 = SSHClient(host=host, port=port1)
+
+        self.assertTrue(ssh01 is ssh04)
+        self.assertTrue(ssh11 is ssh14)
+        self.assertTrue(ssh31 is ssh32)
+        self.assertFalse(ssh21 is ssh31)
+        self.assertFalse(ssh01 is ssh31)
+        self.assertFalse(ssh11 is ssh31)
+
+        SSHClient.clear_cache()
+
+        ssh41 = SSHClient(host=host)
+        ssh42 = SSHClient(host=host)
+        ssh51 = SSHClient(host=host, port=port1)
+        ssh52 = SSHClient(host=host, port=port1)
+        ssh61 = SSHClient(host=host1)
+        ssh62 = SSHClient(host=host1)
+
+        self.assertFalse(ssh01 is ssh41)
+        self.assertFalse(ssh11 is ssh41)
+        self.assertFalse(ssh21 is ssh41)
+        self.assertFalse(ssh31 is ssh41)
+        self.assertTrue(ssh41 is ssh42)
+
+        self.assertFalse(ssh01 is ssh51)
+        self.assertFalse(ssh11 is ssh51)
+        self.assertFalse(ssh21 is ssh51)
+        self.assertFalse(ssh31 is ssh51)
+        self.assertTrue(ssh51 is ssh52)
+
+        self.assertFalse(ssh01 is ssh61)
+        self.assertFalse(ssh11 is ssh61)
+        self.assertFalse(ssh21 is ssh61)
+        self.assertFalse(ssh31 is ssh61)
+        self.assertTrue(ssh61 is ssh62)
+
+        ssh71 = SSHClient(host, auth=SSHAuth(username=username))
+        ssh72 = SSHClient(host, auth=SSHAuth(username=username))
+        self.assertTrue(ssh71 is ssh72)
+        self.assertFalse(ssh41 is ssh72)
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
