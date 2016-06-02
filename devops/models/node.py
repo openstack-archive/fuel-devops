@@ -174,6 +174,17 @@ class Node(DriverModel):
             username=login,
             password=password, private_keys=private_keys, auth=auth)
 
+    def _close_remotes(self):
+        """Call close cached ssh connections for current node"""
+        for network_name in {'admin', 'public', 'internal'}:
+            try:
+                SSHClient.close_connections(
+                    hostname=self.get_ip_address_by_network_name(network_name))
+            except BaseException:
+                logger.debug(
+                    '{0}._close_remotes for {1} failed'.format(
+                        self.name, network_name))
+
     def send_keys(self, keys):
         self.driver.node_send_keys(self, keys)
 
@@ -199,6 +210,7 @@ class Node(DriverModel):
             self.driver.node_create(self)
 
     def destroy(self, verbose=False):
+        self._close_remotes()
         if verbose or self.driver.node_active(self):
             self.driver.node_destroy(self)
 
@@ -207,6 +219,7 @@ class Node(DriverModel):
 
     def remove(self, verbose=False):
         """Remove node and filters for interfaces"""
+        self._close_remotes()
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
@@ -216,6 +229,7 @@ class Node(DriverModel):
         self.delete()
 
     def suspend(self, verbose=False):
+        self._close_remotes()
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
@@ -311,6 +325,7 @@ class Node(DriverModel):
            revert to snapshot without childs and create new snapshot point
            when reverting to snapshots with childs.
         """
+        self._close_remotes()
         if destroy:
             self.destroy(verbose=False)
         if self.has_snapshot(name):
@@ -507,3 +522,6 @@ class Node(DriverModel):
             os_type=os_type, architecture=architecture, boot=json.dumps(boot)
         )
         return node
+
+    def __del__(self):
+        self._close_remotes()
