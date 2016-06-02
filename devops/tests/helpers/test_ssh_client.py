@@ -58,6 +58,9 @@ encoded_cmd = base64.b64encode(
 
 
 class TestSSHAuth(TestCase):
+    def tearDown(self):
+        SSHClient._clear_cache()
+
     def init_checks(self, username=None, password=None, key=None, keys=None):
         """shared positive init checks
 
@@ -168,6 +171,9 @@ class TestSSHAuth(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestSSHClientInit(TestCase):
+    def tearDown(self):
+        SSHClient._clear_cache()
+
     def init_checks(
             self,
             client, policy, logger,
@@ -503,7 +509,7 @@ class TestSSHClientInit(TestCase):
 
         logger.reset_mock()
 
-        ssh.clear()
+        ssh.close()
 
         logger.assert_has_calls((
             mock.call.exception('Could not close ssh connection'),
@@ -761,12 +767,92 @@ class TestSSHClientInit(TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
+    def test_init_memorize(self, client, policy, logger, sleep):
+        port1 = 2222
+        host1 = '127.0.0.2'
+
+        # 1. Normal init
+        ssh01 = SSHClient(host=host)
+        ssh02 = SSHClient(host=host)
+        ssh11 = SSHClient(host=host, port=port1)
+        ssh12 = SSHClient(host=host, port=port1)
+        ssh21 = SSHClient(host=host1)
+        ssh22 = SSHClient(host=host1)
+
+        self.assertTrue(ssh01 is ssh02)
+        self.assertTrue(ssh11 is ssh12)
+        self.assertTrue(ssh21 is ssh22)
+        self.assertFalse(ssh01 is ssh11)
+        self.assertFalse(ssh01 is ssh21)
+        self.assertFalse(ssh11 is ssh21)
+
+        # 2. Close connections check
+        client.reset_mock()
+        ssh01.close_connections(ssh01.hostname)
+        client.assert_has_calls((
+            mock.call().get_transport(),
+            mock.call().get_transport(),
+            mock.call().close(),
+            mock.call().close(),
+        ))
+        client.reset_mock()
+        ssh01.close_connections()
+        # Mock returns false-connected state, so we just count close calls
+
+        client.assert_has_calls((
+            mock.call().get_transport(),
+            mock.call().get_transport(),
+            mock.call().get_transport(),
+            mock.call().close(),
+            mock.call().close(),
+            mock.call().close(),
+        ))
+
+        # change creds
+        SSHClient(host=host, auth=SSHAuth(username=username))
+
+        # Change back: new connection differs from old with the same creds
+        ssh004 = SSHAuth(host)
+        self.assertFalse(ssh01 is ssh004)
+
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute')
+    def test_init_memorize_reconnect(
+            self, execute, client, policy, logger, sleep):
+        execute.side_effect = paramiko.SSHException
+        SSHClient(host=host)
+        client.reset_mock()
+        policy.reset_mock()
+        logger.reset_mock()
+        SSHClient(host=host)
+        client.assert_called_once()
+        policy.assert_called_once()
+
+    @mock.patch('devops.helpers.ssh_client.warn')
+    def test_init_clear(self, warn, client, policy, logger, sleep):
+        ssh01 = SSHClient(host=host, auth=SSHAuth())
+
+        ssh01.clear()
+        warn.assert_called_once_with(
+            "clear is removed: use close() only if it mandatory: "
+            "it's automatically called on revert|shutdown|suspend|destroy",
+            DeprecationWarning
+        )
+
+        self.assertNotIn(
+            mock.call.close(),
+            client.mock_calls
+        )
+
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestExecute(TestCase):
+    def tearDown(self):
+        SSHClient._clear_cache()
+
     @staticmethod
     def get_ssh():
         """SSHClient object builder for execution tests
@@ -1092,6 +1178,9 @@ class TestExecute(TestCase):
 @mock.patch('paramiko.SSHClient', autospec=True)
 @mock.patch('paramiko.Transport', autospec=True)
 class TestExecuteThrowHost(TestCase):
+    def tearDown(self):
+        SSHClient._clear_cache()
+
     @staticmethod
     def prepare_execute_through_host(transp, client, exit_code):
         intermediate_channel = mock.Mock()
@@ -1228,6 +1317,9 @@ class TestExecuteThrowHost(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestSftp(TestCase):
+    def tearDown(self):
+        SSHClient._clear_cache()
+
     @staticmethod
     def prepare_sftp_file_tests(client):
         _ssh = mock.Mock()
