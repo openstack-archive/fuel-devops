@@ -180,19 +180,20 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def destroy(self, *args, **kwargs):
-        pass
+        self._close_remotes()
 
     def erase(self, *args, **kwargs):
         self.remove()
 
     def remove(self, *args, **kwargs):
+        self._close_remotes()
         self.erase_volumes()
         for iface in self.interfaces:
             iface.remove()
         self.delete()
 
     def suspend(self, *args, **kwargs):
-        pass
+        self._close_remotes()
 
     def resume(self, *args, **kwargs):
         pass
@@ -201,11 +202,20 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def revert(self, *args, **kwargs):
-        pass
+        self._close_remotes()
 
     # for fuel-qa compatibility
     def has_snapshot(self, *args, **kwargs):
         return True
+
+    def reboot(self):
+        pass
+
+    def shutdown(self):
+        self._close_remotes()
+
+    def reset(self):
+        pass
 
     # for fuel-qa compatibility
     def get_snapshots(self):
@@ -281,6 +291,17 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             self.get_ip_address_by_network_name(network_name),
             username=login,
             password=password, private_keys=private_keys, auth=auth)
+
+    def _close_remotes(self):
+        """Call close cached ssh connections for current node"""
+        for network_name in {'admin', 'public', 'internal'}:
+            try:
+                SSHClient.close_connections(
+                    hostname=self.get_ip_address_by_network_name(network_name))
+            except BaseException:
+                logger.debug(
+                    '{0}._close_remotes for {1} failed'.format(
+                        self.name, network_name))
 
     def await(self, network_name, timeout=120, by_port=22):
         wait_pass(
