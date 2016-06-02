@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2014 Mirantis, Inc.
+#    Copyright 2013 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -165,6 +165,7 @@ class DevopsDriver(object):
         self.conn.close()
 
     def _get_name(self, *kwargs):
+        # noinspection PyProtectedMember
         return self.xml_builder._get_name(*kwargs)
 
     def get_libvirt_version(self):
@@ -652,6 +653,7 @@ class DevopsDriver(object):
     def node_set_snapshot_current(self, node, name):
         domain = self.conn.lookupByUUIDString(node.uuid)
         snapshot = self._get_snapshot(domain, name)
+        # noinspection PyProtectedMember
         snapshot_xml = Snapshot(snapshot)._xml
         domain.snapshotCreateXML(
             snapshot_xml,
@@ -794,6 +796,7 @@ class DevopsDriver(object):
             # For snapshot with children we need to create new snapshot chain
             # and we need to start from original disks, this disks will get new
             # snapshot point in node class
+            # noinspection PyProtectedMember
             xml_domain = snapshot._xml_tree.find('domain')
             if snapshot.children_num == 0:
                 domain_disks = xml_domain.findall('./devices/disk')
@@ -819,6 +822,7 @@ class DevopsDriver(object):
         else:
             logger.info("Revert {0} ({1}) to internal snapshot {2}".format(
                 node.name, snapshot.state, name))
+            # noinspection PyProtectedMember
             domain.revertToSnapshot(snapshot._snapshot, 0)
 
     @retry()
