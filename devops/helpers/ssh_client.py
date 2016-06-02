@@ -177,7 +177,77 @@ class SSHAuth(object):
         )
 
 
-class SSHClient(object):
+class _MemorizedSSH(type):
+    __cache = {}
+
+    def __call__(
+            cls,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """Main memorize method: check for cached instance and return it
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        :rtype: SSHClient
+        """
+        if (host, port) in cls.__cache:
+            key = host, port
+            if auth is None:
+                auth = SSHAuth(
+                    username=username, password=password, keys=private_keys)
+            if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
+                ssh = cls.__cache[key]
+                try:
+                    ssh.execute('cd ~')
+                except (paramiko.SSHException, AttributeError):
+                    logger.debug('Reconnect {}'.format(ssh))
+                    ssh.reconnect()
+                return ssh
+            del cls.__cache[key]
+        return super(
+            _MemorizedSSH, cls).__call__(
+            host=host, port=port,
+            username=username, password=password, private_keys=private_keys,
+            auth=auth)
+
+    @classmethod
+    def record(cls, ssh):
+        """Record SSH client to cache
+
+        :type ssh: SSHClient
+        """
+        cls.__cache[(ssh.hostname, ssh.port)] = ssh
+
+    @classmethod
+    def clear_cache(cls):
+        """Clear cached connections for initialize new instance on next call"""
+        cls.__cache = {}
+
+    @classmethod
+    def close_connections(cls, hostname=None):
+        """Close connections for selected or all cached records
+
+        :type hostname: str
+        """
+        if hostname is None:
+            keys = [key for key, ssh in cls.__cache.items() if ssh.connected]
+        else:
+            keys = [
+                (host, port)
+                for (host, port), ssh
+                in cls.__cache.items() if host == hostname and ssh.connected]
+        # raise ValueError(keys)
+        for key in keys:
+            cls.__cache[key].close()
+
+
+class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     __slots__ = [
         '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
     ]
@@ -243,6 +313,7 @@ class SSHClient(object):
             )
 
         self.__connect()
+        _MemorizedSSH.record(ssh=self)
         if auth is None:
             logger.info(
                 '{0}:{1}> SSHAuth was made from old style creds: '
@@ -270,12 +341,28 @@ class SSHClient(object):
         return self.__hostname
 
     @property
+    def host(self):
+        warn(
+            'host has been deprecated in favor of hostname',
+            DeprecationWarning
+        )
+        return self.hostname
+
+    @property
     def port(self):
         """Connected remote port number
 
         :rtype: int
         """
         return self.__port
+
+    @property
+    def connected(self):
+        """Connection status
+
+        :rtype: bool
+        """
+        return self.__ssh.get_transport() is not None
 
     def __repr__(self):
         return '{cls}(host={host}, port={port}, auth={auth!r})'.format(
@@ -330,8 +417,8 @@ class SSHClient(object):
             return self.__sftp
         raise paramiko.SSHException('SFTP connection failed')
 
-    def clear(self):
-        """Clear SSH and SFTP sessions"""
+    def close(self):
+        """Close SSH and SFTP sessions"""
         try:
             self.__ssh.close()
             self.__sftp = None
@@ -343,19 +430,40 @@ class SSHClient(object):
                 except Exception:
                     logger.exception("Could not close sftp connection")
 
-    def __del__(self):
-        self.__ssh.close()
-        self.__sftp = None
+    @staticmethod
+    def clear():
+        warn(
+            "clear is removed: use close() only if it mandatory: "
+            "it's automatically called on revert|shutdown|reboot|reset",
+            DeprecationWarning
+        )
+
+    @classmethod
+    def _clear_cache(cls):
+        """Enforce clear memorized records"""
+        warn(
+            '_clear_cache() is dangerous and not recommended for normal use!',
+            Warning
+        )
+        _MemorizedSSH.clear_cache()
+
+    @classmethod
+    def close_connections(cls, hostname=None):
+        """Clear cached connections
+
+        :type hostname: str
+        """
+        _MemorizedSSH.close_connections(hostname=hostname)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.clear()
+        pass
 
     def reconnect(self):
         """Reconnect SSH and SFTP session"""
-        self.clear()
+        self.close()
 
         self.__ssh = paramiko.SSHClient()
         self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -513,6 +621,7 @@ class SSHClient(object):
         :rtype: tuple
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
+
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
