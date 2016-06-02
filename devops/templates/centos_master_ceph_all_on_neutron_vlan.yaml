@@ -1,0 +1,40 @@
+---
+network-config: &network-config
+ provider: neutron
+ segment-type: vlan
+ pubip-to-all: false
+
+storages-config: &storages-config
+ volume-lvm: false
+ volume-ceph: true
+ image-ceph: true
+ rados-ceph: true
+ ephemeral-ceph: false
+ replica-ceph: 1
+
+nodes: &nodes
+ - roles:
+    - controller
+   count: 1
+ - roles:
+    - ceph-osd
+   count: 2
+ - roles:
+    - compute
+   count: 1
+
+template:
+ name: 1 Controller, 1 Compute & 2 Ceph on Neutron/VLAN
+ slaves: 4
+ devops_settings: !include centos_master.yaml
+ cluster_template: &environment-config
+  name: rados
+  release: ubuntu
+  settings:
+   components:
+    sahara: false
+    murano: false
+    ceilometer: false
+   storages: *storages-config
+  network: *network-config
+  nodes: *nodes
