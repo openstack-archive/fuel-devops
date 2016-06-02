@@ -1,0 +1,12 @@
+Code-Review+1: Anton Studenov <astudenov@mirantis.com>
+Code-Review+1: Alexey Stepanov <astepanov@mirantis.com>
+Code-Review+1: Ksenia Demina <kdemina@mirantis.com>
+Code-Review+1: Alexander Zatserklyany <azatserkliany@mirantis.com>
+Code-Review+2: Andrey Sledzinskiy <asledzinskiy@mirantis.com>
+Workflow+1: Andrey Sledzinskiy <asledzinskiy@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 02 Jun 2016 11:51:20 +0000
+Reviewed-on: https://review.openstack.org/309984
+Project: openstack/fuel-devops
+Branch: refs/heads/master
