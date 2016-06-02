@@ -177,7 +177,68 @@ class SSHAuth(object):
         )
 
 
-class SSHClient(object):
+class MemorizedSSH(type):
+    __cache = {}
+
+    def __call__(
+            cls,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """Main memorize method: check for cached instance and return it
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        :rtype: SSHClient
+        """
+        if (host, port) in cls.__cache:
+            key = host, port
+            if auth is None:
+                auth = SSHAuth(
+                    username=username, password=password, keys=private_keys)
+            if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
+                ssh = cls.__cache[key]
+                try:
+                    ssh.execute('cd ~')
+                except (paramiko.SSHException, AttributeError):
+                    logger.debug('Reconnect {}'.format(ssh))
+                    ssh.reconnect()
+                return ssh
+            del cls.__cache[key]
+        return super(
+            MemorizedSSH, cls).__call__(
+            host=host, port=port,
+            username=username, password=password, private_keys=private_keys,
+            auth=auth)
+
+    @classmethod
+    def record(cls, ssh):
+        """Record SSH client to cache
+
+        :type ssh: SSHClient
+        """
+        cls.__cache[(ssh.hostname, ssh.port)] = ssh
+
+    @classmethod
+    def clear_cache(cls, hostname=None):
+        """Clear cached connections for initialize new instance on next call
+
+        :type hostname: str
+        """
+        if hostname is None:
+            cls.__cache = {}
+            return
+        keys = [(host, port) for host, port in cls.__cache if host == hostname]
+        for key in keys:
+            del cls.__cache[key]
+
+
+class SSHClient(six.with_metaclass(MemorizedSSH, object)):
     __slots__ = [
         '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
     ]
@@ -243,6 +304,7 @@ class SSHClient(object):
             )
 
         self.__connect()
+        MemorizedSSH.record(ssh=self)
         if auth is None:
             logger.info(
                 '{0}:{1}> SSHAuth was made from old style creds: '
@@ -332,6 +394,8 @@ class SSHClient(object):
 
     def clear(self):
         """Clear SSH and SFTP sessions"""
+        logger.debug('Clear called: self-delete from cache')
+        MemorizedSSH.clear_cache(hostname=self.hostname)
         try:
             self.__ssh.close()
             self.__sftp = None
@@ -343,9 +407,13 @@ class SSHClient(object):
                 except Exception:
                     logger.exception("Could not close sftp connection")
 
-    def __del__(self):
-        self.__ssh.close()
-        self.__sftp = None
+    @classmethod
+    def clear_cache(cls, hostname=None):
+        """Clear cached connections
+
+        :type hostname: str
+        """
+        MemorizedSSH.clear_cache(hostname=hostname)
 
     def __enter__(self):
         return self
@@ -513,6 +581,7 @@ class SSHClient(object):
         :rtype: tuple
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
+
         chan = self._ssh.get_transport().open_session()
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
