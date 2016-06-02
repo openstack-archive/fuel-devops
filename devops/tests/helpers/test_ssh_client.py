@@ -163,6 +163,9 @@ class TestSSHAuth(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestSSHClientInit(TestCase):
+    def tearDown(self):
+        SSHClient.clear_cache()
+
     def init_checks(
             self,
             client, policy, logger,
@@ -207,8 +210,8 @@ class TestSSHClientInit(TestCase):
                             host=host, port=port, username=username
                         )),
                     mock.call.info(
-                        'SSHAuth was made from old style creds: '
-                        'SSHAuth for {}'.format(username))
+                        '{0}:{1}> SSHAuth was made from old style creds: '
+                        'SSHAuth for {2}'.format(host, port, username))
                 ))
             else:
                 logger.assert_has_calls((
@@ -224,8 +227,8 @@ class TestSSHClientInit(TestCase):
                         'Main key has been updated, public key is: \n'
                         '{}'.format(ssh.auth.public_key)),
                     mock.call.info(
-                        'SSHAuth was made from old style creds: '
-                        'SSHAuth for {}'.format(username))
+                        '{0}:{1}> SSHAuth was made from old style creds: '
+                        'SSHAuth for {2}'.format(host, port, username))
                 ))
         else:
             logger.assert_not_called()
@@ -723,7 +726,7 @@ class TestSSHClientInit(TestCase):
             ssh._sftp
             # pylint: enable=pointless-statement
         logger.assert_has_calls((
-            mock.call.warning('SFTP is not connected, try to reconnect'),
+            mock.call.debug('SFTP is not connected, try to connect...'),
             mock.call.warning(
                 'SFTP enable failed! SSH only is accessible.'),
         ))
@@ -753,8 +756,91 @@ class TestSSHClientInit(TestCase):
         sftp = ssh._sftp
         self.assertEqual(sftp, open_sftp())
         logger.assert_has_calls((
-            mock.call.warning('SFTP is not connected, try to reconnect'),
+            mock.call.debug('SFTP is not connected, try to connect...'),
         ))
+
+    def test_init_memorize(self, client, policy, logger, sleep):
+        port1 = 2222
+        host1 = '127.0.0.2'
+
+        ssh01 = SSHClient(host=host)
+        ssh02 = SSHClient(host=host)
+        ssh11 = SSHClient(host=host, port=port1)
+        ssh12 = SSHClient(host=host, port=port1)
+        ssh21 = SSHClient(host=host1)
+        ssh22 = SSHClient(host=host1)
+
+        self.assertTrue(ssh01 is ssh02)
+        self.assertTrue(ssh11 is ssh12)
+        self.assertTrue(ssh21 is ssh22)
+        self.assertFalse(ssh01 is ssh11)
+        self.assertFalse(ssh01 is ssh21)
+        self.assertFalse(ssh11 is ssh21)
+
+        ssh03 = SSHClient(host=host)
+        ssh13 = SSHClient(host=host, port=port1)
+        ssh23 = SSHClient(host=host1)
+        self.assertTrue(ssh01 is ssh03)
+        self.assertTrue(ssh11 is ssh13)
+        self.assertTrue(ssh21 is ssh23)
+
+        SSHClient.clear_cache(ssh21.hostname)
+        ssh31 = SSHClient(host=host1)
+        ssh32 = SSHClient(host=host1)
+        ssh04 = SSHClient(host=host)
+        ssh14 = SSHClient(host=host, port=port1)
+
+        self.assertTrue(ssh01 is ssh04)
+        self.assertTrue(ssh11 is ssh14)
+        self.assertTrue(ssh31 is ssh32)
+        self.assertFalse(ssh21 is ssh31)
+        self.assertFalse(ssh01 is ssh31)
+        self.assertFalse(ssh11 is ssh31)
+
+        SSHClient.clear_cache()
+
+        ssh41 = SSHClient(host=host)
+        ssh42 = SSHClient(host=host)
+        ssh51 = SSHClient(host=host, port=port1)
+        ssh52 = SSHClient(host=host, port=port1)
+        ssh61 = SSHClient(host=host1)
+        ssh62 = SSHClient(host=host1)
+
+        self.assertFalse(ssh01 is ssh41)
+        self.assertFalse(ssh11 is ssh41)
+        self.assertFalse(ssh21 is ssh41)
+        self.assertFalse(ssh31 is ssh41)
+        self.assertTrue(ssh41 is ssh42)
+
+        self.assertFalse(ssh01 is ssh51)
+        self.assertFalse(ssh11 is ssh51)
+        self.assertFalse(ssh21 is ssh51)
+        self.assertFalse(ssh31 is ssh51)
+        self.assertTrue(ssh51 is ssh52)
+
+        self.assertFalse(ssh01 is ssh61)
+        self.assertFalse(ssh11 is ssh61)
+        self.assertFalse(ssh21 is ssh61)
+        self.assertFalse(ssh31 is ssh61)
+        self.assertTrue(ssh61 is ssh62)
+
+        ssh71 = SSHClient(host, auth=SSHAuth(username=username))
+        ssh72 = SSHClient(host, auth=SSHAuth(username=username))
+        self.assertTrue(ssh71 is ssh72)
+        self.assertFalse(ssh41 is ssh72)
+
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute')
+    def test_init_memorize_reconnect(
+            self, execute, client, policy, logger, sleep):
+        execute.side_effect = paramiko.SSHException
+        SSHClient(host=host)
+        client.reset_mock()
+        policy.reset_mock()
+        logger.reset_mock()
+        SSHClient(host=host)
+        client.assert_called_once()
+        policy.assert_called_once()
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
@@ -762,6 +848,9 @@ class TestSSHClientInit(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestExecute(TestCase):
+    def tearDown(self):
+        SSHClient.clear_cache()
+
     @staticmethod
     def get_ssh():
         """SSHClient object builder for execution tests
@@ -1101,6 +1190,9 @@ class TestExecute(TestCase):
 @mock.patch('paramiko.SSHClient', autospec=True)
 @mock.patch('paramiko.Transport', autospec=True)
 class TestExecuteThrowHost(TestCase):
+    def tearDown(self):
+        SSHClient.clear_cache()
+
     @staticmethod
     def prepare_execute_through_host(transp, client, exit_code):
         intermediate_channel = mock.Mock()
@@ -1237,6 +1329,9 @@ class TestExecuteThrowHost(TestCase):
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 class TestSftp(TestCase):
+    def tearDown(self):
+        SSHClient.clear_cache()
+
     @staticmethod
     def prepare_sftp_file_tests(client):
         _ssh = mock.Mock()

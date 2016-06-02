@@ -177,7 +177,68 @@ class SSHAuth(object):
         )
 
 
-class SSHClient(object):
+class MemorizedSSH(type):
+    __cache = {}
+
+    def __call__(
+            cls,
+            host, port=22,
+            username=None, password=None, private_keys=None,
+            auth=None
+    ):
+        """Main memorize method: check for cached instance and return it
+
+        :type host: str
+        :type port: int
+        :type username: str
+        :type password: str
+        :type private_keys: list
+        :type auth: SSHAuth
+        :rtype: SSHClient
+        """
+        if (host, port) in cls.__cache:
+            key = host, port
+            if auth is None:
+                auth = SSHAuth(
+                    username=username, password=password, keys=private_keys)
+            if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
+                ssh = cls.__cache[key]
+                try:
+                    ssh.execute('cd ~')
+                except paramiko.SSHException:
+                    logger.debug('Reconnect {}'.format(ssh))
+                    ssh.reconnect()
+                return ssh
+            del cls.__cache[key]
+        return super(
+            MemorizedSSH, cls).__call__(
+            host=host, port=port,
+            username=username, password=password, private_keys=private_keys,
+            auth=auth)
+
+    @classmethod
+    def record(cls, ssh):
+        """Record SSH client to cache
+
+        :type ssh: SSHClient
+        """
+        cls.__cache[(ssh.hostname, ssh.port)] = ssh
+
+    @classmethod
+    def clear_cache(cls, hostname=None):
+        """Clear cached connections for initialize new instance on next call
+
+        :type hostname: str
+        """
+        if hostname is None:
+            cls.__cache = {}
+            return
+        keys = [(host, port) for host, port in cls.__cache if host == hostname]
+        for key in keys:
+            del cls.__cache[key]
+
+
+class SSHClient(six.with_metaclass(MemorizedSSH, object)):
     __slots__ = [
         '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
     ]
@@ -227,6 +288,7 @@ class SSHClient(object):
 
         if auth is not None:
             self.__connect()
+            MemorizedSSH.record(ssh=self)
             return
 
         msg = (
@@ -247,8 +309,9 @@ class SSHClient(object):
 
         self.__connect()
         logger.info(
-            'SSHAuth was made from old style creds: '
-            '{}'.format(self.auth))
+            '{0}:{1}> SSHAuth was made from old style creds: '
+            '{2}'.format(self.hostname, self.port, self.auth))
+        MemorizedSSH.record(ssh=self)
 
     @property
     def auth(self):
@@ -283,6 +346,12 @@ class SSHClient(object):
         return '{cls}(host={host}, port={port}, auth={auth!r})'.format(
             cls=self.__class__.__name__, host=self.hostname, port=self.port,
             auth=self.auth
+        )
+
+    def __str__(self):
+        return '{cls}(host={host}, port={port}) for user {user}'.format(
+            cls=self.__class__.__name__, host=self.hostname, port=self.port,
+            user=self.auth.username
         )
 
     @property
@@ -320,7 +389,7 @@ class SSHClient(object):
         """
         if self.__sftp is not None:
             return self.__sftp
-        logger.warning('SFTP is not connected, try to reconnect')
+        logger.debug('SFTP is not connected, try to connect...')
         self.__connect_sftp()
         if self.__sftp is not None:
             return self.__sftp
@@ -338,6 +407,14 @@ class SSHClient(object):
                     self.__sftp.close()
                 except Exception:
                     logger.exception("Could not close sftp connection")
+
+    @classmethod
+    def clear_cache(cls, hostname=None):
+        """Clear cached connections
+
+        :type hostname: str
+        """
+        MemorizedSSH.clear_cache(hostname=hostname)
 
     def __del__(self):
         self.__ssh.close()
@@ -557,7 +634,6 @@ class SSHClient(object):
         stdout = channel.makefile('rb')
         stderr = channel.makefile_stderr('rb')
 
-        logger.info("Executing command: {}".format(cmd))
         channel.exec_command(cmd)
 
         # TODO(astepanov): make a logic for controlling channel state
@@ -695,3 +771,5 @@ class SSHClient(object):
             return attrs.st_mode & stat.S_IFDIR != 0
         except IOError:
             return False
+
+__all__ = ['SSHAuth', 'SSHClient']

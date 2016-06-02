@@ -380,10 +380,12 @@ class Environment(BaseModel):
                 with remote.open(key_string) as f:
                     keys.append(RSAKey.from_private_key(f))
 
-        return SSHClient(ip,
-                         username=login,
-                         password=password,
-                         private_keys=keys)
+        return SSHClient(
+            ip,
+            auth=SSHAuth(
+                username=login,
+                password=password,
+                keys=keys))
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
@@ -397,7 +399,7 @@ class Environment(BaseModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = Agent().get_keys()
-        return SSHClient(ip, private_keys=keys)
+        return SSHClient(ip, auth=SSHAuth(keys=keys))
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
