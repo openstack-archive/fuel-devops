@@ -287,8 +287,8 @@ class Shell(object):
                 boot_from=self.params.boot_from,
                 wait_for_external_config='no',
                 iface=self.params.iface)
-        admin_node.bootstrap_and_wait()
-        admin_node.deploy_wait()
+        admin_node.ext.bootstrap_and_wait()
+        admin_node.ext.deploy_wait()
 
         print("Setup complete.\n ssh {0}@{1}".format(
             settings.SSH_CREDENTIALS['login'],

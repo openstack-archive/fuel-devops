@@ -12,27 +12,132 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.conf import settings
+import functools
+
 from django.db import models
 from django.utils.functional import cached_property
+import six
 
-from devops.error import DevopsError
 from devops.error import DevopsObjNotFound
 from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
-from devops.helpers.helpers import wait_ssh_cmd
-from devops.helpers.helpers import wait_tcp
 from devops.helpers import loader
 from devops.helpers.ssh_client import SSHClient
 from devops import logger
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
+from devops.models.base import ParamedModelType
 from devops.models.base import ParamField
 from devops.models.network import NetworkConfig
 from devops.models.volume import Volume
 
 
-class Node(ParamedModel, BaseModel):
+class ExtendableNodeType(ParamedModelType):
+    """Atomatically installs hooks on Node subclasses
+
+    This class dynamically installs hooks for specified methods,
+    to invoke pre_* and post_* methods from node role extensions (if such
+    methods exist).
+
+    The following methods with custom logic can be added to the node
+    role extensions:
+
+    def pre_define(self):
+    def post_define(self):
+    def pre_start(self):
+    def post_start(self):
+    def pre_destroy(self):
+    def post_destroy(self):
+    def pre_remove(self):
+    def post_remove(self):
+
+    For example, if some method should be called *before* each invocation of
+    Node.start() for the role 'fuel_slave', then:
+    - add a pre_start(self) method to
+      the devops.models.node_ext.fuel_slave module
+    - Every time when Node.start() invoked for the role 'fuel_slave',
+      execution will be performed like the following (simplified
+      explanation):
+
+    .. code-block::
+
+        def hook(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                Node.ext.pre_start()  # <- method that was added
+                result = func(*args, **kwargs)
+                # Node.ext.post_start()  # post_start() wasn't added to the
+                                         # node role extension, so in this
+                                         # case will be called 'dumb' method
+                                         # that do nothing.
+                return result
+            return wrapper
+
+        @hook  # This hook is dynamically installed for each instance of Node
+               # depending on the role.
+        def start(self):
+           ...
+"""
+
+    METHOD_NAMES = ('define', 'start', 'destroy', 'remove')
+
+    def __new__(cls, name, bases, attrs):
+        super_new = super(ExtendableNodeType, cls).__new__
+
+        # skip if not a Node subclass
+        if 'Node' not in [c.__name__ for c in bases]:
+            return super_new(cls, name, bases, attrs)
+
+        # add method to subclass if there is no such
+        for attr_name in cls.METHOD_NAMES:
+            if attr_name in attrs:
+                continue
+            # if there is no method in subclass
+            # then we can't install hooks
+            attrs[attr_name] = cls._create_method(attr_name)
+
+        # install ext hooks on Node subclasses
+        for attr_name in attrs:
+            if attr_name not in cls.METHOD_NAMES:
+                continue
+            attrs[attr_name] = cls._install_ext_hook(attrs[attr_name])
+
+        return super_new(cls, name, bases, attrs)
+
+    @staticmethod
+    def _install_ext_hook(node_method):
+        """Installs pre/post hooks on Node method"""
+
+        @functools.wraps(node_method)
+        def wrapper(*args, **kwargs):
+            node = args[0]
+            name = node_method.__name__
+
+            pre_method = getattr(node.ext, 'pre_{}'.format(name), None)
+            post_method = getattr(node.ext, 'post_{}'.format(name), None)
+
+            if pre_method is not None:
+                pre_method()
+
+            result = node_method(*args, **kwargs)
+
+            if post_method is not None:
+                post_method()
+
+            return result
+
+        return wrapper
+
+    @staticmethod
+    def _create_method(name):
+        """Creates a simple method which just calls super method"""
+        def method(self, *args, **kwargs):
+            return getattr(super(self.__class__, self), name)(*args, **kwargs)
+        method.__name__ = name
+        return method
+
+
+class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     class Meta(object):
         unique_together = ('name', 'group')
         db_table = 'devops_node'
@@ -289,51 +394,3 @@ class Node(ParamedModel, BaseModel):
     def erase_volumes(self):
         for volume in self.get_volumes():
             volume.erase()
-
-    def _start_setup(self):
-        if self.kernel_cmd is None:
-            raise DevopsError('kernel_cmd is None')
-
-        self.start()
-        self.send_kernel_keys(self.kernel_cmd)
-
-    def send_kernel_keys(self, kernel_cmd):
-        """Provide variables data to kernel cmd format template"""
-
-        ip = self.get_ip_address_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        master_iface = self.get_interface_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        admin_ap = master_iface.l2_network_device.address_pool
-
-        result_kernel_cmd = kernel_cmd.format(
-            ip=ip,
-            mask=admin_ap.ip_network.netmask,
-            gw=admin_ap.gateway,
-            hostname=settings.DEFAULT_MASTER_FQDN,
-            nameserver=settings.DEFAULT_DNS,
-        )
-        self.send_keys(result_kernel_cmd)
-
-    def bootstrap_and_wait(self):
-        if self.kernel_cmd is None:
-            self.kernel_cmd = self.ext.get_kernel_cmd()
-            self.save()
-        self._start_setup()
-        ip = self.get_ip_address_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        wait_tcp(host=ip, port=self.ssh_port,
-                 timeout=self.bootstrap_timeout)
-
-    def deploy_wait(self):
-        ip = self.get_ip_address_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        if self.deploy_check_cmd is None:
-            self.deploy_check_cmd = self.ext.get_deploy_check_cmd()
-            self.save()
-        wait_ssh_cmd(host=ip,
-                     port=self.ssh_port,
-                     check_cmd=self.deploy_check_cmd,
-                     username=settings.SSH_CREDENTIALS['login'],
-                     password=settings.SSH_CREDENTIALS['password'],
-                     timeout=self.deploy_timeout)
