@@ -284,3 +284,5 @@ DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
 SNAPSHOTS_EXTERNAL = get_var_as_bool('SNAPSHOTS_EXTERNAL', False)
 SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
                                         os.path.expanduser("~/.devops/snap"))
+CLOUD_IMAGE_DIR = os.environ.get(
+    'CLOUD_IMAGE_DIR', os.path.expanduser('~/.devops/cloud_image_settings'))
