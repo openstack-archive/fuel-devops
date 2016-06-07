@@ -47,7 +47,7 @@ class DriverlessTestCase(TestCase):
 
         # GROUP
         self.group = self.env.add_group(group_name='test-group',
-                                        driver_name='devops.models')
+                                        driver_name='devops.driver.empty')
 
         # NETWORK POOLS
         self.group.add_network_pool(name='fuelweb_admin',
