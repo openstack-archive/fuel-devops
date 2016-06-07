@@ -48,11 +48,6 @@ class Environment(BaseModel):
     hostname = 'nailgun'
     domain = 'test.domain.local'
     nat_interface = ''  # INTERFACES.get('admin')
-    # TODO(akostrikov) As we providing admin net names in fuel-qa/settings,
-    # we should create constant and use it in fuel-qa or
-    # pass admin net names to Environment from fuel-qa.
-    admin_net = 'admin'
-    admin_net2 = 'admin2'
 
     def __repr__(self):
         return 'Environment(name={name!r})'.format(name=self.name)
@@ -146,7 +141,8 @@ class Environment(BaseModel):
         try:
             return cls.objects.create(name=name)
         except IntegrityError:
-            raise DevopsError('Environment with name {!r} already exists'
+            raise DevopsError('Environment with name {!r} already exists. '
+                              'Please, set another environment name.'
                               ''.format(name))
 
     @classmethod
@@ -199,6 +195,9 @@ class Environment(BaseModel):
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
+        if self.has_snapshot(name):
+            raise DevopsError('Snapshot with name {0} already exists.'
+                              .format(self.params.snapshot_name))
         for node in self.get_nodes():
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)
@@ -340,13 +339,16 @@ class Environment(BaseModel):
             if env.get_nodes().count() == 0:
                 env.erase()
 
-    # TO L2_NETWORK_device, LEGACY
-    # Rename it to default_gw and move to models.Network class
-    def router(self, router_name=None):  # Alternative name: get_host_node_ip
-        router_name = router_name or self.admin_net
-        if router_name == self.admin_net2:
-            return str(self.get_network(name=router_name).ip[2])
-        return str(self.get_network(name=router_name).ip[1])
+    # LEGACY, TO REMOVE
+    def router(self, router_name=None):
+        msg = ('router has been deprecated in favor of '
+               'DevopsClient.get_default_gw')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+
+        from devops.client import DevopsClient
+        client = DevopsClient(env_name=self.name)
+        return client.get_default_gw(l2_network_device_name=router_name)
 
     # LEGACY, for fuel-qa compatibility
     # @logwrap
@@ -357,26 +359,28 @@ class Environment(BaseModel):
 
         :rtype : SSHClient
         """
-        admin = sorted(
-            list(self.get_nodes(role='fuel_master')),
-            key=lambda node: node.name
-        )[0]
-        return admin.remote(
-            self.admin_net,
-            login=login,
-            password=password)
+        msg = ('get_admin_remote has been deprecated in favor of '
+               'DevopsClient.get_admin_remote')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+
+        from devops.client import DevopsClient
+        client = DevopsClient(env_name=self.name)
+        return client.get_admin_remote(login=login, password=password)
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
     def get_ssh_to_remote(self, ip,
                           login=settings.SSH_SLAVE_CREDENTIALS['login'],
                           password=settings.SSH_SLAVE_CREDENTIALS['password']):
-        keys = []
-        for key_string in ['/root/.ssh/id_rsa',
-                           '/root/.ssh/bootstrap.rsa']:
-            if self.get_admin_remote().isfile(key_string):
-                with self.get_admin_remote().open(key_string) as f:
-                    keys.append(RSAKey.from_private_key(f))
+        msg = ('get_ssh_to_remote has been deprecated in favor of '
+               'DevopsClient.get_node_remote')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+
+        from devops.client import DevopsClient
+        client = DevopsClient(env_name=self.name)
+        keys = client.get_private_keys()
 
         return SSHClient(ip,
                          username=login,
@@ -481,13 +485,11 @@ class Environment(BaseModel):
             address_pool__isnull=False, **kwargs)
         return [self._create_network_object(x) for x in l2_network_devices]
 
-    # LEGACY, for fuel-qa compatibility
     def get_node(self, *args, **kwargs):
         try:
             return Node.objects.get(*args, group__environment=self, **kwargs)
         except Node.DoesNotExist:
             raise DevopsObjNotFound(Node, *args, **kwargs)
 
-    # LEGACY, for fuel-qa compatibility
     def get_nodes(self, *args, **kwargs):
         return Node.objects.filter(*args, group__environment=self, **kwargs)
