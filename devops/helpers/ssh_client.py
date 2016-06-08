@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import unicode_literals
+
 import base64
 import os
 import posixpath
@@ -218,34 +220,34 @@ class _MemorizedSSH(type):
             auth=auth)
 
     @classmethod
-    def record(cls, ssh):
+    def record(mcs, ssh):
         """Record SSH client to cache
 
         :type ssh: SSHClient
         """
-        cls.__cache[(ssh.hostname, ssh.port)] = ssh
+        mcs.__cache[(ssh.hostname, ssh.port)] = ssh
 
     @classmethod
-    def clear_cache(cls):
+    def clear_cache(mcs):
         """Clear cached connections for initialize new instance on next call"""
-        cls.__cache = {}
+        mcs.__cache = {}
 
     @classmethod
-    def close_connections(cls, hostname=None):
+    def close_connections(mcs, hostname=None):
         """Close connections for selected or all cached records
 
         :type hostname: str
         """
         if hostname is None:
-            keys = [key for key, ssh in cls.__cache.items() if ssh.is_alive]
+            keys = [key for key, ssh in mcs.__cache.items() if ssh.is_alive]
         else:
             keys = [
                 (host, port)
                 for (host, port), ssh
-                in cls.__cache.items() if host == hostname and ssh.is_alive]
+                in mcs.__cache.items() if host == hostname and ssh.is_alive]
         # raise ValueError(keys)
         for key in keys:
-            cls.__cache[key].close()
+            mcs.__cache[key].close()
 
 
 class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
@@ -620,10 +622,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type src: list
         :rtype: str
         """
-        if six.PY2:
-            return b''.join(src).strip()
-        else:
-            return b''.join(src).strip().decode(encoding='utf-8')
+        return b''.join(src).strip().decode(encoding='utf-8')
 
     def execute_async(self, command):
         """Execute command in async mode and return channel with IO objects
@@ -639,12 +638,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         stderr = chan.makefile_stderr('rb')
         cmd = "{}\n".format(command)
         if self.sudo_mode:
-            if six.PY2:
-                encoded_cmd = base64.b64encode(cmd)
-            else:
-                encoded_cmd = base64.b64encode(
-                    cmd.encode('utf-8')
-                ).decode('utf-8')
+            encoded_cmd = base64.b64encode(cmd.encode('utf-8')).decode('utf-8')
             cmd = "sudo -S bash -c 'eval $(base64 -d <(echo \"{0}\"))'".format(
                 encoded_cmd
             )
