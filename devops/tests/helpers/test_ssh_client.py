@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import unicode_literals
+
 # pylint: disable=no-self-use
 
 import base64
@@ -25,7 +27,6 @@ import mock
 import paramiko
 # noinspection PyUnresolvedReferences
 from six.moves import cStringIO
-from six import PY2
 
 from devops.error import DevopsCalledProcessError
 from devops.helpers.ssh_client import SSHAuth
@@ -51,12 +52,9 @@ username = 'user'
 password = 'pass'
 private_keys = []
 command = 'ls ~ '
-if PY2:
-    encoded_cmd = base64.b64encode("{}\n".format(command))
-else:
-    encoded_cmd = base64.b64encode(
-        "{}\n".format(command).encode('utf-8')
-    ).decode('utf-8')
+encoded_cmd = base64.b64encode(
+    "{}\n".format(command).encode('utf-8')
+).decode('utf-8')
 
 
 class TestSSHAuth(TestCase):
@@ -1040,15 +1038,11 @@ class TestExecute(TestCase):
         expected = {
             'exit_code': chan.recv_exit_status(),
             'stderr': stderr_lst,
-            'stdout': stdout_lst}
-        if PY2:
-            expected['stderr_str'] = b''.join(stderr_lst).strip()
-            expected['stdout_str'] = b''.join(stdout_lst).strip()
-        else:
-            expected['stderr_str'] = b''.join(stderr_lst).strip().decode(
-                encoding='utf-8')
-            expected['stdout_str'] = b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')
+            'stdout': stdout_lst,
+            'stderr_str': b''.join(stderr_lst).strip().decode(
+                encoding='utf-8'),
+            'stdout_str': b''.join(stdout_lst).strip().decode(
+                encoding='utf-8')}
 
         ssh = self.get_ssh()
 
@@ -1084,22 +1078,6 @@ class TestExecute(TestCase):
     def test_execute_together(self, execute_async, client, policy, logger):
         chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
         execute_async.return_value = chan, _stdin, stderr, stdout
-
-        stderr_lst = stderr.readlines()
-        stdout_lst = stdout.readlines()
-
-        expected = {
-            'exit_code': chan.recv_exit_status(),
-            'stderr': stderr_lst,
-            'stdout': stdout_lst}
-        if PY2:
-            expected['stderr_str'] = b''.join(stderr_lst).strip()
-            expected['stdout_str'] = b''.join(stdout_lst).strip()
-        else:
-            expected['stderr_str'] = b''.join(stderr_lst).strip().decode(
-                encoding='utf-8')
-            expected['stdout_str'] = b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')
 
         host2 = '127.0.0.2'
 
