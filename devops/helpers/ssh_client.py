@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import unicode_literals
+
 import base64
 import os
 import posixpath
@@ -524,10 +526,7 @@ class SSHClient(object):
         :type src: list
         :rtype: str
         """
-        if six.PY2:
-            return b''.join(src).strip()
-        else:
-            return b''.join(src).strip().decode(encoding='utf-8')
+        return b''.join(src).strip().decode(encoding='utf-8')
 
     def execute_async(self, command):
         """Execute command in async mode and return channel with IO objects
@@ -543,7 +542,7 @@ class SSHClient(object):
         stderr = chan.makefile_stderr('rb')
         cmd = "{}\n".format(command)
         if self.sudo_mode:
-            encoded_cmd = base64.b64encode(cmd)
+            encoded_cmd = base64.b64encode(cmd.encode('utf-8')).decode('utf-8')
             cmd = "sudo -S bash -c 'eval $(base64 -d <(echo \"{0}\"))'".format(
                 encoded_cmd
             )
