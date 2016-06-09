@@ -138,9 +138,9 @@ def _wait(*args, **kwargs):
     return wait_pass(*args, **kwargs)
 
 
-def wait_tcp(host, port, timeout):
+def wait_tcp(host, port, timeout, timeout_msg="Waiting timed out"):
     is_port_active = partial(tcp_ping, host=host, port=port)
-    wait(is_port_active, timeout=timeout)
+    wait(is_port_active, timeout=timeout, timeout_msg=timeout_msg)
 
 
 def wait_ssh_cmd(
