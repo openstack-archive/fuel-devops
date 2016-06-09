@@ -38,7 +38,7 @@ class LibvirtXMLBuilder(object):
     def build_network_xml(cls, network_name, bridge_name, addresses=None,
                           forward=None, ip_network_address=None,
                           ip_network_prefixlen=None, stp=True,
-                          has_pxe_server=False, has_dhcp_server=False,
+                          has_pxe_server=False, dhcp=False,
                           dhcp_range_start=None, dhcp_range_end=None,
                           tftp_root_dir=None):
         """Generate network XML
@@ -68,7 +68,7 @@ class LibvirtXMLBuilder(object):
                 prefix=ip_network_prefixlen):
             if has_pxe_server and tftp_root_dir:
                 network_xml.tftp(root=tftp_root_dir)
-            if has_dhcp_server:
+            if dhcp:
                 with network_xml.dhcp:
                     network_xml.range(
                         start=dhcp_range_start,
