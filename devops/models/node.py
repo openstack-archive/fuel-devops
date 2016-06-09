@@ -222,6 +222,9 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     def reset(self):
         pass
 
+    def get_vnc_port(self):
+        return None
+
     # for fuel-qa compatibility
     def get_snapshots(self):
         """Return full snapshots objects"""
