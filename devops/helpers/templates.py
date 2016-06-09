@@ -26,7 +26,7 @@ def yaml_template_load(config_file):
     def yaml_include(loader, node):
         file_name = os.path.join(os.path.dirname(loader.name), node.value)
         if not os.path.isfile(file_name):
-            raise ValueError(
+            raise DevopsError(
                 "Cannot load the environment template {0} : include file {1} "
                 "doesn't exist.".format(config_file, file_name))
         with open(file_name) as inputfile:
@@ -34,9 +34,9 @@ def yaml_template_load(config_file):
 
     def yaml_get_env_variable(loader, node):
         if not node.value.strip():
-            raise ValueError("Environment variable is required after {tag} in "
-                             "{filename}".format(tag=node.tag,
-                                                 filename=loader.name))
+            raise DevopsError(
+                "Environment variable is required after {tag} in "
+                "{filename}".format(tag=node.tag, filename=loader.name))
         node_value = node.value.split(',', 1)
         # Get the name of environment variable
         env_variable = node_value[0].strip()
@@ -49,15 +49,15 @@ def yaml_template_load(config_file):
 
         value = os.environ.get(env_variable, default_val)
         if value is None:
-            raise ValueError("Environment variable {var} is not set from shell"
-                             " environment! No default value provided in file "
-                             "{filename}".format(var=env_variable,
-                                                 filename=loader.name))
+            raise DevopsError(
+                "Environment variable {var} is not set from shell"
+                " environment! No default value provided in file "
+                "{filename}".format(var=env_variable, filename=loader.name))
 
         return yaml.load(value)
 
     if not os.path.isfile(config_file):
-        raise ValueError(
+        raise DevopsError(
             "Cannot load the environment template {0} : file "
             "doesn't exist.".format(config_file))
 
@@ -73,6 +73,11 @@ def get_devops_config(filename):
     :param filename: path to a file that contains a YAML template
         :rtype: dict
     """
+    # check if file exists
+    if os.path.isfile(filename):
+        return yaml_template_load(filename)
+
+    # try to load file from default templates dir
     import devops
     config_file = os.path.join(os.path.dirname(devops.__file__),
                                'templates', filename)
