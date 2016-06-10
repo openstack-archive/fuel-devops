@@ -285,13 +285,36 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
                 '</filter>\n'
             )
 
-    def test_revert_destroy(self):
+    def test_suspend_revert_resume(self):
         self.node.start()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
+        self.node.suspend()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED
         self.node.snapshot(name='test1')
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED
+        self.node.revert(name='test1')
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED
+        self.node.resume()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
 
-        with mock.patch('libvirt.virDomain.destroy') as dest_mock:
-            self.node.revert(name='test1')
-            dest_mock.assert_called_once_with()
+    def test_revert_resume(self):
+        self.node.start()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
+        self.node.snapshot(name='test1')
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
+        self.node.revert(name='test1')
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED
+        self.node.resume()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
 
 
 @pytest.mark.xfail(reason="need libvirtd >= 1.2.12")
