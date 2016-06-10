@@ -35,6 +35,9 @@ class BaseTestXMLBuilder(TestCase):
         self.xml_builder.driver.network_name = mock.Mock(
             return_value="network_name_mock"
         )
+        self.dev_counter = iter(xrange(100))
+        self.xml_builder.driver.get_available_device_name = mock.Mock(
+            side_effect=lambda prefix: prefix + str(self.dev_counter.next()))
         self.xml_builder.driver.reboot_timeout = None
         self.net = mock.Mock()
         self.node = mock.Mock()
@@ -99,21 +102,17 @@ class TestNetworkXml(BaseTestXMLBuilder):
         super(TestNetworkXml, self).setUp()
         self.net.name = 'test_name'
         self.net.environment.name = 'test_env_name'
-        self.net.id = random.randint(1, 100)
         self.net.forward = None
         self.net.ip_network = None
         self.net.has_dhcp_server = False
 
     def test_net_name_bridge_name(self):
-        bridge_name = 'fuelbr{0}'.format(self.net.id)
         xml = self.xml_builder.build_network_xml(self.net)
         self.assertXMLIn(
             '<name>{0}_{1}</name>'
             ''.format(self.net.environment.name, self.net.name),
             xml)
-        self.assertXMLIn(
-            '<bridge delay="0" name="{0}" stp="on" />'
-            ''.format(bridge_name), xml)
+        self.assertXMLIn('<bridge delay="0" name="fuelbr0" stp="on" />', xml)
 
     def test_forward(self):
         self.net.forward = "nat"
@@ -602,7 +601,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             net.configure_mock(**{'name': 'network_name_mock_{0}'.format(num)})
         self.node.interfaces = [
             mock.Mock(type='network', mac_address='mac{0}'.format(i),
-                      network=networks[i], id='id{0}'.format(i),
+                      network=networks[i],
                       model='model{0}'.format(i)) for i in range(3)]
         xml = self.xml_builder.build_node_xml(self.node, 'test_emulator', [])
         self.assertXMLIn('''
@@ -612,21 +611,21 @@ class TestNodeXml(BaseTestXMLBuilder):
         <interface type="network">
             <mac address="mac0" />
             <source network="network_name_mock" />
-            <target dev="fuelnetid0" />
+            <target dev="fuelnet0" />
             <model type="model0" />
             <filterref filter="test_env_name_network_name_mock_0_mac0"/>
         </interface>
         <interface type="network">
             <mac address="mac1" />
             <source network="network_name_mock" />
-            <target dev="fuelnetid1" />
+            <target dev="fuelnet1" />
             <model type="model1" />
             <filterref filter="test_env_name_network_name_mock_1_mac1"/>
         </interface>
         <interface type="network">
             <mac address="mac2" />
             <source network="network_name_mock" />
-            <target dev="fuelnetid2" />
+            <target dev="fuelnet2" />
             <model type="model2" />
             <filterref filter="test_env_name_network_name_mock_2_mac2"/>
         </interface>

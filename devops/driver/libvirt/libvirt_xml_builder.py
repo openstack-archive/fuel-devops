@@ -50,7 +50,7 @@ class LibvirtXMLBuilder(object):
         if self.driver.stp:
             stp_val = 'on'
         network_xml.bridge(
-            name="{0}{1}".format(br_prefix, network.id),
+            name=self.driver.get_available_device_name(br_prefix),
             stp=stp_val, delay="0")
 
         if network.forward is not None:
@@ -206,7 +206,8 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface.mac_address)
             device_xml.source(
                 network=self.driver.network_name(interface.network))
-            device_xml.target(dev="{0}{1}".format(if_prefix, interface.id))
+            device_xml.target(
+                dev=self.driver.get_available_device_name(if_prefix))
             if interface.type is not None:
                 device_xml.model(type=interface.model)
 

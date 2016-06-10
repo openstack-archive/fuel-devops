@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
 import os
 
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
@@ -288,16 +287,6 @@ DEVOPS_SETTINGS_TEMPLATE = os.environ.get('DEVOPS_SETTINGS_TEMPLATE', None)
 SNAPSHOTS_EXTERNAL = get_var_as_bool('SNAPSHOTS_EXTERNAL', False)
 SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
                                         os.path.expanduser("~/.devops/snap"))
-
-# Dynamic prefix for libvirt bridges and interfaces to get unique
-# names for different environments.
-# Based on the 3-digits hash of the DATABASE settings and ENV_NAME.
-_if_prefix = str(
-    int(hashlib.md5(repr(DATABASES) + ENV_NAME).hexdigest(), 16))[:3]
-LIBVIRT_BR_PREFIX = os.environ.get("LIBVIRT_BR_PREFIX",
-                                   "fuel{0}br".format(_if_prefix))
-LIBVIRT_IF_PREFIX = os.environ.get("LIBVIRT_IF_PREFIX",
-                                   "fuel{0}net".format(_if_prefix))
 
 # Allow to create networks with the same CIDR for different environments.
 # All other libvirt networks should be destroyed before creating new networks.
