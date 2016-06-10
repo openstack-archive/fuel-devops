@@ -14,6 +14,7 @@
 
 import re
 
+import libvirt
 import mock
 import pytest
 
@@ -67,7 +68,7 @@ class TestLibvirtNode(LibvirtTestCase):
         self.interface = self.node.add_interface(
             label='eth0',
             l2_network_device_name='test_l2_net_dev',
-            mac_address=None,
+            mac_address='64:b6:87:44:14:17',
             interface_model='virtio',
         )
 
@@ -142,8 +143,34 @@ class TestLibvirtNode(LibvirtTestCase):
 </domain>
 """, xml)
 
-    def test_set_memory_set_cpu(self):
-        pass
+    @mock.patch('libvirt.virDomain.setMemoryFlags')
+    @mock.patch('libvirt.virDomain.setMaxMemory')
+    def test_set_memory(self, max_mem_mock, mem_flag_mock):
+        self.node.define()
+        assert self.node._libvirt_node.info()[2] == 1048576  # memory
+        assert self.node.memory == 1024
+
+        self.node.set_memory(64)
+        max_mem_mock.assert_called_once_with(65536)
+        mem_flag_mock.assert_called_once_with(65536, 2)
+
+        node = self.group.get_node(name='test_node')
+        assert node.memory == 64
+
+    @mock.patch('libvirt.virDomain.setVcpusFlags')
+    def test_set_vcpu(self, vcpu_mock):
+        self.node.define()
+        assert self.node._libvirt_node.info()[3] == 1  # cpu
+        assert self.node.vcpu == 1
+
+        self.node.set_vcpu(6)
+        vcpu_mock.assert_has_calls((
+            mock.call(6, 4),
+            mock.call(6, 2),
+        ))
+
+        node = self.group.get_node(name='test_node')
+        assert node.vcpu == 6
 
     def test_lifecycle(self):
         self.node.define()
@@ -184,3 +211,48 @@ class TestLibvirtNode(LibvirtTestCase):
                 mock.call(0, 0, [28], 1, 0),
             ])
             self.libvirt_sleep_mock.assert_called_once_with(1)
+
+    def test_start_reboot(self):
+        self.node.define()
+        assert self.node.is_active() is False
+        self.node.start()
+        assert self.node.is_active() is True
+        self.node.reboot()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
+
+    def test_start_shutdown(self):
+        self.node.define()
+        assert self.node.is_active() is False
+        self.node.start()
+        assert self.node.is_active() is True
+        self.node.shutdown()
+        assert self.node.is_active() is False
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_SHUTOFF
+
+    def test_start_reset(self):
+        self.node.define()
+        assert self.node.is_active() is False
+        self.node.start()
+        assert self.node.is_active() is True
+        # reset is not supported by libvirt test backend
+        with mock.patch('libvirt.virDomain.reset') as reset_mock:
+            self.node.reset()
+            reset_mock.assert_called_once_with()
+
+    def test_start_suspend_resume(self):
+        self.node.define()
+        assert self.node.is_active() is False
+        self.node.start()
+        assert self.node.is_active() is True
+        self.node.suspend()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED
+        self.node.resume()
+        assert self.node.is_active() is True
+        assert self.node._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_RUNNING
+
+    def test_get_target_dev(self):
+        self.node.define()
+        assert self.node.get_interface_target_dev(
+            '64:b6:87:44:14:17') == 'virnet0'
