@@ -259,10 +259,6 @@ class LibvirtDriver(Driver):
 
         # Node Network Devices
         for dev in self.conn.listAllDevices():
-            if 'net' not in dev.listCaps():
-                # skip other than network devices
-                continue
-
             xml = ET.fromstring(dev.XMLDesc())
             name_el = xml.find('./capability/interface')
             if name_el is None:
