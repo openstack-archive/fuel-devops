@@ -245,7 +245,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     # LEGACY, for fuel-qa compatibility
     @property
     def is_admin(self):
-        return self.role.startswith('fuel_master')
+        return 'master' in self.role
 
     # LEGACY, for fuel-qa compatibility
     @property
