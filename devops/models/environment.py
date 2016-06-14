@@ -412,7 +412,7 @@ class Environment(BaseModel):
         class Nodes(object):
             def __init__(self, environment):
                 self.admins = sorted(
-                    list(environment.get_nodes(role='fuel_master')),
+                    list(environment.get_nodes(role__contains='master')),
                     key=lambda node: node.name
                 )
                 self.others = sorted(
