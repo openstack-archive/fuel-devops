@@ -52,10 +52,15 @@ class LibvirtXMLBuilder(object):
         network_xml = XMLGenerator('network')
         network_xml.name(cls._crop_name(network_name))
 
-        network_xml.bridge(
-            name=bridge_name,
-            stp='on' if stp else 'off',
-            delay='0')
+        if forward == 'bridge':
+            network_xml.bridge(
+                name=bridge_name,
+                delay='0')
+        else:
+            network_xml.bridge(
+                name=bridge_name,
+                stp='on' if stp else 'off',
+                delay='0')
 
         if forward:
             network_xml.forward(mode=forward)
@@ -63,24 +68,25 @@ class LibvirtXMLBuilder(object):
         if ip_network_address is None:
             return str(network_xml)
 
-        with network_xml.ip(
-                address=ip_network_address,
-                prefix=ip_network_prefixlen):
-            if has_pxe_server and tftp_root_dir:
-                network_xml.tftp(root=tftp_root_dir)
-            if dhcp:
-                with network_xml.dhcp:
-                    network_xml.range(
-                        start=dhcp_range_start,
-                        end=dhcp_range_end)
-                    for address in addresses:
-                        network_xml.host(
-                            mac=address['mac'],
-                            ip=address['ip'],
-                            name=address['name'],
-                        )
-                    if has_pxe_server:
-                        network_xml.bootp(file='pxelinux.0')
+        if forward != 'bridge':
+            with network_xml.ip(
+                    address=ip_network_address,
+                    prefix=ip_network_prefixlen):
+                if has_pxe_server and tftp_root_dir:
+                    network_xml.tftp(root=tftp_root_dir)
+                if dhcp:
+                    with network_xml.dhcp:
+                        network_xml.range(
+                            start=dhcp_range_start,
+                            end=dhcp_range_end)
+                        for address in addresses:
+                            network_xml.host(
+                                mac=address['mac'],
+                                ip=address['ip'],
+                                name=address['name'],
+                            )
+                        if has_pxe_server:
+                            network_xml.bootp(file='pxelinux.0')
 
         return str(network_xml)
 
