@@ -19,6 +19,7 @@
 import datetime
 import unittest
 
+from dateutil import tz
 import mock
 
 from devops import models
@@ -33,9 +34,11 @@ class BaseShellTestCase(unittest.TestCase):
 
 class TestSnaphotList(BaseShellTestCase):
 
+    @mock.patch('devops.helpers.helpers.tz.tzlocal',
+                return_value=tz.gettz('Europe/Rome'))
     @mock.patch.object(shell.Shell, 'print_table')
     @mock.patch.object(models.Environment, 'get')
-    def test_snapshot_list_order(self, mock_get_env, mock_print):
+    def test_snapshot_list_order(self, mock_get_env, mock_print, tzlocal_mock):
         snaps = []
         base_date = datetime.datetime(2015, 12, 1)
         for i in range(4):
@@ -55,10 +58,10 @@ class TestSnaphotList(BaseShellTestCase):
 
         mock_print.assert_called_once_with(
             columns=[
-                ('snap_3', '2015-11-28 00:00:00', 'node, node'),
-                ('snap_2', '2015-11-29 00:00:00', 'node, node'),
-                ('snap_1', '2015-11-30 00:00:00', 'node, node'),
-                ('snap_0', '2015-12-01 00:00:00', 'node, node')
+                ('snap_3', '2015-11-28 01:00:00', 'node, node'),
+                ('snap_2', '2015-11-29 01:00:00', 'node, node'),
+                ('snap_1', '2015-11-30 01:00:00', 'node, node'),
+                ('snap_0', '2015-12-01 01:00:00', 'node, node')
             ],
             headers=('SNAPSHOT', 'CREATED', 'NODES-NAMES')
         )
