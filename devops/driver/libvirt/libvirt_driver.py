@@ -452,7 +452,10 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             name=self.network_name)
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
-        bridge_name = self.driver.get_available_device_name(prefix='virbr')
+        if self.forward.mode == 'bridge':
+            bridge_name = self.parent_iface.phys_dev
+        else:
+            bridge_name = self.driver.get_available_device_name(prefix='virbr')
 
         # TODO(ddmitriev): check if 'vlan' package installed
         # Define tagged interfaces on the bridge
