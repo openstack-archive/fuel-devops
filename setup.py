@@ -39,6 +39,7 @@ setup(
         'libvirt-python',
         'tabulate',
         'six>=1.9.0',
+        'python-dateutil>=2.4.2',
     ],
     tests_require=[
         'pytest>=2.7.1',
