@@ -14,61 +14,64 @@
 
 import mock
 
-from django.test import TestCase
-
-from devops.models.node import Node
+from devops.tests.driver.driverless import DriverlessTestCase
 
 
-class MyNode(Node):
+class TestPrePostHook(DriverlessTestCase):
 
-    def define(self):
-        return super(MyNode, self).define()
-
-
-class TestPrePostHook(TestCase):
+    def patch(self, *args, **kwargs):
+        patcher = mock.patch(*args, **kwargs)
+        m = patcher.start()
+        self.addCleanup(patcher.stop)
+        return m
 
     def setUp(self):
         super(TestPrePostHook, self).setUp()
 
-        self.node = MyNode()
+        self.ext_cls_mock = self.patch(
+            'devops.models.node_ext.default.NodeExtension', autospec=True)
+        self.ext_mock = self.ext_cls_mock.return_value
 
-        self.node.ext.pre_define = mock.Mock(return_value=None)
-        self.node.ext.post_define = mock.Mock(return_value=None)
+        self.node = self.group.add_node(name='test-node', role='default')
+        assert self.node.ext is self.ext_mock
 
-        self.node.ext.pre_start = mock.Mock(return_value=None)
-        self.node.ext.post_start = mock.Mock(return_value=None)
+        self.ext_mock.pre_define = mock.Mock(return_value=None)
+        self.ext_mock.post_define = mock.Mock(return_value=None)
+
+        self.ext_mock.pre_start = mock.Mock(return_value=None)
+        self.ext_mock.post_start = mock.Mock(return_value=None)
 
     def test_define(self):
         self.node.define()
 
-        self.node.ext.pre_define.assert_called_once_with()
-        self.node.ext.post_define.assert_called_once_with()
+        self.ext_mock.pre_define.assert_called_once_with()
+        self.ext_mock.post_define.assert_called_once_with()
 
     def test_start(self):
         self.node.start()
 
-        self.node.ext.pre_start.assert_called_once_with()
-        self.node.ext.post_start.assert_called_once_with()
+        self.ext_mock.pre_start.assert_called_once_with()
+        self.ext_mock.post_start.assert_called_once_with()
 
     def test_destroy(self):
-        self.node.ext.post_destroy = mock.Mock(return_value=None)
+        self.ext_mock.post_destroy = mock.Mock(return_value=None)
         self.node.destroy()
 
-        self.node.ext.post_destroy.assert_called_once_with()
+        self.ext_mock.post_destroy.assert_called_once_with()
 
-        del self.node.ext.post_destroy
-        self.node.ext.pre_destroy = mock.Mock(return_value=None)
+        del self.ext_mock.post_destroy
+        self.ext_mock.pre_destroy = mock.Mock(return_value=None)
         self.node.destroy()
 
-        self.node.ext.pre_destroy.assert_called_once_with()
+        self.ext_mock.pre_destroy.assert_called_once_with()
 
     def test_remove(self):
         self.node.save()
 
-        self.node.ext.pre_remove = mock.Mock(return_value=None)
-        self.node.ext.post_remove = mock.Mock(return_value=None)
+        self.ext_mock.pre_remove = mock.Mock(return_value=None)
+        self.ext_mock.post_remove = mock.Mock(return_value=None)
 
         self.node.remove()
 
-        self.node.ext.pre_remove.assert_called_once_with()
-        self.node.ext.post_remove.assert_called_once_with()
+        self.ext_mock.pre_remove.assert_called_once_with()
+        self.ext_mock.post_remove.assert_called_once_with()
