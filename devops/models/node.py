@@ -166,10 +166,15 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
 
     @cached_property
     def ext(self):
-        ExtCls = loader.load_class(
-            'devops.models.node_ext.{ext_name}:NodeExtension'
-            ''.format(ext_name=self.role or 'default'))
-        return ExtCls(node=self)
+        try:
+            ExtCls = loader.load_class(
+                'devops.models.node_ext.{ext_name}:NodeExtension'
+                ''.format(ext_name=self.role or 'default'))
+            return ExtCls(node=self)
+        except ImportError:
+            logger.debug('NodeExtension is not found for role: {!r}'
+                         ''.format(self.role))
+            return None
 
     def define(self, *args, **kwargs):
         for iface in self.interfaces:
