@@ -96,7 +96,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <bridge delay="0" name="virbr13"/>\n'
                        '    <forward mode="bridge"/>\n'
                        '</network>\n')
 
