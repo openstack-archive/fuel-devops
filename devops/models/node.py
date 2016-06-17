@@ -426,6 +426,23 @@ class Node(DriverModel):
             self.driver.node_set_memory(node=self, memory=memory * 1024)
             self.save()
 
+    def set_boot(self, boot):
+        """Set boot order on node
+
+        :type boot: list
+        :rtype: None
+        """
+        self.driver.node_set_boot(node=self, boot=boot)
+        self.boot = json.dumps(boot)
+        self.save()
+
+    def close_tray(self):
+        """Closes tray for all cdrom devices
+
+        :rtype: None
+        """
+        self.driver.node_close_tray(self)
+
     def attach_to_networks(self, network_names=None):
         """Attache node to several networks
 
