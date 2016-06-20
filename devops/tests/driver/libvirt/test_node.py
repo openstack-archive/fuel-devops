@@ -13,10 +13,12 @@
 #    under the License.
 
 import re
+import xml.etree.ElementTree as ET
 
 import mock
 import pytest
 
+from devops.helpers.helpers import xml_tostring
 from devops.models import Environment
 from devops.tests.driver.libvirt.base import LibvirtTestCase
 
@@ -184,3 +186,46 @@ class TestLibvirtNode(LibvirtTestCase):
                 mock.call(0, 0, [28], 1, 0),
             ])
             self.libvirt_sleep_mock.assert_called_once_with(1)
+
+    def test_set_boot(self):
+        self.node.define()
+
+        self.node.set_boot(['hd', 'cdrom'])
+        assert self.node.boot == ['hd', 'cdrom']
+        assert ("<os>\n"
+                "    <type arch='i686'>hvm</type>\n"
+                "    <boot dev='hd'/>\n"
+                "    <boot dev='cdrom'/>\n"
+                "  </os>\n") in self.node._libvirt_node.XMLDesc()
+
+        self.node.set_boot(['cdrom', 'hd'])
+        assert self.node.boot == ['cdrom', 'hd']
+        assert ("<os>\n"
+                "    <type arch='i686'>hvm</type>\n"
+                "    <boot dev='cdrom'/>\n"
+                "    <boot dev='hd'/>\n"
+                "  </os>\n") in self.node._libvirt_node.XMLDesc()
+
+    def test_close_tray(self):
+        cdrom_volume = self.node.add_volume(
+            name='test_iso',
+            device='cdrom',
+            capacity=5,
+        )
+        cdrom_volume.define()
+
+        self.node.define()
+
+        # open tray
+        node_xml = ET.fromstring(self.node._libvirt_node.XMLDesc())
+        node_xml.find(
+            './devices/disk[@device="cdrom"]/target').attrib['tray'] = 'open'
+        self.d.conn.defineXML(xml_tostring(node_xml))
+        assert (
+            "<target dev='sdb' bus='virtio' tray='open'/>"
+        ) in self.node._libvirt_node.XMLDesc()
+
+        self.node.close_tray()
+        assert (
+            "<target dev='sdb' bus='virtio'/>"
+        ) in self.node._libvirt_node.XMLDesc()
