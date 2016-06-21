@@ -950,10 +950,20 @@ class DevopsDriver(object):
 
     @retry(count=2)
     def volume_upload(self, volume, path):
+        libvirt_vol = self.conn.storageVolLookupByKey(volume.uuid)
         size = get_file_size(path)
+        current_size = libvirt_vol.info()[1]
+
+        # resize volume if more space required to upload the image
+        if size > current_size:
+            # NOTE: qcow2 doesn't support shrinking images yet
+            libvirt_vol.resize(size)
+            volume.capacity = size
+            volume.save()
+
         with open(path, 'rb') as fd:
             stream = self.conn.newStream(0)
-            self.conn.storageVolLookupByKey(volume.uuid).upload(
+            libvirt_vol.upload(
                 stream=stream, offset=0,
                 length=size, flags=0)
             stream.sendAll(self.chunk_render, fd)
@@ -1052,3 +1062,51 @@ class DevopsDriver(object):
             return name
         raise DevopsError('All names with prefix {!r} are already in use'
                           .format(prefix))
+
+    @retry()
+    def node_set_boot(self, node, boot):
+        """Set boot order on node
+
+        :type boot: list
+        :rtype: None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain_xml = ET.fromstring(domain.XMLDesc())
+        os_el = domain_xml.find('./os')
+        old_boot = os_el.findall('boot[@dev]')
+
+        # remove old boot
+        for boot_el in old_boot:
+            os_el.remove(boot_el)
+
+        # add new boot
+        for boot_dev in boot:
+            os_el.append(ET.Element('boot', dev=boot_dev))
+
+        # apply changes to domain
+        self.conn.defineXML(ET.tostring(domain_xml))
+
+    @retry()
+    def node_close_tray(self, node):
+        """Closes tray for all cdrom devices
+
+        :type node: Node
+        :rtype: None
+        """
+        domain = self.conn.lookupByUUIDString(node.uuid)
+        domain_xml = ET.fromstring(domain.XMLDesc())
+
+        # find all target elements
+        target_els = domain_xml.findall(
+            './devices/disk[@device="cdrom"]/target')
+
+        for target_el in target_els:
+            # set tray to closed
+            target_el.attrib['tray'] = 'closed'
+
+        if target_els:
+            # apply changes to domain
+            self.conn.defineXML(ET.tostring(domain_xml))
+        else:
+            logger.warning("Can't close tray: no cdrom devices "
+                           "found for Node {!r}".format(node.name))
