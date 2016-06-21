@@ -27,9 +27,9 @@ INSTALLED_APPS = ['south', 'devops']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'devops',
-        'USER': 'devops',
-        'PASSWORD': 'devops',
+        'NAME': environ.get('DEVOPS_DB_NAME', 'fuel_devops'),
+        'USER': environ.get('DEVOPS_DB_USER', 'fuel_devops'),
+        'PASSWORD': environ.get('DEVOPS_DB_PASSWORD', 'fuel_devops'),
         'HOST': '127.0.0.1',
         'PORT': '5432',
         'TEST_CHARSET': 'UTF8'

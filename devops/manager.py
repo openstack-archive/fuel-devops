@@ -130,6 +130,11 @@ class Manager(object):
         """
         if not boot:
             boot = ['network', 'cdrom', 'hd']
+        if not role:
+            if name == 'admin':
+                role = 'fuel_master'
+            else:
+                role = 'fuel_slave'
         node = Node.objects.create(
             name=name, environment=environment,
             role=role, vcpu=vcpu, memory=memory,
