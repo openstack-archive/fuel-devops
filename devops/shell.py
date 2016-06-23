@@ -81,9 +81,10 @@ class Shell(object):
                 'vnc': node.get_vnc_port()}
 
     def do_show(self):
-        headers = ("VNC", "NODE-NAME")
-        columns = [(node.get_vnc_port(), node.name)
-                   for node in self.env.get_nodes()]
+        nodes = sorted(self.env.get_nodes(), key=lambda node: node.name)
+        headers = ("VNC", "NODE-NAME", "GROUP-NAME")
+        columns = [(node.get_vnc_port(), node.name, node.group.name)
+                   for node in nodes]
         self.print_table(headers=headers, columns=columns)
 
     def do_erase(self):
@@ -232,12 +233,26 @@ class Shell(object):
                 net.start()
 
     def do_slave_add(self, force_define=True):
-        group = self.env.get_group(name='default')
-        node_count = self.params.node_count
-        created_nodes = len(group.get_nodes())
+        try:
+            group = self.env.get_group(name=self.params.group_name)
+        except DevopsObjNotFound:
+            print('Group {!r} not found'.format(self.params.group_name))
+            raise SystemExit()
 
-        for node_num in xrange(created_nodes, created_nodes + node_count):
-            node_name = "slave-{:02d}".format(node_num)
+        node_count = self.params.node_count
+        created_node_names = [n.name for n in group.get_nodes()]
+
+        def get_available_slave_name():
+            for i in xrange(1, 1000):
+                name = "slave-{:02d}".format(i)
+                if name in created_node_names:
+                    continue
+
+                created_node_names.append(name)
+                return name
+
+        for node_num in range(node_count):
+            node_name = get_available_slave_name()
             slave_conf = create_slave_config(
                 slave_name=node_name,
                 slave_role='fuel_slave',
@@ -255,11 +270,13 @@ class Shell(object):
                 networks_bondinginterfaces=settings.BONDING_INTERFACES,
             )
 
-            node = group.add_node(slave_conf)
+            node = group.add_node(**slave_conf)
             if force_define is True:
                 for volume in node.get_volumes():
                     volume.define()
                 node.define()
+
+            print('Node {!r} created'.format(node.name))
 
     def do_slave_remove(self):
         volumes = []
@@ -347,6 +364,10 @@ class Shell(object):
         name_parser.add_argument('name', help='environment name',
                                  default=os.environ.get('ENV_NAME'),
                                  metavar='ENV_NAME')
+        group_name_parser = argparse.ArgumentParser(add_help=False)
+
+        group_name_parser.add_argument('--group-name', help='group name',
+                                       default='default')
         env_config_name_parser = argparse.ArgumentParser(add_help=False)
         env_config_name_parser.add_argument('env_config_name',
                                             help='environment template name',
@@ -555,7 +576,8 @@ class Shell(object):
         subparsers.add_parser('slave-add',
                               parents=[name_parser, node_count,
                                        ram_parser, vcpu_parser,
-                                       second_disk_size, third_disk_size],
+                                       second_disk_size, third_disk_size,
+                                       group_name_parser],
                               help="Add a node",
                               description="Add a new node to environment")
         subparsers.add_parser('slave-change',
