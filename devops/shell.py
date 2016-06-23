@@ -27,6 +27,7 @@ import tabulate
 import devops
 
 from devops.error import DevopsObjNotFound
+from devops.helpers.helpers import utc_to_local
 from devops.helpers.ntp import sync_time
 from devops.helpers.templates import create_devops_config
 from devops.helpers.templates import create_slave_config
@@ -70,7 +71,7 @@ class Shell(object):
                                 get_ip_address_by_network_name('admin'))
                 column['ADMIN IP'] = admin_ip
             if self.params.timestamps:
-                column['CREATED'] = env['created'].strftime(
+                column['CREATED'] = utc_to_local(env['created']).strftime(
                     '%Y-%m-%d_%H:%M:%S')
             columns.append(column)
 
@@ -135,7 +136,7 @@ class Shell(object):
             nodes.sort()
             columns.append((
                 info.name,
-                info.created.strftime('%Y-%m-%d %H:%M:%S'),
+                utc_to_local(info.created).strftime('%Y-%m-%d %H:%M:%S'),
                 ', '.join(nodes),
             ))
 

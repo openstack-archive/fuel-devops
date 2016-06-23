@@ -13,6 +13,7 @@
 #    under the License.
 
 import os
+import time
 import logging
 import logging.config
 from devops.settings import LOGS_DIR
@@ -59,4 +60,6 @@ LOGGER_SETTINGS = {
 }
 
 logging.config.dictConfig(LOGGER_SETTINGS)
+# set logging timezone to GMT
+logging.Formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)

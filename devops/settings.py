@@ -72,8 +72,7 @@ SECRET_KEY = 'dummykey'
 
 VNC_PASSWORD = os.environ.get('VNC_PASSWORD', None)
 
-# Default timezone for clear logging
-TIME_ZONE = 'UTC'
+TIME_ZONE = None  # Allows to detect system timezone
 
 REBOOT_TIMEOUT = os.environ.get('REBOOT_TIMEOUT', None)
 

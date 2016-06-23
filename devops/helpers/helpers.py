@@ -23,6 +23,7 @@ import socket
 import time
 from warnings import warn
 
+from dateutil import tz
 from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
 import paramiko
@@ -32,7 +33,6 @@ from six.moves import http_client
 # noinspection PyUnresolvedReferences
 from six.moves import xmlrpc_client
 # pylint: enable=import-error
-
 
 from devops.error import AuthenticationError
 from devops.error import DevopsError
@@ -326,3 +326,15 @@ def get_nodes(admin_ip):
         endpoint_filter={'service_type': 'fuel'}
     )
     return nodes.json()
+
+
+def utc_to_local(t):
+    """Converts UTC datetime to local
+
+    :type t: datetime.datetime
+    :rtype : datetime.datetime
+    """
+    # set utc tzinfo
+    t = t.replace(tzinfo=tz.tzutc())
+    # convert to local timezone
+    return t.astimezone(tz.tzlocal())
