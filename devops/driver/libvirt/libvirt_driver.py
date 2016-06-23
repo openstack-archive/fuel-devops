@@ -858,7 +858,7 @@ class LibvirtNode(Node):
 
             :rtype : Boolean
         """
-        return self._libvirt_node.isActive()
+        return bool(self._libvirt_node.isActive())
 
     @retry()
     def send_keys(self, keys):
@@ -990,10 +990,8 @@ class LibvirtNode(Node):
 
     @retry()
     def resume(self, *args, **kwargs):
-        if self.is_active():
-            domain = self._libvirt_node
-            if domain.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
-                domain.resume()
+        if self._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
+            self._libvirt_node.resume()
 
     @retry()
     def reboot(self):
@@ -1310,7 +1308,7 @@ class LibvirtNode(Node):
                 self.snapshot(name=revert_name, external=True)
 
     @retry()
-    def revert(self, name=None, destroy=True):
+    def revert(self, name=None):
         """Method to revert node in state from snapshot
 
            For external snapshots in libvirt we use restore function.
@@ -1322,8 +1320,6 @@ class LibvirtNode(Node):
            revert to snapshot without childs and create new snapshot point
            when reverting to snapshots with childs.
         """
-        if destroy:
-            self.destroy()
         if self.has_snapshot(name):
             snapshot = self._get_snapshot(name)
 
