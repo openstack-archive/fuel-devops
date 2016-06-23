@@ -22,11 +22,13 @@ import os
 import socket
 import time
 from warnings import warn
+import xml.etree.ElementTree as ET
 
 from dateutil import tz
 from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
 import paramiko
+import six
 # pylint: disable=import-error
 # noinspection PyUnresolvedReferences
 from six.moves import http_client
@@ -278,6 +280,18 @@ def _get_file_size(*args, **kwargs):
         '_get_file_size has been deprecated in favor of get_file_size',
         DeprecationWarning)
     return get_file_size(*args, **kwargs)
+
+
+def xml_tostring(tree):
+    """Converts ElementTree object to string
+
+    :type tree: ElementTree
+    :rtype: str
+    """
+    if six.PY2:
+        return ET.tostring(tree)
+    else:
+        return ET.tostring(tree, encoding='unicode')
 
 
 def deepgetattr(obj, attr, default=None, splitter='.', do_raise=False):
