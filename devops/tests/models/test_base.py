@@ -18,10 +18,12 @@ from django.test import TestCase
 
 from devops.error import DevopsError
 from devops.models.base import ParamField
+from devops.models.base import ParamLinkField
 from devops.models.base import ParamMultiField
 from devops.models import Driver
 from devops.models import Group
 from devops.models import Node
+from devops.models import Volume
 
 
 class MyModel(Driver):
@@ -243,3 +245,39 @@ class TestMultiField(TestCase):
                 'multi2': {'sub2': 75}
             }
         }
+
+
+class ModelWithLink(Volume):
+    link = ParamLinkField('devops.models.group:Group')
+
+
+class TestLinkField(TestCase):
+
+    def test_link(self):
+        empty_driver = Driver.objects.create(name='devops.driver.empty')
+        group = Group.objects.create(
+            name='test_group',
+            environment=None,
+            driver=empty_driver)
+
+        model_with_link = ModelWithLink(link=group)
+        model_with_link.save()
+        model_with_link_pk = model_with_link.pk
+
+        model_with_link = ModelWithLink.objects.get(link=group)
+        assert model_with_link is not None
+        assert model_with_link.link.pk == group.pk
+        assert model_with_link.link.name == 'test_group'
+        assert model_with_link.params['link'] == group.pk
+
+        group.delete()
+
+        assert model_with_link.link is None
+
+        assert len(ModelWithLink.objects.filter(link=group)) == 0
+
+        with self.assertRaises(ModelWithLink.DoesNotExist):
+            ModelWithLink.objects.get(link=group)
+
+        model_with_link = ModelWithLink.objects.get(pk=model_with_link_pk)
+        assert model_with_link.link is None
