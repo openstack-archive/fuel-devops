@@ -172,8 +172,8 @@ Export the path to the SQLite3 database as the database name:
 
 .. code-block:: bash
 
-    export DEVOPS_DB_NAME=$WORKING_DIR/fuel-devops
-    export DEVOPS_DB_ENGINE="django.db.backends.sqlite3
+    export DEVOPS_DB_NAME=$WORKING_DIR/fuel-devops.sqlite
+    export DEVOPS_DB_ENGINE="django.db.backends.sqlite3"
 
 Configuring Django
 ~~~~~~~~~~~~~~~~~~
@@ -182,27 +182,7 @@ After the database setup, we can install the django tables and data:
 
 .. code-block:: bash
 
-    # For fuel-devops < 3.0 only:
-    django-admin.py syncdb --settings=devops.settings
-
-    # For all versions of fuel-devops:
-    django-admin.py migrate devops --settings=devops.settings
-
-.. note:: Devops 3.0.0 is still allows to start both commands in queue, but
-    in later versions command ::
-
-        syncdb
-
-    will be dropped and run of it will cause exception.
-
-.. note:: Depending on your Linux distribution,
-    `django-admin <http://django-admin-tools.readthedocs.org>`_ may refer
-    to system-wide django installed from package. If this happens you could get
-    an exception that says that devops.settings module is not resolvable.
-    To fix this, run django-admin.py (or django-admin) with a relative path ::
-
-    ./bin/django-admin syncdb --settings=devops.settings
-    ./bin/django-admin migrate devops --settings=devops.settings
+    dos-manage.py migrate
 
 
 [Optional] Enabling `Nested Paging <http://en.wikipedia.org/wiki/Second_Level_Address_Translation>`_
