@@ -28,7 +28,10 @@ setup(
     include_package_data=True,
     packages=find_packages(),
     package_data={'devops': ['templates/*.yaml', 'templates/*.yml']},
-    scripts=['bin/dos.py'],
+    scripts=[
+        'bin/dos.py',
+        'bin/dos-manage.py',
+    ],
     install_requires=[
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
