@@ -253,3 +253,34 @@ class TestLibvirtDriverDeviceNames(LibvirtTestCase):
         assert self.d.get_available_device_name('other') == 'other0'
         assert self.d.get_available_device_name('other') == 'other1'
         assert self.d.get_available_device_name('other') == 'other2'
+
+    def test_device_names_from_node(self):
+        assert self.d.get_available_device_name('virnet') == 'virnet0'
+        assert self.d.get_available_device_name('virnet') == 'virnet1'
+
+        self.node = self.group.add_node(
+            name='test_node',
+            role='default',
+            architecture='i686',
+            hypervisor='test',
+        )
+
+        self.interface = self.node.add_interface(
+            label='eth0',
+            l2_network_device_name='test_l2_net_dev',
+            mac_address='64:b6:87:44:14:17',
+            interface_model='virtio',
+        )
+
+        self.interface = self.node.add_interface(
+            label='eth1',
+            l2_network_device_name='test_l2_net_dev',
+            mac_address='64:b6:87:44:14:18',
+            interface_model='virtio',
+        )
+
+        self.node.define()
+
+        assert self.d.get_allocated_device_names() == ['virnet2', 'virnet3']
+        assert self.d.get_available_device_name('virnet') == 'virnet4'
+        assert self.d.get_available_device_name('virnet') == 'virnet5'

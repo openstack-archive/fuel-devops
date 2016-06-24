@@ -257,7 +257,7 @@ class LibvirtDriver(Driver):
         """
         names = []
 
-        # Node Network Devices
+        # Host Network Devices
         for dev in self.conn.listAllDevices():
             xml = ET.fromstring(dev.XMLDesc())
             name_el = xml.find('./capability/interface')
@@ -265,6 +265,14 @@ class LibvirtDriver(Driver):
                 continue
             name = name_el.text
             names.append(name)
+
+        # Node Network Devices
+        for node in self.conn.listAllDomains():
+            xml = ET.fromstring(node.XMLDesc())
+            target_els = xml.findall(
+                './devices/interface[@type="network"]/target[@dev]')
+            for target_el in target_els:
+                names.append(target_el.attrib.get('dev'))
 
         # Network Bridges
         for net in self.conn.listAllNetworks():
