@@ -223,17 +223,14 @@ class LibvirtDriver(Driver):
         return self.capabilities
 
     @cached_property
-    @retry()
     def capabilities(self):
         return ET.fromstring(self.conn.getCapabilities())
 
-    @retry()
     def node_list(self):
         # virConnect.listDefinedDomains() only returns stopped domains
         #   https://bugzilla.redhat.com/show_bug.cgi?id=839259
         return [item.name() for item in self.conn.listAllDomains()]
 
-    @retry()
     def get_allocated_networks(self):
         """Get list of allocated networks
 
@@ -419,7 +416,6 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             logger.error("Network not found by UUID: {}".format(self.uuid))
             return None
 
-    @retry()
     def bridge_name(self):
         return self._libvirt_network.bridgeName()
 
@@ -433,7 +429,6 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             deepgetattr(self, 'group.environment.name'),
             self.name)
 
-    @retry()
     def is_active(self):
         """Check if network is active
 
@@ -441,7 +436,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         """
         return self._libvirt_network.isActive()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def define(self):
         # define filter first
         filter_xml = LibvirtXMLBuilder.build_network_filter(
@@ -510,7 +505,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
     def start(self):
         self.create()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def create(self, *args, **kwargs):
         if not self.is_active():
             self._libvirt_network.create()
@@ -545,14 +540,14 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             # of this try/except workaround
             try:
                 subprocess.check_output(cmd.split())
-            except Exception:
+            except subprocess.CalledProcessError:
                 pass
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def destroy(self):
         self._libvirt_network.destroy()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
@@ -572,7 +567,6 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                     self._nwfilter.undefine()
         super(LibvirtL2NetworkDevice, self).remove()
 
-    @retry()
     def exists(self):
         """Check if network exists
 
@@ -588,7 +582,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             else:
                 raise
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def iface_define(self, name, ip=None, prefix=None, vlanid=None):
         """Define bridge interface
 
@@ -601,7 +595,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         self.driver.conn.interfaceDefineXML(
             LibvirtXMLBuilder.build_iface_xml(name, ip, prefix, vlanid))
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def iface_undefine(self, iface_name):
         """Start interface
 
@@ -667,7 +661,7 @@ class LibvirtVolume(Volume):
             logger.error("Volume not found by UUID: {}".format(self.uuid))
             return None
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def define(self):
         name = underscored(
             deepgetattr(self, 'node.group.environment.name'),
@@ -707,24 +701,21 @@ class LibvirtVolume(Volume):
         if self.source_image is not None:
             self.upload(self.source_image)
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
                 self._libvirt_volume.delete(0)
         super(LibvirtVolume, self).remove()
 
-    @retry()
     def get_capacity(self):
         """Get volume capacity"""
         return self._libvirt_volume.info()[1]
 
-    @retry()
     def get_format(self):
         xml_desc = ET.fromstring(self._libvirt_volume.XMLDesc(0))
         return xml_desc.find('target/format[@type]').get('type')
 
-    @retry()
     def get_path(self):
         return self._libvirt_volume.path()
 
@@ -732,7 +723,7 @@ class LibvirtVolume(Volume):
         self.capacity = self.get_capacity()
         self.format = self.get_format()
 
-    @retry(count=2)
+    @retry(libvirt.libvirtError, count=2)
     def upload(self, path):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
@@ -745,7 +736,6 @@ class LibvirtVolume(Volume):
             stream.sendAll(chunk_render, fd)
             stream.finish()
 
-    @retry()
     def get_allocation(self):
         """Get allocated volume size
 
@@ -753,7 +743,6 @@ class LibvirtVolume(Volume):
         """
         return self._libvirt_volume.info()[2]
 
-    @retry()
     def exists(self):
         """Check if volume exists"""
         try:
@@ -821,7 +810,6 @@ class LibvirtNode(Node):
             logger.error("Domain not found by UUID: {}".format(self.uuid))
             return None
 
-    @retry()
     def get_vnc_port(self):
         """Get VNC port
 
@@ -837,7 +825,6 @@ class LibvirtNode(Node):
     def vnc_password(self):
         return self.driver.vnc_password
 
-    @retry()
     def exists(self):
         """Check if node exists
 
@@ -852,7 +839,6 @@ class LibvirtNode(Node):
             else:
                 raise
 
-    @retry()
     def is_active(self):
         """Check if node is active
 
@@ -860,7 +846,6 @@ class LibvirtNode(Node):
         """
         return bool(self._libvirt_node.isActive())
 
-    @retry()
     def send_keys(self, keys):
         """Send keys to node
 
@@ -875,7 +860,7 @@ class LibvirtNode(Node):
                 continue
             self._libvirt_node.sendKey(0, 0, list(key_code), len(key_code), 0)
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def define(self):
         """Define node
 
@@ -955,18 +940,18 @@ class LibvirtNode(Node):
     def start(self):
         self.create()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def create(self, *args, **kwargs):
         if not self.is_active():
             self._libvirt_node.create()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def destroy(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.destroy()
         super(LibvirtNode, self).destroy()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
@@ -982,18 +967,15 @@ class LibvirtNode(Node):
                         libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         super(LibvirtNode, self).remove()
 
-    @retry()
     def suspend(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.suspend()
         super(LibvirtNode, self).suspend()
 
-    @retry()
     def resume(self, *args, **kwargs):
         if self._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
             self._libvirt_node.resume()
 
-    @retry()
     def reboot(self):
         """Reboot node
 
@@ -1002,7 +984,6 @@ class LibvirtNode(Node):
         self._libvirt_node.reboot()
         super(LibvirtNode, self).reboot()
 
-    @retry()
     def shutdown(self):
         """Shutdown node
 
@@ -1011,12 +992,10 @@ class LibvirtNode(Node):
         self._libvirt_node.shutdown()
         super(LibvirtNode, self).shutdown()
 
-    @retry()
     def reset(self):
         self._libvirt_node.reset()
         super(LibvirtNode, self).reset()
 
-    @retry()
     def has_snapshot(self, name):
         return name in self._libvirt_node.snapshotListNames()
 
@@ -1078,7 +1057,7 @@ class LibvirtNode(Node):
             libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE |
             libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_CURRENT)
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def snapshot(self, name=None, force=False, description=None,
                  disk_only=False, external=False):
 
@@ -1232,7 +1211,7 @@ class LibvirtNode(Node):
                             uuid=snap_disk_file).backing_store
                     disk.save()
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def _node_revert_snapshot_recreate_disks(self, name):
         """Recreate snapshot disks."""
         snapshot = self._get_snapshot(name)
@@ -1307,7 +1286,7 @@ class LibvirtNode(Node):
                 # Create new snapshot
                 self.snapshot(name=revert_name, external=True)
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def revert(self, name=None):
         """Method to revert node in state from snapshot
 
@@ -1358,13 +1337,12 @@ class LibvirtNode(Node):
         else:
             return Snapshot(self._libvirt_node.snapshotLookupByName(name, 0))
 
-    @retry()
     def get_snapshots(self):
         """Return full snapshots objects"""
         snapshots = self._libvirt_node.listAllSnapshots(0)
         return [Snapshot(snap) for snap in snapshots]
 
-    @retry()
+    @retry(libvirt.libvirtError)
     def erase_snapshot(self, name):
         if self.has_snapshot(name):
 
@@ -1397,7 +1375,6 @@ class LibvirtNode(Node):
                 # ORIGINAL DELETE
                 snapshot.delete(0)
 
-    @retry()
     def set_vcpu(self, vcpu):
         """Set vcpu count on node
 
@@ -1411,7 +1388,6 @@ class LibvirtNode(Node):
             domain.setVcpusFlags(vcpu, 2)
             self.save()
 
-    @retry()
     def set_memory(self, memory):
         """Set memory size on node
 
@@ -1425,7 +1401,6 @@ class LibvirtNode(Node):
             domain.setMemoryFlags(memory * 1024, 2)
             self.save()
 
-    @retry()
     def get_interface_target_dev(self, mac):
         """Get target device
 
