@@ -289,3 +289,6 @@ SNAPSHOTS_EXTERNAL_DIR = os.environ.get("SNAPSHOTS_EXTERNAL_DIR",
                                         os.path.expanduser("~/.devops/snap"))
 CLOUD_IMAGE_DIR = os.environ.get(
     'CLOUD_IMAGE_DIR', os.path.expanduser('~/.devops/cloud_image_settings'))
+
+# Enable creating nwfilters for libvirt networks and interfaces
+ENABLE_LIBVIRT_NWFILTERS = get_var_as_bool('ENABLE_LIBVIRT_NWFILTERS', False)

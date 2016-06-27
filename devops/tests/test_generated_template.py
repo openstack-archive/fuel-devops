@@ -52,6 +52,7 @@ class TestDefaultTemplate(TestCase):
             networks_forwarding=settings.FORWARDING,
             networks_dhcp=settings.DHCP,
             driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
+            driver_enable_nwfilers=settings.ENABLE_LIBVIRT_NWFILTERS,
         )
         r = yaml.dump(config, indent=2, default_flow_style=False)
         assert r == """template:
@@ -117,6 +118,7 @@ class TestDefaultTemplate(TestCase):
         params:
           connection_string: qemu:///system
           enable_acpi: false
+          enable_nwfilters: false
           hpet: false
           storage_pool_name: default
           stp: true
@@ -285,6 +287,7 @@ class TestDefaultTemplate(TestCase):
             networks_forwarding=settings.FORWARDING,
             networks_dhcp=settings.DHCP,
             driver_enable_acpi=True,
+            driver_enable_nwfilers=True,
         )
         r = yaml.dump(config, indent=2, default_flow_style=False)
         assert r == """template:
@@ -350,6 +353,7 @@ class TestDefaultTemplate(TestCase):
         params:
           connection_string: qemu:///system
           enable_acpi: true
+          enable_nwfilters: true
           hpet: false
           storage_pool_name: default
           stp: true

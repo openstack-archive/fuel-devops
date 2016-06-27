@@ -211,6 +211,7 @@ class Shell(object):
             networks_forwarding=settings.FORWARDING,
             networks_dhcp=settings.DHCP,
             driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
+            driver_enable_nwfilers=settings.ENABLE_LIBVIRT_NWFILTERS,
         )
         self._create_env_from_config(config)
 
