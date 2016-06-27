@@ -21,7 +21,7 @@ from django.db import models
 
 from devops.error import DevopsError
 from devops.helpers.helpers import SSHClient
-from devops.helpers.helpers import tcp_ping
+from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
 from devops import logger
 from devops.models.base import choices
@@ -177,7 +177,7 @@ class Node(DriverModel):
 
     def await(self, network_name, timeout=120, by_port=22):
         wait_pass(
-            lambda: tcp_ping(
+            lambda: tcp_ping_(
                 self.get_ip_address_by_network_name(network_name), by_port),
             timeout=timeout)
 
