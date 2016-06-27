@@ -1,0 +1,9 @@
+Code-Review+1: Dmitriy Kruglov <dkruglov@mirantis.com>
+Code-Review+2: Nastya Urlapova <aurlapova@mirantis.com>
+Workflow+1: Andrey Sledzinskiy <asledzinskiy@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Mon, 27 Jun 2016 08:25:07 +0000
+Reviewed-on: https://review.openstack.org/334327
+Project: openstack/fuel-devops
+Branch: refs/heads/release/2.9
