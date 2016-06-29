@@ -25,7 +25,7 @@ from django.db.models import query
 import jsonfield
 import six
 
-from devops.error import DevopsError
+from devops.error import DevopsException
 from devops.helpers.helpers import deepgetattr
 from devops.helpers import loader
 
@@ -172,14 +172,14 @@ class ParamField(ParamFieldBase):
         a.bar = 'c'
         print(a.params)  # prints {'foo': 5, 'bar': 'c'}
 
-        a.bar = 15  # throws DevopsError
+        a.bar = 15  # throws DevopsException
     """
 
     def __init__(self, default=None, choices=None):
         super(ParamField, self).__init__()
 
         if choices and default not in choices:
-            raise DevopsError('Default value not in choices list')
+            raise DevopsException('Default value not in choices list')
 
         self.default_value = default
         self.choices = choices
@@ -192,8 +192,8 @@ class ParamField(ParamFieldBase):
 
     def __set__(self, instance, value):
         if self.choices and value not in self.choices:
-            raise DevopsError('{}: Value not in choices list'
-                              ''.format(self.param_key))
+            raise DevopsException('{}: Value not in choices list'
+                                  ''.format(self.param_key))
 
         instance.params[self.param_key] = value
 
@@ -225,14 +225,14 @@ class ParamMultiField(ParamFieldBase):
         super(ParamMultiField, self).__init__()
 
         if len(subfields) == 0:
-            raise DevopsError('subfields is empty')
+            raise DevopsException('subfields is empty')
 
         self.subfields = []
         for name, field in subfields.items():
             if not isinstance(field, (ParamField, ParamMultiField)):
-                raise DevopsError('field "{}" has wrong type;'
-                                  ' should be ParamField or ParamMultiField'
-                                  ''.format(name))
+                raise DevopsException(
+                    'field "{}" has wrong type; should be ParamField or '
+                    'ParamMultiField'.format(name))
             field.set_param_key(name)
             self.subfields.append(field)
 
@@ -259,11 +259,11 @@ class ParamMultiField(ParamFieldBase):
 
     def __set__(self, instance, values):
         if not isinstance(values, dict):
-            raise DevopsError('Can set only dict')
+            raise DevopsException('Can set only dict')
         self._init_proxy_params(instance)
         for field_name, field_value in values.items():
             if field_name not in self.proxy_fields:
-                raise DevopsError('Unknown field "{}"'.format(field_name))
+                raise DevopsException('Unknown field "{}"'.format(field_name))
             setattr(self._proxy, field_name, field_value)
 
 
