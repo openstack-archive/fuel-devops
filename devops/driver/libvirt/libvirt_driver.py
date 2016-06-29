@@ -967,7 +967,6 @@ class LibvirtNode(Node):
     def destroy(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.destroy()
-        super(LibvirtNode, self).destroy()
 
     @retry()
     def remove(self, *args, **kwargs):
@@ -989,7 +988,6 @@ class LibvirtNode(Node):
     def suspend(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.suspend()
-        super(LibvirtNode, self).suspend()
 
     @retry()
     def resume(self, *args, **kwargs):
@@ -1005,7 +1003,6 @@ class LibvirtNode(Node):
             :rtype : None
         """
         self._libvirt_node.reboot()
-        super(LibvirtNode, self).reboot()
 
     @retry()
     def shutdown(self):
@@ -1014,12 +1011,10 @@ class LibvirtNode(Node):
             :rtype : None
         """
         self._libvirt_node.shutdown()
-        super(LibvirtNode, self).shutdown()
 
     @retry()
     def reset(self):
         self._libvirt_node.reset()
-        super(LibvirtNode, self).reset()
 
     @retry()
     def has_snapshot(self, name):

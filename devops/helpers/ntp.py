@@ -307,7 +307,12 @@ class GroupNtpSync(object):
         return self
 
     def __exit__(self, exp_type, exp_value, traceback):
-        pass
+        for ntp in self.admin_ntps:
+            ntp.remote.clear()
+        for ntp in self.pacemaker_ntps:
+            ntp.remote.clear()
+        for ntp in self.other_ntps:
+            ntp.remote.clear()
 
     @staticmethod
     def report_node_names(ntps):
