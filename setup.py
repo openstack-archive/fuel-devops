@@ -31,7 +31,12 @@ setup(
     scripts=[
         'bin/dos.py',
         'bin/dos-manage.py',
+        'bin/dos_check_env.sh',
+        'bin/dos_check_system.sh',
+        'bin/dos_check_packages.sh',
+        'bin/dos_check_db.sh',
     ],
+    data_files=[('bin', ['bin/dos_functions.sh'])],
     install_requires=[
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
