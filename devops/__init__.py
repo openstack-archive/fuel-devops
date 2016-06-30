@@ -29,6 +29,7 @@ LOGGER_SETTINGS = {
     'disable_existing_loggers': False,
     'loggers': {
         'devops': {
+            'level': 'DEBUG',
             'handlers': ['log_file', 'console_output'],
         },
     },
