@@ -35,9 +35,6 @@ class BaseTestXMLBuilder(TestCase):
         self.xml_builder.driver.network_name = mock.Mock(
             return_value="network_name_mock"
         )
-        self.dev_counter = iter(xrange(100))
-        self.xml_builder.driver.get_available_device_name = mock.Mock(
-            side_effect=lambda prefix: prefix + str(self.dev_counter.next()))
         self.xml_builder.driver.reboot_timeout = None
         self.net = mock.Mock()
         self.node = mock.Mock()
@@ -112,7 +109,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
             '<name>{0}_{1}</name>'
             ''.format(self.net.environment.name, self.net.name),
             xml)
-        self.assertXMLIn('<bridge delay="0" name="fuelbr0" stp="on" />', xml)
+        self.assertXMLIn('<bridge delay="0" stp="on" />', xml)
 
     def test_forward(self):
         self.net.forward = "nat"
@@ -611,21 +608,18 @@ class TestNodeXml(BaseTestXMLBuilder):
         <interface type="network">
             <mac address="mac0" />
             <source network="network_name_mock" />
-            <target dev="fuelnet0" />
             <model type="model0" />
             <filterref filter="test_env_name_network_name_mock_0_mac0"/>
         </interface>
         <interface type="network">
             <mac address="mac1" />
             <source network="network_name_mock" />
-            <target dev="fuelnet1" />
             <model type="model1" />
             <filterref filter="test_env_name_network_name_mock_1_mac1"/>
         </interface>
         <interface type="network">
             <mac address="mac2" />
             <source network="network_name_mock" />
-            <target dev="fuelnet2" />
             <model type="model2" />
             <filterref filter="test_env_name_network_name_mock_2_mac2"/>
         </interface>
