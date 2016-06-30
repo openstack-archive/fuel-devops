@@ -652,7 +652,7 @@ class LibvirtVolume(Volume):
     """Note: This class is imported as Volume at .__init__.py """
 
     uuid = ParamField()
-    capacity = ParamField(default=None)
+    capacity = ParamField(default=None)  # in gigabytes
     format = ParamField(default='qcow2', choices=('qcow2', 'raw'))
     source_image = ParamField(default=None)
     serial = ParamField()
@@ -669,23 +669,49 @@ class LibvirtVolume(Volume):
 
     @retry()
     def define(self):
-        name = underscored(
-            deepgetattr(self, 'node.group.environment.name'),
-            deepgetattr(self, 'node.name'),
-            self.name,
-        )
+        # Generate libvirt volume name
+        if self.node:
+            name = underscored(
+                deepgetattr(self, 'node.group.environment.name'),
+                deepgetattr(self, 'node.name'),
+                self.name,
+            )
+        elif self.group:
+            name = underscored(
+                deepgetattr(self, 'group.environment.name'),
+                deepgetattr(self, 'group.name'),
+                self.name,
+            )
+        else:
+            raise DevopsError("Can't craete volume that is not "
+                              "associated with any node or group")
 
+        # Find backing store format and path
         backing_store_path = None
         backing_store_format = None
-        if self.backing_store is not None:
+        if self.backing_store:
+            if not self.backing_store.exists():
+                raise DevopsError(
+                    "Can't create volume {!r}. backing_store volume {!r} does "
+                    "not exists.".format(self.name, self.backing_store.name))
             backing_store_path = self.backing_store.get_path()
             backing_store_format = self.backing_store.format
 
-        if self.source_image is not None:
-            capacity = get_file_size(self.source_image)
-        else:
+        # Select capacity
+        if self.capacity:
+            # if capacity specified, use it first
             capacity = int(self.capacity * 1024 ** 3)
+        elif self.source_image is not None:
+            # limit capacity to the sorse image file size
+            capacity = get_file_size(self.source_image)
+        elif self.backing_store:
+            # limit capacity to backing_store capacity
+            capacity = self.backing_store.get_capacity()
+        else:
+            raise DevopsError("Can't create volume {!r}: no capacity or "
+                              "source_image specified".format(self.name))
 
+        # Generate xml
         pool_name = self.driver.storage_pool_name
         pool = self.driver.conn.storagePoolLookupByName(pool_name)
         xml = LibvirtXMLBuilder.build_volume_xml(
@@ -695,12 +721,19 @@ class LibvirtVolume(Volume):
             backing_store_path=backing_store_path,
             backing_store_format=backing_store_format,
         )
+
+        # Define volume
         libvirt_volume = pool.createXML(xml, 0)
+
+        # Save uuid
         self.uuid = libvirt_volume.key()
+
+        # Set serial and wwn
         if not self.serial:
             self.serial = uuid.uuid4().hex
         if not self.wwn:
             self.wwn = '0' + ''.join(uuid.uuid4().hex)[:15]
+
         super(LibvirtVolume, self).define()
 
         # Upload predefined image to the volume
@@ -716,7 +749,7 @@ class LibvirtVolume(Volume):
 
     @retry()
     def get_capacity(self):
-        """Get volume capacity"""
+        """Get volume capacity in bytes"""
         return self._libvirt_volume.info()[1]
 
     @retry()
@@ -729,8 +762,9 @@ class LibvirtVolume(Volume):
         return self._libvirt_volume.path()
 
     def fill_from_exist(self):
-        self.capacity = self.get_capacity()
-        self.format = self.get_format()
+        msg = 'LibvirtVolume.fill_from_exist() is deprecated and do nothing'
+        warn(msg, DeprecationWarning)
+        logger.debug(msg)
 
     @retry(count=2)
     def upload(self, path):
@@ -776,25 +810,31 @@ class LibvirtVolume(Volume):
         cls = self.driver.get_model_class('Volume')
         return cls.objects.create(
             name=name,
-            capacity=self.capacity,
             node=self.node,
             format=self.format,
             backing_store=self,
         )
 
-    # TO REWRITE, LEGACY, for fuel-qa compatibility
-    # Used for EXTERNAL SNAPSHOTS
+    # LEGACY, for fuel-qa compatibility
     @classmethod
     def volume_get_predefined(cls, uuid):
         """Get predefined volume
 
         :rtype : Volume
         """
+        msg = ('LibvirtVolume.volume_get_predefined() is deprecated. '
+               'Please use Volumes associated with Groups')
+        warn(msg, DeprecationWarning)
+        logger.debug(msg)
+
         try:
             volume = cls.objects.get(uuid=uuid)
         except cls.DoesNotExist:
             volume = cls(uuid=uuid)
-        volume.fill_from_exist()
+        if not volume.exists():
+            raise DevopsError(
+                'Predefined volume {!r} not found'.format(uuid))
+        volume.format = volume.get_format()
         volume.save()
         return volume
 
