@@ -22,6 +22,7 @@ import operator
 from django.db import models
 from django.db.models.base import ModelBase
 from django.db.models import query
+from django.utils.functional import cached_property
 import jsonfield
 import six
 
@@ -158,7 +159,7 @@ class ParamField(ParamFieldBase):
     * to set default value.
     * to limit values using a list of allowed values.
 
-    Examples of ussage::
+    Examples of usage::
 
         class A(ParamedModel):
             foo = ParamField(default=10)
@@ -198,13 +199,81 @@ class ParamField(ParamFieldBase):
         instance.params[self.param_key] = value
 
 
+class ParamLinkField(ParamFieldBase):
+    """Field that stores link to another object in db
+
+    Allows to add and store link to another class in devops db.
+    Supports get/filter through django objects manager.
+
+    Examples of usage::
+
+        class Bar(ParamedModel):
+            name = ParamField()
+
+        class Foo(ParamedModel):
+            bar = ParamLinkField('devops.models.bar:Bar')
+
+        bar = Bar(name='my_object')
+        bar.save()
+
+        foo = Foo(bar=bar)
+        foo.save()
+
+        Foo.objects.get(bar=bar)  # returns just created model with link
+        Foo.objects.filter(bar=bar)  # returns list
+
+        bar.delete()  # delete the object that link points to
+
+        print(foo.bar)  # prints None
+    """
+
+    def __init__(self, model_class_path):
+        """Init
+
+        :type model_class_path: str
+        :param model_class_path: path to class in format "package.module:Class"
+        """
+        super(ParamLinkField, self).__init__()
+        self.model_class_path = model_class_path
+
+    def set_default_value(self, instance):
+        # no support for defaults yet
+        instance.params.setdefault(self.param_key, None)
+
+    @cached_property
+    def model(self):
+        model = loader.load_class(self.model_class_path)
+
+        if not issubclass(model, models.Model):
+            raise DevopsError('model {} is not subclass of {}'
+                              ''.format(model, models.Model))
+        return model
+
+    def __get__(self, instance, cls):
+        obj_id = instance.params.get(self.param_key)
+        if obj_id:
+            try:
+                return self.model.objects.get(pk=obj_id)
+            except self.model.DoesNotExist:
+                # object was deleted - remove id from params
+                instance.params[self.param_key] = None
+                return None
+
+    def __set__(self, instance, value):
+        if not isinstance(value, self.model):
+            raise DevopsError('value {} is not instance of {}'
+                              ''.format(value, self.model))
+        # save id of the object
+        instance.params[self.param_key] = value.pk
+
+
 class ParamMultiField(ParamFieldBase):
     """Field class which stores other fields.
 
     Acts the same way as :class:`ParamField` but should be used in case
     if you want to use nested fields.
 
-    Examples of ussage::
+    Examples of usage::
 
         class A(ParamedModel):
             foo = ParamMultiField(
@@ -229,9 +298,9 @@ class ParamMultiField(ParamFieldBase):
 
         self.subfields = []
         for name, field in subfields.items():
-            if not isinstance(field, (ParamField, ParamMultiField)):
+            if not isinstance(field, ParamFieldBase):
                 raise DevopsError('field "{}" has wrong type;'
-                                  ' should be ParamField or ParamMultiField'
+                                  ' should be ParamFieldBase subclass instance'
                                   ''.format(name))
             field.set_param_key(name)
             self.subfields.append(field)
@@ -322,15 +391,19 @@ class ParamedModelQuerySet(query.QuerySet):
                 # NOTE(astudenov): no support for 'gt', 'lt', 'in'
                 # and other django's filter stuff
 
+                if not isinstance(item, self.model):
+                    # skip other classes
+                    continue
+
                 item_val = deepgetattr(item, key, splitter='__',
                                        do_raise=True)
                 if item_val != value:
                     break
             else:
-                result_ids.append(item.id)
+                result_ids.append(item.pk)
 
         # convert result to new queryset using ids
-        return super_filter(id__in=result_ids)
+        return super_filter(pk__in=result_ids)
 
 
 class ParamedModelManager(models.Manager):

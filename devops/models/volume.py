@@ -17,6 +17,7 @@ from django.db import models
 from devops.models.base import BaseModel
 from devops.models.base import ParamedModel
 from devops.models.base import ParamField
+from devops.models.base import ParamLinkField
 
 
 class Volume(ParamedModel, BaseModel):
@@ -28,10 +29,11 @@ class Volume(ParamedModel, BaseModel):
     backing_store = models.ForeignKey('self', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
     node = models.ForeignKey('Node', null=True)
+    group = ParamLinkField('devops.models.group:Group')
 
     @property
     def driver(self):
-        return self.node.driver
+        return self.node.driver if self.node else self.group.driver
 
     def define(self, *args, **kwargs):
         self.save()

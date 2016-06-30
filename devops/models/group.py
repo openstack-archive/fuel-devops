@@ -22,6 +22,7 @@ from devops.models.base import BaseModel
 from devops.models.network import L2NetworkDevice
 from devops.models.network import NetworkPool
 from devops.models.node import Node
+from devops.models.node import Volume
 
 
 class Group(BaseModel):
@@ -87,6 +88,10 @@ class Group(BaseModel):
     def has_snapshot(self, name):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
+    def define_volumes(self):
+        for volume in self.get_volumes():
+            volume.define()
+
     def define_networks(self):
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.define()
@@ -112,6 +117,9 @@ class Group(BaseModel):
     def erase(self):
         for node in self.get_nodes():
             node.erase()
+
+        for volume in self.get_volumes():
+            volume.erase()
 
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.erase()
@@ -214,3 +222,26 @@ class Group(BaseModel):
             name=name,
             address_pool=address_pool,
         )
+
+    def add_volumes(self, volumes):
+        for vol_params in volumes:
+            self.add_volume(
+                **vol_params
+            )
+
+    def add_volume(self, name, **params):
+        cls = self.driver.get_model_class('Volume')
+        return cls.objects.create(
+            group=self,
+            name=name,
+            **params
+        )
+
+    def get_volume(self, **kwargs):
+        try:
+            return Volume.objects.get(group=self, **kwargs)
+        except Volume.DoesNotExist:
+            raise DevopsObjNotFound(Volume, group=self, **kwargs)
+
+    def get_volumes(self, **kwargs):
+        return Volume.objects.filter(group=self, **kwargs)
