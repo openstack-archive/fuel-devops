@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Address',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('ip_address', models.GenericIPAddressField()),
             ],
             options={
@@ -27,11 +27,11 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='AddressPool',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
-                ('net', models.CharField(max_length=255, unique=True)),
+                ('net', models.CharField(unique=True, max_length=255)),
             ],
             options={
                 'db_table': 'devops_address_pool',
@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DiskDevice',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('params', jsonfield.fields.JSONField(default={})),
             ],
             options={
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Driver',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=512)),
@@ -62,9 +62,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Environment',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
-                ('name', models.CharField(max_length=255, unique=True)),
+                ('name', models.CharField(unique=True, max_length=255)),
             ],
             options={
                 'db_table': 'devops_environment',
@@ -73,12 +73,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Interface',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('label', models.CharField(max_length=255, null=True)),
-                ('mac_address', models.CharField(max_length=255, unique=True)),
+                ('mac_address', models.CharField(unique=True, max_length=255)),
                 ('type', models.CharField(max_length=255)),
-                ('model', models.CharField(choices=[('virtio', 'virtio'), ('e1000', 'e1000'), ('pcnet', 'pcnet'), ('rtl8139', 'rtl8139'), ('ne2k_pci', 'ne2k_pci')], max_length=255)),
+                ('model', models.CharField(max_length=255, choices=[(b'virtio', b'virtio'), (b'e1000', b'e1000'), (b'pcnet', b'pcnet'), (b'rtl8139', b'rtl8139'), (b'ne2k_pci', b'ne2k_pci')])),
             ],
             options={
                 'db_table': 'devops_interface',
@@ -87,7 +87,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='L2NetworkDevice',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
@@ -100,7 +100,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='NetworkConfig',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('label', models.CharField(max_length=255)),
                 ('networks', jsonfield.fields.JSONField(default=[])),
                 ('aggregation', models.CharField(max_length=255, null=True)),
@@ -113,7 +113,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='NetworkPool',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('name', models.CharField(max_length=255)),
                 ('address_pool', models.ForeignKey(to='devops.AddressPool', null=True)),
@@ -125,7 +125,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Node',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
@@ -138,7 +138,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Volume',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
@@ -154,7 +154,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('created', models.DateTimeField(default=datetime.datetime.utcnow)),
                 ('name', models.CharField(max_length=255)),
-                ('driver', models.OneToOneField(serialize=False, to='devops.Driver', primary_key=True)),
+                ('driver', models.OneToOneField(primary_key=True, serialize=False, to='devops.Driver')),
                 ('environment', models.ForeignKey(to='devops.Environment', null=True)),
             ],
             options={
@@ -196,9 +196,10 @@ class Migration(migrations.Migration):
             name='interface',
             field=models.ForeignKey(to='devops.Interface', null=True),
         ),
-        migrations.AlterUniqueTogether(
-            name='volume',
-            unique_together=set([('name', 'node')]),
+        migrations.AddField(
+            model_name='volume',
+            name='group',
+            field=models.ForeignKey(to='devops.Group', null=True),
         ),
         migrations.AddField(
             model_name='node',
@@ -218,6 +219,10 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='addresspool',
             unique_together=set([('name', 'environment')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='volume',
+            unique_together=set([('name', 'group'), ('name', 'node')]),
         ),
         migrations.AlterUniqueTogether(
             name='node',
