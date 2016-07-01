@@ -15,8 +15,11 @@
 # pylint: disable=no-self-use
 
 from django.test import TestCase
+import mock
 from netaddr import IPNetwork
+import pytest
 
+from devops.error import DevopsError
 from devops.helpers.network import IpNetworksPool
 from devops.models import Address
 from devops.models import AddressPool
@@ -105,3 +108,57 @@ class TestManager(TestCase):
         Interface.interface_create(l2_network_device=l2_net_dev,
                                    node=node, label='eth0')
         environment.define()
+
+    def test_safe_create_network_no_address_avail(self):
+        environment = Environment.create('test_env1')
+        pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/24')], prefix=24)
+        AddressPool.address_pool_create(
+            environment=environment, name='test_ap', pool=pool)
+        with pytest.raises(DevopsError) as e:
+            AddressPool.address_pool_create(
+                environment=environment, name='test_ap2', pool=pool)
+        assert str(e.value) == (
+            'There is no network pool available '
+            'for creating address pool test_ap2')
+
+    def test_safe_create_network_race_condition(self):
+        environment = Environment.create('test_env1')
+        pool = IpNetworksPool(
+            networks=[IPNetwork('10.1.0.0/16')], prefix=24)
+        ap1 = AddressPool.address_pool_create(
+            environment=environment, name='test_ap1', pool=pool)
+        assert ap1.net == IPNetwork('10.1.0.0/24')
+        ap2 = AddressPool.address_pool_create(
+            environment=environment, name='test_ap2', pool=pool)
+        assert ap2.net == IPNetwork('10.1.1.0/24')
+
+        real_create = AddressPool.objects.create
+
+        def race_condition_side_effect(*args, **kwargs):
+            # create ap with the same net
+            e = Environment.create('test_env_other')
+            real_create(
+                name='test_ap',
+                environment=e,
+                net=IPNetwork('10.1.2.0/24'))
+
+            return real_create(*args, **kwargs)
+
+        with mock.patch(
+                'devops.models.network.AddressPool.objects.create',
+                side_effect=race_condition_side_effect):
+
+            ap3 = AddressPool.address_pool_create(
+                environment=environment, name='test_ap3', pool=pool)
+            assert ap3.net == IPNetwork('10.1.3.0/24')
+
+    def test_create_network_name_exists(self):
+        environment = Environment.create('test_env1')
+        pool = IpNetworksPool(networks=[IPNetwork('10.1.0.0/16')], prefix=24)
+        AddressPool.address_pool_create(
+            environment=environment, name='test_ap1', pool=pool)
+        with pytest.raises(DevopsError) as e:
+            AddressPool.address_pool_create(
+                environment=environment, name='test_ap1', pool=pool)
+        assert str(e.value) == \
+            'AddressPool with name "test_ap1" already exists'
