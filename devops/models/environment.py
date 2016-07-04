@@ -71,7 +71,7 @@ class Environment(BaseModel):
             raise DevopsObjNotFound(AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
-        return self.addresspool_set.filter(**kwargs)
+        return self.addresspool_set.filter(**kwargs).order_by('id')
 
     def get_group(self, **kwargs):
         try:
@@ -80,7 +80,7 @@ class Environment(BaseModel):
             raise DevopsObjNotFound(Group, **kwargs)
 
     def get_groups(self, **kwargs):
-        return self.group_set.filter(**kwargs)
+        return self.group_set.filter(**kwargs).order_by('id')
 
     def add_groups(self, groups):
         for group_data in groups:
@@ -474,7 +474,7 @@ class Environment(BaseModel):
 
     def get_env_l2_network_devices(self, **kwargs):
         return L2NetworkDevice.objects.filter(
-            group__environment=self, **kwargs)
+            group__environment=self, **kwargs).order_by('id')
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
     def get_network(self, **kwargs):
@@ -497,4 +497,5 @@ class Environment(BaseModel):
 
     # LEGACY, for fuel-qa compatibility
     def get_nodes(self, *args, **kwargs):
-        return Node.objects.filter(*args, group__environment=self, **kwargs)
+        return Node.objects.filter(
+            *args, group__environment=self, **kwargs).order_by('id')

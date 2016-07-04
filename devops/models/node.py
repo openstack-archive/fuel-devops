@@ -419,7 +419,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
 
     # NEW
     def get_volumes(self, **kwargs):
-        return self.volume_set.filter(**kwargs)
+        return self.volume_set.filter(**kwargs).order_by('id')
 
     # NEW
     def erase_volumes(self):

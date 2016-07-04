@@ -14,6 +14,7 @@
 
 from __future__ import division
 
+from collections import OrderedDict
 import os
 
 from netaddr import IPNetwork
@@ -23,14 +24,17 @@ from devops.error import DevopsError
 
 
 def yaml_template_load(config_file):
+    class TemplateLoader(yaml.Loader):
+        pass
+
     def yaml_include(loader, node):
         file_name = os.path.join(os.path.dirname(loader.name), node.value)
         if not os.path.isfile(file_name):
             raise DevopsError(
                 "Cannot load the environment template {0} : include file {1} "
-                "doesn't exist.".format(config_file, file_name))
+                "doesn't exist.".format(loader.name, file_name))
         with open(file_name) as inputfile:
-            return yaml.load(inputfile)
+            return yaml.load(inputfile, TemplateLoader)
 
     def yaml_get_env_variable(loader, node):
         if not node.value.strip():
@@ -54,17 +58,24 @@ def yaml_template_load(config_file):
                 " environment! No default value provided in file "
                 "{filename}".format(var=env_variable, filename=loader.name))
 
-        return yaml.load(value)
+        return yaml.load(value, TemplateLoader)
+
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return OrderedDict(loader.construct_pairs(node))
 
     if not os.path.isfile(config_file):
         raise DevopsError(
             "Cannot load the environment template {0} : file "
             "doesn't exist.".format(config_file))
 
-    yaml.add_constructor("!include", yaml_include)
-    yaml.add_constructor("!os_env", yaml_get_env_variable)
+    TemplateLoader.add_constructor("!include", yaml_include)
+    TemplateLoader.add_constructor("!os_env", yaml_get_env_variable)
+    TemplateLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
 
-    return yaml.load(open(config_file))
+    with open(config_file) as f:
+        return yaml.load(f, TemplateLoader)
 
 
 def get_devops_config(filename):
