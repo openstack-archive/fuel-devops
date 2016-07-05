@@ -159,6 +159,7 @@ class Migration(migrations.Migration):
                 ('params', jsonfield.fields.JSONField(default={})),
                 ('name', models.CharField(max_length=255)),
                 ('backing_store', models.ForeignKey(to='devops.Volume', null=True)),
+                ('group', models.ForeignKey(to='devops.Group', null=True)),
                 ('node', models.ForeignKey(to='devops.Node', null=True)),
             ],
             options={
@@ -202,7 +203,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='volume',
-            unique_together=set([('name', 'node')]),
+            unique_together=set([('name', 'group'), ('name', 'node')]),
         ),
         migrations.AlterUniqueTogether(
             name='node',
