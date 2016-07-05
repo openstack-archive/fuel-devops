@@ -391,7 +391,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         return self.__ssh
 
-    @retry(count=3, delay=3)
+    @retry(paramiko.SSHException, count=3, delay=3)
     def __connect(self):
         """Main method for connection open"""
         self.auth.connect(
@@ -399,7 +399,6 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             hostname=self.hostname, port=self.port,
             log=True)
 
-    @retry(3, delay=0)
     def __connect_sftp(self):
         """SFTP connection opener"""
         try:

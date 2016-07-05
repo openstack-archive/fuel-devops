@@ -16,7 +16,11 @@ import inspect
 from warnings import warn
 
 
-class DevopsError(Exception):
+class DevopsException(Exception):
+    """Base class for exceptions"""
+
+
+class DevopsError(DevopsException):
     """Base class for errors"""
 
 

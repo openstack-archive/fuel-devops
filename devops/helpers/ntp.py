@@ -14,6 +14,7 @@
 
 import abc
 
+import paramiko
 from six import add_metaclass
 
 from devops.error import DevopsError
@@ -24,7 +25,7 @@ from devops.helpers.retry import retry
 from devops import logger
 
 
-@retry(count=3, delay=60)
+@retry(paramiko.SSHException, count=3, delay=60)
 def sync_time(env, node_names, skip_sync=False):
     """Synchronize time on nodes
 
