@@ -457,7 +457,9 @@ def create_devops_config(boot_from,
                          networks_pools,
                          networks_forwarding,
                          networks_dhcp,
-                         driver_enable_acpi):
+                         driver_enable_acpi,
+                         driver_enable_nwfilers,
+                         ):
     """Creates devops config object
 
     This method is used for backward compatibility with old-style
@@ -552,6 +554,7 @@ def create_devops_config(boot_from,
                                 'hpet': False,
                                 'use_host_cpu': True,
                                 'enable_acpi': driver_enable_acpi,
+                                'enable_nwfilters': driver_enable_nwfilers,
                             },
                         },
                         'name': 'default',
