@@ -66,44 +66,44 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_default(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
         )
 
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <bridge delay="0" stp="on"/>\n'
                        '</network>\n')
 
     def test_stp_off(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             stp=False,
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="off"/>\n'
+                       '    <bridge delay="0" stp="off"/>\n'
                        '</network>\n')
 
     def test_ip_network_bridge(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name='bond0',
             forward='bridge',
         )
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13"/>\n'
+                       '    <bridge delay="0" name="bond0"/>\n'
                        '    <forward mode="bridge"/>\n'
                        '</network>\n')
 
     def test_ip_network_nat(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             forward='nat',
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
@@ -111,7 +111,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <bridge delay="0" stp="on"/>\n'
                        '    <forward mode="nat"/>\n'
                        '    <ip address="172.0.1.1" prefix="24"/>\n'
                        '</network>\n')
@@ -119,7 +119,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_ip_network_route(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             forward='route',
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
@@ -127,7 +127,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <bridge delay="0" stp="on"/>\n'
                        '    <forward mode="route"/>\n'
                        '    <ip address="172.0.1.1" prefix="24"/>\n'
                        '</network>\n')
@@ -135,7 +135,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_pxe_server(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             forward='nat',
             ip_network_address=self.ip_network_address,
             ip_network_prefixlen=self.ip_network_prefixlen,
@@ -145,7 +145,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == ('<?xml version="1.0" encoding="utf-8"?>\n'
                        '<network>\n'
                        '    <name>test_name</name>\n'
-                       '    <bridge delay="0" name="virbr13" stp="on"/>\n'
+                       '    <bridge delay="0" stp="on"/>\n'
                        '    <forward mode="nat"/>\n'
                        '    <ip address="172.0.1.1" prefix="24">\n'
                        '        <tftp root="/tmp"/>\n'
@@ -155,7 +155,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_dhcp_server(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             forward='nat',
             addresses=self.address,
             ip_network_address=self.ip_network_address,
@@ -167,7 +167,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <network>
     <name>test_name</name>
-    <bridge delay="0" name="virbr13" stp="on"/>
+    <bridge delay="0" stp="on"/>
     <forward mode="nat"/>
     <ip address="172.0.1.1" prefix="24">
         <dhcp>
@@ -182,7 +182,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
     def test_dhcp_server_plus_pxe(self):
         xml = self.xml_builder.build_network_xml(
             network_name='test_name',
-            bridge_name='virbr13',
+            bridge_name=None,
             forward='nat',
             addresses=self.address,
             ip_network_address=self.ip_network_address,
@@ -196,7 +196,7 @@ class TestNetworkXml(BaseTestXMLBuilder):
         assert xml == """<?xml version="1.0" encoding="utf-8"?>
 <network>
     <name>test_name</name>
-    <bridge delay="0" name="virbr13" stp="on"/>
+    <bridge delay="0" stp="on"/>
     <forward mode="nat"/>
     <ip address="172.0.1.1" prefix="24">
         <tftp root="/tmp"/>

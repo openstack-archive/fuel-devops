@@ -257,7 +257,7 @@ class TestLibvirtNode(LibvirtTestCase):
     def test_get_target_dev(self):
         self.node.define()
         assert self.node.get_interface_target_dev(
-            '64:b6:87:44:14:17') == 'virnet0'
+            '64:b6:87:44:14:17') == 'testnet0'
 
     def test_set_boot(self):
         self.node.define()
