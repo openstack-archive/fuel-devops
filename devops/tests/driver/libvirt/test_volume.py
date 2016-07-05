@@ -35,7 +35,8 @@ class TestLibvirtVolume(LibvirtTestCase):
         self.os_mock = self.patch('devops.helpers.helpers.os')
         Size = collections.namedtuple('Size', ['st_size'])
         self.file_sizes = {
-            '/tmp/admin.iso': Size(st_size=500),
+            '/tmp/admin.iso': Size(st_size=5 * 1024 ** 3),
+            '/tmp/admin2.iso': Size(st_size=6442000000),
         }
         self.os_mock.stat.side_effect = self.file_sizes.get
 
@@ -64,10 +65,11 @@ class TestLibvirtVolume(LibvirtTestCase):
 
         volume.define()
 
-        assert volume.get_capacity() == 512
+        assert volume.capacity == 512
+        assert volume.get_capacity() == 549755813888
         assert volume.get_path() == (
             '/default-pool/test_env_test_node_test_volume')
-        assert volume.get_allocation() == 512
+        assert volume.get_allocation() == 549755813888
 
         xml = volume._libvirt_volume.XMLDesc(0)
         assert xml == """<volume type='file'>
@@ -75,8 +77,8 @@ class TestLibvirtVolume(LibvirtTestCase):
   <key>/default-pool/test_env_test_node_test_volume</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>549755813888</capacity>
+  <allocation unit='bytes'>549755813888</allocation>
   <target>
     <path>/default-pool/test_env_test_node_test_volume</path>
     <format type='qcow2'/>
@@ -105,10 +107,11 @@ class TestLibvirtVolume(LibvirtTestCase):
 
         child.define()
 
-        assert child.get_capacity() == 512
+        assert child.capacity == 512
+        assert child.get_capacity() == 549755813888
         assert child.get_path() == (
             '/default-pool/test_env_test_node_test_child')
-        assert child.get_allocation() == 512
+        assert child.get_allocation() == 549755813888
 
         xml = child._libvirt_volume.XMLDesc(0)
 
@@ -117,8 +120,8 @@ class TestLibvirtVolume(LibvirtTestCase):
   <key>/default-pool/test_env_test_node_test_child</key>
   <source>
   </source>
-  <capacity unit='bytes'>512</capacity>
-  <allocation unit='bytes'>512</allocation>
+  <capacity unit='bytes'>549755813888</capacity>
+  <allocation unit='bytes'>549755813888</allocation>
   <target>
     <path>/default-pool/test_env_test_node_test_child</path>
     <format type='qcow2'/>
@@ -149,12 +152,41 @@ class TestLibvirtVolume(LibvirtTestCase):
         volume.define()
 
         assert volume.capacity is None
+        assert volume.get_capacity() == 5368709120
         assert volume.get_format() == 'qcow2'
         assert volume.get_path() == (
             '/default-pool/test_env_test_node_test_volume')
         assert volume.exists()
 
-        volume.capacity = 300
-        volume.fill_from_exist()
-        assert volume.get_capacity() == 500
+    def test_upload(self):
+        volume = self.node.add_volume(
+            name='test_volume',
+            source_image='/tmp/admin.iso',
+        )
+
+        volume.define()
+        assert volume.capacity is None
         assert volume.get_format() == 'qcow2'
+
+        volume.upload('/tmp/admin.iso')
+        assert self.libvirt_vol_resize_mock.called is False
+        self.libvirt_vol_up_mock.assert_has_calls((
+            mock.call(flags=0, length=5368709120, offset=0, stream=mock.ANY),
+            mock.call(flags=0, length=5368709120, offset=0, stream=mock.ANY),
+        ))
+        assert volume.capacity is None
+        assert volume.get_format() == 'qcow2'
+
+    def test_upload_resize(self):
+        volume = self.node.add_volume(
+            name='test_volume',
+            source_image='/tmp/admin.iso',
+        )
+
+        volume.define()
+        assert volume.capacity is None
+        assert volume.get_format() == 'qcow2'
+
+        volume.upload('/tmp/admin2.iso')
+        self.libvirt_vol_resize_mock.assert_called_once_with(6442000000)
+        assert volume.capacity is None

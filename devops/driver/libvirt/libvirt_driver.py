@@ -33,6 +33,7 @@ from devops.error import DevopsError
 from devops.helpers.helpers import deepgetattr
 from devops.helpers.helpers import get_file_size
 from devops.helpers.helpers import underscored
+from devops.helpers.helpers import xml_tostring
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
@@ -126,7 +127,7 @@ class Snapshot(object):
                 domain_element.remove(domain_element.findall('./cpu')[0])
                 domain_element.append(cpu_element)
 
-        return ET.tostring(snapshot_xmltree)
+        return xml_tostring(snapshot_xmltree)
 
     @property
     def _xml_tree(self):
@@ -736,7 +737,16 @@ class LibvirtVolume(Volume):
     def upload(self, path):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
+
         size = get_file_size(path)
+        current_size = self._libvirt_volume.info()[1]
+
+        # resize volume if more space required to upload the image
+        if size > current_size:
+            # NOTE: qcow2 doesn't support shrinking images yet
+            self._libvirt_volume.resize(size)
+            self.save()
+
         with open(path, 'rb') as fd:
             stream = self.driver.conn.newStream(0)
             self._libvirt_volume.upload(
@@ -1202,11 +1212,11 @@ class LibvirtNode(Node):
 
         if snapshot.state == 'shutoff':
             # Redefine domain for snapshot without memory save
-            self.driver.conn.defineXML(ET.tostring(xml_domain))
+            self.driver.conn.defineXML(xml_tostring(xml_domain))
         else:
             self.driver.conn.restoreFlags(
                 snapshot.memory_file,
-                dxml=ET.tostring(xml_domain),
+                dxml=xml_tostring(xml_domain),
                 flags=libvirt.VIR_DOMAIN_SAVE_PAUSED)
 
         # set snapshot as current
@@ -1381,7 +1391,7 @@ class LibvirtNode(Node):
 
                 # Update domain to snapshot state
                 xml_domain = snapshot._xml_tree.find('domain')
-                self.driver.conn.defineXML(ET.tostring(xml_domain))
+                self.driver.conn.defineXML(xml_tostring(xml_domain))
                 snapshot.delete_snapshot_files()
                 snapshot.delete(2)
 
@@ -1456,6 +1466,52 @@ class LibvirtNode(Node):
                 device=device, type=type, bus=bus,
                 target_dev=target_dev or self.next_disk_name(),
                 volume=volume, node=self)
+
+    def set_boot(self, boot):
+        """Set boot order on node
+
+        :type boot: list
+        :rtype: None
+        """
+        domain_xml = ET.fromstring(self._libvirt_node.XMLDesc())
+        os_el = domain_xml.find('./os')
+        old_boot = os_el.findall('boot[@dev]')
+
+        # remove old boot
+        for boot_el in old_boot:
+            os_el.remove(boot_el)
+
+        # add new boot
+        for boot_dev in boot:
+            os_el.append(ET.Element('boot', dev=boot_dev))
+
+        # apply changes to domain
+        self.driver.conn.defineXML(xml_tostring(domain_xml))
+
+        self.boot = boot
+        self.save()
+
+    def close_tray(self):
+        """Closes tray for all cdrom devices
+
+        :rtype: None
+        """
+        domain_xml = ET.fromstring(self._libvirt_node.XMLDesc())
+
+        # find all target elements
+        target_els = domain_xml.findall(
+            './devices/disk[@device="cdrom"]/target')
+
+        for target_el in target_els:
+            # set tray to closed
+            target_el.attrib['tray'] = 'closed'
+
+        if target_els:
+            # apply changes to domain
+            self.driver.conn.defineXML(xml_tostring(domain_xml))
+        else:
+            logger.warning("Can't close tray: no cdrom devices "
+                           "found for Node {!r}".format(self.name))
 
 
 class LibvirtInterface(Interface):

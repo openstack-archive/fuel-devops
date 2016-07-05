@@ -92,6 +92,8 @@ class LibvirtTestCase(TestCase):
         LibvirtDriver._device_name_generators = {}
 
         self.libvirt_vol_up_mock = self.patch('libvirt.virStorageVol.upload')
+        self.libvirt_vol_resize_mock = self.patch(
+            'libvirt.virStorageVol.resize')
         self.libvirt_stream_snd_mock = self.patch('libvirt.virStream.sendAll')
         self.libvirt_stream_fin_mock = self.patch('libvirt.virStream.finish')
 
