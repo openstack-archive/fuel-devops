@@ -51,6 +51,7 @@ class _LibvirtManager(object):
 
     def __init__(self):
         libvirt.virInitialize()
+        libvirt.registerErrorHandler(_LibvirtManager._error_handler, self)
         self.connections = {}
 
     def get_connection(self, connection_string):
@@ -64,6 +65,13 @@ class _LibvirtManager(object):
         else:
             conn = self.connections[connection_string]
         return conn
+
+    def _error_handler(self, error):
+        # this handler redirects libvirt messages to debug logger
+        if len(error) > 2 and error[2] is not None:
+            logger.debug(error[2])
+        else:
+            logger.debug(error)
 
 
 LibvirtManager = _LibvirtManager()
