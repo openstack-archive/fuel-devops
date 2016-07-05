@@ -105,7 +105,7 @@ class BaseNtp(AbstractNtp):
 
     def set_actual_time(self, timeout=600):
         # Get IP of a server from which the time will be synchronized.
-        srv_cmd = "awk '/^server/ && $2 !~ /127.*/ {print $2}' /etc/ntp.conf"
+        srv_cmd = "awk '/^server/ && $2 !~ /^127\./ {print $2}' /etc/ntp.conf"
         server = self.remote.execute(srv_cmd)['stdout'][0]
 
         # Waiting for parent server until it starts providing the time
