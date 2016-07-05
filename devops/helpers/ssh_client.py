@@ -181,6 +181,25 @@ class SSHAuth(object):
 
 
 class _MemorizedSSH(type):
+    """Memorize metaclass for SSHClient
+
+    This class implements caching and managing of SSHClient connections.
+    Class is not in public scope: all required interfaces is accessible throw
+      SSHClient classmethods.
+
+    Main flow is:
+      SSHClient() -> check for cached connection and
+        if exists the same: check for alive, reconnect if required and return
+        if exists with different credentials: delete and continue processing
+        create new connection and cache on success
+
+    Close cached connections is allowed per-client and all stored:
+      connection will be closed, but still stored in cache for faster reconnect
+
+    Clear cache is strictly not recommended:
+      from this moment all open connections should be managed manually,
+      duplicates is possible.
+    """
     __cache = {}
 
     def __call__(
@@ -345,7 +364,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     @property
     def host(self):
-        """Hostname access for backward compatibility"""
+        """Hostname access for backward compatibility
+
+        :rtype: str
+        """
         warn(
             'host has been deprecated in favor of hostname',
             DeprecationWarning
