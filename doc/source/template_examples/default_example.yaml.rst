@@ -52,7 +52,7 @@ by most of fuel-qa system tests:
         groups:
          - name: default
            driver:
-             name: devops.driver.libvirt.libvirt_driver
+             name: devops.driver.libvirt
              params:
                connection_string: !os_env CONNECTION_STRING, qemu:///system
                storage_pool_name: !os_env STORAGE_POOL_NAME, default
