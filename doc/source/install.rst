@@ -39,7 +39,7 @@ Devops installation in `virtualenv <http://virtualenv.readthedocs.org/en/latest/
 
 .. code-block:: bash
 
-    sudo apt-get install --yes python-virtualenv libpq-dev libgmp-dev pkg-config
+    sudo apt-get install --yes python-virtualenv libgmp-dev pkg-config
 
 2. In case you are using *Ubuntu 12.04* or *RHEL* let's update pip and virtualenv,
    otherwise you can skip this step
@@ -140,7 +140,7 @@ Install postgresql package:
 
 .. code-block:: bash
 
-    sudo apt-get install --yes postgresql
+    sudo apt-get install --yes postgresql libpq-dev
 
 Set local peers to be trusted by default, create user and db and load fixtures.
 
