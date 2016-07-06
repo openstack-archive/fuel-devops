@@ -1454,7 +1454,7 @@ class LibvirtNode(Node):
         cls = self.driver.get_model_class('DiskDevice')
 
         if volume.multipath_count:
-            for x in range(volume.multipath_count):
+            for _ in range(volume.multipath_count):
                 cls.objects.create(
                     device=device, type=type, bus='scsi',
                     target_dev=target_dev or self.next_disk_name(),
