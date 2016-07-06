@@ -683,6 +683,8 @@ class LibvirtVolume(Volume):
     serial = ParamField()
     wwn = ParamField()
     multipath_count = ParamField(default=0)
+    cloudinit_meta_data = ParamField(default=None)
+    cloudinit_user_data = ParamField(default=None)
 
     @property
     def _libvirt_volume(self):
@@ -841,6 +843,8 @@ class LibvirtNode(Node):
     has_vnc = ParamField(default=True)
     bootmenu_timeout = ParamField(default=0)
     numa = ParamField(default=[])
+    cloud_init_volume_name = ParamField()
+    cloud_init_iface_up = ParamField()
 
     @property
     def _libvirt_node(self):
