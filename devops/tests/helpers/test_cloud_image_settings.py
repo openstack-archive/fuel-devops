@@ -50,6 +50,8 @@ class TestCloudImageSettings(unittest.TestCase):
             admin_netmask='255.255.255.0',
             admin_network='10.109.0.0/24',
             cloud_image_settings_path='/mydir/cloud_settings.iso',
+            meta_data_path='/mydir/meta-data',
+            user_data_path='/mydir/user-data',
             dns='8.8.8.8', dns_ext='8.8.8.8',
             gateway='10.109.0.1',
             hostname='nailgun.domain.local',
