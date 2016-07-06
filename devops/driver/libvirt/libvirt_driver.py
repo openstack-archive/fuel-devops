@@ -925,11 +925,14 @@ class LibvirtNode(Node):
                             'implemented yet')
 
             l2_dev = interface.l2_network_device
-            filter_name = underscored(
-                deepgetattr(self, 'group.environment.name'),
-                l2_dev.name,
-                interface.mac_address
-            )
+            if self.driver.enable_nwfilters:
+                filter_name = underscored(
+                    deepgetattr(self, 'group.environment.name'),
+                    l2_dev.name,
+                    interface.mac_address
+                )
+            else:
+                filter_name = None  # do not refer to interface filter
             target_dev = self.driver.get_available_device_name('virnet')
             local_interfaces.append(dict(
                 interface_type=interface.type,
