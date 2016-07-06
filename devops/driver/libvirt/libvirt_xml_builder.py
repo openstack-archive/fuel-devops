@@ -188,7 +188,8 @@ class LibvirtXMLBuilder(object):
             device_xml.target(dev=interface_target_dev)
             if interface_model is not None:
                 device_xml.model(type=interface_model)
-            device_xml.filterref(filter=interface_filter)
+            if interface_filter is not None:
+                device_xml.filterref(filter=interface_filter)
 
     @classmethod
     def build_network_filter(cls, name, uuid=None, rule=None):
