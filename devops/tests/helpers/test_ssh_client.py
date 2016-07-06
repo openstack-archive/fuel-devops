@@ -29,6 +29,7 @@ import paramiko
 from six.moves import cStringIO
 
 from devops.error import DevopsCalledProcessError
+from devops.error import TimeoutError
 from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 
@@ -1061,19 +1062,29 @@ class TestExecute(TestCase):
         chan = mock.Mock()
         recv_exit_status = mock.Mock(return_value=exit_code)
         chan.attach_mock(recv_exit_status, 'recv_exit_status')
+
+        wait = mock.Mock()
+        status_event = mock.Mock()
+        status_event.attach_mock(wait, 'wait')
+        chan.attach_mock(status_event, 'status_event')
+        chan.configure_mock(exit_status=exit_code)
+
         return chan, '', stderr, stdout
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute(self, execute_async, client, policy, logger):
         chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+        is_set = mock.Mock(return_value=True)
+        chan.status_event.attach_mock(is_set, 'is_set')
+
         execute_async.return_value = chan, _stdin, stderr, stdout
 
         stderr_lst = stderr.readlines()
         stdout_lst = stdout.readlines()
 
         expected = {
-            'exit_code': chan.recv_exit_status(),
+            'exit_code': 0,
             'stderr': stderr_lst,
             'stdout': stdout_lst,
             'stderr_str': b''.join(stderr_lst).strip().decode(
@@ -1093,7 +1104,8 @@ class TestExecute(TestCase):
         )
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((
-            mock.call.recv_exit_status(),
+            mock.call.status_event.wait(None),
+            mock.call.status_event.is_set(),
             mock.call.close()))
         logger.assert_has_calls((
             mock.call.info(
@@ -1109,6 +1121,82 @@ class TestExecute(TestCase):
                     stderr=result['stderr_str']
                 )),
         ))
+
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute_async')
+    def test_execute_timeout(self, execute_async, client, policy, logger):
+        exit_code = 0
+
+        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+        is_set = mock.Mock(return_value=True)
+        chan.status_event.attach_mock(is_set, 'is_set')
+
+        execute_async.return_value = chan, _stdin, stderr, stdout
+
+        stderr_lst = stderr.readlines()
+        stdout_lst = stdout.readlines()
+
+        expected = {
+            'exit_code': exit_code,
+            'stderr': stderr_lst,
+            'stdout': stdout_lst,
+            'stderr_str': b''.join(stderr_lst).strip().decode(
+                encoding='utf-8'),
+            'stdout_str': b''.join(stdout_lst).strip().decode(
+                encoding='utf-8')}
+
+        ssh = self.get_ssh()
+
+        logger.reset_mock()
+
+        result = ssh.execute(command=command, verbose=True, timeout=1)
+
+        self.assertEqual(
+            result,
+            expected
+        )
+        execute_async.assert_called_once_with(command)
+        chan.assert_has_calls((
+            mock.call.status_event.wait(1),
+            mock.call.status_event.is_set(),
+            mock.call.close()))
+        logger.assert_has_calls((
+            mock.call.info(
+                '{cmd} execution results:\n'
+                'Exit code: {code}\n'
+                'STDOUT:\n'
+                '{stdout}\n'
+                'STDERR:\n'
+                '{stderr}'.format(
+                    cmd=command,
+                    code=result['exit_code'],
+                    stdout=result['stdout_str'],
+                    stderr=result['stderr_str']
+                )),
+        ))
+
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute_async')
+    def test_execute_timeout_fail(self, execute_async, client, policy, logger):
+
+        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+        is_set = mock.Mock(return_value=False)
+        chan.status_event.attach_mock(is_set, 'is_set')
+
+        execute_async.return_value = chan, _stdin, stderr, stdout
+
+        ssh = self.get_ssh()
+
+        logger.reset_mock()
+
+        with self.assertRaises(TimeoutError):
+            ssh.execute(command=command, verbose=True, timeout=1)
+
+        execute_async.assert_called_once_with(command)
+        chan.assert_has_calls((
+            mock.call.status_event.wait(1),
+            mock.call.status_event.is_set(),
+            mock.call.close()))
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
@@ -1163,8 +1251,8 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
 
-        result = ssh.check_call(command=command, verbose=verbose)
-        execute.assert_called_once_with(command, verbose)
+        result = ssh.check_call(command=command, verbose=verbose, timeout=None)
+        execute.assert_called_once_with(command, verbose, None)
         self.assertEqual(result, return_value)
 
         exit_code = 1
@@ -1172,8 +1260,8 @@ class TestExecute(TestCase):
         execute.reset_mock()
         execute.return_value = return_value
         with self.assertRaises(DevopsCalledProcessError):
-            ssh.check_call(command=command, verbose=verbose)
-        execute.assert_called_once_with(command, verbose)
+            ssh.check_call(command=command, verbose=verbose, timeout=None)
+        execute.assert_called_once_with(command, verbose, None)
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.check_call')
@@ -1192,9 +1280,10 @@ class TestExecute(TestCase):
         ssh = self.get_ssh()
 
         result = ssh.check_stderr(
-            command=command, verbose=verbose, raise_on_err=raise_on_err)
+            command=command, verbose=verbose, timeout=None,
+            raise_on_err=raise_on_err)
         check_call.assert_called_once_with(
-            command, verbose, raise_on_err=raise_on_err)
+            command, verbose, timeout=None, raise_on_err=raise_on_err)
         self.assertEqual(result, return_value)
 
         return_value['stderr_str'] = '0\n1'
@@ -1204,9 +1293,10 @@ class TestExecute(TestCase):
         check_call.return_value = return_value
         with self.assertRaises(DevopsCalledProcessError):
             ssh.check_stderr(
-                command=command, verbose=verbose, raise_on_err=raise_on_err)
+                command=command, verbose=verbose, timeout=None,
+                raise_on_err=raise_on_err)
         check_call.assert_called_once_with(
-            command, verbose, raise_on_err=raise_on_err)
+            command, verbose, timeout=None, raise_on_err=raise_on_err)
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
