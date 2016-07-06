@@ -50,12 +50,11 @@ class TestCloudImageSettings(unittest.TestCase):
             admin_netmask='255.255.255.0',
             admin_network='10.109.0.0/24',
             cloud_image_settings_path='/mydir/cloud_settings.iso',
-            dns='8.8.8.8', dns_ext='8.8.8.8',
+            meta_data_path='/mydir/meta-data',
+            user_data_path='/mydir/user-data',
             gateway='10.109.0.1',
             hostname='nailgun.domain.local',
-            interface_name=u'enp0s3',
-            password='r00tme',
-            user='root')
+            interface_name=u'enp0s3')
 
         self.os_mock.makedirs.assert_called_once_with('/mydir')
 
@@ -71,7 +70,7 @@ class TestCloudImageSettings(unittest.TestCase):
                 ' network 10.109.0.0/24\n'
                 ' netmask 255.255.255.0\n'
                 ' gateway 10.109.0.1\n'
-                ' dns-nameservers 8.8.8.8 8.8.8.8\n'
+                ' dns-nameservers 8.8.8.8\n'
                 'local-hostname: nailgun.domain.local'),
             mock.call().__exit__(None, None, None),
             mock.call('/mydir/user-data', 'w'),
@@ -83,7 +82,7 @@ class TestCloudImageSettings(unittest.TestCase):
                 "chpasswd:\n"
                 " list: |\n"
                 "  root:r00tme\n"
-                " expire: False \n"
+                " expire: False\n"
                 "\n"
                 "runcmd:\n"
                 " - sudo ifup enp0s3\n"
