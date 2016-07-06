@@ -139,7 +139,6 @@ class TestLibvirtNodeMultipath(LibvirtTestCase):
         <interface type="network">
             <mac address="64:b6:87:44:14:17"/>
             <source network="test_env_test_l2_net_dev"/>
-            <target dev="virnet0"/>
             <model type="virtio"/>
             <filterref filter="test_env_test_l2_net_dev_64:b6:87:44:14:17"/>
         </interface>
