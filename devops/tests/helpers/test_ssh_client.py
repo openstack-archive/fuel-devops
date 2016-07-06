@@ -815,6 +815,34 @@ class TestSSHClientInit(TestCase):
         ssh004 = SSHAuth(host)
         self.assertFalse(ssh01 is ssh004)
 
+    @mock.patch('devops.helpers.ssh_client.warn')
+    def test_init_memorize_close_unused(
+            self, warn, client, policy, logger, sleep):
+        ssh0 = SSHClient(host=host)
+        text = str(ssh0)
+        del ssh0  # remove reference - now it's cached and unused
+        client.reset_mock()
+        logger.reset_mock()
+        # New connection on the same host:port with different auth
+        ssh1 = SSHClient(host=host, auth=SSHAuth(username=username))
+        logger.assert_has_calls((
+            mock.call.debug('Closing {} as unused'.format(text)),
+        ))
+        client.assert_has_calls((
+            mock.call().close(),
+        ))
+        text = str(ssh1)
+        del ssh1  # remove reference - now it's cached and unused
+        client.reset_mock()
+        logger.reset_mock()
+        SSHClient._clear_cache()
+        logger.assert_has_calls((
+            mock.call.debug('Closing {} as unused'.format(text)),
+        ))
+        client.assert_has_calls((
+            mock.call().close(),
+        ))
+
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute')
     def test_init_memorize_reconnect(
@@ -842,6 +870,15 @@ class TestSSHClientInit(TestCase):
         self.assertNotIn(
             mock.call.close(),
             client.mock_calls
+        )
+
+    @mock.patch('devops.helpers.ssh_client.warn')
+    def test_deprecated_host(self, warn, client, policy, logger, sleep):
+        ssh01 = SSHClient(host=host, auth=SSHAuth())
+        self.assertEqual(ssh01.host, ssh01.hostname)
+        warn.assert_called_once_with(
+            'host has been deprecated in favor of hostname',
+            DeprecationWarning
         )
 
 

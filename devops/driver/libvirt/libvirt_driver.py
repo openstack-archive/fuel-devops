@@ -1103,7 +1103,7 @@ class LibvirtNode(Node):
     @retry(libvirt.libvirtError)
     def snapshot(self, name=None, force=False, description=None,
                  disk_only=False, external=False):
-
+        super(LibvirtNode, self).snapshot()
         # Erase existing snapshot or raise an error if already exists
         if self.has_snapshot(name):
             if force:
@@ -1464,7 +1464,7 @@ class LibvirtNode(Node):
         cls = self.driver.get_model_class('DiskDevice')
 
         if volume.multipath_count:
-            for x in range(volume.multipath_count):
+            for _ in range(volume.multipath_count):
                 cls.objects.create(
                     device=device, type=type, bus='scsi',
                     target_dev=target_dev or self.next_disk_name(),

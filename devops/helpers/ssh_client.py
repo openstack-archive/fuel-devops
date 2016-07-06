@@ -18,6 +18,8 @@ import base64
 import os
 import posixpath
 import stat
+from sys import getrefcount
+from threading import RLock
 from warnings import warn
 
 import paramiko
@@ -231,6 +233,11 @@ class _MemorizedSSH(type):
                     logger.debug('Reconnect {}'.format(ssh))
                     ssh.reconnect()
                 return ssh
+            if getrefcount(cls.__cache[key]) == 2:
+                # If we have only cache reference and temporary getrefcount
+                # reference: close connection before deletion
+                logger.debug('Closing {} as unused'.format(cls.__cache[key]))
+                cls.__cache[key].close()
             del cls.__cache[key]
         return super(
             _MemorizedSSH, cls).__call__(
@@ -249,6 +256,14 @@ class _MemorizedSSH(type):
     @classmethod
     def clear_cache(mcs):
         """Clear cached connections for initialize new instance on next call"""
+        if six.PY3:
+            n_count = 3  # cache, ssh, temporary
+        else:
+            n_count = 4  # cache, values mapping, ssh, temporary
+        for ssh in mcs.__cache.values():
+            if getrefcount(ssh) == n_count:
+                logger.debug('Closing {} as unused'.format(ssh))
+                ssh.close()
         mcs.__cache = {}
 
     @classmethod
@@ -271,7 +286,8 @@ class _MemorizedSSH(type):
 
 class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     __slots__ = [
-        '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode'
+        '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode',
+        '__lock'
     ]
 
     class get_sudo(object):
@@ -307,6 +323,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type private_keys: list
         :type auth: SSHAuth
         """
+        self.__lock = RLock()
+
         self.__hostname = host
         self.__port = port
 
@@ -340,6 +358,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             logger.info(
                 '{0}:{1}> SSHAuth was made from old style creds: '
                 '{2}'.format(self.hostname, self.port, self.auth))
+
+    @property
+    def lock(self):
+        return self.__lock
 
     @property
     def auth(self):
@@ -416,17 +438,19 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     @retry(paramiko.SSHException, count=3, delay=3)
     def __connect(self):
         """Main method for connection open"""
-        self.auth.connect(
-            client=self.__ssh,
-            hostname=self.hostname, port=self.port,
-            log=True)
+        with self.lock:
+            self.auth.connect(
+                client=self.__ssh,
+                hostname=self.hostname, port=self.port,
+                log=True)
 
     def __connect_sftp(self):
         """SFTP connection opener"""
-        try:
-            self.__sftp = self.__ssh.open_sftp()
-        except paramiko.SSHException:
-            logger.warning('SFTP enable failed! SSH only is accessible.')
+        with self.lock:
+            try:
+                self.__sftp = self.__ssh.open_sftp()
+            except paramiko.SSHException:
+                logger.warning('SFTP enable failed! SSH only is accessible.')
 
     @property
     def _sftp(self):
@@ -444,16 +468,17 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     def close(self):
         """Close SSH and SFTP sessions"""
-        try:
-            self.__ssh.close()
-            self.__sftp = None
-        except Exception:
-            logger.exception("Could not close ssh connection")
-            if self.__sftp is not None:
-                try:
-                    self.__sftp.close()
-                except Exception:
-                    logger.exception("Could not close sftp connection")
+        with self.lock:
+            try:
+                self.__ssh.close()
+                self.__sftp = None
+            except Exception:
+                logger.exception("Could not close ssh connection")
+                if self.__sftp is not None:
+                    try:
+                        self.__sftp.close()
+                    except Exception:
+                        logger.exception("Could not close sftp connection")
 
     @staticmethod
     def clear():
@@ -497,12 +522,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     def reconnect(self):
         """Reconnect SSH session"""
-        self.close()
+        with self.lock:
+            self.close()
 
-        self.__ssh = paramiko.SSHClient()
-        self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.__ssh = paramiko.SSHClient()
+            self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        self.__connect()
+            self.__connect()
 
     def check_call(
             self,
@@ -633,6 +659,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                     stdout=result['stdout_str'],
                     stderr=result['stderr_str']
                 ))
+        else:
+            logger.debug(
+                '{cmd} execution results: Exit code: {code}'.format(
+                    cmd=command,
+                    code=result['exit_code']
+                )
+            )
 
         return result
 
