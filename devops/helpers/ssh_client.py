@@ -26,6 +26,7 @@ import paramiko
 import six
 
 from devops.error import DevopsCalledProcessError
+from devops.error import TimeoutError
 from devops.helpers.retry import retry
 from devops import logger
 
@@ -228,8 +229,8 @@ class _MemorizedSSH(type):
             if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
                 ssh = cls.__cache[key]
                 try:
-                    ssh.execute('cd ~')
-                except (paramiko.SSHException, AttributeError):
+                    ssh.execute('cd ~', timeout=5)
+                except (paramiko.SSHException, AttributeError, TimeoutError):
                     logger.debug('Reconnect {}'.format(ssh))
                     ssh.reconnect()
                 return ssh
@@ -533,12 +534,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     def check_call(
             self,
-            command, verbose=False,
+            command, verbose=False, timeout=None,
             expected=None, raise_on_err=True):
         """Execute command and check for return code
 
         :type command: str
         :type verbose: bool
+        :type timeout: int
         :type expected: list
         :type raise_on_err: bool
         :rtype: dict
@@ -546,7 +548,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         if expected is None:
             expected = [0]
-        ret = self.execute(command, verbose)
+        ret = self.execute(command, verbose, timeout)
         if ret['exit_code'] not in expected:
             message = (
                 "Command '{cmd}' returned exit code {code} while "
@@ -570,16 +572,21 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                     stderr=ret['stderr_str'])
         return ret
 
-    def check_stderr(self, command, verbose=False, raise_on_err=True):
+    def check_stderr(
+            self,
+            command, verbose=False, timeout=None,
+            raise_on_err=True):
         """Execute command expecting return code 0 and empty STDERR
 
         :type command: str
         :type verbose: bool
+        :type timeout: int
         :type raise_on_err: bool
         :rtype: dict
         :raises: DevopsCalledProcessError
         """
-        ret = self.check_call(command, verbose, raise_on_err=raise_on_err)
+        ret = self.check_call(
+            command, verbose, timeout=timeout, raise_on_err=raise_on_err)
         if ret['stderr']:
             message = (
                 "Command '{cmd}' STDERR while not expected\n"
@@ -626,19 +633,54 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if errors and raise_on_err:
             raise DevopsCalledProcessError(command, errors)
 
-    def execute(self, command, verbose=False):
+    @classmethod
+    def __get_channel_exit_status(
+            cls, command, channel, stdout, stderr, timeout):
+        """Get exit status from channel with timeout
+
+        :type command: str
+        :type channel: paramiko.channel.Channel
+        :type stdout: file
+        :type stderr: file
+        :type timeout: int
+        :rtype: int
+        :raises: TimeoutError
+        """
+        channel.status_event.wait(timeout)
+        if channel.status_event.is_set():
+            return channel.exit_status
+        else:
+            stdout_str = cls._get_str_from_list(stdout.readlines())
+            stderr_str = cls._get_str_from_list(stderr.readlines())
+            channel.close()
+            status = (
+                'Wait for {0} during {1}s: no return code!\n'
+                '\tSTDOUT:\n'
+                '{2}\n'
+                '\tSTDERR"\n'
+                '{3}'.format(
+                    command, timeout, stdout_str, stderr_str
+                )
+            )
+            raise TimeoutError(status)
+
+    def execute(self, command, verbose=False, timeout=None):
         """Execute command and wait for return code
 
         :type command: str
         :type verbose: bool
+        :type timeout: int
         :rtype: dict
+        :raises: TimeoutError
         """
         chan, _, stderr, stdout = self.execute_async(command)
 
         # noinspection PyDictCreation
         result = {
-            'exit_code': chan.recv_exit_status()
+            'exit_code': self.__get_channel_exit_status(
+                command, chan, stdout, stderr, timeout)
         }
+
         result['stdout'] = stdout.readlines()
         result['stderr'] = stderr.readlines()
 
@@ -710,14 +752,18 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             hostname,
             cmd,
             auth=None,
-            target_port=22):
+            target_port=22,
+            timeout=None
+    ):
         """Execute command on remote host through currently connected host
 
         :type hostname: str
         :type cmd: str
         :type auth: SSHAuth
         :type target_port: int
+        :type timeout: int
         :rtype: dict
+        :raises: TimeoutError
         """
         if auth is None:
             auth = self.auth
@@ -742,12 +788,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         # TODO(astepanov): make a logic for controlling channel state
         # noinspection PyDictCreation
-        result = {}
-        result['exit_code'] = channel.recv_exit_status()
+        result = {
+            'exit_code': self.__get_channel_exit_status(
+                cmd, channel, stdout, stderr, timeout)
+        }
 
         result['stdout'] = stdout.readlines()
         result['stderr'] = stderr.readlines()
         channel.close()
+        intermediate_channel.close()
 
         result['stdout_str'] = self._get_str_from_list(result['stdout'])
         result['stderr_str'] = self._get_str_from_list(result['stderr'])
