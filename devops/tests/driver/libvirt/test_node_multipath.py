@@ -34,6 +34,7 @@ class TestLibvirtNodeMultipath(LibvirtTestCase):
             connection_string='test:///default',
             storage_pool_name='default-pool',
             vnc_password='123456',
+            enable_nwfilters=True,
         )
 
         self.ap = self.env.add_address_pool(

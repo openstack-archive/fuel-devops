@@ -574,8 +574,9 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                 if self._libvirt_network:
                     self._libvirt_network.undefine()
                 # Remove nwfiler
-                if self._nwfilter:
-                    self._nwfilter.undefine()
+                if self.driver.enable_nwfilters:
+                    if self._nwfilter:
+                        self._nwfilter.undefine()
         super(LibvirtL2NetworkDevice, self).remove()
 
     def exists(self):
@@ -632,6 +633,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
     @property
     def is_blocked(self):
         """Returns state of network"""
+        if not self.driver.enable_nwfilters:
+            return False
         if not self._nwfilter:
             return False
 
@@ -640,6 +643,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
     def block(self):
         """Block all traffic in network"""
+        if not self.driver.enable_nwfilters:
+            return
         if not self._nwfilter:
             raise DevopsError(
                 'Unable to block network {0}: nwfilter not found!'
@@ -655,6 +660,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
     def unblock(self):
         """Unblock all traffic in network"""
+        if not self.driver.enable_nwfilters:
+            return
         if not self._nwfilter:
             raise DevopsError(
                 'Unable to unblock network {0}: nwfilter not found!'
@@ -925,11 +932,14 @@ class LibvirtNode(Node):
                             'implemented yet')
 
             l2_dev = interface.l2_network_device
-            filter_name = underscored(
-                deepgetattr(self, 'group.environment.name'),
-                l2_dev.name,
-                interface.mac_address
-            )
+            if self.driver.enable_nwfilters:
+                filter_name = underscored(
+                    deepgetattr(self, 'group.environment.name'),
+                    l2_dev.name,
+                    interface.mac_address
+                )
+            else:
+                filter_name = None  # do not refer to interface filter
             target_dev = self.driver.get_available_device_name('virnet')
             local_interfaces.append(dict(
                 interface_type=interface.type,
@@ -1524,8 +1534,9 @@ class LibvirtInterface(Interface):
         super(LibvirtInterface, self).define()
 
     def remove(self):
-        if self._nwfilter:
-            self._nwfilter.undefine()
+        if self.driver.enable_nwfilters:
+            if self._nwfilter:
+                self._nwfilter.undefine()
         super(LibvirtInterface, self).remove()
 
     @property
@@ -1546,6 +1557,8 @@ class LibvirtInterface(Interface):
     @property
     def is_blocked(self):
         """Show state of interface"""
+        if not self.driver.enable_nwfilters:
+            return False
         if not self._nwfilter:
             return False
 
@@ -1554,6 +1567,8 @@ class LibvirtInterface(Interface):
 
     def block(self):
         """Block traffic on interface"""
+        if not self.driver.enable_nwfilters:
+            return
         if not self._nwfilter:
             raise DevopsError(
                 "Unable to block interface {} on node {}: nwfilter not"
@@ -1571,6 +1586,8 @@ class LibvirtInterface(Interface):
 
     def unblock(self):
         """Unblock traffic on interface"""
+        if not self.driver.enable_nwfilters:
+            return
         if not self._nwfilter:
             raise DevopsError(
                 "Unable to unblock interface {} on node {}: nwfilter not"
