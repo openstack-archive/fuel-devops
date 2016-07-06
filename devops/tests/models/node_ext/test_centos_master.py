@@ -63,7 +63,9 @@ class TestCentosMasterExt(DriverlessTestCase):
             admin_ip='10.109.0.2',
             admin_netmask='255.255.255.0',
             admin_network='10.109.0.0/24',
-            cloud_image_settings_path='/mydir/cloud_settings.iso',
+            cloud_image_settings_path='/mydir/test/cloud_settings.iso',
+            meta_data_path='/mydir/test/meta-data',
+            user_data_path='/mydir/test/user-data',
             dns='8.8.8.8', dns_ext='8.8.8.8',
             gateway='10.109.0.1',
             hostname='nailgun.domain.local',
@@ -71,7 +73,7 @@ class TestCentosMasterExt(DriverlessTestCase):
             password='r00tme',
             user='root')
         self.volume_upload_mock.assert_called_once_with(
-            '/mydir/cloud_settings.iso')
+            '/mydir/test/cloud_settings.iso')
 
     def test_deploy_wait(self):
         self.node.ext.deploy_wait()

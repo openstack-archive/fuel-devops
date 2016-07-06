@@ -683,6 +683,8 @@ class LibvirtVolume(Volume):
     serial = ParamField()
     wwn = ParamField()
     multipath_count = ParamField(default=0)
+    cloudinit_meta_data = ParamField(default=None)
+    cloudinit_user_data = ParamField(default=None)
 
     @property
     def _libvirt_volume(self):
@@ -706,10 +708,11 @@ class LibvirtVolume(Volume):
             backing_store_path = self.backing_store.get_path()
             backing_store_format = self.backing_store.format
 
+        capacity = int((self.capacity or 0) * 1024 ** 3)
         if self.source_image is not None:
-            capacity = get_file_size(self.source_image)
-        else:
-            capacity = int(self.capacity * 1024 ** 3)
+            file_size = get_file_size(self.source_image)
+            if file_size > capacity:
+                capacity = file_size
 
         pool_name = self.driver.storage_pool_name
         pool = self.driver.conn.storagePoolLookupByName(pool_name)
@@ -730,7 +733,7 @@ class LibvirtVolume(Volume):
 
         # Upload predefined image to the volume
         if self.source_image is not None:
-            self.upload(self.source_image)
+            self.upload(self.source_image, capacity)
 
     @retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
@@ -755,7 +758,7 @@ class LibvirtVolume(Volume):
         self.format = self.get_format()
 
     @retry(libvirt.libvirtError, count=2)
-    def upload(self, path):
+    def upload(self, path, capacity=0):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
 
@@ -775,6 +778,11 @@ class LibvirtVolume(Volume):
                 length=size, flags=0)
             stream.sendAll(chunk_render, fd)
             stream.finish()
+
+        if capacity > size:
+            # Resize the uploaded image to specified capacity
+            self._libvirt_volume.resize(capacity)
+            self.save()
 
     def get_allocation(self):
         """Get allocated volume size
@@ -841,6 +849,8 @@ class LibvirtNode(Node):
     has_vnc = ParamField(default=True)
     bootmenu_timeout = ParamField(default=0)
     numa = ParamField(default=[])
+    cloud_init_volume_name = ParamField()
+    cloud_init_iface_up = ParamField()
 
     @property
     def _libvirt_node(self):
