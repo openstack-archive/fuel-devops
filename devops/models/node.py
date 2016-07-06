@@ -185,19 +185,20 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def destroy(self, *args, **kwargs):
-        pass
+        SSHClient.close_connections()
 
     def erase(self, *args, **kwargs):
         self.remove()
 
     def remove(self, *args, **kwargs):
+        SSHClient.close_connections()
         self.erase_volumes()
         for iface in self.interfaces:
             iface.remove()
         self.delete()
 
     def suspend(self, *args, **kwargs):
-        pass
+        SSHClient.close_connections()
 
     def resume(self, *args, **kwargs):
         pass
@@ -206,7 +207,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def revert(self, *args, **kwargs):
-        pass
+        SSHClient.close_connections()
 
     # for fuel-qa compatibility
     def has_snapshot(self, *args, **kwargs):
@@ -216,7 +217,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def shutdown(self):
-        pass
+        SSHClient.close_connections()
 
     def reset(self):
         pass
