@@ -21,7 +21,7 @@ from devops.tests.driver.libvirt.base import LibvirtTestCase
 from django.conf import settings
 
 
-class TestCentosMasterExt(LibvirtTestCase):
+class TestCloudImage(LibvirtTestCase):
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
@@ -30,7 +30,7 @@ class TestCentosMasterExt(LibvirtTestCase):
         return m
 
     def setUp(self):
-        super(TestCentosMasterExt, self).setUp()
+        super(TestCloudImage, self).setUp()
 
         self.open_mock = mock.mock_open(read_data='image_data')
         self.patch('devops.driver.libvirt.libvirt_driver.open',
@@ -43,7 +43,14 @@ class TestCentosMasterExt(LibvirtTestCase):
         }
         self.os_mock.stat.side_effect = self.file_sizes.get
 
-        # Environment with an 'admin' network
+        self.generate_cloud_image_settings_mock = self.patch(
+            'devops.driver.libvirt.libvirt_driver'
+            '.generate_cloud_image_settings')
+
+        self.volume_upload_mock = self.patch(
+            'devops.driver.libvirt.Volume.upload')
+
+        # Environment with a 'public' network
 
         self.env = Environment.create('test')
         self.group = self.env.add_group(
@@ -53,38 +60,39 @@ class TestCentosMasterExt(LibvirtTestCase):
             storage_pool_name='default-pool')
 
         self.pub_ap = self.env.add_address_pool(
-            name='admin-pool01', net='10.109.0.0/16:24', tag=0,
+            name='public-pool01', net='10.109.0.0/16:24', tag=0,
             ip_reserved=dict(gateway=1, l2_network_device=1),
             ip_ranges=dict(default=[2, -2]))
         self.group.add_l2_network_device(
-            name='admin', address_pool='admin-pool01')
+            name='public', address_pool='public-pool01')
+
+        # Node connected to the 'public' network
 
         self.node = self.group.add_node(
             name='test-node',
-            role='centos_master',
+            role='cloud-node',
             architecture='x86_64',
-            hypervisor='test')
+            hypervisor='test',
+            cloud_init_volume_name='iso',
+            cloud_init_iface_up='enp0s3')
 
         self.system_volume = self.node.add_volume(name='system')
         self.iso_volume = self.node.add_volume(name='iso')
 
         self.adm_iface = self.node.add_interface(
             label='enp0s3',
-            l2_network_device_name='admin',
-            mac_address='64:c6:27:47:14:83',
+            l2_network_device_name='public',
+            mac_address='64:b6:87:44:14:17',
             interface_model='e1000')
 
         self.node.add_network_config(
             label='enp0s3',
-            networks=['fuelweb_admin'])
-
-        self.wait_tcp_mock = self.patch(
-            'devops.models.node_ext.centos_master.wait_tcp')
+            networks=['public'])
 
     @mock.patch('devops.driver.libvirt.libvirt_driver.uuid')
     @mock.patch('libvirt.virConnect.defineXML')
     @mock.patch.multiple(settings, CLOUD_IMAGE_DIR='/tmp/')
-    def test_001_pre_define(self, define_xml_mock, uuid_mock):
+    def test_post_define(self, define_xml_mock, uuid_mock):
         uuid_mock.uuid4.side_effect = (
             mock.Mock(hex='fe527bd28e0f4a84b9117dc97142c580'),
             mock.Mock(hex='9cddb80fe82e480eb14c1a89f1c0e11d'),
@@ -96,49 +104,18 @@ class TestCentosMasterExt(LibvirtTestCase):
         self.iso_volume.define()
         self.node.define()
 
-        assert self.node.cloud_init_iface_up == 'enp0s3'
+        self.generate_cloud_image_settings_mock.assert_called_once_with(
+            admin_ip='10.109.0.2',
+            admin_netmask='255.255.255.0',
+            admin_network='10.109.0.0/24',
+            cloud_image_settings_path='/tmp/test/cloud_settings.iso',
+            meta_data_content=None,
+            meta_data_path='/tmp/test/meta-data',
+            user_data_content=None,
+            user_data_path='/tmp/test/user-data',
+            gateway='10.109.0.1',
+            hostname='test-node',
+            interface_name='enp0s3')
 
-        assert self.node.cloud_init_volume_name == 'iso'
-
-        volume = self.node.get_volume(
-            name=self.node.cloud_init_volume_name)
-
-        assert volume.cloudinit_meta_data == (
-            "instance-id: iid-local1\n"
-            "network-interfaces: |\n"
-            " auto {interface_name}\n"
-            " iface {interface_name} inet static\n"
-            " address {address}\n"
-            " network {network}\n"
-            " netmask {netmask}\n"
-            " gateway {gateway}\n"
-            " dns-nameservers 8.8.8.8\n"
-            "local-hostname: nailgun.domain.local")
-
-        assert volume.cloudinit_user_data == (
-            "\n#cloud-config\n"
-            "ssh_pwauth: True\n"
-            "chpasswd:\n"
-            " list: |\n"
-            "  root:r00tme\n"
-            " expire: False\n\n"
-            "runcmd:\n"
-            " - sudo ifup {interface_name}\n"
-            " - sudo sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin yes/'"
-            " /etc/ssh/sshd_config\n"
-            " - sudo service ssh restart\n"
-            " - sudo route add default gw {gateway} {interface_name}")
-
-    def test_002_deploy_wait(self):
-        self.node.ext.deploy_wait()
-
-    def test_003_get_kernel_cmd(self):
-        assert self.node.ext.get_kernel_cmd() is None
-
-    @mock.patch('devops.driver.libvirt.Node.is_active')
-    def test_004_bootstrap_and_wait(self, is_active_mock):
-        is_active_mock.return_value = True
-        self.node.ext.bootstrap_and_wait()
-        self.wait_tcp_mock.assert_called_once_with(
-            host='10.109.0.2', port=22, timeout=600,
-            timeout_msg=mock.ANY)
+        self.volume_upload_mock.assert_called_once_with(
+            '/tmp/test/cloud_settings.iso')

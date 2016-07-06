@@ -14,11 +14,13 @@
 
 import datetime
 import os
+import shutil
 import subprocess
 from time import sleep
 import uuid
 from warnings import warn
 import xml.etree.ElementTree as ET
+
 
 from django.conf import settings
 from django.utils.functional import cached_property
@@ -30,6 +32,7 @@ from six.moves import xrange
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
 from devops.error import DevopsError
+from devops.helpers.cloud_image_settings import generate_cloud_image_settings
 from devops.helpers.helpers import deepgetattr
 from devops.helpers.helpers import get_file_size
 from devops.helpers.helpers import underscored
@@ -683,6 +686,8 @@ class LibvirtVolume(Volume):
     serial = ParamField()
     wwn = ParamField()
     multipath_count = ParamField(default=0)
+    cloudinit_meta_data = ParamField(default=None)
+    cloudinit_user_data = ParamField(default=None)
 
     @property
     def _libvirt_volume(self):
@@ -706,10 +711,11 @@ class LibvirtVolume(Volume):
             backing_store_path = self.backing_store.get_path()
             backing_store_format = self.backing_store.format
 
+        capacity = int((self.capacity or 0) * 1024 ** 3)
         if self.source_image is not None:
-            capacity = get_file_size(self.source_image)
-        else:
-            capacity = int(self.capacity * 1024 ** 3)
+            file_size = get_file_size(self.source_image)
+            if file_size > capacity:
+                capacity = file_size
 
         pool_name = self.driver.storage_pool_name
         pool = self.driver.conn.storagePoolLookupByName(pool_name)
@@ -730,7 +736,7 @@ class LibvirtVolume(Volume):
 
         # Upload predefined image to the volume
         if self.source_image is not None:
-            self.upload(self.source_image)
+            self.upload(self.source_image, capacity)
 
     @retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
@@ -755,7 +761,7 @@ class LibvirtVolume(Volume):
         self.format = self.get_format()
 
     @retry(libvirt.libvirtError, count=2)
-    def upload(self, path):
+    def upload(self, path, capacity=0):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
 
@@ -775,6 +781,11 @@ class LibvirtVolume(Volume):
                 length=size, flags=0)
             stream.sendAll(chunk_render, fd)
             stream.finish()
+
+        if capacity > size:
+            # Resize the uploaded image to specified capacity
+            self._libvirt_volume.resize(capacity)
+            self.save()
 
     def get_allocation(self):
         """Get allocated volume size
@@ -841,6 +852,8 @@ class LibvirtNode(Node):
     has_vnc = ParamField(default=True)
     bootmenu_timeout = ParamField(default=0)
     numa = ParamField(default=[])
+    cloud_init_volume_name = ParamField()
+    cloud_init_iface_up = ParamField()
 
     @property
     def _libvirt_node(self):
@@ -978,6 +991,9 @@ class LibvirtNode(Node):
         logger.debug(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()
 
+        if self.cloud_init_volume_name is not None:
+            self._create_cloudimage_settings_iso()
+
         super(LibvirtNode, self).define()
 
     def start(self):
@@ -1041,6 +1057,52 @@ class LibvirtNode(Node):
 
     def has_snapshot(self, name):
         return name in self._libvirt_node.snapshotListNames()
+
+    def _create_cloudimage_settings_iso(self):
+        """Builds setting iso to send basic configuration for cloud image"""
+
+        if self.cloud_init_volume_name is None:
+            return
+        volume = self.get_volume(name=self.cloud_init_volume_name)
+
+        interface = self.interface_set.get(
+            label=self.cloud_init_iface_up)
+        admin_ip = self.get_ip_address_by_network_name(
+            name=None, interface=interface)
+
+        env_name = self.group.environment.name
+        dir_path = os.path.join(settings.CLOUD_IMAGE_DIR, env_name)
+        cloud_image_settings_path = os.path.join(
+            dir_path, 'cloud_settings.iso')
+        meta_data_path = os.path.join(dir_path, "meta-data")
+        user_data_path = os.path.join(dir_path, "user-data")
+
+        interface_name = interface.label
+        admin_ap = interface.l2_network_device.address_pool
+        gateway = str(admin_ap.gateway)
+        admin_netmask = str(admin_ap.ip_network.netmask)
+        admin_network = str(admin_ap.ip_network)
+        hostname = self.name
+
+        generate_cloud_image_settings(
+            cloud_image_settings_path=cloud_image_settings_path,
+            meta_data_path=meta_data_path,
+            user_data_path=user_data_path,
+            admin_network=admin_network,
+            interface_name=interface_name,
+            admin_ip=admin_ip,
+            admin_netmask=admin_netmask,
+            gateway=gateway,
+            hostname=hostname,
+            meta_data_content=volume.cloudinit_meta_data,
+            user_data_content=volume.cloudinit_user_data,
+        )
+
+        volume.upload(cloud_image_settings_path)
+
+        # Clear temporary files
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
 
     # EXTERNAL SNAPSHOT
     def snapshot_create_child_volumes(self, name):

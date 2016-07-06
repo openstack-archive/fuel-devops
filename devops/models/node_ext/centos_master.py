@@ -13,9 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-
-from devops.helpers.cloud_image_settings import generate_cloud_image_settings
 from devops.helpers.helpers import wait_tcp
 from devops import logger
 from devops import settings
@@ -43,38 +40,51 @@ class NodeExtension(object):
     def get_kernel_cmd(self, **kwargs):
         return None
 
-    def post_define(self):
-        """Builds setting iso to send basic configuration for cloud image"""
+    def pre_define(self):
 
-        cloud_image_settings_path = os.path.join(
-            settings.CLOUD_IMAGE_DIR, 'cloud_settings.iso')
-        admin_ip = self.node.get_ip_address_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        interface = self.node.get_interface_by_network_name(
-            settings.SSH_CREDENTIALS['admin_network'])
-        interface_name = interface.label
-        user = settings.SSH_CREDENTIALS['login']
-        password = settings.SSH_CREDENTIALS['password']
-        admin_ap = interface.l2_network_device.address_pool
-        gateway = str(admin_ap.gateway)
-        admin_netmask = str(admin_ap.ip_network.netmask)
-        admin_network = str(admin_ap.ip_network)
-        dns = settings.DEFAULT_DNS
-        dns_ext = dns
-        hostname = settings.DEFAULT_MASTER_FQDN
+        if self.node.cloud_init_volume_name is None:
+            self.node.cloud_init_volume_name = 'iso'
 
-        generate_cloud_image_settings(
-            cloud_image_settings_path=cloud_image_settings_path,
-            admin_network=admin_network,
-            interface_name=interface_name,
-            admin_ip=admin_ip,
-            admin_netmask=admin_netmask,
-            gateway=gateway,
-            dns=dns,
-            dns_ext=dns_ext,
-            hostname=hostname,
-            user=user,
-            password=password
-        )
+        if self.node.cloud_init_iface_up is None:
+            interface = self.node.get_interface_by_network_name(
+                settings.SSH_CREDENTIALS['admin_network'])
+            self.node.cloud_init_iface_up = interface.label
 
-        self.node.get_volume(name='iso').upload(cloud_image_settings_path)
+        self.node.save()
+
+        volume = self.node.get_volume(name=self.node.cloud_init_volume_name)
+
+        if volume.cloudinit_meta_data is None:
+            volume.cloudinit_meta_data = (
+                "instance-id: iid-local1\n"
+                "network-interfaces: |\n"
+                " auto {interface_name}\n"
+                " iface {interface_name} inet static\n"
+                " address {address}\n"
+                " network {network}\n"
+                " netmask {netmask}\n"
+                " gateway {gateway}\n" +
+                " dns-nameservers {dns}\n"
+                "local-hostname: {hostname}".format(
+                    dns=settings.DEFAULT_DNS,
+                    hostname=settings.DEFAULT_MASTER_FQDN))
+
+        if volume.cloudinit_user_data is None:
+            volume.cloudinit_user_data = (
+                "\n#cloud-config\n"
+                "ssh_pwauth: True\n"
+                "chpasswd:\n"
+                " list: |\n" +
+                "  {user}:{password}\n".format(
+                    user=settings.SSH_CREDENTIALS['login'],
+                    password=settings.SSH_CREDENTIALS['password']
+                    ) +
+                " expire: False\n\n"
+                "runcmd:\n"
+                " - sudo ifup {interface_name}\n"
+                " - sudo sed -i -e '/^PermitRootLogin/s/^"
+                ".*$/PermitRootLogin yes/' /etc/ssh/sshd_config\n"
+                " - sudo service ssh restart\n"
+                " - sudo route add default gw "
+                "{gateway} {interface_name}")
+        volume.save()
