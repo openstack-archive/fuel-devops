@@ -199,6 +199,7 @@ class Node(DriverModel):
             self.driver.node_create(self)
 
     def destroy(self, verbose=False):
+        SSHClient.close_connections()
         if verbose or self.driver.node_active(self):
             self.driver.node_destroy(self)
 
@@ -207,6 +208,7 @@ class Node(DriverModel):
 
     def remove(self, verbose=False):
         """Remove node and filters for interfaces"""
+        SSHClient.close_connections()
         if verbose or self.uuid:
             if verbose or self.driver.node_exists(self):
                 self.destroy(verbose=False)
@@ -216,6 +218,7 @@ class Node(DriverModel):
         self.delete()
 
     def suspend(self, verbose=False):
+        SSHClient.close_connections()
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
@@ -224,6 +227,7 @@ class Node(DriverModel):
             self.driver.node_resume(self)
 
     def reset(self):
+        SSHClient.close_connections()
         self.driver.node_reset(self)
 
     def has_snapshot(self, name):
@@ -261,6 +265,7 @@ class Node(DriverModel):
 
     def snapshot(self, name=None, force=False, description=None,
                  disk_only=False, external=False):
+        SSHClient.close_connections()
         if self.has_snapshot(name):
             if force:
                 self.driver.node_delete_snapshot(node=self, name=name)
@@ -311,6 +316,7 @@ class Node(DriverModel):
            revert to snapshot without childs and create new snapshot point
            when reverting to snapshots with childs.
         """
+        SSHClient.close_connections()
         if destroy:
             self.destroy(verbose=False)
         if self.has_snapshot(name):
