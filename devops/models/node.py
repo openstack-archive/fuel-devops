@@ -199,6 +199,7 @@ class Node(DriverModel):
             self.driver.node_create(self)
 
     def destroy(self, verbose=False):
+        SSHClient.close_connections()
         if verbose or self.driver.node_active(self):
             self.driver.node_destroy(self)
 
@@ -216,6 +217,7 @@ class Node(DriverModel):
         self.delete()
 
     def suspend(self, verbose=False):
+        SSHClient.close_connections()
         if verbose or self.driver.node_active(self):
             self.driver.node_suspend(self)
 
@@ -311,6 +313,7 @@ class Node(DriverModel):
            revert to snapshot without childs and create new snapshot point
            when reverting to snapshots with childs.
         """
+        SSHClient.close_connections()
         if destroy:
             self.destroy(verbose=False)
         if self.has_snapshot(name):
