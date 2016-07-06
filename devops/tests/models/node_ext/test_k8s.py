@@ -18,7 +18,7 @@ from devops import settings
 from devops.tests.driver.driverless import DriverlessTestCase
 
 
-class TestCentosMasterExt(DriverlessTestCase):
+class TestK8sExt(DriverlessTestCase):
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
@@ -27,27 +27,29 @@ class TestCentosMasterExt(DriverlessTestCase):
         return m
 
     def setUp(self):
-        super(TestCentosMasterExt, self).setUp()
+        super(TestK8sExt, self).setUp()
 
         self.node = self.group.add_node(
             name='test-node',
-            role='centos_master')
+            role='k8s')
         self.node.add_volume(
             name='system')
-        self.node.add_volume(
+        iso_volume = self.node.add_volume(
             name='iso')
+        iso_volume.cloudinit_user_data = None
+        iso_volume.cloudinit_meta_data = None
+
+        self.node.cloud_init_volume_name = 'iso'
+        self.node.cloud_init_iface_up = 'enp0s3'
 
         self.adm_iface = self.node.add_interface(
             label='enp0s3',
-            l2_network_device_name='admin',
+            l2_network_device_name='public',
             interface_model='e1000')
 
         self.node.add_network_config(
             label='enp0s3',
-            networks=['fuelweb_admin'])
-
-        self.wait_tcp_mock = self.patch(
-            'devops.models.node_ext.centos_master.wait_tcp')
+            networks=['public'])
 
         self.generate_cloud_image_settings_mock = self.patch(
             'devops.models.node_ext.'
@@ -74,15 +76,3 @@ class TestCentosMasterExt(DriverlessTestCase):
             user='root')
         self.volume_upload_mock.assert_called_once_with(
             '/mydir/test/cloud_settings.iso')
-
-    def test_deploy_wait(self):
-        self.node.ext.deploy_wait()
-
-    def test_get_kernel_cmd(self):
-        assert self.node.ext.get_kernel_cmd() is None
-
-    def test_bootstrap_and_wait(self):
-        self.node.ext.bootstrap_and_wait()
-        self.wait_tcp_mock.assert_called_once_with(
-            host='10.109.0.2', port=22, timeout=600,
-            timeout_msg=mock.ANY)
