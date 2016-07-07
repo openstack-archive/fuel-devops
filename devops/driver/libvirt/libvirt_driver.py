@@ -121,8 +121,6 @@ class Snapshot(object):
 
 class DevopsDriver(object):
 
-    _device_name_generators = {}
-
     def __init__(self,
                  connection_string="qemu:///system",
                  storage_pool_name="default",
@@ -1025,55 +1023,6 @@ class DevopsDriver(object):
                 allocated_networks.append(IPNetwork(
                     "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
         return allocated_networks
-
-    def get_allocated_device_names(self):
-        """Get list of existing bridge names and network devices
-
-        :rtype : List
-        """
-        names = []
-
-        # Host Network Devices
-        for dev in self.conn.listAllDevices():
-            xml = ET.fromstring(dev.XMLDesc())
-            name_el = xml.find('./capability/interface')
-            if name_el is None:
-                continue
-            name = name_el.text
-            names.append(name)
-
-        # Node Network Devices
-        for node in self.conn.listAllDomains():
-            xml = ET.fromstring(node.XMLDesc())
-            target_els = xml.findall(
-                './devices/interface[@type="network"]/target[@dev]')
-            for target_el in target_els:
-                names.append(target_el.attrib.get('dev'))
-
-        # Network Bridges
-        for net in self.conn.listAllNetworks():
-            names.append(net.bridgeName())
-
-        return names
-
-    def get_available_device_name(self, prefix):
-        """Get available name for network device or bridge
-
-        :type prefix: str
-        :rtype : String
-        """
-        allocated_names = self.get_allocated_device_names()
-        if prefix not in self._device_name_generators:
-            self._device_name_generators[prefix] = (
-                prefix + str(i) for i in xrange(10000))
-        all_names = self._device_name_generators[prefix]
-
-        for name in all_names:
-            if name in allocated_names:
-                continue
-            return name
-        raise DevopsError('All names with prefix {!r} are already in use'
-                          .format(prefix))
 
     @retry()
     def node_set_boot(self, node, boot):
