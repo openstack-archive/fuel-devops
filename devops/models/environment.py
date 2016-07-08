@@ -36,6 +36,21 @@ from devops.models.volume import DiskDevice
 from devops.models.volume import Volume
 
 
+def _numhosts(self):
+    msg = (
+        'numhosts property is temporary compatibility spike '
+        'and will be dropped soon! '
+        'Replace by len(list(IPNetwork().iter_hosts())) if required.'
+    )
+    logger.warning(msg)
+    warn(msg, DeprecationWarning)
+    return len(list(self.iter_hosts()))
+
+IPNetwork.numhosts = property(
+    fget=_numhosts,
+    doc="""Temporary compatibility layer for numhosts property support.""")
+
+
 class Environment(DriverModel):
     class Meta(object):
         db_table = 'devops_environment'
