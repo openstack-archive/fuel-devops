@@ -14,6 +14,7 @@
 
 from __future__ import division
 import datetime
+import itertools
 import os
 from time import sleep
 import xml.etree.ElementTree as ET
@@ -274,7 +275,7 @@ class DevopsDriver(object):
             else:
                 raise
 
-    @retry()
+    @retry(delay=3)
     def network_define(self, network):
         """Define network
 
@@ -1071,3 +1072,42 @@ class DevopsDriver(object):
         else:
             logger.warning("Can't close tray: no cdrom devices "
                            "found for Node {!r}".format(node.name))
+
+    def get_allocated_device_names(self):
+        """Get list of existing bridge names and network devices
+
+        :rtype : List
+        """
+        names = []
+
+        # Local Network Devices
+        for dev in self.conn.listAllDevices():
+            xml = ET.fromstring(dev.XMLDesc())
+            name_el = xml.find('./capability/interface')
+            if name_el is None:
+                continue
+            name = name_el.text
+            names.append(name)
+
+        # Network Bridges
+        for net in self.conn.listAllNetworks():
+            names.append(net.bridgeName())
+
+        return names
+
+    def get_available_device_name(self, prefix):
+        """Get available name for bridge
+
+        :type prefix: str
+        :rtype : String
+        """
+        allocated_names = self.get_allocated_device_names()
+        if prefix not in self._device_name_generators:
+            self._device_name_generators[prefix] = (
+                '{}{}'.format(prefix, i) for i in itertools.count())
+        all_names = self._device_name_generators[prefix]
+
+        for name in all_names:
+            if name in allocated_names:
+                continue
+            return name
