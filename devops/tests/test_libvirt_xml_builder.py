@@ -28,7 +28,8 @@ class BaseTestXMLBuilder(TestCase):
     def setUp(self):
         # TODO(prmtl): make it fuzzy
         self.volume_path = "volume_path_mock"
-        self.xml_builder = LibvirtXMLBuilder(mock.Mock())
+        self.driver_mock = mock.Mock()
+        self.xml_builder = LibvirtXMLBuilder(self.driver_mock)
         self.xml_builder.driver.volume_path = mock.Mock(
             return_value=self.volume_path
         )
@@ -104,12 +105,15 @@ class TestNetworkXml(BaseTestXMLBuilder):
         self.net.has_dhcp_server = False
 
     def test_net_name_bridge_name(self):
+        self.driver_mock.get_available_device_name.return_value = 'fuelbr0'
         xml = self.xml_builder.build_network_xml(self.net)
         self.assertXMLIn(
             '<name>{0}_{1}</name>'
             ''.format(self.net.environment.name, self.net.name),
             xml)
-        self.assertXMLIn('<bridge delay="0" stp="on" />', xml)
+        self.assertXMLIn('<bridge delay="0" name="fuelbr0" stp="on" />', xml)
+        self.driver_mock.get_available_device_name.assert_called_once_with(
+            'fuelbr')
 
     def test_forward(self):
         self.net.forward = "nat"
