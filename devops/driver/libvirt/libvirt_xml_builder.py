@@ -185,7 +185,11 @@ class LibvirtXMLBuilder(object):
             device_xml.mac(address=interface_mac_address)
             device_xml.source(
                 network=interface_network_name)
-            device_xml.target(dev=interface_target_dev)
+            if interface_target_dev is not None:
+                # NOTE(astudenov): libvirt allows to create inteface devides
+                # with the same name, but in this case
+                # there will be an error when such nodes are started together
+                device_xml.target(dev=interface_target_dev)
             if interface_model is not None:
                 device_xml.model(type=interface_model)
             if interface_filter is not None:

@@ -51,7 +51,8 @@ class TestLibvirtL2NetworkDevice(LibvirtTestCase):
 
         self.d = self.group.driver
 
-    def test_define(self):
+    @mock.patch('libvirt.virNetwork.bridgeName', return_value='virbr0')
+    def test_define(self, bridge_name_mock):
         assert self.l2_net_dev.forward.mode == 'nat'
         self.l2_net_dev.define()
         assert isinstance(self.l2_net_dev.uuid, str)
