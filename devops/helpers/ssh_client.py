@@ -27,6 +27,7 @@ import six
 
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
+from devops.helpers.exec_result import ExecResult
 from devops.helpers.retry import retry
 from devops import logger
 
@@ -53,6 +54,7 @@ class SSHAuth(object):
         self.__key = key
         self.__keys = [None]
         if key is not None:
+            # noinspection PyTypeChecker
             self.__keys.append(key)
         if keys is not None:
             for key in keys:
@@ -93,6 +95,7 @@ class SSHAuth(object):
         :type tgt: file
         :rtype: str
         """
+        # noinspection PyTypeChecker
         return tgt.write('{}\n'.format(self.__password))
 
     def connect(self, client, hostname=None, port=22, log=True):
@@ -470,12 +473,14 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     def close(self):
         """Close SSH and SFTP sessions"""
         with self.lock:
+            # noinspection PyBroadException
             try:
                 self.__ssh.close()
                 self.__sftp = None
             except Exception:
                 logger.exception("Could not close ssh connection")
                 if self.__sftp is not None:
+                    # noinspection PyBroadException
                     try:
                         self.__sftp.close()
                     except Exception:
@@ -691,19 +696,16 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         chan, _, stderr, stdout = self.execute_async(command)
 
-        # noinspection PyDictCreation
-        result = {
-            'exit_code': self.__get_channel_exit_status(
+        result = ExecResult(
+            cmd=command,
+            exit_code=self.__get_channel_exit_status(
                 command, chan, stdout, stderr, timeout)
-        }
+        )
 
-        result['stdout'] = stdout.readlines()
-        result['stderr'] = stderr.readlines()
+        result.stdout = stdout.readlines()
+        result.stderr = stderr.readlines()
 
         chan.close()
-
-        result['stdout_str'] = self._get_str_from_list(result['stdout'])
-        result['stderr_str'] = self._get_str_from_list(result['stderr'])
 
         if verbose:
             logger.info(
@@ -714,15 +716,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 'STDERR:\n'
                 '{stderr}'.format(
                     cmd=command,
-                    code=result['exit_code'],
-                    stdout=result['stdout_str'],
-                    stderr=result['stderr_str']
+                    code=result.exit_code,
+                    stdout=result.stdout_str,
+                    stderr=result.stderr_str
                 ))
         else:
             logger.debug(
                 '{cmd} execution results: Exit code: {code}'.format(
                     cmd=command,
-                    code=result['exit_code']
+                    code=result.exit_code
                 )
             )
 
@@ -803,18 +805,16 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         channel.exec_command(cmd)
 
         # noinspection PyDictCreation
-        result = {
-            'exit_code': self.__get_channel_exit_status(
-                cmd, channel, stdout, stderr, timeout)
-        }
+        result = ExecResult(
+            cmd=cmd,
+            exit_code=self.__get_channel_exit_status(
+                cmd, channel, stdout, stderr, timeout))
 
-        result['stdout'] = stdout.readlines()
-        result['stderr'] = stderr.readlines()
+        result.stdout = stdout.readlines()
+        result.stderr = stderr.readlines()
+
         channel.close()
         intermediate_channel.close()
-
-        result['stdout_str'] = self._get_str_from_list(result['stdout'])
-        result['stderr_str'] = self._get_str_from_list(result['stderr'])
 
         return result
 
@@ -826,6 +826,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if self.exists(path):
             return
         logger.debug("Creating directory: {}".format(path))
+        # noinspection PyTypeChecker
         self.execute("mkdir -p {}\n".format(path))
 
     def rm_rf(self, path):
@@ -834,6 +835,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type path: str
         """
         logger.debug("rm -rf {}".format(path))
+        # noinspection PyTypeChecker
         self.execute("rm -rf {}".format(path))
 
     def open(self, path, mode='r'):
