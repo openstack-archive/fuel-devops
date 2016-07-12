@@ -30,6 +30,7 @@ from six.moves import cStringIO
 
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
+from devops.helpers.exec_result import ExecResult
 from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 
@@ -58,6 +59,7 @@ encoded_cmd = base64.b64encode(
 ).decode('utf-8')
 
 
+# noinspection PyTypeChecker
 class TestSSHAuth(TestCase):
     def tearDown(self):
         SSHClient._clear_cache()
@@ -166,6 +168,7 @@ class TestSSHAuth(TestCase):
         )
 
 
+# noinspection PyTypeChecker
 @mock.patch('devops.helpers.retry.sleep', autospec=True)
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
 @mock.patch(
@@ -768,7 +771,8 @@ class TestSSHClientInit(TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
-    def test_init_memorize(self, client, policy, logger, sleep):
+    @mock.patch('devops.helpers.ssh_client.ExecResult', autospec=True)
+    def test_init_memorize(self, Result, client, policy, logger, sleep):
         port1 = 2222
         host1 = '127.0.0.2'
 
@@ -897,6 +901,7 @@ class TestExecute(TestCase):
 
         :rtype: SSHClient
         """
+        # noinspection PyTypeChecker
         return SSHClient(
             host=host,
             port=port,
@@ -917,6 +922,7 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
 
+        # noinspection PyTypeChecker
         result = ssh.execute_async(command=command)
         get_transport.assert_called_once()
         open_session.assert_called_once()
@@ -947,6 +953,7 @@ class TestExecute(TestCase):
         ssh = self.get_ssh()
         ssh.sudo_mode = True
 
+        # noinspection PyTypeChecker
         result = ssh.execute_async(command=command)
         get_transport.assert_called_once()
         open_session.assert_called_once()
@@ -980,6 +987,7 @@ class TestExecute(TestCase):
         self.assertFalse(ssh.sudo_mode)
         with SSHClient.get_sudo(ssh):
             self.assertTrue(ssh.sudo_mode)
+            # noinspection PyTypeChecker
             result = ssh.execute_async(command=command)
         self.assertFalse(ssh.sudo_mode)
 
@@ -1023,6 +1031,7 @@ class TestExecute(TestCase):
         ssh = self.get_ssh()
         ssh.sudo_mode = True
 
+        # noinspection PyTypeChecker
         result = ssh.execute_async(command=command)
         get_transport.assert_called_once()
         open_session.assert_called_once()
@@ -1083,19 +1092,19 @@ class TestExecute(TestCase):
         stderr_lst = stderr.readlines()
         stdout_lst = stdout.readlines()
 
-        expected = {
-            'exit_code': 0,
-            'stderr': stderr_lst,
-            'stdout': stdout_lst,
-            'stderr_str': b''.join(stderr_lst).strip().decode(
-                encoding='utf-8'),
-            'stdout_str': b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')}
+        # noinspection PyTypeChecker
+        expected = ExecResult(
+            cmd=command,
+            stderr=stderr_lst,
+            stdout=stdout_lst,
+            exit_code=0
+        )
 
         ssh = self.get_ssh()
 
         logger.reset_mock()
 
+        # noinspection PyTypeChecker
         result = ssh.execute(command=command, verbose=True)
 
         self.assertEqual(
@@ -1136,19 +1145,19 @@ class TestExecute(TestCase):
         stderr_lst = stderr.readlines()
         stdout_lst = stdout.readlines()
 
-        expected = {
-            'exit_code': exit_code,
-            'stderr': stderr_lst,
-            'stdout': stdout_lst,
-            'stderr_str': b''.join(stderr_lst).strip().decode(
-                encoding='utf-8'),
-            'stdout_str': b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')}
+        # noinspection PyTypeChecker
+        expected = ExecResult(
+            cmd=command,
+            stderr=stderr_lst,
+            stdout=stdout_lst,
+            exit_code=exit_code
+        )
 
         ssh = self.get_ssh()
 
         logger.reset_mock()
 
+        # noinspection PyTypeChecker
         result = ssh.execute(command=command, verbose=True, timeout=1)
 
         self.assertEqual(
@@ -1190,6 +1199,7 @@ class TestExecute(TestCase):
         logger.reset_mock()
 
         with self.assertRaises(TimeoutError):
+            # noinspection PyTypeChecker
             ssh.execute(command=command, verbose=True, timeout=1)
 
         execute_async.assert_called_once_with(command)
@@ -1207,6 +1217,7 @@ class TestExecute(TestCase):
         host2 = '127.0.0.2'
 
         ssh = self.get_ssh()
+        # noinspection PyTypeChecker
         ssh2 = SSHClient(
             host=host2,
             port=port,
@@ -1217,6 +1228,7 @@ class TestExecute(TestCase):
 
         remotes = [ssh, ssh2]
 
+        # noinspection PyTypeChecker
         SSHClient.execute_together(
             remotes=remotes, command=command)
 
@@ -1228,10 +1240,12 @@ class TestExecute(TestCase):
             mock.call.close()
         ))
 
+        # noinspection PyTypeChecker
         SSHClient.execute_together(
             remotes=remotes, command=command, expected=[1], raise_on_err=False)
 
         with self.assertRaises(DevopsCalledProcessError):
+            # noinspection PyTypeChecker
             SSHClient.execute_together(
                 remotes=remotes, command=command, expected=[1])
 
@@ -1251,6 +1265,7 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
 
+        # noinspection PyTypeChecker
         result = ssh.check_call(command=command, verbose=verbose, timeout=None)
         execute.assert_called_once_with(command, verbose, None)
         self.assertEqual(result, return_value)
@@ -1260,6 +1275,7 @@ class TestExecute(TestCase):
         execute.reset_mock()
         execute.return_value = return_value
         with self.assertRaises(DevopsCalledProcessError):
+            # noinspection PyTypeChecker
             ssh.check_call(command=command, verbose=verbose, timeout=None)
         execute.assert_called_once_with(command, verbose, None)
 
@@ -1279,6 +1295,7 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
 
+        # noinspection PyTypeChecker
         result = ssh.check_stderr(
             command=command, verbose=verbose, timeout=None,
             raise_on_err=raise_on_err)
@@ -1293,6 +1310,7 @@ class TestExecute(TestCase):
         check_call.reset_mock()
         check_call.return_value = return_value
         with self.assertRaises(DevopsCalledProcessError):
+            # noinspection PyTypeChecker
             ssh.check_stderr(
                 command=command, verbose=verbose, timeout=None,
                 raise_on_err=raise_on_err)
@@ -1362,12 +1380,14 @@ class TestExecuteThrowHost(TestCase):
             self, transp, client, policy, logger):
         target = '127.0.0.2'
         exit_code = 0
-        return_value = {
-            'stderr_str': '0\n1',
-            'stdout_str': '2\n3',
-            'exit_code': exit_code,
-            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
-            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+
+        # noinspection PyTypeChecker
+        return_value = ExecResult(
+            cmd=command,
+            stderr=[b' \n', b'0\n', b'1\n', b' \n'],
+            stdout=[b' \n', b'2\n', b'3\n', b' \n'],
+            exit_code=exit_code
+        )
 
         (
             open_session, transport, channel, get_transport,
@@ -1375,6 +1395,7 @@ class TestExecuteThrowHost(TestCase):
         ) = self.prepare_execute_through_host(
             transp, client, exit_code=exit_code)
 
+        # noinspection PyTypeChecker
         ssh = SSHClient(
             host=host,
             port=port,
@@ -1383,6 +1404,7 @@ class TestExecuteThrowHost(TestCase):
                 password=password
             ))
 
+        # noinspection PyTypeChecker
         result = ssh.execute_through_host(target, command)
         self.assertEqual(result, return_value)
         get_transport.assert_called_once()
@@ -1409,12 +1431,14 @@ class TestExecuteThrowHost(TestCase):
 
         target = '127.0.0.2'
         exit_code = 0
-        return_value = {
-            'stderr_str': '0\n1',
-            'stdout_str': '2\n3',
-            'exit_code': exit_code,
-            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
-            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+
+        # noinspection PyTypeChecker
+        return_value = ExecResult(
+            cmd=command,
+            stderr=[b' \n', b'0\n', b'1\n', b' \n'],
+            stdout=[b' \n', b'2\n', b'3\n', b' \n'],
+            exit_code=exit_code
+        )
 
         (
             open_session, transport, channel, get_transport,
@@ -1422,6 +1446,7 @@ class TestExecuteThrowHost(TestCase):
         ) = self.prepare_execute_through_host(
             transp, client, exit_code=exit_code)
 
+        # noinspection PyTypeChecker
         ssh = SSHClient(
             host=host,
             port=port,
@@ -1430,6 +1455,7 @@ class TestExecuteThrowHost(TestCase):
                 password=password
             ))
 
+        # noinspection PyTypeChecker
         result = ssh.execute_through_host(
             target, command,
             auth=SSHAuth(username=_login, password=_password))
@@ -1468,6 +1494,7 @@ class TestSftp(TestCase):
         open_sftp = mock.Mock(parent=_ssh, return_value=_sftp)
         _ssh.attach_mock(open_sftp, 'open_sftp')
 
+        # noinspection PyTypeChecker
         ssh = SSHClient(
             host=host,
             port=port,
@@ -1483,6 +1510,7 @@ class TestSftp(TestCase):
         _sftp.attach_mock(lstat, 'lstat')
         path = '/etc'
 
+        # noinspection PyTypeChecker
         result = ssh.exists(path)
         self.assertTrue(result)
         lstat.assert_called_once_with(path)
@@ -1491,6 +1519,7 @@ class TestSftp(TestCase):
         lstat.reset_mock()
         lstat.side_effect = IOError
 
+        # noinspection PyTypeChecker
         result = ssh.exists(path)
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
@@ -1506,6 +1535,7 @@ class TestSftp(TestCase):
         lstat.return_value = Attrs(stat.S_IFREG)
         path = '/etc/passwd'
 
+        # noinspection PyTypeChecker
         result = ssh.isfile(path)
         self.assertTrue(result)
         lstat.assert_called_once_with(path)
@@ -1514,6 +1544,7 @@ class TestSftp(TestCase):
         lstat.reset_mock()
         lstat.return_value = Attrs(stat.S_IFDIR)
 
+        # noinspection PyTypeChecker
         result = ssh.isfile(path)
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
@@ -1521,6 +1552,7 @@ class TestSftp(TestCase):
         lstat.reset_mock()
         lstat.side_effect = IOError
 
+        # noinspection PyTypeChecker
         result = ssh.isfile(path)
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
@@ -1536,6 +1568,7 @@ class TestSftp(TestCase):
         lstat.return_value = Attrs(stat.S_IFDIR)
         path = '/etc/passwd'
 
+        # noinspection PyTypeChecker
         result = ssh.isdir(path)
         self.assertTrue(result)
         lstat.assert_called_once_with(path)
@@ -1544,12 +1577,14 @@ class TestSftp(TestCase):
         lstat.reset_mock()
         lstat.return_value = Attrs(stat.S_IFREG)
 
+        # noinspection PyTypeChecker
         result = ssh.isdir(path)
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
 
         lstat.reset_mock()
         lstat.side_effect = IOError
+        # noinspection PyTypeChecker
         result = ssh.isdir(path)
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
@@ -1561,6 +1596,7 @@ class TestSftp(TestCase):
 
         path = '~/tst'
 
+        # noinspection PyTypeChecker
         ssh = SSHClient(
             host=host,
             port=port,
@@ -1570,6 +1606,7 @@ class TestSftp(TestCase):
             ))
 
         # Path not exists
+        # noinspection PyTypeChecker
         ssh.mkdir(path)
         exists.assert_called_once_with(path)
         execute.assert_called_once_with("mkdir -p {}\n".format(path))
@@ -1578,6 +1615,7 @@ class TestSftp(TestCase):
         exists.reset_mock()
         execute.reset_mock()
 
+        # noinspection PyTypeChecker
         ssh.mkdir(path)
         exists.assert_called_once_with(path)
         execute.assert_not_called()
@@ -1586,6 +1624,7 @@ class TestSftp(TestCase):
     def test_rm_rf(self, execute, client, policy, logger):
         path = '~/tst'
 
+        # noinspection PyTypeChecker
         ssh = SSHClient(
             host=host,
             port=port,
@@ -1595,6 +1634,7 @@ class TestSftp(TestCase):
             ))
 
         # Path not exists
+        # noinspection PyTypeChecker
         ssh.rm_rf(path)
         execute.assert_called_once_with("rm -rf {}".format(path))
 
@@ -1605,6 +1645,7 @@ class TestSftp(TestCase):
 
         path = '/etc/passwd'
         mode = 'r'
+        # noinspection PyTypeChecker
         result = ssh.open(path)
         fopen.assert_called_once_with(path, mode)
         self.assertTrue(result)
@@ -1625,6 +1666,7 @@ class TestSftp(TestCase):
 
         dst = '/etc/environment'
         target = '/tmp/environment'
+        # noinspection PyTypeChecker
         result = ssh.download(destination=dst, target=target)
         self.assertTrue(result)
         isdir.assert_called_once_with(target)
@@ -1637,6 +1679,7 @@ class TestSftp(TestCase):
 
         # Negative scenarios
         logger.reset_mock()
+        # noinspection PyTypeChecker
         result = ssh.download(destination=dst, target=target)
         logger.assert_has_calls((
             mock.call.debug(
@@ -1651,7 +1694,8 @@ class TestSftp(TestCase):
         self.assertFalse(result)
 
         logger.reset_mock()
-        result = ssh.download(destination=dst, target=target)
+        # noinspection PyTypeChecker
+        ssh.download(destination=dst, target=target)
         logger.assert_has_calls((
             mock.call.debug(
                 "Copying '%s' -> '%s' from remote to local host",
@@ -1674,6 +1718,7 @@ class TestSftp(TestCase):
         target = '/etc/environment'
         source = '/tmp/environment'
 
+        # noinspection PyTypeChecker
         ssh.upload(source=source, target=target)
         isdir.assert_called_once_with(source)
         remote_isdir.assert_called_once_with(target)
@@ -1702,6 +1747,7 @@ class TestSftp(TestCase):
         expected_path = posixpath.join(target, basename(source))
         expected_file = posixpath.join(expected_path, filename)
 
+        # noinspection PyTypeChecker
         ssh.upload(source=source, target=target)
         isdir.assert_called_once_with(source)
         remote_isdir.assert_called_once_with(target)

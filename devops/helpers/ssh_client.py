@@ -27,6 +27,7 @@ import six
 
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
+from devops.helpers.exec_result import ExecResult
 from devops.helpers.retry import retry
 from devops import logger
 
@@ -53,6 +54,7 @@ class SSHAuth(object):
         self.__key = key
         self.__keys = [None]
         if key is not None:
+            # noinspection PyTypeChecker
             self.__keys.append(key)
         if keys is not None:
             for key in keys:
@@ -93,6 +95,7 @@ class SSHAuth(object):
         :type tgt: file
         :rtype: str
         """
+        # noinspection PyTypeChecker
         return tgt.write('{}\n'.format(self.__password))
 
     def connect(self, client, hostname=None, port=22, log=True):
@@ -257,10 +260,9 @@ class _MemorizedSSH(type):
     @classmethod
     def clear_cache(mcs):
         """Clear cached connections for initialize new instance on next call"""
-        if six.PY3:
-            n_count = 3  # cache, ssh, temporary
-        else:
-            n_count = 4  # cache, values mapping, ssh, temporary
+        n_count = 3 if six.PY3 else 4
+        # PY3: cache, ssh, temporary
+        # PY4: cache, values mapping, ssh, temporary
         for ssh in mcs.__cache.values():
             if getrefcount(ssh) == n_count:
                 logger.debug('Closing {} as unused'.format(ssh))
@@ -295,12 +297,18 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """Context manager for call commands with sudo"""
         def __init__(self, ssh):
             self.ssh = ssh
+            self.__sudo_status = False
 
-        def __enter__(self):
-            self.ssh.sudo_mode = True
+        def __enter__(self, enable_sudo=True):
+            """Context manager for handling sudo mode
+
+            :type enable_sudo: bool
+            """
+            self.__sudo_status = self.ssh.sudo_mode
+            self.ssh.sudo_mode = enable_sudo
 
         def __exit__(self, exc_type, exc_val, exc_tb):
-            self.ssh.sudo_mode = False
+            self.ssh.sudo_mode = self.__sudo_status
 
     def __hash__(self):
         return hash((
@@ -470,12 +478,14 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     def close(self):
         """Close SSH and SFTP sessions"""
         with self.lock:
+            # noinspection PyBroadException
             try:
                 self.__ssh.close()
                 self.__sftp = None
             except Exception:
                 logger.exception("Could not close ssh connection")
                 if self.__sftp is not None:
+                    # noinspection PyBroadException
                     try:
                         self.__sftp.close()
                     except Exception:
@@ -544,7 +554,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type error_info: str
         :type expected: list
         :type raise_on_err: bool
-        :rtype: dict
+        :rtype: ExecResult
         :raises: DevopsCalledProcessError
         """
         if expected is None:
@@ -586,7 +596,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type timeout: int
         :type error_info: str
         :type raise_on_err: bool
-        :rtype: dict
+        :rtype: ExecResult
         :raises: DevopsCalledProcessError
         """
         ret = self.check_call(
@@ -640,7 +650,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             raise DevopsCalledProcessError(command, errors)
 
     @classmethod
-    def __get_channel_exit_status(
+    def __exec_command(
             cls, command, channel, stdout, stderr, timeout):
         """Get exit status from channel with timeout
 
@@ -649,15 +659,27 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type stdout: file
         :type stderr: file
         :type timeout: int
-        :rtype: int
+        :rtype: ExecResult
         :raises: TimeoutError
         """
         channel.status_event.wait(timeout)
         if channel.status_event.is_set():
-            return channel.exit_status
+            result = ExecResult(
+                cmd=command,
+                exit_code=channel.exit_status
+            )
+            result.stdout = stdout.readlines()
+            result.stderr = stderr.readlines()
+
+            channel.close()
+
+            return result
         else:
-            stdout_lst = stdout.readlines()
-            stderr_lst = stderr.readlines()
+            result = ExecResult(
+                cmd=command,
+                stdout=stdout.readlines(),
+                stderr=stderr.readlines()
+            )
 
             channel.close()
             status_tmpl = (
@@ -669,15 +691,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             logger.debug(
                 status_tmpl.format(
                     command, timeout,
-                    cls._get_str_from_list(stdout_lst),
-                    cls._get_str_from_list(stderr_lst)
+                    result.stdout,
+                    result.stderr
                 )
             )
             raise TimeoutError(
                 status_tmpl.format(
                     command, timeout,
-                    cls._get_str_from_list(stdout_lst[-5:]),  # 5 last lines
-                    cls._get_str_from_list(stderr_lst[-5:])   # 5 last lines
+                    result.stdout_brief,
+                    result.stderr_brief
                 ))
 
     def execute(self, command, verbose=False, timeout=None):
@@ -686,24 +708,12 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type command: str
         :type verbose: bool
         :type timeout: int
-        :rtype: dict
+        :rtype: ExecResult
         :raises: TimeoutError
         """
         chan, _, stderr, stdout = self.execute_async(command)
 
-        # noinspection PyDictCreation
-        result = {
-            'exit_code': self.__get_channel_exit_status(
-                command, chan, stdout, stderr, timeout)
-        }
-
-        result['stdout'] = stdout.readlines()
-        result['stderr'] = stderr.readlines()
-
-        chan.close()
-
-        result['stdout_str'] = self._get_str_from_list(result['stdout'])
-        result['stderr_str'] = self._get_str_from_list(result['stderr'])
+        result = self.__exec_command(command, chan, stdout, stderr, timeout)
 
         if verbose:
             logger.info(
@@ -714,28 +724,19 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 'STDERR:\n'
                 '{stderr}'.format(
                     cmd=command,
-                    code=result['exit_code'],
-                    stdout=result['stdout_str'],
-                    stderr=result['stderr_str']
+                    code=result.exit_code,
+                    stdout=result.stdout_str,
+                    stderr=result.stderr_str
                 ))
         else:
             logger.debug(
                 '{cmd} execution results: Exit code: {code}'.format(
                     cmd=command,
-                    code=result['exit_code']
+                    code=result.exit_code
                 )
             )
 
         return result
-
-    @staticmethod
-    def _get_str_from_list(src):
-        """Join data in list to the string, with python 2&3 compatibility.
-
-        :type src: list
-        :rtype: str
-        """
-        return b''.join(src).strip().decode(encoding='utf-8')
 
     def execute_async(self, command):
         """Execute command in async mode and return channel with IO objects
@@ -778,7 +779,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type auth: SSHAuth
         :type target_port: int
         :type timeout: int
-        :rtype: dict
+        :rtype: ExecResult
         :raises: TimeoutError
         """
         if auth is None:
@@ -803,18 +804,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         channel.exec_command(cmd)
 
         # noinspection PyDictCreation
-        result = {
-            'exit_code': self.__get_channel_exit_status(
-                cmd, channel, stdout, stderr, timeout)
-        }
+        result = self.__exec_command(cmd, channel, stdout, stderr, timeout)
 
-        result['stdout'] = stdout.readlines()
-        result['stderr'] = stderr.readlines()
-        channel.close()
         intermediate_channel.close()
-
-        result['stdout_str'] = self._get_str_from_list(result['stdout'])
-        result['stderr_str'] = self._get_str_from_list(result['stderr'])
 
         return result
 
@@ -826,6 +818,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if self.exists(path):
             return
         logger.debug("Creating directory: {}".format(path))
+        # noinspection PyTypeChecker
         self.execute("mkdir -p {}\n".format(path))
 
     def rm_rf(self, path):
@@ -834,6 +827,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type path: str
         """
         logger.debug("rm -rf {}".format(path))
+        # noinspection PyTypeChecker
         self.execute("rm -rf {}".format(path))
 
     def open(self, path, mode='r'):
