@@ -535,6 +535,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     def check_call(
             self,
             command, verbose=False, timeout=None,
+            error_info=None,
             expected=None, raise_on_err=True):
         """Execute command and check for return code
 
@@ -551,12 +552,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         ret = self.execute(command, verbose, timeout)
         if ret['exit_code'] not in expected:
             message = (
-                "Command '{cmd}' returned exit code {code} while "
+                "{append}Command '{cmd}' returned exit code {code} while "
                 "expected {expected}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"
                 "{stderr}".format(
+                    append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
                     expected=expected,
@@ -575,6 +577,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     def check_stderr(
             self,
             command, verbose=False, timeout=None,
+            error_info=None,
             raise_on_err=True):
         """Execute command expecting return code 0 and empty STDERR
 
@@ -586,15 +589,17 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :raises: DevopsCalledProcessError
         """
         ret = self.check_call(
-            command, verbose, timeout=timeout, raise_on_err=raise_on_err)
+            command, verbose, timeout=timeout,
+            error_info=error_info, raise_on_err=raise_on_err)
         if ret['stderr']:
             message = (
-                "Command '{cmd}' STDERR while not expected\n"
+                "{append}Command '{cmd}' STDERR while not expected\n"
                 "\texit code: {code}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"
                 "{stderr}".format(
+                    append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
                     stdout=ret['stdout_str'],
