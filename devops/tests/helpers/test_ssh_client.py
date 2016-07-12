@@ -1283,7 +1283,8 @@ class TestExecute(TestCase):
             command=command, verbose=verbose, timeout=None,
             raise_on_err=raise_on_err)
         check_call.assert_called_once_with(
-            command, verbose, timeout=None, raise_on_err=raise_on_err)
+            command, verbose, timeout=None,
+            error_info=None, raise_on_err=raise_on_err)
         self.assertEqual(result, return_value)
 
         return_value['stderr_str'] = '0\n1'
@@ -1296,7 +1297,8 @@ class TestExecute(TestCase):
                 command=command, verbose=verbose, timeout=None,
                 raise_on_err=raise_on_err)
         check_call.assert_called_once_with(
-            command, verbose, timeout=None, raise_on_err=raise_on_err)
+            command, verbose, timeout=None,
+            error_info=None, raise_on_err=raise_on_err)
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
