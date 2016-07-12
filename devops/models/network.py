@@ -43,7 +43,7 @@ class AddressPool(ParamedModel, BaseModel):
             <'gateway'>:<int|IPAddress>            # Reserved for gateway.
             <'l2_network_device'>:<int|IPAddress>  # Reserved for local IP
                                                    # for libvirt networks.
-            ...  # user-defined IPs (for fuel-qa)
+            ...  # user-defined IPs (for fuel-qa, 'fm_static_ip' for example)
           ip_ranges:
             <group_name>: [<int|IPAddress>, <int|IPAddress>]
             ...  # user-defined ranges (for fuel-qa, 'floating' for example)
@@ -383,6 +383,13 @@ class NetworkPool(BaseModel):
                  (for fuel-qa compatibility).
         """
         return self.address_pool.gateway
+
+    def get_ip(self, ip_name):
+        """Return the reserved IP
+
+        :return: str(IP) or None
+        """
+        return self.address_pool.get_ip(ip_name)
 
     @property
     def vlan_start(self):
