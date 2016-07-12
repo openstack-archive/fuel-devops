@@ -73,6 +73,7 @@ class IpmiNode(Node):
 
     uuid = ParamField()  # LEGACY, for compatibility reason
     boot = ParamField(default='pxe')
+    force_set_boot = ParamField(default=True)
     ipmi_user = ParamField()
     ipmi_password = ParamField()
     ipmi_previlegies = ParamField(default='OPERATOR')
@@ -86,6 +87,11 @@ class IpmiNode(Node):
         return IpmiClient(self.ipmi_user, self.ipmi_password, self.ipmi_host,
                           self.ipmi_previlegies, self.ipmi_lan_interface,
                           self.ipmi_port, self.name)
+
+    def _wait_power_off(self):
+        wait(lambda: not self.is_active(), timeout=60,
+             timeout_msg="Node {0} / {1} wasn't stopped in 60 sec".
+             format(self.name, self.ipmi_host))
 
     def exists(self):
         """Check if node exists
@@ -120,9 +126,10 @@ class IpmiNode(Node):
     def start(self):
         """Node start. Power on """
 
-        # Boot device is not stored in bios, so it should
-        # be set every time when node starts.
-        self.conn.chassis_set_boot('pxe')
+        if self.force_set_boot:
+            # Boot device is not stored in bios, so it should
+            # be set every time when node starts.
+            self.conn.chassis_set_boot(self.boot)
 
         if self.is_active():
             # Re-start active node
@@ -133,26 +140,18 @@ class IpmiNode(Node):
              timeout_msg="Node {0} / {1} wasn't started in 60 sec".
              format(self.name, self.ipmi_host))
 
-    def create(self):
-        """Node creating. Create env but don't power on after """
-        self.save()
-
     def destroy(self):
         """Node destroy. Power off """
         self.conn.power_off()
-        wait(lambda: not self.is_active(), timeout=60,
-             timeout_msg="Node {0} / {1} wasn't stopped in 60 sec".
-             format(self.name, self.ipmi_host))
-
-    def erase(self):
-        """Node erase. Power off """
-        super(IpmiNode, self).delete()
-        if self.is_active():
-            self.conn.power_off()
+        self._wait_power_off()
+        super(IpmiNode, self).destroy()
 
     def remove(self):
         """Node remove. Power off """
-        self.conn.power_off()
+        if self.is_active():
+            self.conn.power_off()
+            self._wait_power_off()
+        super(IpmiNode, self).remove()
 
     def reset(self):
         """Node reset. Power reset """
@@ -165,3 +164,5 @@ class IpmiNode(Node):
     def shutdown(self):
         """Shutdown Node """
         self.conn.power_off()
+        self._wait_power_off()
+        super(IpmiNode, self).shutdown()
