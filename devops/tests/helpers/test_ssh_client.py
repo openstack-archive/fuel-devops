@@ -30,6 +30,7 @@ from six.moves import cStringIO
 
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
+from devops.helpers.exec_result import ExecResult
 from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
 
@@ -768,7 +769,8 @@ class TestSSHClientInit(TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
-    def test_init_memorize(self, client, policy, logger, sleep):
+    @mock.patch('devops.helpers.ssh_client.ExecResult', autospec=True)
+    def test_init_memorize(self, Result, client, policy, logger, sleep):
         port1 = 2222
         host1 = '127.0.0.2'
 
@@ -1083,14 +1085,12 @@ class TestExecute(TestCase):
         stderr_lst = stderr.readlines()
         stdout_lst = stdout.readlines()
 
-        expected = {
-            'exit_code': 0,
-            'stderr': stderr_lst,
-            'stdout': stdout_lst,
-            'stderr_str': b''.join(stderr_lst).strip().decode(
-                encoding='utf-8'),
-            'stdout_str': b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')}
+        expected = ExecResult(
+            cmd=command,
+            stderr=stderr_lst,
+            stdout=stdout_lst,
+            exit_code=0
+        )
 
         ssh = self.get_ssh()
 
@@ -1136,14 +1136,12 @@ class TestExecute(TestCase):
         stderr_lst = stderr.readlines()
         stdout_lst = stdout.readlines()
 
-        expected = {
-            'exit_code': exit_code,
-            'stderr': stderr_lst,
-            'stdout': stdout_lst,
-            'stderr_str': b''.join(stderr_lst).strip().decode(
-                encoding='utf-8'),
-            'stdout_str': b''.join(stdout_lst).strip().decode(
-                encoding='utf-8')}
+        expected = ExecResult(
+            cmd=command,
+            stderr=stderr_lst,
+            stdout=stdout_lst,
+            exit_code=exit_code
+        )
 
         ssh = self.get_ssh()
 
@@ -1360,12 +1358,13 @@ class TestExecuteThrowHost(TestCase):
             self, transp, client, policy, logger):
         target = '127.0.0.2'
         exit_code = 0
-        return_value = {
-            'stderr_str': '0\n1',
-            'stdout_str': '2\n3',
-            'exit_code': exit_code,
-            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
-            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+
+        return_value = ExecResult(
+            cmd=command,
+            stderr=[b' \n', b'0\n', b'1\n', b' \n'],
+            stdout=[b' \n', b'2\n', b'3\n', b' \n'],
+            exit_code=exit_code
+        )
 
         (
             open_session, transport, channel, get_transport,
@@ -1407,12 +1406,13 @@ class TestExecuteThrowHost(TestCase):
 
         target = '127.0.0.2'
         exit_code = 0
-        return_value = {
-            'stderr_str': '0\n1',
-            'stdout_str': '2\n3',
-            'exit_code': exit_code,
-            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
-            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+
+        return_value = ExecResult(
+            cmd=command,
+            stderr=[b' \n', b'0\n', b'1\n', b' \n'],
+            stdout=[b' \n', b'2\n', b'3\n', b' \n'],
+            exit_code=exit_code
+        )
 
         (
             open_session, transport, channel, get_transport,
