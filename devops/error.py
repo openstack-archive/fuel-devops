@@ -57,11 +57,11 @@ class DevopsCalledProcessError(DevopsError):
         return self.stdout + self.stderr
 
 
-class DevopsNotImplementedError(DevopsError):
+class DevopsNotImplementedError(DevopsError, NotImplementedError):
     pass
 
 
-class DevopsEnvironmentError(DevopsError):
+class DevopsEnvironmentError(DevopsError, EnvironmentError):
     def __init__(self, command):
         self.cmd = command
         super(DevopsEnvironmentError, self).__init__(
