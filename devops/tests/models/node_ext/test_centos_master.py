@@ -81,10 +81,12 @@ class TestCentosMasterExt(LibvirtTestCase):
         self.wait_tcp_mock = self.patch(
             'devops.models.node_ext.centos_master.wait_tcp')
 
+    @mock.patch(
+        'devops.helpers.cloud_image_settings.Subprocess', autospec=True)
     @mock.patch('devops.driver.libvirt.libvirt_driver.uuid')
     @mock.patch('libvirt.virConnect.defineXML')
     @mock.patch.multiple(settings, CLOUD_IMAGE_DIR='/tmp/')
-    def test_001_pre_define(self, define_xml_mock, uuid_mock):
+    def test_001_pre_define(self, define_xml_mock, uuid_mock, subprocess):
         uuid_mock.uuid4.side_effect = (
             mock.Mock(hex='fe527bd28e0f4a84b9117dc97142c580'),
             mock.Mock(hex='9cddb80fe82e480eb14c1a89f1c0e11d'),
