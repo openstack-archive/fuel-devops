@@ -13,8 +13,8 @@
 #    under the License.
 
 import os
-import subprocess
 
+from devops.helpers.subprocess_runner import Subprocess
 from devops import logger
 
 
@@ -94,4 +94,4 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                                user_data_path,
                                meta_data_path)
 
-    subprocess.check_call(cmd, shell=True)
+    Subprocess.check_call(cmd)

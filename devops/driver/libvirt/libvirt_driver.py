@@ -16,7 +16,6 @@ import datetime
 import itertools
 import os
 import shutil
-import subprocess
 from time import sleep
 import uuid
 from warnings import warn
@@ -29,6 +28,7 @@ import libvirt
 import netaddr
 
 from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
+from devops.error import DevopsCalledProcessError
 from devops.error import DevopsError
 from devops.helpers.cloud_image_settings import generate_cloud_image_settings
 from devops.helpers.helpers import deepgetattr
@@ -37,6 +37,7 @@ from devops.helpers.helpers import underscored
 from devops.helpers.helpers import xml_tostring
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
+from devops.helpers.subprocess_runner import Subprocess
 from devops import logger
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
@@ -550,8 +551,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             # to any bridge before adding it to the current bridge instead
             # of this try/except workaround
             try:
-                subprocess.check_output(cmd.split())
-            except subprocess.CalledProcessError:
+                Subprocess.check_call(cmd)
+            except DevopsCalledProcessError:
                 pass
 
     @retry(libvirt.libvirtError)

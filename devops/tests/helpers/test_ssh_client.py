@@ -1054,7 +1054,8 @@ class TestExecute(TestCase):
             logger.mock_calls
         )
 
-    def get_patched_execute_async_retval(self, ec=0, stderr_val=True):
+    @staticmethod
+    def get_patched_execute_async_retval(ec=0, stderr_val=True):
         stderr = mock.Mock()
         stdout = mock.Mock()
 
