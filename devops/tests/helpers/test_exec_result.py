@@ -63,7 +63,8 @@ class TestExecResult(TestCase):
         )
         self.assertEqual(
             str(exec_result),
-            '{cls}(cmd={cmd}, stdout={stdout_brief}, stderr={stderr_brief}, '
+            "{cls}(cmd={cmd}, "
+            "stdout='{stdout_brief}', stderr='{stderr_brief}', "
             'exit_code={exit_code})'.format(
                 cls=ExecResult.__name__,
                 cmd=cmd,
