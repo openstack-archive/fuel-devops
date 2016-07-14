@@ -212,22 +212,30 @@ class AddressPool(ParamedModel, BaseModel):
                           " with CIDR {1}".format(self.name, self.net))
 
     @classmethod
-    @transaction.atomic
     def _safe_create_network(cls, name, pool, environment, **params):
         for ip_network in pool:
-            try:
-                if cls.objects.filter(net=str(ip_network)).exists():
-                    continue
+            if cls.objects.filter(net=str(ip_network)).exists():
+                continue
 
-                new_params = deepcopy(params)
-                new_params['net'] = ip_network
-                return cls.objects.create(
-                    environment=environment,
-                    name=name,
-                    **new_params
-                )
-            except IntegrityError:
-                transaction.rollback()
+            new_params = deepcopy(params)
+            new_params['net'] = ip_network
+            try:
+                with transaction.atomic():
+                    return cls.objects.create(
+                        environment=environment,
+                        name=name,
+                        **new_params
+                    )
+            except IntegrityError as e:
+                logger.debug(e)
+                if 'name' in str(e):
+                    raise DevopsError(
+                        'AddressPool with name "{}" already exists'
+                        ''.format(name))
+                continue
+
+        raise DevopsError("There is no network pool available for creating "
+                          "address pool {}".format(name))
 
     @classmethod
     def address_pool_create(cls, name, environment, pool=None, **params):
