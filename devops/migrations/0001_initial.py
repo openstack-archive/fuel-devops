@@ -3,6 +3,7 @@
 # pylint: skip-file
 from __future__ import unicode_literals
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import migrations, models
 import datetime
 import jsonfield.fields
@@ -92,6 +93,7 @@ class Migration(migrations.Migration):
                 ('mac_address', models.CharField(unique=True, max_length=255)),
                 ('type', models.CharField(max_length=255)),
                 ('model', models.CharField(max_length=255, choices=[(b'virtio', b'virtio'), (b'e1000', b'e1000'), (b'pcnet', b'pcnet'), (b'rtl8139', b'rtl8139'), (b'ne2k_pci', b'ne2k_pci')])),
+                ('features', ArrayField(models.CharField(max_length=10, null=True), size=8)),
             ],
             options={
                 'db_table': 'devops_interface',

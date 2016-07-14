@@ -14,6 +14,7 @@
 
 from copy import deepcopy
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
@@ -483,6 +484,10 @@ class Interface(ParamedModel):
     mac_address = models.CharField(max_length=255, unique=True, null=False)
     type = models.CharField(max_length=255, null=False)
     model = choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
+    features = ArrayField(
+        models.CharField(max_length=10, null=True),
+        size=8,
+    )
 
     @property
     def driver(self):
@@ -533,7 +538,8 @@ class Interface(ParamedModel):
 
     @classmethod
     def interface_create(cls, l2_network_device, node, label,
-                         if_type='network', mac_address=None, model='virtio'):
+                         if_type='network', mac_address=None, model='virtio',
+                         features=None):
         """Create interface
 
         :rtype : Interface
@@ -544,7 +550,8 @@ class Interface(ParamedModel):
             label=label,
             type=if_type,
             mac_address=mac_address or generate_mac(),
-            model=model)
+            model=model,
+            features=features or [])
         if (interface.l2_network_device and
                 interface.l2_network_device.address_pool is not None):
             interface.add_address()
