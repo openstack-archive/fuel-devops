@@ -34,6 +34,7 @@ from devops.error import DevopsError
 from devops.error import TimeoutError
 from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
+from devops.helpers.subprocess_runner import Subprocess
 from devops import logger
 from devops.settings import KEYSTONE_CREDS
 from devops.settings import SSH_CREDENTIALS
@@ -53,9 +54,10 @@ def icmp_ping(host, timeout=1):
     returns True if host is pingable
     False - otherwise.
     """
-    return os.system(
-        "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
-            'host': host, 'timeout': timeout}) == 0
+    result = Subprocess.execute(
+        "ping -c 1 -W '{timeout:d}' '{host:s}'".format(
+            host=host, timeout=timeout))
+    return result.exit_code == 0
 
 
 def tcp_ping_(host, port, timeout=None):
