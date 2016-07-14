@@ -1,4 +1,4 @@
-#    Copyright 2013 - 2016 Mirantis, Inc.
+#    Copyright 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -323,7 +323,8 @@ class ExecResult(object):
 
     def __str__(self):
         return (
-            '{cls}(cmd={cmd}, stdout={stdout_brief}, stderr={stderr_brief}, '
+            "{cls}(cmd={cmd}, "
+            "stdout='{stdout_brief}', stderr='{stderr_brief}', "
             'exit_code={exit_code})'.format(
                 cls=self.__class__.__name__,
                 cmd=self.cmd,
