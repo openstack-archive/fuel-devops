@@ -28,6 +28,7 @@ from six.moves import xrange
 
 from devops import error
 from devops.helpers import helpers
+from devops.helpers.exec_result import ExecResult
 from devops.helpers.ssh_client import SSHAuth
 
 
@@ -50,15 +51,23 @@ class TestHelpersHelpers(unittest.TestCase):
                 mock.call('localhost', port)
                 for port in xrange(32000, 32100)])
 
-    @mock.patch('os.system', autospec=True)
+    @mock.patch(
+        'devops.helpers.subprocess_runner.Subprocess.execute',
+        return_value=ExecResult(
+            cmd="ping -c 1 -W '{timeout:d}' '{host:s}'".format(
+                host='127.0.0.1', timeout=1,
+            ),
+            exit_code=0,
+        )
+    )
     def test_icmp_ping(self, caller):
-        caller.return_value = 0
         host = '127.0.0.1'
         timeout = 1
         result = helpers.icmp_ping(host=host)
         caller.assert_called_once_with(
-            "ping -c 1 -W '%(timeout)d' '%(host)s' 1>/dev/null 2>&1" % {
-                'host': host, 'timeout': timeout})
+            "ping -c 1 -W '{timeout:d}' '{host:s}'".format(
+                host=host, timeout=timeout
+            ))
         self.assertTrue(result, 'Unexpected result of validation')
 
     @mock.patch('socket.socket')
