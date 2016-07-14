@@ -48,6 +48,7 @@ template:
              - label: iface2
                l2_network_device: switch01    # switch name. It is *NOT* a Nailgun network
                mac_address: xx:xx:xx:xx:xx:xx
+               features: ['sriov']  # optional parameter, list of supported features
             network_config:
               iface2:
                 networks:

@@ -313,15 +313,18 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             l2_network_device_name = interface.get('l2_network_device')
             interface_model = interface.get('interface_model', 'virtio')
             mac_address = interface.get('mac_address')
+            features = interface.get('features', None)
             self.add_interface(
                 label=label,
                 l2_network_device_name=l2_network_device_name,
                 mac_address=mac_address,
-                interface_model=interface_model)
+                interface_model=interface_model,
+                features=features)
 
     # NEW
     def add_interface(self, label, l2_network_device_name,
-                      interface_model, mac_address=None):
+                      interface_model, mac_address=None,
+                      features=None):
         if l2_network_device_name:
             env = self.group.environment
             l2_network_device = env.get_env_l2_network_device(
@@ -336,6 +339,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             l2_network_device=l2_network_device,
             mac_address=mac_address,
             model=interface_model,
+           features=features,
         )
 
     # NEW
