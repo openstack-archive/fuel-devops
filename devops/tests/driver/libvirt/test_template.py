@@ -196,6 +196,7 @@ template:
              - label: eth4
                l2_network_device: private
                interface_model: *interface_model
+               features: ['sriov']
 
             # How Nailgun/OpenStack networks should assigned for interfaces
             network_config:
@@ -405,25 +406,30 @@ class TestLibvirtTemplate(LibvirtTestCase):
             assert slave_eth0.label == 'eth0'
             assert slave_eth0.model == 'e1000'
             assert slave_eth0.l2_network_device.name == 'admin'
+            assert slave_eth0.features == []
             slave_eth1 = slave_node.interface_set.get(label='eth1')
             assert slave_eth1
             assert slave_eth1.label == 'eth1'
             assert slave_eth1.model == 'e1000'
             assert slave_eth1.l2_network_device.name == 'public'
+            assert slave_eth1.features == []
             slave_eth2 = slave_node.interface_set.get(label='eth2')
             assert slave_eth2
             assert slave_eth2.label == 'eth2'
             assert slave_eth2.model == 'e1000'
             assert slave_eth2.l2_network_device.name == 'storage'
+            assert slave_eth2.features == []
             slave_eth3 = slave_node.interface_set.get(label='eth3')
             assert slave_eth3
             assert slave_eth3.label == 'eth3'
             assert slave_eth3.model == 'e1000'
             assert slave_eth3.l2_network_device.name == 'management'
+            assert slave_eth3.features == []
             slave_eth4 = slave_node.interface_set.get(label='eth4')
             assert slave_eth4
             assert slave_eth4.label == 'eth4'
             assert slave_eth4.model == 'e1000'
+            assert slave_eth4.features == ['sriov']
 
             # Network Configs
             assert slave_eth4.l2_network_device.name == 'private'
