@@ -32,7 +32,7 @@ class TestCloudImageSettings(unittest.TestCase):
 
     def setUp(self):
         self.subprocess_mock = self.patch(
-            'devops.helpers.cloud_image_settings.subprocess', autospec=True)
+            'devops.helpers.cloud_image_settings.Subprocess', autospec=True)
 
         self.os_mock = self.patch(
             'devops.helpers.cloud_image_settings.os', autospec=True)
@@ -96,4 +96,4 @@ class TestCloudImageSettings(unittest.TestCase):
         self.subprocess_mock.check_call.assert_called_once_with(
             'genisoimage -output /mydir/cloud_settings.iso '
             '-volid cidata -joliet -rock /mydir/user-data '
-            '/mydir/meta-data', shell=True)
+            '/mydir/meta-data')
