@@ -665,23 +665,17 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :raises: TimeoutError
         """
         channel.status_event.wait(timeout)
+        result = ExecResult(
+            cmd=command,
+            stdout=stdout.readlines(),
+            stderr=stderr.readlines()
+        )
         if channel.status_event.is_set():
-            result = ExecResult(
-                cmd=command,
-                exit_code=channel.exit_status
-            )
-            result.stdout = stdout.readlines()
-            result.stderr = stderr.readlines()
-
+            result.exit_code = channel.exit_status
             channel.close()
 
             return result
         else:
-            result = ExecResult(
-                cmd=command,
-                stdout=stdout.readlines(),
-                stderr=stderr.readlines()
-            )
 
             channel.close()
             status_tmpl = (
