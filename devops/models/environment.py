@@ -187,6 +187,8 @@ class Environment(BaseModel):
         for group in self.get_groups():
             group.define_networks()
         for group in self.get_groups():
+            group.define_volumes()
+        for group in self.get_groups():
             group.define_nodes()
 
     def start(self, nodes=None):
@@ -344,6 +346,11 @@ class Environment(BaseModel):
         # Connect nodes to already created networks
         for group_data in groups:
             group = environment.get_group(name=group_data['name'])
+
+            # add group volumes
+            group.add_volumes(
+                group_data.get('group_volumes', []))
+
             # add nodes
             group.add_nodes(
                 group_data.get('nodes', []))

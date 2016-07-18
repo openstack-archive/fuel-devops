@@ -373,6 +373,12 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     # NEW
     def add_volume(self, name, device='disk', bus='virtio', **params):
         cls = self.driver.get_model_class('Volume')
+
+        if 'backing_store' in params:
+            # Backing storage volume have to be defined in group
+            params['backing_store'] = self.group.get_volume(
+                name=params['backing_store'])
+
         volume = cls.objects.create(
             node=self,
             name=name,
