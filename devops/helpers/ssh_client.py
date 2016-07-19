@@ -117,7 +117,14 @@ class SSHAuth(object):
         keys = [self.__key]
         keys.extend([k for k in self.__keys if k != self.__key])
 
+        logger.debug(
+            'Keys collected for authentication:\n'
+            '{!s}'.format([self.__get_public_key(key) for key in keys])
+        )
         for key in keys:
+            logger.debug(
+                'Try authenticate by pkey.\n'
+                'Public key: {}'.format(self.__get_public_key(key)))
             kwargs['pkey'] = key
             try:
                 client.connect(**kwargs)
