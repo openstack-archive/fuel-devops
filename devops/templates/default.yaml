@@ -17,7 +17,7 @@ template:
       fuelweb_admin-pool01:
         net: *pool_default
         params:
-          tag: 0
+          vlan_start: 0
 
           # Reserved IP addresses.
           # - 'l2_network_device' will be used as an IP address for creating
@@ -53,7 +53,7 @@ template:
       public-pool01:
         net: *pool_default
         params:
-          tag: 0
+          vlan_start: 0
           ip_reserved:
             gateway: +1
             l2_network_device: +1  # l2_network_device will get this IP address
@@ -64,17 +64,18 @@ template:
       storage-pool01:
         net: *pool_default
         params:
-          tag: 101
+          vlan_start: 101
 
       management-pool01:
         net: *pool_default
         params:
-          tag: 102
+          vlan_start: 102
 
       private-pool01:
         net: *pool_default
         params:
-          tag: 103
+          vlan_start: 960
+          vlan_end: 1000
 
     groups:
      - name: rack-01

@@ -15,7 +15,7 @@ template:
       fuelweb_admin-pool01:         ###### <<< pool name for fuelweb_admin OpenStack network
         net: *pool_default
         params:
-          tag: 0
+          vlan_start: 0
 
     groups:
      - name: baremetal-rack-01

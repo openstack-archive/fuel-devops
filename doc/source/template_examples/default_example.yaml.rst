@@ -94,6 +94,9 @@ by most of fuel-qa system tests:
              private:
                address_pool: private-pool01
                dhcp: false
+               params:
+                 vlan_start: 960
+                 vlan_end: 1000
 
            nodes:
             - name: admin        # Custom name of VM for Fuel admin node
