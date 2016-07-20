@@ -35,7 +35,7 @@ setup(
     install_requires=[
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
-        'paramiko>=1.16.0',
+        'paramiko>=1.16.0, !=2.0.1',
         'Django>=1.8,<1.9',
         'jsonfield',
         'PyYAML>=3.1.0',
