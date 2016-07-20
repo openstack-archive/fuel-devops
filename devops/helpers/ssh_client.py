@@ -231,9 +231,10 @@ class _MemorizedSSH(type):
                     username=username, password=password, keys=private_keys)
             if hash((cls, host, port, auth)) == hash(cls.__cache[key]):
                 ssh = cls.__cache[key]
+                # noinspection PyBroadException
                 try:
                     ssh.execute('cd ~', timeout=5)
-                except (paramiko.SSHException, AttributeError, TimeoutError):
+                except BaseException:  # Note: Do not change to lower level!
                     logger.debug('Reconnect {}'.format(ssh))
                     ssh.reconnect()
                 return ssh
