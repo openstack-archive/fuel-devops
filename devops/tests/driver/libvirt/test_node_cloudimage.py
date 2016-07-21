@@ -76,8 +76,8 @@ class TestCloudImage(LibvirtTestCase):
             cloud_init_volume_name='iso',
             cloud_init_iface_up='enp0s3')
 
-        self.system_volume = self.node.add_volume(name='system')
-        self.iso_volume = self.node.add_volume(name='iso')
+        self.system_volume = self.node.add_volume(name='system', capacity=10)
+        self.iso_volume = self.node.add_volume(name='iso', capacity=5)
 
         self.adm_iface = self.node.add_interface(
             label='enp0s3',
