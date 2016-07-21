@@ -60,3 +60,8 @@ LOGGER_SETTINGS = {
 
 logging.config.dictConfig(LOGGER_SETTINGS)
 logger = logging.getLogger(__name__)
+
+# Mute debug from packages
+logging.getLogger('paramiko.transport').setLevel(logging.WARNING)
+logging.getLogger('paramiko.hostkeys').setLevel(logging.WARNING)
+logging.getLogger('keystoneauth.session').setLevel(logging.WARNING)
