@@ -158,7 +158,7 @@ class ParamField(ParamFieldBase):
     * to set default value.
     * to limit values using a list of allowed values.
 
-    Examples of ussage::
+    Examples of usage::
 
         class A(ParamedModel):
             foo = ParamField(default=10)
@@ -229,9 +229,9 @@ class ParamMultiField(ParamFieldBase):
 
         self.subfields = []
         for name, field in subfields.items():
-            if not isinstance(field, (ParamField, ParamMultiField)):
+            if not isinstance(field, ParamFieldBase):
                 raise DevopsError('field "{}" has wrong type;'
-                                  ' should be ParamField or ParamMultiField'
+                                  ' should be ParamFieldBase subclass instance'
                                   ''.format(name))
             field.set_param_key(name)
             self.subfields.append(field)
@@ -321,6 +321,10 @@ class ParamedModelQuerySet(query.QuerySet):
             for key, value in kwargs_for_params.items():
                 # NOTE(astudenov): no support for 'gt', 'lt', 'in'
                 # and other django's filter stuff
+
+                if not isinstance(item, self.model):
+                    # skip other classes
+                    continue
 
                 item_val = deepgetattr(item, key, splitter='__',
                                        do_raise=True)
