@@ -780,8 +780,18 @@ class LibvirtVolume(Volume):
 
         if capacity > size:
             # Resize the uploaded image to specified capacity
-            self._libvirt_volume.resize(capacity)
-            self.save()
+            try:
+                self._libvirt_volume.resize(capacity)
+                self.save()
+            except libvirt.libvirtError:
+                err = libvirt.virGetLastError()
+                if (err[0] == libvirt.VIR_ERR_INVALID_ARG and
+                        err[1] == libvirt.VIR_FROM_STORAGE):
+                    logger.error(
+                        "Cannot resize volume {0}: {1}"
+                        .format(self._libvirt_volume.path(), err[2]))
+                else:
+                    raise
 
     def get_allocation(self):
         """Get allocated volume size
