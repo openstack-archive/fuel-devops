@@ -522,7 +522,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
         # Insert a specified interface into the network's bridge
         parent_name = ''
-        if self.parent_iface.phys_dev is not None:
+        if (self.parent_iface.phys_dev is not None and
+                self.forward.mode != 'bridge'):
             # TODO(ddmitriev): check that phys_dev is not the device
             # that is used for default route
             parent_name = self.parent_iface.phys_dev
