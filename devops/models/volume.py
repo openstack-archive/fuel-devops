@@ -21,18 +21,17 @@ from devops.models.base import ParamField
 
 class Volume(ParamedModel, BaseModel):
     class Meta(object):
-        unique_together = (('name', 'node'), ('name', 'group'))
+        unique_together = ('name', 'node')
         db_table = 'devops_volume'
         app_label = 'devops'
 
     backing_store = models.ForeignKey('self', null=True)
     name = models.CharField(max_length=255, unique=False, null=False)
     node = models.ForeignKey('Node', null=True)
-    group = models.ForeignKey('Group', null=True)
 
     @property
     def driver(self):
-        return self.node.driver if self.node else self.group.driver
+        return self.node.driver
 
     def define(self, *args, **kwargs):
         self.save()
