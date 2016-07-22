@@ -75,7 +75,8 @@ class Shell(object):
                     '%Y-%m-%d_%H:%M:%S')
             columns.append(column)
 
-        self.print_table(headers="keys", columns=columns)
+        if columns:
+            self.print_table(headers="keys", columns=columns)
 
     def node_dict(self, node):
         return {'name': node.name,
