@@ -187,7 +187,7 @@ class Group(BaseModel):
                           role=node_cfg['role'],
                           **node_cfg['params'])
 
-    def add_node(self, name, role='fuel_slave', **params):
+    def add_node(self, name, role=None, **params):
         new_params = deepcopy(params)
         interfaces = new_params.pop('interfaces', [])
         network_configs = new_params.pop('network_config', {})

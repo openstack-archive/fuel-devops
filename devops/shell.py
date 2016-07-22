@@ -19,68 +19,57 @@ import collections
 import os
 import sys
 
-# pylint: disable=redefined-builtin
-from six.moves import xrange
-# pylint: enable=redefined-builtin
 import tabulate
 
 import devops
-
-from devops.error import DevopsObjNotFound
+from devops.client import DevopsClient
+from devops.error import DevopsError
 from devops.helpers.helpers import utc_to_local
-from devops.helpers.ntp import sync_time
-from devops.helpers.templates import create_devops_config
-from devops.helpers.templates import create_slave_config
-from devops.helpers.templates import get_devops_config
-from devops.models import Environment
-from devops import settings
+from devops import logger
 
 
 class Shell(object):
     def __init__(self, args):
         self.args = args
         self.params = self.get_params()
-        if getattr(self.params, 'snapshot-name', None):
-            self.snapshot_name = getattr(self.params, 'snapshot-name')
-        if (getattr(self.params, 'name', None) and
-                getattr(self.params, 'command', None) != 'create'):
-            try:
-                self.env = Environment.get(name=self.params.name)
-            except DevopsObjNotFound:
-                self.env = None
-                sys.exit("Enviroment with name {} doesn't exist."
-                         "".format(self.params.name))
+        self.client = DevopsClient()
+        self.env = None
+
+        name = getattr(self.params, 'name', None)
+        command = getattr(self.params, 'command', None)
+
+        if name and command != 'create':
+            self.env = self.client.get_env(name)
 
     def execute(self):
-        self.commands.get(self.params.command)(self)
+        command_name = 'do_{}'.format(self.params.command.replace('-', '_'))
+        command_method = getattr(self, command_name)
+        command_method()
 
     def print_table(self, headers, columns):
+        if not columns:
+            return
         print(tabulate.tabulate(columns, headers=headers,
                                 tablefmt="simple"))
 
     def do_list(self):
-        env_list = Environment.list_all().values('name', 'created')
+        env_names = self.client.list_env_names()
         columns = []
-        for env in env_list:
-            column = collections.OrderedDict({'NAME': env['name']})
+        for env_name in sorted(env_names):
+            env = self.client.get_env(env_name)
+            column = collections.OrderedDict()
+            column['NAME'] = env.name
             if self.params.list_ips:
-                cur_env = Environment.get(name=env['name'])
-                admin_ip = ''
-                if 'admin' in [node.name for node in cur_env.get_nodes()]:
-                    admin_ip = (cur_env.get_node(name='admin').
-                                get_ip_address_by_network_name('admin'))
-                column['ADMIN IP'] = admin_ip
+                if env.has_admin():
+                    column['ADMIN IP'] = env.get_admin_ip()
+                else:
+                    column['ADMIN IP'] = ''
             if self.params.timestamps:
-                column['CREATED'] = utc_to_local(env['created']).strftime(
+                column['CREATED'] = utc_to_local(env.created).strftime(
                     '%Y-%m-%d_%H:%M:%S')
             columns.append(column)
 
-        if columns:
-            self.print_table(headers="keys", columns=columns)
-
-    def node_dict(self, node):
-        return {'name': node.name,
-                'vnc': node.get_vnc_port()}
+        self.print_table(headers='keys', columns=columns)
 
     def do_show(self):
         nodes = sorted(self.env.get_nodes(), key=lambda node: node.name)
@@ -105,17 +94,13 @@ class Shell(object):
         self.env.resume()
 
     def do_revert(self):
-        self.env.revert(self.snapshot_name, flag=False)
+        self.env.revert(self.params.snapshot_name, flag=False)
 
     def do_snapshot(self):
-        if self.env.has_snapshot(self.snapshot_name):
-            sys.exit("Snapshot with name {0} already exists."
-                     .format(self.snapshot_name))
-        else:
-            self.env.snapshot(self.snapshot_name)
+        self.env.snapshot(self.params.snapshot_name)
 
-    def do_synchronize(self):
-        Environment.synchronize_all()
+    def do_sync(self):
+        self.client.synchronize_all()
 
     def do_snapshot_list(self):
         snapshots = collections.OrderedDict()
@@ -146,184 +131,105 @@ class Shell(object):
     def do_snapshot_delete(self):
         for node in self.env.get_nodes():
             snaps = [x.name for x in node.get_snapshots()]
-            if self.snapshot_name in snaps:
-                node.erase_snapshot(name=self.snapshot_name)
+            if self.params.snapshot_name in snaps:
+                node.erase_snapshot(name=self.params.snapshot_name)
 
     def do_net_list(self):
         headers = ("NETWORK NAME", "IP NET")
         columns = [(net.name, net.ip_network)
-                   for net in self.env.get_networks()]
+                   for net in self.env.get_address_pools()]
         self.print_table(headers=headers, columns=columns)
 
-    def do_timesync(self):
-        if not self.params.node_name:
-            nodes = [node.name for node in self.env.get_nodes()
-                     if node.driver.node_active(node)]
-        else:
-            nodes = [self.params.node_name]
-        cur_time = sync_time(self.env, nodes, skip_sync=True)
+    def do_time_sync(self):
+        node_name = self.params.node_name
+        node_names = [node_name] if node_name else None
+        cur_time = self.env.get_curr_time(node_names)
         for name in sorted(cur_time):
-            print("Current time on '{0}' = {1}".format(name, cur_time[name]))
+            print('Current time on {0!r} = {1}'.format(name, cur_time[name]))
 
-        print("Please wait for a few minutes while time is synchronized...")
+        print('Please wait for a few minutes while time is synchronized...')
 
-        new_time = sync_time(self.env, nodes, skip_sync=False)
+        new_time = self.env.sync_time(node_names)
         for name in sorted(new_time):
             print("New time on '{0}' = {1}".format(name, new_time[name]))
 
     def do_revert_resume(self):
-        self.env.revert(self.snapshot_name, flag=False)
+        self.env.revert(self.params.snapshot_name, flag=False)
         self.env.resume()
         if not self.params.no_timesync:
             print('Time synchronization is starting')
-            self.do_timesync()
+            self.do_time_sync()
 
     def do_version(self):
         print(devops.__version__)
 
     def do_create(self):
-        config = create_devops_config(
-            boot_from='cdrom',
+        self.client.create_env(
             env_name=self.params.name,
+            admin_iso_path=self.params.iso_path,
             admin_vcpu=self.params.admin_vcpu_count,
             admin_memory=self.params.admin_ram_size,
             admin_sysvolume_capacity=self.params.admin_disk_size,
-            admin_iso_path=self.params.iso_path,
             nodes_count=self.params.node_count,
-            numa_nodes=settings.HARDWARE['numa_nodes'],
             slave_vcpu=self.params.vcpu_count,
             slave_memory=self.params.ram_size,
-            slave_volume_capacity=settings.NODE_VOLUME_SIZE,
             second_volume_capacity=self.params.second_disk_size,
             third_volume_capacity=self.params.third_disk_size,
-            use_all_disks=settings.USE_ALL_DISKS,
-            multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
-            ironic_nodes_count=settings.IRONIC_NODES_COUNT,
-            networks_bonding=settings.BONDING,
-            networks_bondinginterfaces=settings.BONDING_INTERFACES,
-            networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
-            networks_nodegroups=settings.NODEGROUPS,
-            networks_interfaceorder=settings.INTERFACE_ORDER,
-            networks_pools=dict(admin=self.params.net_pool.split(':'),
-                                public=self.params.net_pool.split(':'),
-                                management=self.params.net_pool.split(':'),
-                                private=self.params.net_pool.split(':'),
-                                storage=self.params.net_pool.split(':')),
-            networks_forwarding=settings.FORWARDING,
-            networks_dhcp=settings.DHCP,
-            driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
-            driver_enable_nwfilers=settings.ENABLE_LIBVIRT_NWFILTERS,
+            net_pool=self.params.net_pool,
         )
-        self._create_env_from_config(config)
 
     def do_create_env(self):
-        config = get_devops_config(self.params.env_config_name)
-        self._create_env_from_config(config)
+        self.client.create_env_from_config(self.params.env_config_name)
 
-    def _create_env_from_config(self, config):
-        env_name = config['template']['devops_settings']['env_name']
-        for env in Environment.list_all():
-            if env.name == env_name:
-                print("Please, set another environment name")
-                raise SystemExit()
-
-        self.env = Environment.create_environment(config)
-        self.env.define()
-
-        # Start all l2 network devices
-        for group in self.env.get_groups():
-            for net in group.get_l2_network_devices():
-                net.start()
-
-    def do_slave_add(self, force_define=True):
-        try:
-            group = self.env.get_group(name=self.params.group_name)
-        except DevopsObjNotFound:
-            print('Group {!r} not found'.format(self.params.group_name))
-            raise SystemExit()
-
-        node_count = self.params.node_count
-        created_node_names = [n.name for n in group.get_nodes()]
-
-        def get_available_slave_name():
-            for i in xrange(1, 1000):
-                name = "slave-{:02d}".format(i)
-                if name in created_node_names:
-                    continue
-
-                created_node_names.append(name)
-                return name
-
-        for node_num in range(node_count):
-            node_name = get_available_slave_name()
-            slave_conf = create_slave_config(
-                slave_name=node_name,
-                slave_role='fuel_slave',
-                slave_vcpu=self.params.vcpu_count,
-                slave_memory=self.params.ram_size,
-                slave_volume_capacity=settings.NODE_VOLUME_SIZE,
-                second_volume_capacity=self.params.second_disk_size,
-                third_volume_capacity=self.params.third_disk_size,
-                interfaceorder=settings.INTERFACE_ORDER,
-                numa_nodes=settings.HARDWARE['numa_nodes'],
-                use_all_disks=True,
-                networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
-                networks_nodegroups=settings.NODEGROUPS,
-                networks_bonding=settings.BONDING,
-                networks_bondinginterfaces=settings.BONDING_INTERFACES,
-            )
-
-            node = group.add_node(**slave_conf)
-            if force_define is True:
-                for volume in node.get_volumes():
-                    volume.define()
-                node.define()
-
-            print('Node {!r} created'.format(node.name))
+    def do_slave_add(self):
+        self.env.add_slaves(
+            nodes_count=self.params.node_count,
+            slave_vcpu=self.params.vcpu_count,
+            slave_memory=self.params.ram_size,
+            second_volume_capacity=self.params.second_disk_size,
+            third_volume_capacity=self.params.third_disk_size,
+        )
 
     def do_slave_remove(self):
-        volumes = []
-        for drive in self.env.get_node(
-                name=self.params.node_name).disk_devices:
-            volumes.append(drive.volume)
-        self.env.get_node(name=self.params.node_name).remove()
-        for volume in volumes:
-            volume.erase()
+        # TODO(astudenov): add positional argument instead of option
+        node = self.env.get_node(name=self.params.node_name)
+        node.remove()
 
     def do_slave_change(self):
         node = self.env.get_node(name=self.params.node_name)
+        # TODO(astudenov): check if node is under libvirt controll
         node.set_vcpu(vcpu=self.params.vcpu_count)
         node.set_memory(memory=self.params.ram_size)
 
     def do_admin_change(self):
         node = self.env.get_node(name="admin")
+        # TODO(astudenov): check if node is under libvirt controll
         node.set_vcpu(vcpu=self.params.admin_vcpu_count)
         node.set_memory(memory=self.params.admin_ram_size)
 
     def do_admin_setup(self):
-        admin_node = self.env.get_node(name='admin')
-        if admin_node.kernel_cmd is None:
-            admin_node.kernel_cmd = admin_node.ext.get_kernel_cmd(
-                boot_from=self.params.boot_from,
-                wait_for_external_config='no',
-                iface=self.params.iface)
-        admin_node.ext.bootstrap_and_wait()
-        admin_node.ext.deploy_wait()
-
-        print("Setup complete.\n ssh {0}@{1}".format(
-            settings.SSH_CREDENTIALS['login'],
-            admin_node.get_ip_address_by_network_name(
-                settings.SSH_CREDENTIALS['admin_network'])))
+        self.env.admin_setup(
+            boot_from=self.params.boot_from,
+            iface=self.params.iface)
+        print('Setup complete.\n ssh {0}@{1}'.format(
+            self.env.get_admin_login(),
+            self.env.get_admin_ip()))
 
     def do_node_start(self):
+        # TODO(astudenov): add positional argument instead of
+        # checking that option is present
         self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).start()
 
     def do_node_destroy(self):
+        # TODO(astudenov): add positional argument instead of
+        # checking that option is present
         self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).destroy()
 
     def do_node_reset(self):
+        # TODO(astudenov): add positional argument instead of
+        # checking that option is present
         self.check_param_show_help(self.params.node_name)
         self.env.get_node(name=self.params.node_name).reset()
 
@@ -331,35 +237,6 @@ class Shell(object):
         if not parameter:
             self.args.append('-h')
             self.get_params()
-
-    commands = {
-        'list': do_list,
-        'show': do_show,
-        'erase': do_erase,
-        'start': do_start,
-        'destroy': do_destroy,
-        'suspend': do_suspend,
-        'resume': do_resume,
-        'revert': do_revert,
-        'snapshot': do_snapshot,
-        'sync': do_synchronize,
-        'snapshot-list': do_snapshot_list,
-        'snapshot-delete': do_snapshot_delete,
-        'net-list': do_net_list,
-        'time-sync': do_timesync,
-        'revert-resume': do_revert_resume,
-        'version': do_version,
-        'create': do_create,
-        'create-env': do_create_env,
-        'slave-add': do_slave_add,
-        'slave-change': do_slave_change,
-        'slave-remove': do_slave_remove,
-        'admin-setup': do_admin_setup,
-        'admin-change': do_admin_change,
-        'node-start': do_node_start,
-        'node-destroy': do_node_destroy,
-        'node-reset': do_node_reset
-    }
 
     def get_params(self):
         name_parser = argparse.ArgumentParser(add_help=False)
@@ -378,7 +255,7 @@ class Shell(object):
                                                 'DEVOPS_SETTINGS_TEMPLATE'))
 
         snapshot_name_parser = argparse.ArgumentParser(add_help=False)
-        snapshot_name_parser.add_argument('snapshot-name',
+        snapshot_name_parser.add_argument('snapshot_name',
                                           help='snapshot name',
                                           default=os.environ.get(
                                               'SNAPSHOT_NAME'))
@@ -627,4 +504,10 @@ class Shell(object):
 def main(args=None):
     if args is None:
         args = sys.argv[1:]
-    Shell(args).execute()
+
+    try:
+        shell = Shell(args)
+        shell.execute()
+    except DevopsError as error:
+        logger.debug(error, exc_info=True)
+        sys.exit('Error: {}'.format(error))
