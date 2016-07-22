@@ -18,7 +18,7 @@ from setuptools import setup
 
 setup(
     name='fuel-devops',
-    version='3.0.0',
+    version='3.0.1',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
