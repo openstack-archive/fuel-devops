@@ -8,6 +8,9 @@ environment (suppose you are using *Ubuntu 12.04* or *Ubuntu 14.04*).
 
 .. _DevOpsSystemDependencies:
 
+Install required system packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Before using it, please install the following required dependencies:
 
 .. code-block:: bash
@@ -29,6 +32,24 @@ Before using it, please install the following required dependencies:
     genisoimage
 
     sudo apt-get update && sudo apt-get upgrade -y
+
+Install database packages
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fuel-devops requires a SQLite3 or PostgreSQL database, please install any of them.
+
+For use fuel-devops with SQLite3 database:
+
+.. code-block:: bash
+
+    sudo apt-get install --yes libsqlite3-0
+
+For use fuel-devops with PostgreSQL database:
+
+.. code-block:: bash
+
+    sudo apt-get install --yes postgresql libpq-dev
+
 
 .. _DevOpsPyPIvenv:
 
@@ -84,7 +105,10 @@ Please use the latest tag from 2.9.x tags for Fuel 6.1 or later.
 .. code-block:: bash
 
     . fuel-devops-venv/bin/activate
-    pip install git+https://github.com/openstack/fuel-devops.git@2.9.20 --upgrade
+    pip install git+https://github.com/openstack/fuel-devops.git@2.9.21 --upgrade   # For fuel-devops 2.9.x
+    # pip install git+https://github.com/openstack/fuel-devops.git@3.0.1 --upgrade   # For fuel-devops 3.0.x with SQLite3 database
+    # pip install git+https://github.com/openstack/fuel-devops.git@3.0.1#egg=project[postgre] --upgrade   # For fuel-devops 3.0.x with PostgreSQL database
+
 
 setup.py in fuel-devops repository does everything required.
 
@@ -136,11 +160,6 @@ You can configure PostgreSQL database or as an alternative SQLite.
 Configuring PostgreSQL
 ++++++++++++++++++++++
 
-Install postgresql package:
-
-.. code-block:: bash
-
-    sudo apt-get install --yes postgresql libpq-dev
 
 Set local peers to be trusted by default, create user and db and load fixtures.
 
@@ -161,12 +180,6 @@ Set local peers to be trusted by default, create user and db and load fixtures.
 
 Configuring SQLite3 database
 ++++++++++++++++++++++++++++
-
-Install SQLite3 library:
-
-.. code-block:: bash
-
-    sudo apt-get install --yes libsqlite3-0
 
 Export the path to the SQLite3 database as the database name:
 
