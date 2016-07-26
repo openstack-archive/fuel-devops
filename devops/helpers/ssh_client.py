@@ -195,9 +195,17 @@ class _MemorizedSSH(type):
 
     Main flow is:
       SSHClient() -> check for cached connection and
-        if exists the same: check for alive, reconnect if required and return
-        if exists with different credentials: delete and continue processing
-        create new connection and cache on success
+        - If exists the same: check for alive, reconnect if required and return
+        - If exists with different credentials: delete and continue processing
+          create new connection and cache on success
+      * Note: each invocation of SSHClient instance will return current dir to
+        the root of the current user home dir ("cd ~").
+        It is necessary to avoid unpredictable behavior when the same
+        connection is used from different places.
+        If you need to enter some directory and execute command there, please
+        use the following approach:
+        cmd1 = "cd <some dir> && <command1>"
+        cmd2 = "cd <some dir> && <command2>"
 
     Close cached connections is allowed per-client and all stored:
       connection will be closed, but still stored in cache for faster reconnect
