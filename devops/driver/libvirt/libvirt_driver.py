@@ -305,6 +305,35 @@ class LibvirtDriver(Driver):
 class LibvirtL2NetworkDevice(L2NetworkDevice):
     """L2 network device based on libvirt Network
 
+       forward:
+         mode: nat   #  One of : None, 'nat', 'route', 'bridge', 'private',
+                     #           'vepa', 'passthrough', 'hostdev'
+       dhcp: false   #  Enable DHCP for this network device.
+                     #  To use 'dhcp', make sure that the address_pool used
+                     #  for this network device has an 'ip_range' with name
+                     #  'dhcp'.
+       stp: true    #  Enable stp for this network device. If not specified,
+                     #  than will be used 'stp' setting from the driver object.
+
+       has_pxe_server: false  #  Enable PXE server for this device
+       tftp_root_dir: /tmp    #  Specity root directory for TFTP server
+
+       vlan_ifaces: []  #  List of integer values that will be used to create
+                        #  tagged interfaces to the network device.
+       parent_iface:    #  Interface that will be added to the current libvirt
+                        #  network device (to the linux bridge)
+         phys_dev: eth1  # Physical interface name.
+                         # If forward.mode == 'bridge', then 'phys_dev' should
+                         # contain an already existing bridge name that will be
+                         # used for libvirt network.
+         #  or
+         l2_net_dev: public  # Name of the fuel-devops network device
+         tag: 200            # and the tag that was created with 'vlan_ifaces'
+                             # for some other l2_network_device ('public' here,
+                             # that use linux bridge virbrNN),
+                             # to include virbrNN@200 to the current network
+                             # device (linux bridge).
+
        Template example
        ----------------
        # Nodes should have at least two interfaces connected to the following
@@ -322,6 +351,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
          admin:
            address_pool: fuelweb_admin-pool01
            dhcp: false
+           stp: true
            forward:
              mode: nat
            parent_iface:
@@ -335,6 +365,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
          # IT IS *NOT* FOR ADDING ADDRESS POOLS!
          # ONLY FOR CONNECTING VM's INTERFACES!
          openstack_br:
+           stp: false
            vlan_ifaces:
             - 100
             - 101
@@ -407,6 +438,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         )
     )
     dhcp = ParamField(default=False)
+    stp = ParamField()
 
     has_pxe_server = ParamField(default=False)
     tftp_root_dir = ParamField()
@@ -502,7 +534,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             ip_network_prefixlen=ip_network_prefixlen,
             dhcp_range_start=dhcp_range_start,
             dhcp_range_end=dhcp_range_end,
-            stp=self.driver.stp,
+            stp=self.stp if (self.stp is not None) else self.driver.stp,
             has_pxe_server=self.has_pxe_server,
             dhcp=self.dhcp,
             tftp_root_dir=self.tftp_root_dir,
