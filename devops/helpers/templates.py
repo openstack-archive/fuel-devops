@@ -472,16 +472,17 @@ def create_devops_config(boot_from,
 
     # If bonding enabled, then a different interfaces order is provided.
     if networks_bonding:
-        interfaceorder = networks_bondinginterfaces.keys()
+        l2_interfaceorder = networks_bondinginterfaces.keys()
     else:
-        interfaceorder = networks_interfaceorder
+        l2_interfaceorder = networks_interfaceorder
 
     # Create address pools object
-    address_pools = create_address_pools(interfaceorder, networks_pools)
-    netpools = create_netpools(interfaceorder)
+    address_pools = create_address_pools(networks_interfaceorder,
+                                         networks_pools)
+    netpools = create_netpools(networks_interfaceorder)
 
     # Create network devices object
-    l2_network_devices = create_l2_network_devices(interfaceorder,
+    l2_network_devices = create_l2_network_devices(l2_interfaceorder,
                                                    networks_dhcp,
                                                    networks_forwarding)
     # Create admin and slave nodes
@@ -494,7 +495,7 @@ def create_devops_config(boot_from,
         admin_iso_path=admin_iso_path,
         boot_from=boot_from,
         numa_nodes=numa_nodes,
-        interfaceorder=interfaceorder,
+        interfaceorder=l2_interfaceorder,
         networks_bonding=networks_bonding,
         networks_bondinginterfaces=networks_bondinginterfaces)
 
@@ -511,7 +512,7 @@ def create_devops_config(boot_from,
             slave_volume_capacity=slave_volume_capacity,
             second_volume_capacity=second_volume_capacity,
             third_volume_capacity=third_volume_capacity,
-            interfaceorder=interfaceorder,
+            interfaceorder=l2_interfaceorder,
             numa_nodes=numa_nodes,
             use_all_disks=use_all_disks,
             multipath_count=multipath_count,
