@@ -21,6 +21,7 @@ from netaddr import IPNetwork
 from devops.error import DevopsError
 from devops.helpers.helpers import generate_mac
 from devops.helpers.network import IpNetworksPool
+from devops import logger
 from devops.models.base import choices
 from devops.models.base import DriverModel
 
@@ -165,7 +166,6 @@ class Network(DriverModel):
         return cls.default_pool
 
     @classmethod
-    @transaction.atomic
     def _safe_create_network(
             cls, name, environment=None, pool=None,
             has_dhcp_server=True, has_pxe_server=False,
@@ -173,24 +173,25 @@ class Network(DriverModel):
         allocated_pool = pool or cls._get_default_pool()
 
         for ip_network in allocated_pool:
+            if not reuse_network_pools:
+                # Skip the ip_network if it is
+                # in the database or in libvirt XMLs
+                if (cls.objects.filter(ip_network=str(ip_network)).exists() or
+                    ip_network in cls.get_driver().get_allocated_networks(
+                        all_networks=True)):
+                    continue
             try:
-                if not reuse_network_pools:
-                    # Skip the ip_network if it is
-                    # in the database or in libvirt XMLs
-                    if (cls.objects.filter(
-                            ip_network=str(ip_network)).exists() or
-                        ip_network in cls.get_driver().get_allocated_networks(
-                            all_networks=True)):
-                        continue
-                return cls.objects.create(
-                    environment=environment,
-                    name=name,
-                    ip_network=ip_network,
-                    has_pxe_server=has_pxe_server,
-                    has_dhcp_server=has_dhcp_server,
-                    forward=forward)
-            except IntegrityError:
-                transaction.rollback()
+                with transaction.atomic():
+                    return cls.objects.create(
+                        environment=environment,
+                        name=name,
+                        ip_network=ip_network,
+                        has_pxe_server=has_pxe_server,
+                        has_dhcp_server=has_dhcp_server,
+                        forward=forward)
+            except IntegrityError as e:
+                logger.debug(e)
+                continue
         raise DevopsError("There is no network pool available for creating "
                           "the network {}".format(name))
 
