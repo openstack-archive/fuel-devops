@@ -14,7 +14,7 @@
 
 from __future__ import unicode_literals
 
-from threading import RLock
+from threading import Event
 from unittest import TestCase
 
 import mock
@@ -73,29 +73,29 @@ class ThreadedTest(TestCase):
         self.assertIn(mock.call().start(), thread.mock_calls)
 
     def test_args(self):
-        lock = RLock()
+        event = Event()
         data = []
         global data
 
         @threaded(started=True)
-        def func_test(add, rlock):
-            with rlock:
-                data.append(add)
+        def func_test(add, evnt):
+            data.append(add)
+            evnt.set()
 
-        func_test(1, lock)
-        with lock:
-            self.assertEqual(data, [1])
+        func_test(1, event)
+        event.wait(3)
+        self.assertEqual(data, [1])
 
     def test_kwargs(self):
-        lock = RLock()
+        event = Event()
         data = []
         global data
 
         @threaded(started=True)
-        def func_test(add, rlock):
-            with rlock:
-                data.append(add)
+        def func_test(add, evnt):
+            data.append(add)
+            evnt.set
 
-        func_test(add=2, rlock=lock)
-        with lock:
-            self.assertEqual(data, [2])
+        func_test(add=2, evnt=event)
+        event.wait(3)
+        self.assertEqual(data, [2])
