@@ -16,7 +16,7 @@
 
 from django.test import TestCase
 
-from devops.error import DevopsError
+from devops.error import DevopsException
 from devops.models.base import ParamField
 from devops.models.base import ParamMultiField
 from devops.models import Driver
@@ -120,20 +120,20 @@ class TestParamedModel(TestCase):
     def test_unknown_field(self):
         with self.assertRaises(TypeError):
             MyModel(unknown=0)
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             MyModel(multi=dict(unknown='aaa'))
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             MyModel(multi='aaa')
 
     def test_not_in_choices(self):
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             MyModel(number=0)
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             t = MyModel()
             t.number = 0
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             MyModel(multi=dict(sub2='aaa'))
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(DevopsException):
             t = MyModel()
             t.multi.sub2 = 'aaa'
 
