@@ -20,6 +20,7 @@ import unittest
 
 import mock
 
+from devops import error
 from devops.helpers import ntp
 from devops.helpers import ssh_client
 
@@ -302,3 +303,145 @@ class TestNtpChronyd(NtpTestCase):
         ntp_chrony.wait_peer()
         self.remote_mock.check_call.assert_called_once_with(
             'chronyc -a waitsync 10 0.01')
+
+
+class GroupNtpSync(NtpTestCase):
+
+    def setUp(self):
+        super(GroupNtpSync, self).setUp()
+        self.exec_results = {}
+        bad_result = self.make_exec_result('', -1)
+        self.remote_mock.execute.side_effect = \
+            lambda cmd: self.exec_results.get(cmd, bad_result)
+
+    def test_get_ntp_error(self):
+        with self.assertRaises(error.DevopsError):
+            ntp.GroupNtpSync.get_ntp(self.remote_mock, 'node1')
+
+    def test_get_ntp_pcs(self):
+        pcs_cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        self.exec_results[pcs_cmd] = self.make_exec_result('')
+
+        pcs_ntp = ntp.GroupNtpSync.get_ntp(self.remote_mock, 'node1')
+        assert isinstance(pcs_ntp, ntp.NtpPacemaker)
+        assert pcs_ntp.remote is self.remote_mock
+        assert pcs_ntp.node_name == 'node1'
+
+    def test_get_ntp_systemd(self):
+        systemd_cmd = "systemctl list-unit-files| grep ntpd"
+        self.exec_results[systemd_cmd] = self.make_exec_result('')
+
+        systemd_ntp = ntp.GroupNtpSync.get_ntp(self.remote_mock, 'node1')
+        assert isinstance(systemd_ntp, ntp.NtpSystemd)
+        assert systemd_ntp.remote is self.remote_mock
+        assert systemd_ntp.node_name == 'node1'
+
+    def test_get_ntp_chronyd(self):
+        chronyd_cmd = "systemctl is-active chronyd"
+        self.exec_results[chronyd_cmd] = self.make_exec_result('')
+
+        chronyd_ntp = ntp.GroupNtpSync.get_ntp(self.remote_mock, 'node1')
+        assert isinstance(chronyd_ntp, ntp.NtpChronyd)
+        assert chronyd_ntp.remote is self.remote_mock
+        assert chronyd_ntp.node_name == 'node1'
+
+    def test_get_ntp_initd(self):
+        initd_cmd = "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"
+        self.exec_results[initd_cmd] = self.make_exec_result('/etc/init.d/ntp')
+
+        initd_ntp = ntp.GroupNtpSync.get_ntp(self.remote_mock, 'node1')
+        assert isinstance(initd_ntp, ntp.NtpInitscript)
+        assert initd_ntp.remote is self.remote_mock
+        assert initd_ntp.node_name == 'node1'
+
+    def test_get_curr_time(self):
+        pcs_cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        self.exec_results[pcs_cmd] = self.make_exec_result('')
+        self.exec_results['date'] = self.make_exec_result(
+            'Fri Jul 22 12:45:42 MSK 2016')
+
+        group = ntp.GroupNtpSync()
+        group.add_node(self.remote_mock, 'node1')
+        assert len(group.ntp_groups['pacemaker']) == 1
+        assert group.get_curr_time() == {
+            'node1': 'Fri Jul 22 12:45:42 MSK 2016'}
+
+    def test_add_node(self):
+        pcs_cmd = "ps -C pacemakerd && crm_resource --resource p_ntp --locate"
+        self.exec_results[pcs_cmd] = self.make_exec_result('')
+        self.exec_results['date'] = self.make_exec_result(
+            'Fri Jul 22 12:45:42 MSK 2016')
+
+        group = ntp.GroupNtpSync()
+        group.add_node(self.remote_mock, 'node1')
+        assert len(group.ntp_groups['admin']) == 0
+        assert len(group.ntp_groups['pacemaker']) == 1
+        assert len(group.ntp_groups['other']) == 0
+        group.add_node(self.remote_mock, 'admin')
+        assert len(group.ntp_groups['admin']) == 1
+        assert len(group.ntp_groups['pacemaker']) == 1
+        assert len(group.ntp_groups['other']) == 0
+
+        chronyd_cmd = "systemctl is-active chronyd"
+        del self.exec_results[pcs_cmd]
+        self.exec_results[chronyd_cmd] = self.make_exec_result('')
+
+        group.add_node(self.remote_mock, 'node2')
+        assert len(group.ntp_groups['admin']) == 1
+        assert len(group.ntp_groups['pacemaker']) == 1
+        assert len(group.ntp_groups['other']) == 1
+
+        assert group.get_curr_time() == {
+            'admin': 'Fri Jul 22 12:45:42 MSK 2016',
+            'node1': 'Fri Jul 22 12:45:42 MSK 2016',
+            'node2': 'Fri Jul 22 12:45:42 MSK 2016'}
+
+    @mock.patch('devops.helpers.ntp.GroupNtpSync.get_ntp')
+    def test_sync_time(self, get_ntp_mock):
+        spec = mock.create_autospec(spec=ntp.NtpPacemaker, instance=True)
+        admin_ntp_mock = mock.Mock(spec=spec)
+        node1_ntp_mock = mock.Mock(spec=spec)
+        node2_ntp_mock = mock.Mock(spec=spec)
+        get_ntp_mock.side_effect = (
+            admin_ntp_mock, node1_ntp_mock, node2_ntp_mock)
+
+        group = ntp.GroupNtpSync()
+        group.sync_time('admin')
+
+        group.add_node(self.remote_mock, 'admin')
+        group.add_node(self.remote_mock, 'node1')
+        group.add_node(self.remote_mock, 'node2')
+        assert group.ntp_groups == {
+            'admin': [admin_ntp_mock],
+            'pacemaker': [node1_ntp_mock, node2_ntp_mock]
+        }
+
+        group.sync_time('admin')
+        admin_ntp_mock.assert_has_calls((
+            mock.call.stop(),
+            mock.call.set_actual_time(),
+            mock.call.start(),
+            mock.call.wait_peer()
+        ), any_order=True)
+        node1_ntp_mock.stop.assert_not_called()
+        node1_ntp_mock.set_actual_time.assert_not_called()
+        node1_ntp_mock.start.assert_not_called()
+        node1_ntp_mock.wait_peer.assert_not_called()
+        node2_ntp_mock.stop.assert_not_called()
+        node2_ntp_mock.set_actual_time.assert_not_called()
+        node2_ntp_mock.start.assert_not_called()
+        node2_ntp_mock.wait_peer.assert_not_called()
+
+        group.sync_time('pacemaker')
+        node1_ntp_mock.assert_has_calls((
+            mock.call.stop(),
+            mock.call.set_actual_time(),
+            mock.call.start(),
+            mock.call.wait_peer()
+        ))
+        node2_ntp_mock.assert_has_calls([
+            mock.call.stop(),
+            mock.call.set_actual_time(),
+            mock.call.start(),
+            mock.call.wait_peer()
+        ])
