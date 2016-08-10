@@ -17,7 +17,10 @@ from warnings import warn
 
 
 class DevopsException(Exception):
-    """Base class for exceptions"""
+    """Base class for exceptions
+
+    Should be used in case of explicit code error
+    """
 
 
 class DevopsError(DevopsException):
