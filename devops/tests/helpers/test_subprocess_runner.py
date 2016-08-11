@@ -120,7 +120,7 @@ class TestSubprocessRunner(TestCase):
             call.debug("Executing command: '{}'".format(command.rstrip())),
             call.info(
                 '{cmd} execution results:\n'
-                'Exit code: {code}\n'
+                'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
                 'STDERR:\n'

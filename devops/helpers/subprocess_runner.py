@@ -27,6 +27,7 @@ from devops.error import TimeoutError
 from devops.helpers.decorators import threaded
 from devops.helpers.exec_result import ExecResult
 from devops.helpers.metaclasses import SingletonMeta
+from devops.helpers.proc_enums import ExitCodes
 from devops import logger
 
 
@@ -144,7 +145,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         if verbose:
             logger.info(
                 '{cmd} execution results:\n'
-                'Exit code: {code}\n'
+                'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
                 'STDERR:\n'
@@ -185,12 +186,12 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         """
 
         if expected is None:
-            expected = [0]
+            expected = [ExitCodes.EX_OK]
         ret = cls.execute(command, verbose, timeout)
         if ret['exit_code'] not in expected:
             message = (
-                "{append}Command '{cmd}' returned exit code {code} while "
-                "expected {expected}\n"
+                "{append}Command '{cmd}' returned exit code {code!s} while "
+                "expected {expected!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"
@@ -235,7 +236,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         if ret['stderr']:
             message = (
                 "{append}Command '{cmd}' STDERR while not expected\n"
-                "\texit code: {code}\n"
+                "\texit code: {code!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"

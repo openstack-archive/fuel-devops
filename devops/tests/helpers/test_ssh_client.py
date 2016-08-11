@@ -1120,7 +1120,7 @@ class TestExecute(TestCase):
         logger.assert_has_calls((
             mock.call.info(
                 '{cmd} execution results:\n'
-                'Exit code: {code}\n'
+                'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
                 'STDERR:\n'
@@ -1173,7 +1173,7 @@ class TestExecute(TestCase):
         logger.assert_has_calls((
             mock.call.info(
                 '{cmd} execution results:\n'
-                'Exit code: {code}\n'
+                'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
                 'STDERR:\n'

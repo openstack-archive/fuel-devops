@@ -21,6 +21,7 @@ from yaml import safe_load
 
 from devops.error import DevopsError
 from devops.error import DevopsNotImplementedError
+from devops.helpers.proc_enums import ExitCodes
 from devops import logger
 
 
@@ -42,19 +43,23 @@ class ExecResult(object):
         '__lock'
     ]
 
-    def __init__(self, cmd, stdout=None, stderr=None, exit_code=-1):
+    def __init__(self, cmd, stdout=None, stderr=None,
+                 exit_code=ExitCodes.EX_CONFIG):
         """Command execution result read from fifo
 
         :type cmd: str
         :type stdout: list
         :type stderr: list
-        :type exit_code: int
+        :type exit_code: ExitCodes
         """
         self.__lock = RLock()
 
         self.__cmd = cmd
         self.__stdout = stdout if stdout is not None else []
         self.__stderr = stderr if stderr is not None else []
+        if isinstance(exit_code, int) and\
+                exit_code in ExitCodes.__members__.values():
+            exit_code = ExitCodes(exit_code)
         self.__exit_code = exit_code
 
         # By default is none:
@@ -217,9 +222,12 @@ class ExecResult(object):
 
         :type new_val: int
         """
-        if not isinstance(new_val, int):
+        if not isinstance(new_val, (int, ExitCodes)):
             raise TypeError('Exit code is strictly int')
         with self.lock:
+            if isinstance(new_val, int) and \
+                    new_val in ExitCodes.__members__.values():
+                new_val = ExitCodes(new_val)
             self.__exit_code = new_val
 
     def __deserialize(self, fmt):
@@ -313,7 +321,7 @@ class ExecResult(object):
     def __repr__(self):
         return (
             '{cls}(cmd={cmd}, stdout={stdout}, stderr={stderr}, '
-            'exit_code={exit_code})'.format(
+            'exit_code={exit_code!s})'.format(
                 cls=self.__class__.__name__,
                 cmd=self.cmd,
                 stdout=self.stdout,
@@ -326,7 +334,7 @@ class ExecResult(object):
             "{cls}(\n\tcmd={cmd},"
             "\n\t stdout=\n'{stdout_brief}',"
             "\n\tstderr=\n'{stderr_brief}', "
-            '\n\texit_code={exit_code}\n)'.format(
+            '\n\texit_code={exit_code!s}\n)'.format(
                 cls=self.__class__.__name__,
                 cmd=self.cmd,
                 stdout_brief=self.stdout_brief,
