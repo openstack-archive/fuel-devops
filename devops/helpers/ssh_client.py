@@ -28,6 +28,7 @@ import six
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
 from devops.helpers.exec_result import ExecResult
+from devops.helpers.proc_enums import ExitCodes
 from devops.helpers.retry import retry
 from devops import logger
 
@@ -567,12 +568,21 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :raises: DevopsCalledProcessError
         """
         if expected is None:
-            expected = [0]
+            expected = [ExitCodes.EX_OK]
+        else:
+            expected = [
+                ExitCodes(code)
+                if (
+                    isinstance(code, int) and
+                    code in ExitCodes.__members__.values())
+                else code
+                for code in expected
+                ]
         ret = self.execute(command, verbose, timeout)
         if ret['exit_code'] not in expected:
             message = (
-                "{append}Command '{cmd}' returned exit code {code} while "
-                "expected {expected}\n"
+                "{append}Command '{cmd}' returned exit code {code!s} while "
+                "expected {expected!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"
@@ -614,7 +624,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if ret['stderr']:
             message = (
                 "{append}Command '{cmd}' STDERR while not expected\n"
-                "\texit code: {code}\n"
+                "\texit code: {code!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
                 "\n\tSTDERR:\n"
@@ -721,7 +731,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if verbose:
             logger.info(
                 '{cmd} execution results:\n'
-                'Exit code: {code}\n'
+                'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
                 'STDERR:\n'
