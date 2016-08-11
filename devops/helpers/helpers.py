@@ -125,7 +125,12 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
     return timeout + start_time - time.time()
 
 
-def wait_pass(raising_predicate, expected=Exception, interval=5, timeout=None):
+def wait_pass(
+        raising_predicate,
+        expected=Exception,
+        interval=5, timeout=None,
+        timeout_msg="Waiting timed out"
+):
     """Wait for successful return from predicate or expected exception"""
     start_time = time.time()
     while True:
@@ -133,6 +138,10 @@ def wait_pass(raising_predicate, expected=Exception, interval=5, timeout=None):
             return raising_predicate()
         except expected:
             if timeout and start_time + timeout < time.time():
+                msg = "{msg}\nWaited for pass: {spent:0.3d} seconds.".format(
+                    msg=timeout_msg, spent=time.time() - start_time
+                )
+                logger.error(msg)
                 raise
             time.sleep(interval)
 
