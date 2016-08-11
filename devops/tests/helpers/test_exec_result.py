@@ -23,6 +23,7 @@ import mock
 from devops.helpers.exec_result import DevopsError
 from devops.helpers.exec_result import DevopsNotImplementedError
 from devops.helpers.exec_result import ExecResult
+from devops.helpers.proc_enums import ExitCodes
 
 
 cmd = 'ls -la'
@@ -48,17 +49,17 @@ class TestExecResult(TestCase):
         self.assertEqual(exec_result.stdout_brief, exec_result['stdout_brief'])
         self.assertEqual(exec_result.stderr_brief, '')
         self.assertEqual(exec_result.stderr_brief, exec_result['stderr_brief'])
-        self.assertEqual(exec_result.exit_code, -1)
+        self.assertEqual(exec_result.exit_code, 78)
         self.assertEqual(exec_result.exit_code, exec_result['exit_code'])
         self.assertEqual(
             repr(exec_result),
             '{cls}(cmd={cmd}, stdout={stdout}, stderr={stderr}, '
-            'exit_code={exit_code})'.format(
+            'exit_code={exit_code!s})'.format(
                 cls=ExecResult.__name__,
                 cmd=cmd,
                 stdout=[],
                 stderr=[],
-                exit_code=-1
+                exit_code=ExitCodes.EX_CONFIG
             )
         )
         self.assertEqual(
@@ -66,12 +67,12 @@ class TestExecResult(TestCase):
             "{cls}(\n\tcmd={cmd},"
             "\n\t stdout=\n'{stdout_brief}',"
             "\n\tstderr=\n'{stderr_brief}', "
-            '\n\texit_code={exit_code}\n)'.format(
+            '\n\texit_code={exit_code!s}\n)'.format(
                 cls=ExecResult.__name__,
                 cmd=cmd,
                 stdout_brief='',
                 stderr_brief='',
-                exit_code=-1
+                exit_code=ExitCodes.EX_CONFIG
             )
         )
 
@@ -91,7 +92,7 @@ class TestExecResult(TestCase):
 
         self.assertEqual(
             hash(exec_result),
-            hash((ExecResult, cmd, '', '', -1))
+            hash((ExecResult, cmd, '', '', ExitCodes.EX_CONFIG))
         )
 
         self.assertEqual(exec_result.stdout_len, 0)
@@ -112,7 +113,7 @@ class TestExecResult(TestCase):
 
     def test_setters(self):
         exec_result = ExecResult(cmd=cmd)
-        self.assertEqual(exec_result.exit_code, -1)
+        self.assertEqual(exec_result.exit_code, 78)
         exec_result.exit_code = 0
         self.assertEqual(exec_result.exit_code, 0)
         self.assertEqual(exec_result.exit_code, exec_result['exit_code'])
