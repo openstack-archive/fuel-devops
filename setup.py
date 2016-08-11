@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from sys import version_info
+
 from setuptools import find_packages
 from setuptools import setup
 
@@ -37,6 +39,7 @@ setup(
         'bin/dos_check_db.sh',
     ],
     data_files=[('bin', ['bin/dos_functions.sh'])],
+    # Use magic in install_requires due to risk of old setuptools
     install_requires=[
         'keystoneauth1>=2.1.0',
         'netaddr>=0.7.12,!=0.7.16',
@@ -48,6 +51,7 @@ setup(
         'tabulate',
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
+        'enum34' if version_info.major == 2 else ''
     ],
     tests_require=[
         'pytest>=2.7.1',
