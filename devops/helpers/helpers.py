@@ -115,6 +115,14 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
         return predicate()
     while not predicate():
         if start_time + timeout < time.time():
+            msg = (
+                "{msg}\nWaited for pass {cmd}: {spent:0.3d} seconds."
+                "".format(
+                    msg=timeout_msg,
+                    cmd=predicate.func_name,
+                    spent=time.time() - start_time
+                ))
+            logger.debug(msg)
             raise TimeoutError(timeout_msg)
 
         seconds_to_sleep = max(
@@ -125,14 +133,29 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
     return timeout + start_time - time.time()
 
 
-def wait_pass(raising_predicate, expected=Exception, interval=5, timeout=None):
+def wait_pass(
+        raising_predicate,
+        expected=Exception,
+        interval=5, timeout=None,
+        timeout_msg="Waiting timed out"
+):
     """Wait for successful return from predicate or expected exception"""
+    if not callable(raising_predicate):
+        raise TypeError('Not callable raising_predicate has been posted')
     start_time = time.time()
     while True:
         try:
             return raising_predicate()
         except expected:
             if timeout and start_time + timeout < time.time():
+                msg = (
+                    "{msg}\nWaited for pass {cmd}: {spent:0.3d} seconds."
+                    "".format(
+                        msg=timeout_msg,
+                        cmd=raising_predicate.func_name,
+                        spent=time.time() - start_time
+                    ))
+                logger.error(msg)
                 raise
             time.sleep(interval)
 
