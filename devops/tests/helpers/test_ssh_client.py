@@ -940,6 +940,41 @@ class TestExecute(TestCase):
             logger.mock_calls
         )
 
+    def test_execute_async_pty(self, client, policy, logger):
+        chan = mock.Mock()
+        open_session = mock.Mock(return_value=chan)
+        transport = mock.Mock()
+        transport.attach_mock(open_session, 'open_session')
+        get_transport = mock.Mock(return_value=transport)
+        _ssh = mock.Mock()
+        _ssh.attach_mock(get_transport, 'get_transport')
+        client.return_value = _ssh
+
+        ssh = self.get_ssh()
+
+        # noinspection PyTypeChecker
+        result = ssh.execute_async(command=command, get_pty=True)
+        get_transport.assert_called_once()
+        open_session.assert_called_once()
+
+        self.assertIn(chan, result)
+        chan.assert_has_calls((
+            mock.call.get_pty(
+                term='vt100',
+                width=80, height=24,
+                width_pixels=0, height_pixels=0
+            ),
+            mock.call.makefile('wb'),
+            mock.call.makefile('rb'),
+            mock.call.makefile_stderr('rb'),
+            mock.call.exec_command('{}\n'.format(command))
+        ))
+        self.assertIn(
+            mock.call.debug(
+                "Executing command: '{}'".format(command.rstrip())),
+            logger.mock_calls
+        )
+
     def test_execute_async_sudo(self, client, policy, logger):
         chan = mock.Mock()
         open_session = mock.Mock(return_value=chan)
