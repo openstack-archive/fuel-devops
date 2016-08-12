@@ -760,6 +760,11 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         logger.debug("Executing command: '{}'".format(command.rstrip()))
 
         chan = self._ssh.get_transport().open_session()
+
+        # Open PTY
+        chan.get_pty(
+            term='vt100', width=80, height=24, width_pixels=0, height_pixels=0)
+
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
         stderr = chan.makefile_stderr('rb')
