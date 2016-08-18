@@ -27,9 +27,7 @@ from devops import logger
 
 deprecated_aliases = {
     'stdout_str',
-    'stdout_len',
     'stderr_str',
-    'stderr_len',
     'stdout_json',
     'stdout_yaml'
 }
@@ -154,14 +152,6 @@ class ExecResult(object):
             self.__stderr_str = None
             self.__stderr_brief = None
             self.__stderr = new_val
-
-    @property
-    def stdout_len(self):
-        return len(self.stdout)
-
-    @property
-    def stderr_len(self):
-        return len(self.stderr)
 
     @property
     def stdout_str(self):

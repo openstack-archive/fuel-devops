@@ -21,7 +21,6 @@ from functools import reduce
 import os
 import socket
 import time
-from warnings import warn
 import xml.etree.ElementTree as ET
 
 from dateutil import tz
@@ -73,12 +72,6 @@ def tcp_ping_(host, port, timeout=None):
         s.settimeout(timeout)
     s.connect((str(host), int(port)))
     s.close()
-
-
-def _tcp_ping(*args, **kwargs):
-    logger.warning('_tcp_ping is deprecated in favor of tcp_ping_')
-    warn('_tcp_ping is deprecated in favor of tcp_ping_', DeprecationWarning)
-    return tcp_ping_(*args, **kwargs)
 
 
 def tcp_ping(host, port, timeout=None):
@@ -158,12 +151,6 @@ def wait_pass(
                 logger.error(msg)
                 raise
             time.sleep(interval)
-
-
-def _wait(*args, **kwargs):
-    logger.warning('_wait has been deprecated in favor of wait_pass')
-    warn('_wait has been deprecated in favor of wait_pass', DeprecationWarning)
-    return wait_pass(*args, **kwargs)
 
 
 def wait_tcp(host, port, timeout, timeout_msg="Waiting timed out"):
@@ -260,13 +247,6 @@ def get_slave_ip(env, node_mac_address):
     return get_ip_from_json(js, node_mac_address)
 
 
-def ssh(*args, **kwargs):
-    warn(
-        'devops.helpers.ssh is deprecated '
-        'and will be removed soon', DeprecationWarning)
-    return SSHClient(*args, **kwargs)
-
-
 def xmlrpctoken(uri, login, password):
     server = xmlrpc_client.Server(uri)
     try:
@@ -296,15 +276,6 @@ def get_file_size(path):
     """
 
     return os.stat(path).st_size
-
-
-def _get_file_size(*args, **kwargs):
-    logger.warning(
-        '_get_file_size has been deprecated in favor of get_file_size')
-    warn(
-        '_get_file_size has been deprecated in favor of get_file_size',
-        DeprecationWarning)
-    return get_file_size(*args, **kwargs)
 
 
 def xml_tostring(tree):
