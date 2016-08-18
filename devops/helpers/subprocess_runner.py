@@ -129,7 +129,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 ))
 
     @classmethod
-    def execute(cls, command, verbose=False, timeout=None):
+    def execute(cls, command, verbose=False, timeout=None, **kwargs):
         """Execute command and wait for return code
 
         Timeout limitation: read tick is 100 ms.
@@ -141,7 +141,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :raises: TimeoutError
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
-        result = cls.__exec_command(command=command, timeout=timeout)
+        result = cls.__exec_command(command=command, timeout=timeout, **kwargs)
         if verbose:
             logger.info(
                 '{cmd} execution results:\n'
@@ -170,7 +170,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             cls,
             command, verbose=False, timeout=None,
             error_info=None,
-            expected=None, raise_on_err=True):
+            expected=None, raise_on_err=True, **kwargs):
         """Execute command and check for return code
 
         Timeout limitation: read tick is 100 ms.
@@ -196,7 +196,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 else code
                 for code in expected
                 ]
-        ret = cls.execute(command, verbose, timeout)
+        ret = cls.execute(command, verbose, timeout, **kwargs)
         if ret['exit_code'] not in expected:
             message = (
                 "{append}Command '{cmd}' returned exit code {code!s} while "
@@ -226,7 +226,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             cls,
             command, verbose=False, timeout=None,
             error_info=None,
-            raise_on_err=True):
+            raise_on_err=True, **kwargs):
         """Execute command expecting return code 0 and empty STDERR
 
         Timeout limitation: read tick is 100 ms.
@@ -241,7 +241,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         """
         ret = cls.check_call(
             command, verbose, timeout=timeout,
-            error_info=error_info, raise_on_err=raise_on_err)
+            error_info=error_info, raise_on_err=raise_on_err, **kwargs)
         if ret['stderr']:
             message = (
                 "{append}Command '{cmd}' STDERR while not expected\n"
