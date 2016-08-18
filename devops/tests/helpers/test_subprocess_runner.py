@@ -70,6 +70,7 @@ class TestSubprocessRunner(TestCase):
 
         popen.return_value = popen_obj
 
+        # noinspection PyTypeChecker
         exp_result = ExecResult(
             cmd=command,
             stderr=stderr_lines,
@@ -84,6 +85,7 @@ class TestSubprocessRunner(TestCase):
 
         runner = Subprocess()
 
+        # noinspection PyTypeChecker
         result = runner.execute(command)
         self.assertEqual(
             result, exp_result
@@ -114,6 +116,7 @@ class TestSubprocessRunner(TestCase):
 
         runner = Subprocess()
 
+        # noinspection PyTypeChecker
         result = runner.execute(command, verbose=True)
 
         logger.assert_has_calls((
@@ -160,6 +163,39 @@ class TestSubprocessRunner(TestCase):
         with self.assertRaises(DevopsCalledProcessError):
             # noinspection PyTypeChecker
             runner.check_call(command=command, verbose=verbose, timeout=None)
+        execute.assert_called_once_with(command, verbose, None)
+
+    @patch('devops.helpers.subprocess_runner.Subprocess.execute')
+    def test_check_call_expected(self, execute, popen, logger):
+        exit_code = 0
+        return_value = {
+            'stderr_str': '0\n1',
+            'stdout_str': '2\n3',
+            'exit_code': exit_code,
+            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
+            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+        execute.return_value = return_value
+
+        verbose = False
+
+        runner = Subprocess()
+
+        # noinspection PyTypeChecker
+        result = runner.check_call(
+            command=command, verbose=verbose, timeout=None, expected=[0, 75])
+        execute.assert_called_once_with(command, verbose, None)
+        self.assertEqual(result, return_value)
+
+        exit_code = 1
+        return_value['exit_code'] = exit_code
+        execute.reset_mock()
+        execute.return_value = return_value
+        with self.assertRaises(DevopsCalledProcessError):
+            # noinspection PyTypeChecker
+            runner.check_call(
+                command=command, verbose=verbose, timeout=None,
+                expected=[0, 75]
+            )
         execute.assert_called_once_with(command, verbose, None)
 
     @patch('devops.helpers.subprocess_runner.Subprocess.check_call')
