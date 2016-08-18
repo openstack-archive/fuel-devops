@@ -253,6 +253,7 @@ class _MemorizedSSH(type):
                 logger.debug('Closing {} as unused'.format(cls.__cache[key]))
                 cls.__cache[key].close()
             del cls.__cache[key]
+        # noinspection PyArgumentList
         return super(
             _MemorizedSSH, cls).__call__(
             host=host, port=port,
@@ -305,20 +306,40 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     class get_sudo(object):
         """Context manager for call commands with sudo"""
+
         def __init__(self, ssh):
+            warn(
+                'SSHClient.get_sudo(SSHClient()) is deprecated in favor of '
+                'SSHClient().sudo(enforce=...) , which is much more powerful.')
             self.ssh = ssh
             self.__sudo_status = False
 
-        def __enter__(self, enable_sudo=True):
-            """Context manager for handling sudo mode
-
-            :type enable_sudo: bool
-            """
+        def __enter__(self):
             self.__sudo_status = self.ssh.sudo_mode
-            self.ssh.sudo_mode = enable_sudo
+            self.ssh.sudo_mode = True
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.ssh.sudo_mode = self.__sudo_status
+
+    class __get_sudo(object):
+        """Context manager for call commands with sudo"""
+        def __init__(self, ssh, enforce=None):
+            """Context manager for call commands with sudo
+
+            :type ssh: SSHClient
+            :type enforce: bool
+            """
+            self.__ssh = ssh
+            self.__sudo_status = ssh.sudo_mode
+            self.__enforce = enforce
+
+        def __enter__(self):
+            self.__sudo_status = self.__ssh.sudo_mode
+            if self.__enforce is not None:
+                self.__ssh.sudo_mode = self.__enforce
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.__ssh.sudo_mode = self.__sudo_status
 
     def __hash__(self):
         return hash((
@@ -550,6 +571,14 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
             self.__connect()
+
+    def sudo(self, enforce=None):
+        """Call contextmanager for sudo mode change
+
+        :type enforce: bool
+        :param enforce: Enforce sudo enabled or disabled. By default: None
+        """
+        return self.__get_sudo(ssh=self, enforce=enforce)
 
     def check_call(
             self,

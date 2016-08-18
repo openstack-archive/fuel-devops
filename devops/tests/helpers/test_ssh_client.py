@@ -1008,7 +1008,7 @@ class TestExecute(TestCase):
             logger.mock_calls
         )
 
-    def test_execute_async_with_sudo(self, client, policy, logger):
+    def test_execute_async_with_sudo_enforce(self, client, policy, logger):
         chan = mock.Mock()
         open_session = mock.Mock(return_value=chan)
         transport = mock.Mock()
@@ -1020,7 +1020,7 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
         self.assertFalse(ssh.sudo_mode)
-        with SSHClient.get_sudo(ssh):
+        with SSHClient.sudo(ssh, enforce=True):
             self.assertTrue(ssh.sudo_mode)
             # noinspection PyTypeChecker
             result = ssh.execute_async(command=command)
@@ -1037,6 +1037,70 @@ class TestExecute(TestCase):
             mock.call.exec_command(
                 "sudo -S bash -c '"
                 "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
+        ))
+        self.assertIn(
+            mock.call.debug(
+                "Executing command: '{}'".format(command.rstrip())),
+            logger.mock_calls
+        )
+
+    def test_execute_async_with_no_sudo_enforce(self, client, policy, logger):
+        chan = mock.Mock()
+        open_session = mock.Mock(return_value=chan)
+        transport = mock.Mock()
+        transport.attach_mock(open_session, 'open_session')
+        get_transport = mock.Mock(return_value=transport)
+        _ssh = mock.Mock()
+        _ssh.attach_mock(get_transport, 'get_transport')
+        client.return_value = _ssh
+
+        ssh = self.get_ssh()
+        ssh.sudo_mode = True
+
+        with ssh.sudo(enforce=False):
+            # noinspection PyTypeChecker
+            result = ssh.execute_async(command=command)
+        get_transport.assert_called_once()
+        open_session.assert_called_once()
+
+        self.assertIn(chan, result)
+        chan.assert_has_calls((
+            mock.call.makefile('wb'),
+            mock.call.makefile('rb'),
+            mock.call.makefile_stderr('rb'),
+            mock.call.exec_command('{}\n'.format(command))
+        ))
+        self.assertIn(
+            mock.call.debug(
+                "Executing command: '{}'".format(command.rstrip())),
+            logger.mock_calls
+        )
+
+    def test_execute_async_with_none_enforce(self, client, policy, logger):
+        chan = mock.Mock()
+        open_session = mock.Mock(return_value=chan)
+        transport = mock.Mock()
+        transport.attach_mock(open_session, 'open_session')
+        get_transport = mock.Mock(return_value=transport)
+        _ssh = mock.Mock()
+        _ssh.attach_mock(get_transport, 'get_transport')
+        client.return_value = _ssh
+
+        ssh = self.get_ssh()
+        ssh.sudo_mode = False
+
+        with ssh.sudo():
+            # noinspection PyTypeChecker
+            result = ssh.execute_async(command=command)
+        get_transport.assert_called_once()
+        open_session.assert_called_once()
+
+        self.assertIn(chan, result)
+        chan.assert_has_calls((
+            mock.call.makefile('wb'),
+            mock.call.makefile('rb'),
+            mock.call.makefile_stderr('rb'),
+            mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
             mock.call.debug(
@@ -1313,6 +1377,40 @@ class TestExecute(TestCase):
         with self.assertRaises(DevopsCalledProcessError):
             # noinspection PyTypeChecker
             ssh.check_call(command=command, verbose=verbose, timeout=None)
+        execute.assert_called_once_with(command, verbose, None)
+
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute')
+    def test_check_call_expected(self, execute, client, policy, logger):
+        exit_code = 0
+        return_value = {
+            'stderr_str': '0\n1',
+            'stdout_str': '2\n3',
+            'exit_code': exit_code,
+            'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
+            'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
+        execute.return_value = return_value
+
+        verbose = False
+
+        ssh = self.get_ssh()
+
+        # noinspection PyTypeChecker
+        result = ssh.check_call(
+            command=command, verbose=verbose, timeout=None, expected=[0, 75])
+        execute.assert_called_once_with(command, verbose, None)
+        self.assertEqual(result, return_value)
+
+        exit_code = 1
+        return_value['exit_code'] = exit_code
+        execute.reset_mock()
+        execute.return_value = return_value
+        with self.assertRaises(DevopsCalledProcessError):
+            # noinspection PyTypeChecker
+            ssh.check_call(
+                command=command, verbose=verbose, timeout=None,
+                expected=[0, 75]
+            )
         execute.assert_called_once_with(command, verbose, None)
 
     @mock.patch(
