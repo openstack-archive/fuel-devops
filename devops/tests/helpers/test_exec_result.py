@@ -31,7 +31,7 @@ cmd = 'ls -la'
 
 # noinspection PyTypeChecker
 class TestExecResult(TestCase):
-    @mock.patch('devops.helpers.exec_result.logger', autospec=True)
+    @mock.patch('devops.helpers.exec_result.logger')
     def test_create_minimal(self, logger):
         """Test defaults"""
         exec_result = ExecResult(cmd=cmd)
@@ -94,9 +94,6 @@ class TestExecResult(TestCase):
             hash(exec_result),
             hash((ExecResult, cmd, '', '', ExitCodes.EX_INVALID))
         )
-
-        self.assertEqual(exec_result.stdout_len, 0)
-        self.assertEqual(exec_result.stderr_len, 0)
 
     @mock.patch('devops.helpers.exec_result.logger', autospec=True)
     def test_not_implemented(self, logger):
