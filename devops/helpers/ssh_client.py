@@ -751,15 +751,16 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         return result
 
-    def execute_async(self, command):
+    def execute_async(self, command, timeout=None):
         """Execute command in async mode and return channel with IO objects
 
         :type command: str
+        :type timeout: int
         :rtype: tuple
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
 
-        chan = self._ssh.get_transport().open_session()
+        chan = self._ssh.get_transport().open_session(timeout=timeout)
         stdin = chan.makefile('wb')
         stdout = chan.makefile('rb')
         stderr = chan.makefile_stderr('rb')
@@ -808,7 +809,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         auth.connect(transport)
 
         # open ssh session
-        channel = transport.open_session()
+        channel = transport.open_session(timeout=timeout)
 
         # Make proxy objects for read
         stdout = channel.makefile('rb')
