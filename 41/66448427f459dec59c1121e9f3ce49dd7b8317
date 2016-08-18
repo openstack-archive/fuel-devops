@@ -1,0 +1,9 @@
+Code-Review+2: Dennis Dmitriev <ddmitriev@mirantis.com>
+Code-Review+1: Alexey Stepanov <astepanov@mirantis.com>
+Workflow+1: Alexey Stepanov <astepanov@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 18 Aug 2016 11:54:40 +0000
+Reviewed-on: https://review.openstack.org/356925
+Project: openstack/fuel-devops
+Branch: refs/heads/master
