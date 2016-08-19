@@ -156,6 +156,17 @@ class SSHAuth(object):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
+    def __deepcopy__(self):
+        return self.__class__(
+            username=self.username,
+            password=self.__password,
+            key=self.__key,
+            keys=self.__keys
+        )
+
+    def copy(self):
+        return self.__deepcopy__()
+
     def __repr__(self):
         _key = (
             None if self.__key is None else
@@ -304,23 +315,6 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         '__lock'
     ]
 
-    class get_sudo(object):
-        """Context manager for call commands with sudo"""
-
-        def __init__(self, ssh):
-            warn(
-                'SSHClient.get_sudo(SSHClient()) is deprecated in favor of '
-                'SSHClient().sudo(enforce=...) , which is much more powerful.')
-            self.ssh = ssh
-            self.__sudo_status = False
-
-        def __enter__(self):
-            self.__sudo_status = self.ssh.sudo_mode
-            self.ssh.sudo_mode = True
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.ssh.sudo_mode = self.__sudo_status
-
     class __get_sudo(object):
         """Context manager for call commands with sudo"""
         def __init__(self, ssh, enforce=None):
@@ -340,6 +334,16 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.__ssh.sudo_mode = self.__sudo_status
+
+    # noinspection PyPep8Naming
+    class get_sudo(__get_sudo):
+        """Context manager for call commands with sudo"""
+
+        def __init__(self, ssh, enforce=True):
+            warn(
+                'SSHClient.get_sudo(SSHClient()) is deprecated in favor of '
+                'SSHClient().sudo(enforce=...) , which is much more powerful.')
+            super(self.__class__, self).__init__(ssh=ssh, enforce=enforce)
 
     def __hash__(self):
         return hash((
@@ -373,7 +377,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         self.__ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.__sftp = None
 
-        self.__auth = auth
+        self.__auth = auth if auth is None else auth.copy()
 
         if auth is None:
             msg = (
