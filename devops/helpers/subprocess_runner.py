@@ -42,7 +42,8 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         pass
 
     @classmethod
-    def __exec_command(cls, command, cwd=None, env=None, timeout=None):
+    def __exec_command(cls, command, cwd=None, env=None, timeout=None,
+                       verbose=False, verbose_err=False):
         """Command executor helper
 
         :type command: str
@@ -52,6 +53,27 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :rtype: ExecResult
         """
 
+        def readlines(stream, log=None, lines_count=100):
+            """Nonblocking read and log lines from stream
+
+            :type stream: Popen.stdout or Popen.stderr streams
+            :type log: logger.info or logger.error streams
+            :type lines_count: int
+            """
+            if lines_count < 1:
+                lines_count = 1
+            result = []
+            try:
+                for _ in range(1, lines_count):
+                    line = stream.readline()
+                    if line:
+                        result.append(line)
+                        if log is not None:
+                            log(line.rstrip())
+            except IOError:
+                pass
+            return result
+
         @threaded(started=True)
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
@@ -60,19 +82,36 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             :type result: ExecResult
             :type stop: Event
             """
+            # Get file descriptors for stdout and stderr streams
+            fd_stdout = proc.stdout.fileno()
+            fd_stderr = proc.stderr.fileno()
+            # Get flags of stdout and stderr streams
+            fl_stdout = fcntl.fcntl(fd_stdout, fcntl.F_GETFL)
+            fl_stderr = fcntl.fcntl(fd_stderr, fcntl.F_GETFL)
+            # Set nonblock mode for stdout and stderr streams
+            fcntl.fcntl(fd_stdout, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
+            fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
+
             while not stop.isSet():
                 sleep(0.1)
 
-                result.stdout += proc.stdout.readlines()
-                result.stderr += proc.stderr.readlines()
+                stdout_diff = readlines(
+                    proc.stdout, logger.info if verbose else None)
+                stderr_diff = readlines(
+                    proc.stderr, logger.info if verbose_err else None)
+                result.stdout += stdout_diff
+                result.stderr += stderr_diff
 
                 proc.poll()
 
                 if proc.returncode is not None:
                     result.exit_code = proc.returncode
-                    result.stdout += proc.stdout.readlines()
-                    result.stderr += proc.stderr.readlines()
-
+                    stdout_diff = readlines(
+                        proc.stdout, logger.info if verbose else None)
+                    stderr_diff = readlines(
+                        proc.stderr, logger.info if verbose_err else None)
+                    result.stdout += stdout_diff
+                    result.stderr += stderr_diff
                     stop.set()
 
         # 1 Command per run
@@ -86,7 +125,6 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 stdin=PIPE, stdout=PIPE, stderr=PIPE,
                 shell=True, cwd=cwd, env=env,
                 universal_newlines=False)
-
             # Poll output
             poll_pipes(process, result, stop_event)
             # wait for process close
