@@ -12,8 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
 from __future__ import unicode_literals
 
+import fcntl
+import os
 from subprocess import PIPE
 from subprocess import Popen
 from threading import Event
@@ -42,7 +45,8 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         pass
 
     @classmethod
-    def __exec_command(cls, command, cwd=None, env=None, timeout=None):
+    def __exec_command(cls, command, cwd=None, env=None, timeout=None,
+                       verbose=False):
         """Command executor helper
 
         :type command: str
@@ -52,6 +56,22 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :rtype: ExecResult
         """
 
+        def readlines(stream, verbose, lines_count=100):
+            """Nonblocking read and log lines from stream"""
+            if lines_count < 1:
+                lines_count = 1
+            result = []
+            try:
+                for _ in range(1, lines_count):
+                    line = stream.readline()
+                    if line:
+                        result.append(line)
+                        if verbose:
+                            print(line.rstrip())
+            except IOError:
+                pass
+            return result
+
         @threaded(started=True)
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
@@ -60,18 +80,28 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             :type result: ExecResult
             :type stop: Event
             """
+            # Get file descriptors for stdout and stderr streams
+            fd_stdout = proc.stdout.fileno()
+            fd_stderr = proc.stderr.fileno()
+            # Get flags of stdout and stderr streams
+            fl_stdout = fcntl.fcntl(fd_stdout, fcntl.F_GETFL)
+            fl_stderr = fcntl.fcntl(fd_stderr, fcntl.F_GETFL)
+            # Set nonblock mode for stdout and stderr streams
+            fcntl.fcntl(fd_stdout, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
+            fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
+
             while not stop.isSet():
                 sleep(0.1)
 
-                result.stdout += proc.stdout.readlines()
-                result.stderr += proc.stderr.readlines()
+                result.stdout += readlines(proc.stdout, verbose)
+                result.stderr += readlines(proc.stderr, verbose)
 
                 proc.poll()
 
                 if proc.returncode is not None:
                     result.exit_code = proc.returncode
-                    result.stdout += proc.stdout.readlines()
-                    result.stderr += proc.stderr.readlines()
+                    result.stdout += readlines(proc.stdout, verbose)
+                    result.stderr += readlines(proc.stderr, verbose)
 
                     stop.set()
 
@@ -141,9 +171,10 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :raises: TimeoutError
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
-        result = cls.__exec_command(command=command, timeout=timeout, **kwargs)
+        result = cls.__exec_command(command=command, timeout=timeout,
+                                    verbose=verbose, **kwargs)
         if verbose:
-            logger.info(
+            logger.debug(
                 '{cmd} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'

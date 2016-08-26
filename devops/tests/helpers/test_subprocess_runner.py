@@ -32,6 +32,7 @@ command = 'ls ~ '
 
 
 @patch('devops.helpers.subprocess_runner.logger', autospec=True)
+@patch('fcntl.fcntl', autospec=True)
 @patch(
     'devops.helpers.subprocess_runner.Popen', autospec=True,
     name='subprocess.Popen')
@@ -42,26 +43,24 @@ class TestSubprocessRunner(TestCase):
         stderr_lines = (
             [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
         )
-        stderr_readlines = Mock(
-            side_effect=[
-                stderr_lines,
-                [],
-                [],
-            ]
+        mock_stdout_effect = []
+        mock_stderr_effect = []
+        mock_stdout_effect.extend(stdout_lines)
+        mock_stderr_effect.extend(stderr_lines)
+        mock_stdout_effect.extend([IOError] * 100)
+        mock_stderr_effect.extend([IOError] * 100)
+        stderr_readline = Mock(
+            side_effect=mock_stderr_effect
         )
-        stdout_readlines = Mock(
-            side_effect=[
-                stdout_lines,
-                [],
-                [],
-            ]
+        stdout_readline = Mock(
+            side_effect=mock_stdout_effect
         )
 
         stdout = Mock()
         stderr = Mock()
 
-        stdout.attach_mock(stdout_readlines, 'readlines')
-        stderr.attach_mock(stderr_readlines, 'readlines')
+        stdout.attach_mock(stdout_readline, 'readline')
+        stderr.attach_mock(stderr_readline, 'readline')
 
         popen_obj = Mock()
         popen_obj.attach_mock(stdout, 'stdout')
@@ -80,7 +79,7 @@ class TestSubprocessRunner(TestCase):
 
         return popen_obj, exp_result
 
-    def test_call(self, popen, logger):
+    def test_call(self, popen, fcntl, logger):
         popen_obj, exp_result = self.prepare_close(popen)
 
         runner = Subprocess()
@@ -103,15 +102,11 @@ class TestSubprocessRunner(TestCase):
                     code=result.exit_code
                 )),
         ))
-        popen_obj.assert_has_calls((
-            call.stdout.readlines(),
-            call.stderr.readlines(),
-            call.poll(),
-            call.stdout.readlines(),
-            call.stderr.readlines()
-        ))
+        self.assertIn(
+            call.poll(), popen_obj.mock_calls
+        )
 
-    def test_call_verbose(self, popen, logger):
+    def test_call_verbose(self, popen, fcntl, logger):
         _, _ = self.prepare_close(popen)
 
         runner = Subprocess()
@@ -121,7 +116,7 @@ class TestSubprocessRunner(TestCase):
 
         logger.assert_has_calls((
             call.debug("Executing command: '{}'".format(command.rstrip())),
-            call.info(
+            call.debug(
                 '{cmd} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
@@ -135,8 +130,11 @@ class TestSubprocessRunner(TestCase):
                 )),
         ))
 
+
+@patch('devops.helpers.subprocess_runner.logger', autospec=True)
+class TestSubprocessRunnerHelpers(TestCase):
     @patch('devops.helpers.subprocess_runner.Subprocess.execute')
-    def test_check_call(self, execute, popen, logger):
+    def test_check_call(self, execute, logger):
         exit_code = 0
         return_value = {
             'stderr_str': '0\n1',
@@ -166,7 +164,7 @@ class TestSubprocessRunner(TestCase):
         execute.assert_called_once_with(command, verbose, None)
 
     @patch('devops.helpers.subprocess_runner.Subprocess.execute')
-    def test_check_call_expected(self, execute, popen, logger):
+    def test_check_call_expected(self, execute, logger):
         exit_code = 0
         return_value = {
             'stderr_str': '0\n1',
@@ -199,7 +197,7 @@ class TestSubprocessRunner(TestCase):
         execute.assert_called_once_with(command, verbose, None)
 
     @patch('devops.helpers.subprocess_runner.Subprocess.check_call')
-    def test_check_stderr(self, check_call, popen, logger):
+    def test_check_stderr(self, check_call, logger):
         return_value = {
             'stderr_str': '',
             'stdout_str': '2\n3',
