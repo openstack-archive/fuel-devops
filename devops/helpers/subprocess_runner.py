@@ -12,8 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
+import fcntl
 from subprocess import PIPE
 from subprocess import Popen
 from threading import Event
@@ -42,7 +45,8 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         pass
 
     @classmethod
-    def __exec_command(cls, command, cwd=None, env=None, timeout=None):
+    def __exec_command(cls, command, cwd=None, env=None, timeout=None,
+                       verbose=False):
         """Command executor helper
 
         :type command: str
@@ -52,6 +56,22 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :rtype: ExecResult
         """
 
+        def readlines(stream, verbose, lines_count=100):
+            """Nonblocking read and log lines from stream"""
+            if lines_count < 1:
+                lines_count = 1
+            result = []
+            try:
+                for _ in range(1, lines_count):
+                    line = stream.readline()
+                    if line:
+                        result.append(line)
+                        if verbose:
+                            print(line.rstrip())
+            except IOError:
+                pass
+            return result
+
         @threaded(started=True)
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
@@ -60,19 +80,32 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             :type result: ExecResult
             :type stop: Event
             """
+            # Get file descriptors for stdout and stderr streams
+            fd_stdout = proc.stdout.fileno()
+            fd_stderr = proc.stderr.fileno()
+            # Get flags of stdout and stderr streams
+            fl_stdout = fcntl.fcntl(fd_stdout, fcntl.F_GETFL)
+            fl_stderr = fcntl.fcntl(fd_stderr, fcntl.F_GETFL)
+            # Set nonblock mode for stdout and stderr streams
+            fcntl.fcntl(fd_stdout, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
+            fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
+
             while not stop.isSet():
                 sleep(0.1)
 
-                result.stdout += proc.stdout.readlines()
-                result.stderr += proc.stderr.readlines()
+                stdout_diff = readlines(proc.stdout, verbose)
+                stderr_diff = readlines(proc.stderr, verbose)
+                result.stdout += stdout_diff
+                result.stderr += stderr_diff
 
                 proc.poll()
 
                 if proc.returncode is not None:
                     result.exit_code = proc.returncode
-                    result.stdout += proc.stdout.readlines()
-                    result.stderr += proc.stderr.readlines()
-
+                    stdout_diff = readlines(proc.stdout, verbose)
+                    stderr_diff = readlines(proc.stderr, verbose)
+                    result.stdout += stdout_diff
+                    result.stderr += stderr_diff
                     stop.set()
 
         # 1 Command per run
@@ -80,17 +113,25 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             result = ExecResult(cmd=command)
             stop_event = Event()
 
+            logger.debug("Run command on the host: '{0}'".format(command))
+
             # Run
             process = Popen(
                 args=[command],
                 stdin=PIPE, stdout=PIPE, stderr=PIPE,
                 shell=True, cwd=cwd, env=env,
                 universal_newlines=False)
-
             # Poll output
             poll_pipes(process, result, stop_event)
             # wait for process close
             stop_event.wait(timeout)
+
+            output_tmpl = (
+                '\tSTDOUT:\n'
+                '{0}\n'
+                '\tSTDERR"\n'
+                '{1}\n')
+            logger.debug(output_tmpl.format(result.stdout, result.stderr))
 
             # Process closed?
             if stop_event.isSet():
@@ -108,22 +149,13 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                     "{} has been completed just after timeout: "
                     "please validate timeout.".format(command))
 
-            status_tmpl = (
-                'Wait for {0} during {1}s: no return code!\n'
-                '\tSTDOUT:\n'
-                '{2}\n'
-                '\tSTDERR"\n'
-                '{3}')
-            logger.debug(
-                status_tmpl.format(
-                    command, timeout,
-                    result.stdout,
-                    result.stderr
-                )
-            )
+            no_ec_msg = (
+                "No return code received while waiting for the command "
+                "'{0}' during {1}s !\n".format(command, timeout))
+            logger.debug(no_ec_msg)
+
             raise TimeoutError(
-                status_tmpl.format(
-                    command, timeout,
+                no_ec_msg + output_tmpl.format(
                     result.stdout_brief,
                     result.stderr_brief
                 ))
@@ -141,27 +173,14 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :raises: TimeoutError
         """
         logger.debug("Executing command: '{}'".format(command.rstrip()))
-        result = cls.__exec_command(command=command, timeout=timeout, **kwargs)
-        if verbose:
-            logger.info(
-                '{cmd} execution results:\n'
-                'Exit code: {code!s}\n'
-                'STDOUT:\n'
-                '{stdout}\n'
-                'STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                    stdout=result.stdout_str,
-                    stderr=result.stderr_str
-                ))
-        else:
-            logger.debug(
-                '{cmd} execution results: Exit code: {code}'.format(
-                    cmd=command,
-                    code=result.exit_code
-                )
+        result = cls.__exec_command(command=command, timeout=timeout,
+                                    verbose=verbose, **kwargs)
+        logger.debug(
+            '{cmd} execution results: Exit code: {code}'.format(
+                cmd=command,
+                code=result.exit_code
             )
+        )
 
         return result
 
