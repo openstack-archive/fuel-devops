@@ -1658,6 +1658,27 @@ class TestSftp(TestCase):
         self.assertFalse(result)
         lstat.assert_called_once_with(path)
 
+    def test_stat(self, client, policy, logger):
+        class Attrs(object):
+            def __init__(self, mode):
+                self.st_mode = mode
+                self.st_size = 0
+
+        ssh, _sftp = self.prepare_sftp_file_tests(client)
+        stat = mock.Mock()
+        _sftp.attach_mock(stat, 'stat')
+        stat.return_value = paramiko.sftp_attr.SFTPAttributes()
+        stat.return_value.st_size = 0
+        stat.return_value.st_uid = 0
+        stat.return_value.st_gid = 0
+        path = '/etc/passwd'
+
+        # noinspection PyTypeChecker
+        result = ssh.stat(path)
+        self.assertEqual(result.st_size, 0)
+        self.assertEqual(result.st_uid, 0)
+        self.assertEqual(result.st_gid, 0)
+
     def test_isfile(self, client, policy, logger):
         class Attrs(object):
             def __init__(self, mode):

@@ -500,6 +500,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     def _sftp(self):
         """SFTP channel access for inheritance
 
+        :rtype: paramiko.sftp_client.SFTPClient
         :raises: paramiko.SSHException
         """
         if self.__sftp is not None:
@@ -965,6 +966,14 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             return True
         except IOError:
             return False
+
+    def stat(self, path):
+        """Get stat info for path with following symlinks
+
+        :type path: str
+        :rtype: paramiko.sftp_attr.SFTPAttributes
+        """
+        return self._sftp.stat(path)
 
     def isfile(self, path):
         """Check, that path is file using SFTP session
