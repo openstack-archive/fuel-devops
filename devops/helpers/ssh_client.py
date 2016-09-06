@@ -792,7 +792,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type timeout: int
         :rtype: tuple
         """
-        logger.debug("Executing command: '{}'".format(command.rstrip()))
+        logger.debug("Executing command: {!r}".format(command.rstrip()))
 
         chan = self._ssh.get_transport().open_session(timeout=timeout)
 

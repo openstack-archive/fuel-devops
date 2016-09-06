@@ -170,12 +170,12 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :rtype: ExecResult
         :raises: TimeoutError
         """
-        logger.debug("Executing command: '{}'".format(command.rstrip()))
+        logger.debug("Executing command: {!r}".format(command.rstrip()))
         result = cls.__exec_command(command=command, timeout=timeout,
                                     verbose=verbose, **kwargs)
         if verbose:
             logger.debug(
-                '{cmd} execution results:\n'
+                '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
@@ -188,7 +188,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 ))
         else:
             logger.debug(
-                '{cmd} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results: Exit code: {code}'.format(
                     cmd=command,
                     code=result.exit_code
                 )

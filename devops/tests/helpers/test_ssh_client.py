@@ -936,7 +936,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -971,7 +971,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1004,7 +1004,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1040,7 +1040,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1072,7 +1072,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1104,7 +1104,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1149,7 +1149,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
