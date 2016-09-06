@@ -53,7 +53,7 @@ class TestExecResult(TestCase):
         self.assertEqual(exec_result.exit_code, exec_result['exit_code'])
         self.assertEqual(
             repr(exec_result),
-            '{cls}(cmd={cmd}, stdout={stdout}, stderr={stderr}, '
+            '{cls}(cmd={cmd!r}, stdout={stdout}, stderr={stderr}, '
             'exit_code={exit_code!s})'.format(
                 cls=ExecResult.__name__,
                 cmd=cmd,
@@ -64,7 +64,7 @@ class TestExecResult(TestCase):
         )
         self.assertEqual(
             str(exec_result),
-            "{cls}(\n\tcmd={cmd},"
+            "{cls}(\n\tcmd={cmd!r},"
             "\n\t stdout=\n'{stdout_brief}',"
             "\n\tstderr=\n'{stderr_brief}', "
             '\n\texit_code={exit_code!s}\n)'.format(

@@ -615,7 +615,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         ret = self.execute(command, verbose, timeout, **kwargs)
         if ret['exit_code'] not in expected:
             message = (
-                "{append}Command '{cmd}' returned exit code {code!s} while "
+                "{append}Command '{cmd!r}' returned exit code {code!s} while "
                 "expected {expected!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
@@ -657,7 +657,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             error_info=error_info, raise_on_err=raise_on_err, **kwargs)
         if ret['stderr']:
             message = (
-                "{append}Command '{cmd}' STDERR while not expected\n"
+                "{append}Command '{cmd!r}' STDERR while not expected\n"
                 "\texit code: {code!s}\n"
                 "\tSTDOUT:\n"
                 "{stdout}"
@@ -730,7 +730,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
             channel.close()
             status_tmpl = (
-                'Wait for {0} during {1}s: no return code!\n'
+                'Wait for {0!r} during {1}s: no return code!\n'
                 '\tSTDOUT:\n'
                 '{2}\n'
                 '\tSTDERR"\n'
@@ -764,7 +764,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         if verbose:
             logger.info(
-                '{cmd} execution results:\n'
+                '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
@@ -777,7 +777,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 ))
         else:
             logger.debug(
-                '{cmd} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results: Exit code: {code}'.format(
                     cmd=command,
                     code=result.exit_code
                 )
@@ -792,7 +792,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type timeout: int
         :rtype: tuple
         """
-        logger.debug("Executing command: '{}'".format(command.rstrip()))
+        logger.debug("Executing command: {!r}".format(command.rstrip()))
 
         chan = self._ssh.get_transport().open_session(timeout=timeout)
 

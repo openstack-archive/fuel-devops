@@ -309,7 +309,7 @@ class ExecResult(object):
 
     def __repr__(self):
         return (
-            '{cls}(cmd={cmd}, stdout={stdout}, stderr={stderr}, '
+            '{cls}(cmd={cmd!r}, stdout={stdout}, stderr={stderr}, '
             'exit_code={exit_code!s})'.format(
                 cls=self.__class__.__name__,
                 cmd=self.cmd,
@@ -320,7 +320,7 @@ class ExecResult(object):
 
     def __str__(self):
         return (
-            "{cls}(\n\tcmd={cmd},"
+            "{cls}(\n\tcmd={cmd!r},"
             "\n\t stdout=\n'{stdout_brief}',"
             "\n\tstderr=\n'{stderr_brief}', "
             '\n\texit_code={exit_code!s}\n)'.format(

@@ -936,7 +936,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -971,7 +971,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1004,7 +1004,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1040,7 +1040,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1072,7 +1072,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1104,7 +1104,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1149,7 +1149,7 @@ class TestExecute(TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: '{}'".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1218,7 +1218,7 @@ class TestExecute(TestCase):
             mock.call.close()))
         logger.assert_has_calls((
             mock.call.info(
-                '{cmd} execution results:\n'
+                '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
@@ -1271,7 +1271,7 @@ class TestExecute(TestCase):
             mock.call.close()))
         logger.assert_has_calls((
             mock.call.info(
-                '{cmd} execution results:\n'
+                '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'

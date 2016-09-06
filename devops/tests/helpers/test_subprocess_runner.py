@@ -95,9 +95,9 @@ class TestSubprocessRunner(TestCase):
                  stdin=PIPE, stdout=PIPE, universal_newlines=False),
         ))
         logger.assert_has_calls((
-            call.debug("Executing command: '{}'".format(command.rstrip())),
+            call.debug("Executing command: {!r}".format(command.rstrip())),
             call.debug(
-                '{cmd} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results: Exit code: {code}'.format(
                     cmd=command,
                     code=result.exit_code
                 )),
@@ -115,9 +115,9 @@ class TestSubprocessRunner(TestCase):
         result = runner.execute(command, verbose=True)
 
         logger.assert_has_calls((
-            call.debug("Executing command: '{}'".format(command.rstrip())),
+            call.debug("Executing command: {!r}".format(command.rstrip())),
             call.debug(
-                '{cmd} execution results:\n'
+                '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
                 'STDOUT:\n'
                 '{stdout}\n'
