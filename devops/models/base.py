@@ -13,10 +13,8 @@
 #    under the License.
 
 import abc
-from datetime import datetime
-# pylint: disable=redefined-builtin
-from functools import reduce
-# pylint: enable=redefined-builtin
+import datetime
+import functools
 import operator
 
 from django.db import models
@@ -25,8 +23,8 @@ from django.db.models import query
 import jsonfield
 import six
 
-from devops.error import DevopsError
-from devops.helpers.helpers import deepgetattr
+from devops import error
+from devops.helpers import helpers
 from devops.helpers import loader
 
 
@@ -41,7 +39,7 @@ class BaseModel(models.Model):
     class Meta(object):
         abstract = True
 
-    created = models.DateTimeField(default=datetime.utcnow)
+    created = models.DateTimeField(default=datetime.datetime.utcnow)
 
 
 class ParamedModelType(ModelBase):
@@ -69,7 +67,8 @@ class ParamedModelType(ModelBase):
         # if not ParamModel itself
         if name != 'ParamedModel' and name != 'NewBase':
             # pylint: disable=map-builtin-not-iterating
-            parents = reduce(operator.add, map(lambda a: a.__mro__, bases))
+            parents = functools.reduce(
+                operator.add, map(lambda a: a.__mro__, bases))
             # pylint: enable=map-builtin-not-iterating
             # if not a first subclass of ParamedModel
             if ParamedModel not in bases and ParamedModel in parents:
@@ -172,14 +171,14 @@ class ParamField(ParamFieldBase):
         a.bar = 'c'
         print(a.params)  # prints {'foo': 5, 'bar': 'c'}
 
-        a.bar = 15  # throws DevopsError
+        a.bar = 15  # throws DevopsException
     """
 
     def __init__(self, default=None, choices=None):
         super(ParamField, self).__init__()
 
         if choices and default not in choices:
-            raise DevopsError('Default value not in choices list')
+            raise error.DevopsException('Default value not in choices list')
 
         self.default_value = default
         self.choices = choices
@@ -192,8 +191,8 @@ class ParamField(ParamFieldBase):
 
     def __set__(self, instance, value):
         if self.choices and value not in self.choices:
-            raise DevopsError('{}: Value not in choices list'
-                              ''.format(self.param_key))
+            raise error.DevopsException(
+                '{}: Value not in choices list'.format(self.param_key))
 
         instance.params[self.param_key] = value
 
@@ -225,14 +224,15 @@ class ParamMultiField(ParamFieldBase):
         super(ParamMultiField, self).__init__()
 
         if len(subfields) == 0:
-            raise DevopsError('subfields is empty')
+            raise error.DevopsException('subfields is empty')
 
         self.subfields = []
         for name, field in subfields.items():
             if not isinstance(field, ParamFieldBase):
-                raise DevopsError('field "{}" has wrong type;'
-                                  ' should be ParamFieldBase subclass instance'
-                                  ''.format(name))
+                raise error.DevopsException(
+                    'field "{}" has wrong type;'
+                    ' should be ParamFieldBase subclass instance'
+                    ''.format(name))
             field.set_param_key(name)
             self.subfields.append(field)
 
@@ -259,11 +259,12 @@ class ParamMultiField(ParamFieldBase):
 
     def __set__(self, instance, values):
         if not isinstance(values, dict):
-            raise DevopsError('Can set only dict')
+            raise error.DevopsException('Can set only dict')
         self._init_proxy_params(instance)
         for field_name, field_value in values.items():
             if field_name not in self.proxy_fields:
-                raise DevopsError('Unknown field "{}"'.format(field_name))
+                raise error.DevopsException(
+                    'Unknown field "{}"'.format(field_name))
             setattr(self._proxy, field_name, field_value)
 
 
@@ -326,8 +327,8 @@ class ParamedModelQuerySet(query.QuerySet):
                     # skip other classes
                     continue
 
-                item_val = deepgetattr(item, key, splitter='__',
-                                       do_raise=True)
+                item_val = helpers.deepgetattr(
+                    item, key, splitter='__', do_raise=True)
                 if item_val != value:
                     break
             else:

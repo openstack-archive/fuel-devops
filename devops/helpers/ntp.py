@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015 - 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,19 +13,19 @@
 #    under the License.
 
 import abc
+import collections
+import warnings
 
 import paramiko
-from six import add_metaclass
+import six
 
-from devops.error import DevopsError
-from devops.helpers.helpers import get_admin_remote
-from devops.helpers.helpers import get_node_remote
-from devops.helpers.helpers import wait
-from devops.helpers.retry import retry
+from devops import error
+from devops.helpers import helpers
+from devops.helpers import retry
 from devops import logger
 
 
-@retry(paramiko.SSHException, count=3, delay=60)
+@retry.retry(paramiko.SSHException, count=3, delay=60)
 def sync_time(env, node_names, skip_sync=False):
     """Synchronize time on nodes
 
@@ -34,26 +34,17 @@ def sync_time(env, node_names, skip_sync=False):
        param: skip_sync - only get the current time without sync
        return: dict{node_name: node_time, ...}
     """
-    with GroupNtpSync(env, node_names) as g_ntp:
+    logger.warning('sync_time is deprecated. Use DevopsClient instead')
+    warnings.warn(
+        'sync_time is deprecated. Use DevopsClient.sync_time instead',
+        DeprecationWarning)
 
-        if not skip_sync:
-            if g_ntp.admin_ntps:
-                g_ntp.do_sync_time(g_ntp.admin_ntps)
-
-            if g_ntp.pacemaker_ntps:
-                g_ntp.do_sync_time(g_ntp.pacemaker_ntps)
-
-            if g_ntp.other_ntps:
-                g_ntp.do_sync_time(g_ntp.other_ntps)
-
-        all_ntps = g_ntp.admin_ntps + g_ntp.pacemaker_ntps + g_ntp.other_ntps
-        results = {ntp.node_name: ntp.date for ntp in all_ntps}
-
-    return results
+    from devops.client import DevopsClient
+    denv = DevopsClient().get_env(env.name)
+    return denv.sync_time(node_names=node_names, skip_sync=skip_sync)
 
 
-@add_metaclass(abc.ABCMeta)
-class AbstractNtp(object):
+class AbstractNtp(six.with_metaclass(abc.ABCMeta, object)):
 
     def __init__(self, remote, node_name):
         self._remote = remote
@@ -111,10 +102,11 @@ class BaseNtp(AbstractNtp):
 
         # Waiting for parent server until it starts providing the time
         set_date_cmd = "ntpdate -p 4 -t 0.2 -bu {0}".format(server)
-        wait(lambda: not self.remote.execute(set_date_cmd)['exit_code'],
-             timeout=timeout,
-             timeout_msg='Failed to set actual time on node {!r}'.format(
-                 self._node_name))
+        helpers.wait(
+            lambda: not self.remote.execute(set_date_cmd)['exit_code'],
+            timeout=timeout,
+            timeout_msg='Failed to set actual time on node {!r}'.format(
+                self._node_name))
 
         self.remote.check_call('hwclock -w')
 
@@ -152,11 +144,12 @@ class BaseNtp(AbstractNtp):
         return False
 
     def wait_peer(self, interval=8, timeout=600):
-        wait(self._get_sync_complete,
-             interval=interval,
-             timeout=timeout,
-             timeout_msg='Failed to wait peer on node {!r}'.format(
-                 self._node_name))
+        helpers.wait(
+            self._get_sync_complete,
+            interval=interval,
+            timeout=timeout,
+            timeout_msg='Failed to wait peer on node {!r}'.format(
+                self._node_name))
 
 # pylint: enable=abstract-method
 
@@ -234,9 +227,10 @@ class NtpChronyd(AbstractNtp):
         self._remote.check_call('chronyc -a burst 3/5')
 
         # wait burst complete
-        wait(self._get_burst_complete, timeout=timeout,
-             timeout_msg='Failed to set actual time on node {!r}'.format(
-                 self._node_name))
+        helpers.wait(
+            self._get_burst_complete, timeout=timeout,
+            timeout_msg='Failed to set actual time on node {!r}'.format(
+                self._node_name))
 
         # set system clock
         self._remote.check_call('chronyc -a makestep')
@@ -269,40 +263,12 @@ class GroupNtpSync(object):
         elif len(remote.execute(initd_cmd)['stdout']):
             return NtpInitscript(remote, node_name)
         else:
-            raise DevopsError('No suitable NTP service found on node {!r}'
-                              ''.format(node_name))
+            raise error.DevopsError(
+                'No suitable NTP service found on node {!r}'
+                ''.format(node_name))
 
-    def __init__(self, env, node_names):
-        """Context manager for synchronize time on nodes
-
-           param: env - environment object
-           param: node_names - list of devops node names
-        """
-        self.admin_ntps = []
-        self.pacemaker_ntps = []
-        self.other_ntps = []
-
-        for node_name in node_names:
-            if node_name == 'admin':
-                # 1. Add a 'Ntp' instance with connection to Fuel admin node
-                admin_remote = get_admin_remote(env)
-                admin_ntp = self.get_ntp(admin_remote, 'admin')
-                self.admin_ntps.append(admin_ntp)
-                logger.debug("Added node '{0}' to self.admin_ntps"
-                             .format(node_name))
-                continue
-            remote = get_node_remote(env, node_name)
-            ntp = self.get_ntp(remote, node_name)
-            if isinstance(ntp, NtpPacemaker):
-                # 2. Create a list of 'Ntp' connections to the controller nodes
-                self.pacemaker_ntps.append(ntp)
-                logger.debug("Added node '{0}' to self.pacemaker_ntps"
-                             .format(node_name))
-            else:
-                # 2. Create a list of 'Ntp' connections to the other nodes
-                self.other_ntps.append(ntp)
-                logger.debug("Added node '{0}' to self.other_ntps"
-                             .format(node_name))
+    def __init__(self):
+        self.ntp_groups = collections.defaultdict(list)
 
     def __enter__(self):
         return self
@@ -310,32 +276,53 @@ class GroupNtpSync(object):
     def __exit__(self, exp_type, exp_value, traceback):
         pass
 
-    @staticmethod
-    def report_node_names(ntps):
-        return [ntp.node_name for ntp in ntps]
+    def add_node(self, remote, node_name):
+        group = 'other'
+        if node_name == 'admin':
+            group = 'admin'
+            ntp = self.get_ntp(remote, 'admin')
+        else:
+            ntp = self.get_ntp(remote, node_name)
+            if isinstance(ntp, NtpPacemaker):
+                group = 'pacemaker'
 
-    def do_sync_time(self, ntps):
-        # 1. Stop NTPD service on nodes
-        logger.debug("Stop NTPD service on nodes {0}"
-                     .format(self.report_node_names(ntps)))
+        self.ntp_groups[group].append(ntp)
+
+    def get_curr_time(self):
+        return {
+            ntp.node_name: ntp.date
+            for ntps in self.ntp_groups.values()
+            for ntp in ntps
+        }
+
+    def sync_time(self, group_name):
+        if group_name not in self.ntp_groups:
+            logger.debug("No ntp group: {0}".format(group_name))
+            return
+
+        ntps = self.ntp_groups[group_name]
+
+        if not ntps:
+            logger.debug("No nodes in ntp group: {0}".format(group_name))
+            return
+
+        node_names = [ntp.node_name for ntp in ntps]
+
+        logger.debug("Stop NTP service on nodes {0}".format(node_names))
         for ntp in ntps:
             ntp.stop()
 
-        # 2. Set actual time on all nodes via 'ntpdate'
-        logger.debug("Set actual time on all nodes via 'ntpdate' on nodes {0}"
-                     .format(self.report_node_names(ntps)))
+        logger.debug("Set actual time on nodes {0}".format(node_names))
         for ntp in ntps:
             ntp.set_actual_time()
 
-        # 3. Start NTPD service on nodes
-        logger.debug("Start NTPD service on nodes {0}"
-                     .format(self.report_node_names(ntps)))
+        logger.debug("Start NTP service on nodes {0}".format(node_names))
         for ntp in ntps:
             ntp.start()
 
-        # 4. Wait for established peers
-        logger.debug("Wait for established peers on nodes {0}"
-                     .format(self.report_node_names(ntps)))
-
+        logger.debug("Wait for established peers on nodes {0}".format(
+            node_names))
         for ntp in ntps:
             ntp.wait_peer()
+
+        logger.debug("time sync completted on nodes {0}".format(node_names))

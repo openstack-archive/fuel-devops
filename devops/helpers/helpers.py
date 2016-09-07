@@ -18,12 +18,10 @@ import functools
 import os
 import socket
 import time
+import warnings
 import xml.etree.ElementTree as ET
 
 from dateutil import tz
-from keystoneauth1.identity import V2Password
-from keystoneauth1.session import Session as KeystoneSession
-import paramiko
 import six
 # pylint: disable=import-error
 # noinspection PyUnresolvedReferences
@@ -177,31 +175,30 @@ def http(host='localhost', port=80, method='GET', url='/', waited_code=200):
 
 
 def get_private_keys(env):
-    _ssh_keys = []
-    admin_remote = get_admin_remote(env)
-    for key_string in ['/root/.ssh/id_rsa',
-                       '/root/.ssh/bootstrap.rsa']:
-        if admin_remote.isfile(key_string):
-            with admin_remote.open(key_string) as f:
-                _ssh_keys.append(paramiko.RSAKey.from_private_key(f))
-    return _ssh_keys
+    msg = (
+        'get_private_keys has been deprecated in favor of '
+        'DevopsEnvironment.get_private_keys')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
+
+    from devops.client import DevopsClient
+    denv = DevopsClient().get_env(env.name)
+    return denv.get_private_keys()
 
 
 def get_admin_remote(
         env,
         login=settings.SSH_CREDENTIALS['login'],
         password=settings.SSH_CREDENTIALS['password']):
-    admin_ip = get_admin_ip(env)
-    wait(lambda: tcp_ping(admin_ip, 22),
-         timeout=180,
-         timeout_msg=("Admin node {ip} is not accessible by SSH."
-                      .format(ip=admin_ip)))
-    return env.get_node(
-        name='admin'
-    ).remote(
-        network_name=settings.SSH_CREDENTIALS['admin_network'],
-        login=login,
-        password=password)
+    msg = (
+        'get_admin_remote has been deprecated in favor of '
+        'DevopsEnvironment.get_admin_remote')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
+
+    from devops.client import DevopsClient
+    denv = DevopsClient().get_env(env.name)
+    return denv.get_admin_remote(login=login, password=password)
 
 
 def get_node_remote(
@@ -209,41 +206,42 @@ def get_node_remote(
         node_name,
         login=settings.SSH_SLAVE_CREDENTIALS['login'],
         password=settings.SSH_SLAVE_CREDENTIALS['password']):
-    ip = get_slave_ip(env, env.get_node(
-        name=node_name).interfaces[0].mac_address)
-    wait(lambda: tcp_ping(ip, 22), timeout=180,
-         timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
-    return ssh_client.SSHClient(
-        ip,
-        auth=ssh_client.SSHAuth(
-            username=login,
-            password=password,
-            keys=get_private_keys(env)))
+    msg = (
+        'get_node_remote has been deprecated in favor of '
+        'DevopsEnvironment.get_node_remote')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
+
+    from devops.client import DevopsClient
+    denv = DevopsClient().get_env(env.name)
+    return denv.get_node_remote(
+        node_name=node_name, login=login, password=password)
 
 
 def get_admin_ip(env):
-    return env.get_node(name='admin').get_ip_address_by_network_name('admin')
+    msg = (
+        'get_admin_ip has been deprecated in favor of '
+        'DevopsEnvironment.get_admin_ip')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
 
-
-def get_ip_from_json(js, mac):
-    def poor_mac(mac_addr):
-        return \
-            [m.lower() for m in mac_addr if m.lower() in '01234546789abcdef']
-
-    for node in js:
-        for interface in node['meta']['interfaces']:
-            if poor_mac(interface['mac']) == poor_mac(mac):
-                logger.debug("For mac {0} found ip {1}".format(
-                    mac, node['ip']))
-                return node['ip']
-    raise error.DevopsError(
-        'There is no match between MAC {0} and Nailgun MACs'.format(mac))
+    from devops.client import DevopsClient
+    denv = DevopsClient().get_env(env.name)
+    return denv.get_admin_ip()
 
 
 def get_slave_ip(env, node_mac_address):
-    admin_ip = get_admin_ip(env)
-    js = get_nodes(admin_ip)
-    return get_ip_from_json(js, node_mac_address)
+    msg = (
+        'get_slave_ip has been deprecated in favor of '
+        'DevopsEnvironment.get_node_ip')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
+
+    from devops import client
+    from devops.client import nailgun
+    denv = client.DevopsClient().get_env(env.name)
+    ng_client = nailgun.NailgunClient(ip=denv.get_admin_ip())
+    return ng_client.get_slave_ip_by_mac(node_mac_address)
 
 
 def xmlrpctoken(uri, login, password):
@@ -324,17 +322,14 @@ def underscored(*args):
 
 
 def get_nodes(admin_ip):
-    keystone_auth = V2Password(
-        auth_url="http://{}:5000/v2.0".format(admin_ip),
-        username=settings.KEYSTONE_CREDS['username'],
-        password=settings.KEYSTONE_CREDS['password'],
-        tenant_name=settings.KEYSTONE_CREDS['tenant_name'])
-    keystone_session = KeystoneSession(auth=keystone_auth, verify=False)
-    nodes = keystone_session.get(
-        '/nodes',
-        endpoint_filter={'service_type': 'fuel'}
-    )
-    return nodes.json()
+    msg = ('get_nodes has been deprecated in favor of '
+           'NailgunClient.get_nodes_json')
+    logger.warning(msg)
+    warnings.warn(msg, DeprecationWarning)
+
+    from devops.client import nailgun
+    ng_client = nailgun.NailgunClient(ip=admin_ip)
+    return ng_client.get_nodes_json()
 
 
 def utc_to_local(t):
