@@ -18,7 +18,7 @@ from django.db import models
 from django.utils.functional import cached_property
 import six
 
-from devops.error import DevopsObjNotFound
+from devops import error
 from devops.helpers.helpers import tcp_ping_
 from devops.helpers.helpers import wait_pass
 from devops.helpers import loader
@@ -203,6 +203,9 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     def resume(self, *args, **kwargs):
         pass
 
+    def is_active(self):
+        return False
+
     def snapshot(self, *args, **kwargs):
         SSHClient.close_connections()
 
@@ -279,19 +282,24 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             return None
         return self.interface_set.get(label=label)
 
+    # NOTE: this method works only for master node
     def get_ip_address_by_network_name(self, name, interface=None):
         interface = interface or self.interface_set.filter(
             l2_network_device__name=name).order_by('id')[0]
         return interface.address_set.get(interface=interface).ip_address
 
+    # NOTE: this method works only for master node
     def get_ip_address_by_nailgun_network_name(self, name):
         interface = self.get_interface_by_nailgun_network_name(name)
         return interface.address_set.first().ip_address
 
+    # LEGACY
     def remote(
             self, network_name, login=None, password=None, private_keys=None,
             auth=None):
         """Create SSH-connection to the network
+
+        NOTE: this method works only for master node
 
         :rtype : SSHClient
         """
@@ -300,6 +308,8 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             username=login,
             password=password, private_keys=private_keys, auth=auth)
 
+    # LEGACY
+    # NOTE: this method works only for master node
     def await(self, network_name, timeout=120, by_port=22):
         wait_pass(
             lambda: tcp_ping_(
@@ -414,7 +424,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         try:
             return self.volume_set.get(**kwargs)
         except Volume.DoesNotExist:
-            raise DevopsObjNotFound(Volume, **kwargs)
+            raise error.DevopsObjNotFound(Volume, **kwargs)
 
     # NEW
     def get_volumes(self, **kwargs):
