@@ -17,16 +17,13 @@ from __future__ import unicode_literals
 
 import fcntl
 import os
-from subprocess import PIPE
-from subprocess import Popen
-from threading import Event
-from threading import RLock
+import subprocess
+import threading
 from time import sleep
 
 from six import with_metaclass
 
-from devops.error import DevopsCalledProcessError
-from devops.error import TimeoutError
+from devops import error
 from devops.helpers.decorators import threaded
 from devops.helpers.exec_result import ExecResult
 from devops.helpers.metaclasses import SingletonMeta
@@ -35,7 +32,7 @@ from devops import logger
 
 
 class Subprocess(with_metaclass(SingletonMeta, object)):
-    __lock = RLock()
+    __lock = threading.RLock()
 
     def __init__(self):
         """Subprocess helper with timeouts and lock-free FIFO
@@ -76,9 +73,9 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
 
-            :type proc: Popen
+            :type proc: subprocess.Popen
             :type result: ExecResult
-            :type stop: Event
+            :type stop: threading.Event
             """
             # Get file descriptors for stdout and stderr streams
             fd_stdout = proc.stdout.fileno()
@@ -108,12 +105,14 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         # 1 Command per run
         with cls.__lock:
             result = ExecResult(cmd=command)
-            stop_event = Event()
+            stop_event = threading.Event()
 
             # Run
-            process = Popen(
+            process = subprocess.Popen(
                 args=[command],
-                stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 shell=True, cwd=cwd, env=env,
                 universal_newlines=False)
 
@@ -151,7 +150,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                     result.stderr
                 )
             )
-            raise TimeoutError(
+            raise error.TimeoutError(
                 status_tmpl.format(
                     command, timeout,
                     result.stdout_brief,
@@ -245,7 +244,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 ))
             logger.error(message)
             if raise_on_err:
-                raise DevopsCalledProcessError(
+                raise error.DevopsCalledProcessError(
                     command, ret['exit_code'],
                     expected=expected,
                     stdout=ret['stdout_str'],
@@ -289,7 +288,8 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 ))
             logger.error(message)
             if raise_on_err:
-                raise DevopsCalledProcessError(command, ret['exit_code'],
-                                               stdout=ret['stdout_str'],
-                                               stderr=ret['stderr_str'])
+                raise error.DevopsCalledProcessError(
+                    command, ret['exit_code'],
+                    stdout=ret['stdout_str'],
+                    stderr=ret['stderr_str'])
         return ret

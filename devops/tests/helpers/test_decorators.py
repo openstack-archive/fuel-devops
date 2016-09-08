@@ -14,15 +14,15 @@
 
 from __future__ import unicode_literals
 
-from threading import Event
-from unittest import TestCase
+import threading
+import unittest
 
 import mock
 
 from devops.helpers.decorators import threaded
 
 
-class ThreadedTest(TestCase):
+class ThreadedTest(unittest.TestCase):
     def test_add_basic(self):
         @threaded
         def func_test():
@@ -62,7 +62,7 @@ class ThreadedTest(TestCase):
         self.assertTrue(test_thread.daemon)
         self.assertFalse(test_thread.isAlive())
 
-    @mock.patch('devops.helpers.decorators.Thread', autospec=True)
+    @mock.patch('threading.Thread', autospec=True)
     def test_started(self, thread):
         @threaded(started=True)
         def func_test():
@@ -73,7 +73,7 @@ class ThreadedTest(TestCase):
         self.assertIn(mock.call().start(), thread.mock_calls)
 
     def test_args(self):
-        event = Event()
+        event = threading.Event()
         data = []
         global data
 
@@ -87,7 +87,7 @@ class ThreadedTest(TestCase):
         self.assertEqual(data, [1])
 
     def test_kwargs(self):
-        event = Event()
+        event = threading.Event()
         data = []
         global data
 

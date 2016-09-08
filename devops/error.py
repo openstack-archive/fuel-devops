@@ -13,11 +13,14 @@
 #    under the License.
 
 import inspect
-from warnings import warn
+import warnings
 
 
 class DevopsException(Exception):
-    """Base class for exceptions"""
+    """Base class for exceptions
+
+    Should be used in case of explicit code error
+    """
 
 
 class DevopsError(DevopsException):
@@ -51,7 +54,7 @@ class DevopsCalledProcessError(DevopsError):
 
     @property
     def output(self):
-        warn(
+        warnings.warn(
             'output is deprecated, please use stdout and stderr separately',
             DeprecationWarning)
         return self.stdout + self.stderr

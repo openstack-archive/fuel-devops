@@ -14,7 +14,6 @@
 
 import os
 import time
-import logging
 import logging.config
 from devops.settings import LOGS_DIR
 from devops.settings import LOGS_SIZE
@@ -32,6 +31,9 @@ LOGGER_SETTINGS = {
             'level': 'DEBUG',
             'handlers': ['log_file', 'console_output'],
         },
+        'paramiko': {'level': 'WARNING'},
+        'iso8601': {'level': 'WARNING'},
+        'keystoneauth': {'level': 'WARNING'},
     },
     'handlers': {
         'console_output': {
@@ -64,8 +66,3 @@ logging.config.dictConfig(LOGGER_SETTINGS)
 # set logging timezone to GMT
 logging.Formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)
-
-# Mute debug from packages
-logging.getLogger('paramiko.transport').setLevel(logging.WARNING)
-logging.getLogger('paramiko.hostkeys').setLevel(logging.WARNING)
-logging.getLogger('keystoneauth.session').setLevel(logging.WARNING)

@@ -195,7 +195,7 @@ class TestHelpersHelpers(unittest.TestCase):
         time.assert_called_once()
         sleep.assert_not_called()
 
-    @mock.patch('devops.helpers.helpers.SSHClient', autospec=True)
+    @mock.patch('devops.helpers.ssh_client.SSHClient', autospec=True)
     @mock.patch('devops.helpers.helpers.wait')
     def test_wait_ssh_cmd(self, wait, ssh):
         host = '127.0.0.1'

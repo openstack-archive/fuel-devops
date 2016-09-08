@@ -12,12 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from enum import IntEnum
-from enum import unique
+import enum
 
 
-@unique
-class SigNum(IntEnum):
+@enum.unique
+class SigNum(enum.IntEnum):
     SIGHUP = 1  # Hangup (POSIX).
     SIGINT = 2  # Interrupt (ANSI).
     SIGQUIT = 3  # Quit (POSIX).
@@ -57,8 +56,8 @@ class SigNum(IntEnum):
         )
 
 
-@unique
-class ExitCodes(IntEnum):
+@enum.unique
+class ExitCodes(enum.IntEnum):
     EX_OK = 0  # successful termination
 
     EX_INVALID = 0xDEADBEEF  # uint32 debug value. Impossible for POSIX

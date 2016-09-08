@@ -14,10 +14,7 @@
 
 from __future__ import absolute_import
 
-from functools import partial
-# pylint: disable=redefined-builtin
-from functools import reduce
-# pylint: enable=redefined-builtin
+import functools
 import os
 import socket
 import time
@@ -35,23 +32,18 @@ from six.moves import http_client
 from six.moves import xmlrpc_client
 # pylint: enable=import-error
 
-from devops.error import AuthenticationError
-from devops.error import DevopsError
-from devops.error import TimeoutError
-from devops.helpers.ssh_client import SSHAuth
-from devops.helpers.ssh_client import SSHClient
-from devops.helpers.subprocess_runner import Subprocess
+from devops import error
+from devops.helpers import ssh_client
+from devops.helpers import subprocess_runner
 from devops import logger
-from devops.settings import KEYSTONE_CREDS
-from devops.settings import SSH_CREDENTIALS
-from devops.settings import SSH_SLAVE_CREDENTIALS
+from devops import settings
 
 
 def get_free_port():
     for port in range(32000, 32100):
         if not tcp_ping('localhost', port):
             return port
-    raise DevopsError('No free ports available')
+    raise error.DevopsError('No free ports available')
 
 
 def icmp_ping(host, timeout=1):
@@ -60,7 +52,7 @@ def icmp_ping(host, timeout=1):
     returns True if host is pingable
     False - otherwise.
     """
-    result = Subprocess.execute(
+    result = subprocess_runner.Subprocess.execute(
         "ping -c 1 -W '{timeout:d}' '{host:s}'".format(
             host=host, timeout=timeout))
     return result.exit_code == 0
@@ -97,10 +89,10 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
 
     interval - seconds between checks.
 
-    timeout  - raise TimeoutError if predicate won't become True after
+    timeout  - raise error.TimeoutError if predicate won't become True after
     this amount of seconds. 'None' disables timeout.
 
-    timeout_msg - text of the TimeoutError
+    timeout_msg - text of the error.TimeoutError
 
     """
     start_time = time.time()
@@ -116,7 +108,7 @@ def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
                     spent=time.time() - start_time
                 ))
             logger.debug(msg)
-            raise TimeoutError(timeout_msg)
+            raise error.TimeoutError(timeout_msg)
 
         seconds_to_sleep = max(
             0,
@@ -154,7 +146,7 @@ def wait_pass(
 
 
 def wait_tcp(host, port, timeout, timeout_msg="Waiting timed out"):
-    is_port_active = partial(tcp_ping, host=host, port=port)
+    is_port_active = functools.partial(tcp_ping, host=host, port=port)
     wait(is_port_active, timeout=timeout, timeout_msg=timeout_msg)
 
 
@@ -162,14 +154,14 @@ def wait_ssh_cmd(
         host,
         port,
         check_cmd,
-        username=SSH_CREDENTIALS['login'],
-        password=SSH_CREDENTIALS['password'],
+        username=settings.SSH_CREDENTIALS['login'],
+        password=settings.SSH_CREDENTIALS['password'],
         timeout=0):
-    ssh_client = SSHClient(host=host, port=port,
-                           auth=SSHAuth(
-                               username=username,
-                               password=password))
-    wait(lambda: not ssh_client.execute(check_cmd)['exit_code'],
+    ssh = ssh_client.SSHClient(host=host, port=port,
+                               auth=ssh_client.SSHAuth(
+                                   username=username,
+                                   password=password))
+    wait(lambda: not ssh.execute(check_cmd)['exit_code'],
          timeout=timeout)
 
 
@@ -195,28 +187,35 @@ def get_private_keys(env):
     return _ssh_keys
 
 
-def get_admin_remote(env, login=SSH_CREDENTIALS['login'],
-                     password=SSH_CREDENTIALS['password']):
+def get_admin_remote(
+        env,
+        login=settings.SSH_CREDENTIALS['login'],
+        password=settings.SSH_CREDENTIALS['password']):
     admin_ip = get_admin_ip(env)
     wait(lambda: tcp_ping(admin_ip, 22),
          timeout=180,
          timeout_msg=("Admin node {ip} is not accessible by SSH."
                       .format(ip=admin_ip)))
     return env.get_node(
-        name='admin').remote(network_name=SSH_CREDENTIALS['admin_network'],
-                             login=login,
-                             password=password)
+        name='admin'
+    ).remote(
+        network_name=settings.SSH_CREDENTIALS['admin_network'],
+        login=login,
+        password=password)
 
 
-def get_node_remote(env, node_name, login=SSH_SLAVE_CREDENTIALS['login'],
-                    password=SSH_SLAVE_CREDENTIALS['password']):
+def get_node_remote(
+        env,
+        node_name,
+        login=settings.SSH_SLAVE_CREDENTIALS['login'],
+        password=settings.SSH_SLAVE_CREDENTIALS['password']):
     ip = get_slave_ip(env, env.get_node(
         name=node_name).interfaces[0].mac_address)
     wait(lambda: tcp_ping(ip, 22), timeout=180,
          timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
-    return SSHClient(
+    return ssh_client.SSHClient(
         ip,
-        auth=SSHAuth(
+        auth=ssh_client.SSHAuth(
             username=login,
             password=password,
             keys=get_private_keys(env)))
@@ -237,7 +236,7 @@ def get_ip_from_json(js, mac):
                 logger.debug("For mac {0} found ip {1}".format(
                     mac, node['ip']))
                 return node['ip']
-    raise DevopsError(
+    raise error.DevopsError(
         'There is no match between MAC {0} and Nailgun MACs'.format(mac))
 
 
@@ -252,7 +251,7 @@ def xmlrpctoken(uri, login, password):
     try:
         return server.login(login, password)
     except Exception:
-        raise AuthenticationError("Error occurred while login process")
+        raise error.AuthenticationError("Error occurred while login process")
 
 
 def xmlrpcmethod(uri, method):
@@ -309,7 +308,7 @@ def deepgetattr(obj, attr, default=None, splitter='.', do_raise=False):
 
     """
     try:
-        return reduce(getattr, attr.split(splitter), obj)
+        return functools.reduce(getattr, attr.split(splitter), obj)
     except AttributeError:
         if do_raise:
             raise
@@ -327,9 +326,9 @@ def underscored(*args):
 def get_nodes(admin_ip):
     keystone_auth = V2Password(
         auth_url="http://{}:5000/v2.0".format(admin_ip),
-        username=KEYSTONE_CREDS['username'],
-        password=KEYSTONE_CREDS['password'],
-        tenant_name=KEYSTONE_CREDS['tenant_name'])
+        username=settings.KEYSTONE_CREDS['username'],
+        password=settings.KEYSTONE_CREDS['password'],
+        tenant_name=settings.KEYSTONE_CREDS['tenant_name'])
     keystone_session = KeystoneSession(auth=keystone_auth, verify=False)
     nodes = keystone_session.get(
         '/nodes',

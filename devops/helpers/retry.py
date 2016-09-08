@@ -16,7 +16,7 @@ import functools
 import inspect
 from time import sleep
 
-from devops.error import DevopsException
+from devops import error
 from devops import logger
 
 
@@ -45,7 +45,7 @@ def retry(exception, count=10, delay=1):
                 inspect.getmodule(func).__name__,
                 func.__name__)
         else:
-            raise DevopsException(
+            raise error.DevopsException(
                 'Wrong func parameter type {!r}'.format(func))
 
         @functools.wraps(func)

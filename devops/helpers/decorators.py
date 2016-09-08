@@ -14,8 +14,8 @@
 
 from __future__ import unicode_literals
 
-from functools import wraps
-from threading import Thread
+import functools
+import threading
 
 
 def threaded(name=None, started=False, daemon=False):
@@ -29,7 +29,7 @@ def threaded(name=None, started=False, daemon=False):
     """
 
     def real_decorator(func):
-        @wraps(func)
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             """Thread generator for function
 
@@ -39,7 +39,7 @@ def threaded(name=None, started=False, daemon=False):
                 func_name = 'Threaded {}'.format(func.__name__)
             else:
                 func_name = name
-            thread = Thread(
+            thread = threading.Thread(
                 target=func,
                 name=func_name,
                 args=args,
