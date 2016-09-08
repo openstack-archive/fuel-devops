@@ -14,14 +14,13 @@
 
 from __future__ import unicode_literals
 
-from json import loads
-from threading import RLock
+import json
+import threading
 
-from yaml import safe_load
+import yaml
 
-from devops.error import DevopsError
-from devops.error import DevopsNotImplementedError
-from devops.helpers.proc_enums import ExitCodes
+from devops import error
+from devops.helpers import proc_enums
 from devops import logger
 
 
@@ -42,7 +41,7 @@ class ExecResult(object):
     ]
 
     def __init__(self, cmd, stdout=None, stderr=None,
-                 exit_code=ExitCodes.EX_INVALID):
+                 exit_code=proc_enums.ExitCodes.EX_INVALID):
         """Command execution result read from fifo
 
         :type cmd: str
@@ -50,7 +49,7 @@ class ExecResult(object):
         :type stderr: list
         :type exit_code: ExitCodes
         """
-        self.__lock = RLock()
+        self.__lock = threading.RLock()
 
         self.__cmd = cmd
         self.__stdout = stdout if stdout is not None else []
@@ -211,12 +210,12 @@ class ExecResult(object):
 
         :type new_val: int
         """
-        if not isinstance(new_val, (int, ExitCodes)):
+        if not isinstance(new_val, (int, proc_enums.ExitCodes)):
             raise TypeError('Exit code is strictly int')
         with self.lock:
             if isinstance(new_val, int) and \
-                    new_val in ExitCodes.__members__.values():
-                new_val = ExitCodes(new_val)
+                    new_val in proc_enums.ExitCodes.__members__.values():
+                new_val = proc_enums.ExitCodes(new_val)
             self.__exit_code = new_val
 
     def __deserialize(self, fmt):
@@ -228,9 +227,9 @@ class ExecResult(object):
         """
         try:
             if fmt == 'json':
-                return loads(self.stdout_str, encoding='utf-8')
+                return json.loads(self.stdout_str, encoding='utf-8')
             elif fmt == 'yaml':
-                return safe_load(self.stdout_str)
+                return yaml.safe_load(self.stdout_str)
         except BaseException:
             tmpl = (
                 "'{cmd}' stdout is not valid {fmt}:\n"
@@ -238,10 +237,10 @@ class ExecResult(object):
                     cmd=self.cmd,
                     fmt=fmt))
             logger.exception(tmpl.format(stdout=self.stdout_str))
-            raise DevopsError(tmpl.format(stdout=self.stdout_brief))
+            raise error.DevopsError(tmpl.format(stdout=self.stdout_brief))
         msg = '{fmt} deserialize target is not implemented'.format(fmt=fmt)
         logger.error(msg)
-        raise DevopsNotImplementedError(msg)
+        raise error.DevopsNotImplementedError(msg)
 
     @property
     def stdout_json(self):
@@ -298,7 +297,7 @@ class ExecResult(object):
             )
             return
         if key in dir(self):
-            raise DevopsError(
+            raise error.DevopsError(
                 '{key} is read-only!'.format(key=key)
             )
         raise IndexError(

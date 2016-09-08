@@ -30,7 +30,7 @@ class TestRetry(TestCase):
 
     def setUp(self):
         self.sleep_mock = self.patch(
-            'devops.helpers.retry.sleep')
+            'time.sleep')
 
     def create_class_with_retry(self, count, delay):
         class MyClass(object):

@@ -18,19 +18,16 @@ from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
 import jsonfield
-from netaddr import IPNetwork
+import netaddr
 
-from devops.error import DevopsError
-from devops.helpers.helpers import generate_mac
-from devops.helpers.network import IpNetworksPool
+from devops import error
+from devops.helpers import helpers
+from devops.helpers import network
 from devops import logger
-from devops.models.base import BaseModel
-from devops.models.base import choices
-from devops.models.base import ParamedModel
-from devops.models.base import ParamField
+from devops.models import base
 
 
-class AddressPool(ParamedModel, BaseModel):
+class AddressPool(base.ParamedModel, base.BaseModel):
     """Address pool
 
     address_pools:
@@ -108,17 +105,17 @@ class AddressPool(ParamedModel, BaseModel):
     environment = models.ForeignKey('Environment')
     name = models.CharField(max_length=255)
     net = models.CharField(max_length=255, unique=True)
-    vlan_start = ParamField()
-    vlan_end = ParamField()
-    tag = ParamField()  # DEPRECATED, use vlan_start instead
+    vlan_start = base.ParamField()
+    vlan_end = base.ParamField()
+    tag = base.ParamField()  # DEPRECATED, use vlan_start instead
 
     # ip_reserved = {'l2_network_device': 'm.m.m.50',
     #                'gateway': 'n.n.n.254', ...}
-    ip_reserved = ParamField(default={})
+    ip_reserved = base.ParamField(default={})
 
     # ip_ranges = {'range_a': ('x.x.x.x', 'y.y.y.y'),
     #              'range_b': ('a.a.a.a', 'b.b.b.b'), ...}
-    ip_ranges = ParamField(default={})
+    ip_ranges = base.ParamField(default={})
 
     # NEW. Warning: Old implementation returned self.net
     @property
@@ -127,7 +124,7 @@ class AddressPool(ParamedModel, BaseModel):
 
         :return: IPNetwork()
         """
-        return IPNetwork(self.net)
+        return netaddr.IPNetwork(self.net)
 
     @property
     def gateway(self):
@@ -176,7 +173,7 @@ class AddressPool(ParamedModel, BaseModel):
         If range_name already exists, then DevopsError raises.
         """
         if range_name in self.ip_ranges:
-            raise DevopsError(
+            raise error.DevopsError(
                 "Setting IP range '{0}' for address pool '{1}' failed: range "
                 "already exists".format(range_name, self.name))
         self.ip_ranges[range_name] = (ip_range_start, ip_range_end)
@@ -208,8 +205,9 @@ class AddressPool(ParamedModel, BaseModel):
             if already_exists:
                 continue
             return ip
-        raise DevopsError("No more free addresses in the address pool {0}"
-                          " with CIDR {1}".format(self.name, self.net))
+        raise error.DevopsError(
+            "No more free addresses in the address pool {0}"
+            " with CIDR {1}".format(self.name, self.net))
 
     @classmethod
     def _safe_create_network(cls, name, pool, environment, **params):
@@ -229,13 +227,14 @@ class AddressPool(ParamedModel, BaseModel):
             except IntegrityError as e:
                 logger.debug(e)
                 if 'name' in str(e):
-                    raise DevopsError(
+                    raise error.DevopsError(
                         'AddressPool with name "{}" already exists'
                         ''.format(name))
                 continue
 
-        raise DevopsError("There is no network pool available for creating "
-                          "address pool {}".format(name))
+        raise error.DevopsError(
+            "There is no network pool available for creating "
+            "address pool {}".format(name))
 
     @classmethod
     def address_pool_create(cls, name, environment, pool=None, **params):
@@ -244,8 +243,8 @@ class AddressPool(ParamedModel, BaseModel):
         :rtype : Network
         """
         if pool is None:
-            pool = IpNetworksPool(
-                networks=[IPNetwork('10.0.0.0/16')],
+            pool = network.IpNetworksPool(
+                networks=[netaddr.IPNetwork('10.0.0.0/16')],
                 prefix=24,
                 allocated_networks=environment.get_allocated_networks())
 
@@ -292,7 +291,7 @@ class AddressPool(ParamedModel, BaseModel):
         return address_pool
 
 
-class NetworkPool(BaseModel):
+class NetworkPool(base.BaseModel):
     """Network pools for mapping logical (OpenStack) networks and AddressPools
 
     This object is not used for environment creation, only for mapping some
@@ -422,7 +421,7 @@ class NetworkPool(BaseModel):
         return self.address_pool.net
 
 
-class L2NetworkDevice(ParamedModel, BaseModel):
+class L2NetworkDevice(base.ParamedModel, base.BaseModel):
     class Meta(object):
         db_table = 'devops_l2_network_device'
         app_label = 'devops'
@@ -480,7 +479,7 @@ class NetworkConfig(models.Model):
     parents = jsonfield.JSONField(default=[])
 
 
-class Interface(ParamedModel):
+class Interface(base.ParamedModel):
     class Meta(object):
         db_table = 'devops_interface'
         app_label = 'devops'
@@ -490,8 +489,8 @@ class Interface(ParamedModel):
     label = models.CharField(max_length=255, null=True)
     mac_address = models.CharField(max_length=255, unique=True, null=False)
     type = models.CharField(max_length=255, null=False)
-    model = choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
-    features = ParamField(default=[])
+    model = base.choices('virtio', 'e1000', 'pcnet', 'rtl8139', 'ne2k_pci')
+    features = base.ParamField(default=[])
 
     @property
     def driver(self):
@@ -553,7 +552,7 @@ class Interface(ParamedModel):
             node=node,
             label=label,
             type=if_type,
-            mac_address=mac_address or generate_mac(),
+            mac_address=mac_address or helpers.generate_mac(),
             model=model,
             features=features or [])
         if (interface.l2_network_device and
