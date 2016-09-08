@@ -248,6 +248,7 @@ class LibvirtXMLBuilder(object):
 
         if acpi:
             with node_xml.features:
+                # noinspection PyStatementEffect
                 node_xml.acpi
 
         cpu_args = {}
@@ -269,6 +270,7 @@ class LibvirtXMLBuilder(object):
 
         if use_hugepages:
             with node_xml.memoryBacking:
+                # noinspection PyStatementEffect
                 node_xml.hugepages
 
         node_xml.clock(offset='utc')

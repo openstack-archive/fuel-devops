@@ -24,17 +24,21 @@ class DevopsClient(object):
     Provide methods to get/create environments
     """
 
-    def get_env(self, env_name):
+    @staticmethod
+    def get_env(env_name):
         env = models.Environment.get(name=env_name)
         return environment.DevopsEnvironment(env)
 
-    def list_env_names(self):
+    @staticmethod
+    def list_env_names():
         return [env.name for env in models.Environment.list_all()]
 
-    def synchronize_all(self):
+    @staticmethod
+    def synchronize_all():
         models.Environment.synchronize_all()
 
-    def create_env_from_config(self, config):
+    @staticmethod
+    def create_env_from_config(config):
         """Creates env from template
 
         :type config: str or dict

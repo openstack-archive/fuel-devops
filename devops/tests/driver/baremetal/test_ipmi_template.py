@@ -113,9 +113,9 @@ class TestIPMITemplate(TestCase):
         self.full_conf = yaml.load(ENV_TMPLT)
         self.env = Environment.create_environment(self.full_conf)
         self.ipmiclient_mock = self.patch(
-            'devops.driver.baremetal.ipmi_driver.IpmiClient')
+            'devops.driver.baremetal.ipmi_client.IpmiClient')
         self.wait_mock = self.patch(
-            'devops.driver.baremetal.ipmi_driver.wait')
+            'devops.helpers.helpers.wait')
         self.ipmiclient1 = mock.Mock(spec=IpmiClient)
         self.ipmiclient2 = mock.Mock(spec=IpmiClient)
 
@@ -131,20 +131,20 @@ class TestIPMITemplate(TestCase):
     def test_db(self):
         """Tets DB """
         node = self.env.get_node(name='slave-01')
-        assert(node.ipmi_user) == 'user1'
-        assert (node.ipmi_password) == 'pass1'
-        assert (node.ipmi_previlegies) == 'OPERATOR'
-        assert (node.ipmi_host) == 'ipmi-1.host.address.net'
-        assert (node.ipmi_lan_interface) == 'lanplus'
-        assert (node.ipmi_port) == 623
+        assert node.ipmi_user == 'user1'
+        assert node.ipmi_password == 'pass1'
+        assert node.ipmi_previlegies == 'OPERATOR'
+        assert node.ipmi_host == 'ipmi-1.host.address.net'
+        assert node.ipmi_lan_interface == 'lanplus'
+        assert node.ipmi_port == 623
 
         node2 = self.env.get_node(name='slave-02')
-        assert (node2.ipmi_user) == 'user2'
-        assert (node2.ipmi_password) == 'pass2'
-        assert (node2.ipmi_previlegies) == 'OPERATOR'
-        assert (node2.ipmi_host) == 'ipmi-2.host.address.net'
-        assert (node2.ipmi_lan_interface) == 'lanplus'
-        assert (node2.ipmi_port) == 623
+        assert node2.ipmi_user == 'user2'
+        assert node2.ipmi_password == 'pass2'
+        assert node2.ipmi_previlegies == 'OPERATOR'
+        assert node2.ipmi_host == 'ipmi-2.host.address.net'
+        assert node2.ipmi_lan_interface == 'lanplus'
+        assert node2.ipmi_port == 623
 
     def test_life_cycle(self):
         """Test lifecycle """

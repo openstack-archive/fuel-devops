@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from os import environ
+import os
 
 if __name__ == "__main__":
-    environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
-    from devops.shell import main
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "devops.settings")
+    from devops import shell
 
-    main()
+    shell.main()

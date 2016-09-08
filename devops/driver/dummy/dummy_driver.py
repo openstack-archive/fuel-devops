@@ -22,15 +22,14 @@ Driver, L2NetworkDevice, Volume, Node.
 
 from __future__ import print_function
 
-from devops.models.base import ParamField
-from devops.models.base import ParamMultiField
-from devops.models.driver import Driver
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import Volume
+from devops.models import base
+from devops.models import driver
+from devops.models import network
+from devops.models import node
+from devops.models import volume
 
 
-class DummyDriver(Driver):
+class DummyDriver(driver.Driver):
     """Example of driver implementation
 
     Note: This class is imported as Driver at .__init__.py
@@ -53,11 +52,11 @@ class DummyDriver(Driver):
     """
 
     # example parameters
-    dummy_parameter = ParamField(default=10)
-    choice_parameter = ParamField(default='one',
-                                  choices=('one', 'two', 'three'))
-    nested = ParamMultiField(
-        parameter=ParamField()
+    dummy_parameter = base.ParamField(default=10)
+    choice_parameter = base.ParamField(default='one',
+                                       choices=('one', 'two', 'three'))
+    nested = base.ParamMultiField(
+        parameter=base.ParamField()
     )
 
     def get_allocated_networks(self):
@@ -70,7 +69,7 @@ class DummyDriver(Driver):
         return ['192.168.0.0/24', '192.168.1.0/24']
 
 
-class DummyL2NetworkDevice(L2NetworkDevice):
+class DummyL2NetworkDevice(network.L2NetworkDevice):
     """Example implementation of l2 network device.
 
     Note: This class is imported as L2NetworkDevice at .__init__.py
@@ -93,8 +92,8 @@ class DummyL2NetworkDevice(L2NetworkDevice):
     """
 
     # example parameter
-    dhcp = ParamField(default=False)
-    other = ParamField(default='')
+    dhcp = base.ParamField(default=False)
+    other = base.ParamField(default='')
 
     def define(self):
         """Define
@@ -154,7 +153,7 @@ class DummyL2NetworkDevice(L2NetworkDevice):
         print('Do something after erase')
 
 
-class DummyVolume(Volume):
+class DummyVolume(volume.Volume):
     """Example implementation of volume
 
     Note: This class is imported as Volume at .__init__.py
@@ -163,7 +162,7 @@ class DummyVolume(Volume):
     """
 
     # example parameter
-    size = ParamField(default=1024)
+    size = base.ParamField(default=1024)
 
     def define(self):
         """Define
@@ -192,7 +191,7 @@ class DummyVolume(Volume):
         print('Do something after erase')
 
 
-class DummyNode(Node):
+class DummyNode(node.Node):
     """Example implementation of node
 
     Note: This class is imported as Node at .__init__.py
@@ -225,9 +224,9 @@ class DummyNode(Node):
              - fuelweb_admin
     """
 
-    cpu = ParamField(default=1)
-    memory = ParamField(default=1024)
-    boot = ParamField(default=['network', 'cdrom', 'hd'])
+    cpu = base.ParamField(default=1)
+    memory = base.ParamField(default=1024)
+    boot = base.ParamField(default=['network', 'cdrom', 'hd'])
 
     def define(self):
         """Define

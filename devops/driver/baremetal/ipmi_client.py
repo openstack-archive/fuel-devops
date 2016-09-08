@@ -14,7 +14,7 @@
 
 import subprocess
 
-from devops.error import DevopsError
+from devops import error
 from devops import logger
 
 
@@ -104,12 +104,12 @@ class IpmiClient(object):
             ipmitool_cmd = subprocess.check_output(["which",
                                                     "ipmitool"]).strip()
             if not ipmitool_cmd:
-                raise DevopsError('ipmitool not found')
+                raise error.DevopsError('ipmitool not found')
         except Exception:
-            raise DevopsError('Node:{} ipmi_host:{} '
-                              'ipmitool has not installed.\
-                               No chance to go over'.format(self.nodename,
-                                                            self.remote_host))
+            raise error.DevopsError(
+                'Node:{} ipmi_host:{} ipmitool has not installed. '
+                'No chance to go over'.format(self.nodename,
+                                              self.remote_host))
         ipmi_cmd_dict = {'ipmitool': ipmitool_cmd,
                          'remote_lan_interface': self.remote_lan_interface,
                          'remote_host': self.remote_host,
@@ -121,13 +121,14 @@ class IpmiClient(object):
         lerrors = [(key, value) for (key, value) in ipmi_cmd_dict.items()
                    if value is None]
         if lerrors:
-            raise DevopsError('Node:{} ipmi_host:{} '
-                              'ipmitool arguments '
-                              'key={}, value={}'
-                              'are not valid'.format(self.nodename,
-                                                     self.remote_host,
-                                                     lerrors[0],
-                                                     lerrors[1]))
+            raise error.DevopsError(
+                'Node:{} ipmi_host:{} '
+                'ipmitool arguments '
+                'key={}, value={}'
+                'are not valid'.format(self.nodename,
+                                       self.remote_host,
+                                       lerrors[0],
+                                       lerrors[1]))
         ipmi_cmd = [ipmitool_cmd,
                     '-I', self.remote_lan_interface,
                     '-H', self.remote_host,
@@ -157,18 +158,19 @@ class IpmiClient(object):
             code = pipe.returncode
         except Exception as message:
             logger.debug('{}'.format(message))
-            raise DevopsError('Node:{} Remote:{} ipmitool command [{}] '
-                              'has failed with'
-                              ' the exception: {}'.format(self.nodename,
-                                                          self.remote_host,
-                                                          cmd, message))
+            raise error.DevopsError(
+                'Node:{} Remote:{} ipmitool command [{}] '
+                'has failed with'
+                ' the exception: {}'.format(self.nodename,
+                                            self.remote_host,
+                                            cmd, message))
 
         if (out is None) or code != 0:
             logger.debug("rcode ={} or err ={}".format(code, err))
-            raise DevopsError('Node:{} Remote:{} ipmitool command [{}] '
-                              'has failed with the message: {}'
-                              .format(self.nodename, self.remote_host,
-                                      cmd, err))
+            raise error.DevopsError(
+                'Node:{} Remote:{} ipmitool command [{}] '
+                'has failed with the message: {}'.format(
+                    self.nodename, self.remote_host, cmd, err))
         return out
 
     def __controller_management(self, command):

@@ -380,6 +380,7 @@ class ParamedModel(six.with_metaclass(ParamedModelType, models.Model)):
         for basecls in cls.__mro__:
             if not hasattr(basecls, '_param_field_names'):
                 continue
+            # noinspection PyProtectedMember
             param_names += basecls._param_field_names
         return param_names
 
@@ -387,6 +388,7 @@ class ParamedModel(six.with_metaclass(ParamedModelType, models.Model)):
         for basecls in self.__class__.__mro__:
             if not hasattr(basecls, '_param_field_names'):
                 continue
+            # noinspection PyProtectedMember
             for param in basecls._param_field_names:
                 basecls.__dict__[param].set_default_value(self)
 

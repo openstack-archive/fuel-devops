@@ -12,20 +12,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from copy import deepcopy
+import copy
 
 from django.db import models
 
 from devops import error
 from devops import logger
-from devops.models.base import BaseModel
-from devops.models.network import L2NetworkDevice
-from devops.models.network import NetworkPool
-from devops.models.node import Node
-from devops.models.node import Volume
+from devops.models import base
+from devops.models import network
+from devops.models import node
+from devops.models import volume
 
 
-class Group(BaseModel):
+class Group(base.BaseModel):
     """Groups nodes controlled by a specific driver"""
 
     class Meta(object):
@@ -39,8 +38,8 @@ class Group(BaseModel):
     def get_l2_network_device(self, **kwargs):
         try:
             return self.l2networkdevice_set.get(**kwargs)
-        except L2NetworkDevice.DoesNotExist:
-            raise error.DevopsObjNotFound(L2NetworkDevice, **kwargs)
+        except network.L2NetworkDevice.DoesNotExist:
+            raise error.DevopsObjNotFound(network.L2NetworkDevice, **kwargs)
 
     def get_l2_network_devices(self, **kwargs):
         return self.l2networkdevice_set.filter(**kwargs).order_by('id')
@@ -48,8 +47,8 @@ class Group(BaseModel):
     def get_network_pool(self, **kwargs):
         try:
             return self.networkpool_set.get(**kwargs)
-        except NetworkPool.DoesNotExist:
-            raise error.DevopsObjNotFound(NetworkPool, **kwargs)
+        except network.NetworkPool.DoesNotExist:
+            raise error.DevopsObjNotFound(network.NetworkPool, **kwargs)
 
     def get_network_pools(self, **kwargs):
         return self.networkpool_set.filter(**kwargs).order_by('id')
@@ -57,8 +56,8 @@ class Group(BaseModel):
     def get_node(self, **kwargs):
         try:
             return self.node_set.get(**kwargs)
-        except Node.DoesNotExist:
-            raise error.DevopsObjNotFound(Node, **kwargs)
+        except node.Node.DoesNotExist:
+            raise error.DevopsObjNotFound(node.Node, **kwargs)
 
     def get_nodes(self, **kwargs):
         return self.node_set.filter(**kwargs).order_by('id')
@@ -89,18 +88,18 @@ class Group(BaseModel):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
     def define_volumes(self):
-        for volume in self.get_volumes():
-            volume.define()
+        for vol in self.get_volumes():
+            vol.define()
 
     def define_networks(self):
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.define()
 
     def define_nodes(self):
-        for node in self.get_nodes():
-            for volume in node.get_volumes():
-                volume.define()
-            node.define()
+        for nod in self.get_nodes():
+            for vol in nod.get_volumes():
+                vol.define()
+            nod.define()
 
     def start_networks(self):
         for l2_network_device in self.get_l2_network_devices():
@@ -109,19 +108,19 @@ class Group(BaseModel):
     def start_nodes(self, nodes=None):
         if nodes is None:
             nodes = self.get_nodes()
-        for node in nodes:
-            node.start()
+        for nod in nodes:
+            nod.start()
 
     def destroy(self, **kwargs):
-        for node in self.get_nodes():
-            node.destroy()
+        for nod in self.get_nodes():
+            nod.destroy()
 
     def erase(self):
-        for node in self.get_nodes():
-            node.erase()
+        for nod in self.get_nodes():
+            nod.erase()
 
-        for volume in self.get_volumes():
-            volume.erase()
+        for vol in self.get_volumes():
+            vol.erase()
 
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.erase()
@@ -190,7 +189,7 @@ class Group(BaseModel):
                           **node_cfg['params'])
 
     def add_node(self, name, role=None, **params):
-        new_params = deepcopy(params)
+        new_params = copy.deepcopy(params)
         interfaces = new_params.pop('interfaces', [])
         network_configs = new_params.pop('network_config', {})
         volumes = new_params.pop('volumes', [])
@@ -219,7 +218,7 @@ class Group(BaseModel):
         address_pool = self.environment.get_address_pool(
             name=address_pool_name)
 
-        return NetworkPool.objects.create(
+        return network.NetworkPool.objects.create(
             group=self,
             name=name,
             address_pool=address_pool,
@@ -242,8 +241,8 @@ class Group(BaseModel):
     def get_volume(self, **kwargs):
         try:
             return self.volume_set.get(**kwargs)
-        except Volume.DoesNotExist:
-            raise error.DevopsObjNotFound(Volume, **kwargs)
+        except volume.Volume.DoesNotExist:
+            raise error.DevopsObjNotFound(volume.Volume, **kwargs)
 
     def get_volumes(self, **kwargs):
         return self.volume_set.filter(**kwargs)
