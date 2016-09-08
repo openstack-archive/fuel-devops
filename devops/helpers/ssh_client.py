@@ -12,14 +12,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import base64
+import fcntl
 import os
 import posixpath
 import stat
 from sys import getrefcount
+from threading import Event
 from threading import RLock
+from time import sleep
 from warnings import warn
 
 import paramiko
@@ -27,6 +31,7 @@ import six
 
 from devops.error import DevopsCalledProcessError
 from devops.error import TimeoutError
+from devops.helpers.decorators import threaded
 from devops.helpers.exec_result import ExecResult
 from devops.helpers.proc_enums import ExitCodes
 from devops.helpers.retry import retry
@@ -176,6 +181,7 @@ class SSHAuth(object):
         for k in self.__keys:
             if k == self.__key:
                 continue
+            # noinspection PyTypeChecker
             _keys.append(
                 '<private for pub: {}>'.format(
                     self.__get_public_key(key=k)) if k is not None else None)
@@ -704,7 +710,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     @classmethod
     def __exec_command(
-            cls, command, channel, stdout, stderr, timeout):
+            cls, command, channel, stdout, stderr, timeout, verbose=False):
         """Get exit status from channel with timeout
 
         :type command: str
@@ -715,39 +721,97 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :rtype: ExecResult
         :raises: TimeoutError
         """
-        channel.status_event.wait(timeout)
-        result = ExecResult(
-            cmd=command,
-            stdout=stdout.readlines(),
-            stderr=stderr.readlines()
-        )
-        if channel.status_event.is_set():
-            result.exit_code = channel.exit_status
-            channel.close()
 
+        def readlines(stream, verbose, lines_count=100):
+            """Nonblocking read and log lines from stream"""
+            if lines_count < 1:
+                lines_count = 1
+            result = []
+            try:
+                for _ in range(1, lines_count):
+                    line = stream.readline()
+                    if line:
+                        result.append(line)
+                        if verbose:
+                            print(line.rstrip())
+            except IOError:
+                pass
             return result
-        else:
 
+        @threaded(started=True)
+        def poll_pipes(stdout, stderr, result, stop, channel):
+            """Polling task for FIFO buffers
+
+            :type stdout: file
+            :type stderr: file
+            :type result: ExecResult
+            :type stop: Event
+            :type channel: paramiko.channel.Channel
+            """
+            # Get file descriptors for stdout and stderr streams
+            fd_stdout = stdout.fileno()
+            fd_stderr = stderr.fileno()
+            # Get flags of stdout and stderr streams
+            fl_stdout = fcntl.fcntl(fd_stdout, fcntl.F_GETFL)
+            fl_stderr = fcntl.fcntl(fd_stderr, fcntl.F_GETFL)
+            # Set nonblock mode for stdout and stderr streams
+            fcntl.fcntl(fd_stdout, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
+            fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
+
+            while not stop.isSet():
+                sleep(0.1)
+
+                result.stdout += readlines(stdout, verbose)
+                result.stderr += readlines(stderr, verbose)
+
+                if channel.status_event.is_set():
+                    result.exit_code = result.exit_code = channel.exit_status
+                    result.stdout += readlines(stdout, verbose)
+                    result.stderr += readlines(stderr, verbose)
+
+                    stop.set()
+
+        # channel.status_event.wait(timeout)
+        result = ExecResult(cmd=command)
+        stop_event = Event()
+        poll_pipes(
+            stdout=stdout,
+            stderr=stderr,
+            result=result,
+            stop=stop_event,
+            channel=channel
+        )
+
+        stop_event.wait(timeout)
+
+        # Process closed?
+        if stop_event.isSet():
+            stop_event.clear()
             channel.close()
-            status_tmpl = (
-                'Wait for {0!r} during {1}s: no return code!\n'
-                '\tSTDOUT:\n'
-                '{2}\n'
-                '\tSTDERR"\n'
-                '{3}')
-            logger.debug(
-                status_tmpl.format(
-                    command, timeout,
-                    result.stdout,
-                    result.stderr
-                )
+            return result
+
+        stop_event.set()
+        channel.close()
+
+        status_tmpl = (
+            'Wait for {0!r} during {1}s: no return code!\n'
+            '\tSTDOUT:\n'
+            '{2}\n'
+            '\tSTDERR"\n'
+            '{3}')
+        logger.debug(
+            status_tmpl.format(
+                command, timeout,
+                result.stdout,
+                result.stderr
             )
-            raise TimeoutError(
-                status_tmpl.format(
-                    command, timeout,
-                    result.stdout_brief,
-                    result.stderr_brief
-                ))
+        )
+        raise TimeoutError(
+            status_tmpl.format(
+                command, timeout,
+                result.stdout_brief,
+                result.stderr_brief
+            ))
 
     def execute(self, command, verbose=False, timeout=None, **kwargs):
         """Execute command and wait for return code
@@ -760,7 +824,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         chan, _, stderr, stdout = self.execute_async(command, **kwargs)
 
-        result = self.__exec_command(command, chan, stdout, stderr, timeout)
+        result = self.__exec_command(
+            command, chan, stdout, stderr, timeout,
+            verbose=verbose
+        )
 
         if verbose:
             logger.info(
@@ -777,7 +844,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 ))
         else:
             logger.debug(
-                '{cmd!r} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results: Exit code: {code!s}'.format(
                     cmd=command,
                     code=result.exit_code
                 )
@@ -827,7 +894,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             cmd,
             auth=None,
             target_port=22,
-            timeout=None
+            timeout=None,
+            verbose=False
     ):
         """Execute command on remote host through currently connected host
 
@@ -836,6 +904,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type auth: SSHAuth
         :type target_port: int
         :type timeout: int
+        :type verbose: bool
         :rtype: ExecResult
         :raises: TimeoutError
         """
@@ -861,7 +930,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         channel.exec_command(cmd)
 
         # noinspection PyDictCreation
-        result = self.__exec_command(cmd, channel, stdout, stderr, timeout)
+        result = self.__exec_command(
+            cmd, channel, stdout, stderr, timeout, verbose=verbose)
 
         intermediate_channel.close()
 

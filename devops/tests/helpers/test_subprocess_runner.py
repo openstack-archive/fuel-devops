@@ -49,12 +49,8 @@ class TestSubprocessRunner(TestCase):
         mock_stderr_effect.extend(stderr_lines)
         mock_stdout_effect.extend([IOError] * 100)
         mock_stderr_effect.extend([IOError] * 100)
-        stderr_readline = Mock(
-            side_effect=mock_stderr_effect
-        )
-        stdout_readline = Mock(
-            side_effect=mock_stdout_effect
-        )
+        stderr_readline = Mock(side_effect=mock_stderr_effect)
+        stdout_readline = Mock(side_effect=mock_stdout_effect)
 
         stdout = Mock()
         stderr = Mock()
