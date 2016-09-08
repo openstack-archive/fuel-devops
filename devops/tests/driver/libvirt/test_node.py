@@ -29,9 +29,7 @@ class TestLibvirtNode(LibvirtTestCase):
     def setUp(self):
         super(TestLibvirtNode, self).setUp()
 
-        self.sleep_mock = self.patch('devops.helpers.retry.sleep')
-        self.libvirt_sleep_mock = self.patch(
-            'devops.driver.libvirt.libvirt_driver.sleep')
+        self.sleep_mock = self.patch('time.sleep')
 
         self.env = Environment.create('test_env')
         self.group = self.env.add_group(
@@ -212,7 +210,7 @@ class TestLibvirtNode(LibvirtTestCase):
                 mock.call(0, 0, [4], 1, 0),
                 mock.call(0, 0, [28], 1, 0),
             ])
-            self.libvirt_sleep_mock.assert_called_once_with(1)
+            self.sleep_mock.assert_called_once_with(1)
 
     def test_start_reboot(self):
         self.node.define()

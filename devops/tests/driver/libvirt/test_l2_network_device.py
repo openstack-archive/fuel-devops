@@ -89,7 +89,7 @@ class TestLibvirtL2NetworkDevice(LibvirtTestCase):
         assert self.l2_net_dev.exists() is False
 
     # speed up retry
-    @mock.patch('devops.helpers.retry.sleep')
+    @mock.patch('time.sleep')
     def test_remove_active(self, sleep_mock):
         self.l2_net_dev.define()
         self.l2_net_dev.start()

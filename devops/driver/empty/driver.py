@@ -12,33 +12,31 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from devops.models.driver import Driver
-from devops.models.network import Interface
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import DiskDevice
-from devops.models.volume import Volume
+from devops.models import driver
+from devops.models import network
+from devops.models import node
+from devops.models import volume
 
 
-class EmptyDriver(Driver):
+class EmptyDriver(driver.Driver):
     pass
 
 
-class EmptyInterface(Interface):
+class EmptyInterface(network.Interface):
     pass
 
 
-class EmptyL2NetworkDevice(L2NetworkDevice):
+class EmptyL2NetworkDevice(network.L2NetworkDevice):
     pass
 
 
-class EmptyNode(Node):
+class EmptyNode(node.Node):
     pass
 
 
-class EmptyDiskDevice(DiskDevice):
+class EmptyDiskDevice(volume.DiskDevice):
     pass
 
 
-class EmptyVolume(Volume):
+class EmptyVolume(volume.Volume):
     pass

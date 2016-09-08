@@ -19,6 +19,7 @@ import libvirt
 import mock
 from netaddr import IPNetwork
 
+# noinspection PyProtectedMember
 from devops.driver.libvirt.libvirt_driver import _LibvirtManager
 from devops.driver.libvirt.libvirt_driver import LibvirtDriver
 from devops.models import Environment

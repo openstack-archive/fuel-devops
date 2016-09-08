@@ -14,12 +14,10 @@
 
 from django.db import models
 
-from devops.models.base import BaseModel
-from devops.models.base import ParamedModel
-from devops.models.base import ParamField
+from devops.models import base
 
 
-class Volume(ParamedModel, BaseModel):
+class Volume(base.ParamedModel, base.BaseModel):
     class Meta(object):
         unique_together = (('name', 'node'), ('name', 'group'))
         db_table = 'devops_volume'
@@ -44,7 +42,7 @@ class Volume(ParamedModel, BaseModel):
         self.delete()
 
 
-class DiskDevice(ParamedModel):
+class DiskDevice(base.ParamedModel):
     class Meta(object):
         db_table = 'devops_diskdevice'
         app_label = 'devops'
@@ -55,7 +53,7 @@ class DiskDevice(ParamedModel):
     # TODO(astudenov): temporarily added for ipmi driver
     # and driverless testcase. These fields should be removed
     # after refactoring of volume section in themplate
-    device = ParamField()
-    type = ParamField()
-    bus = ParamField()
-    target_dev = ParamField()
+    device = base.ParamField()
+    type = base.ParamField()
+    bus = base.ParamField()
+    target_dev = base.ParamField()
