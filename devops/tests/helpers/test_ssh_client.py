@@ -771,8 +771,9 @@ class TestSSHClientInit(TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
+    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch('devops.helpers.ssh_client.ExecResult', autospec=True)
-    def test_init_memorize(self, Result, client, policy, logger, sleep):
+    def test_init_memorize(self, Result, fcntl, client, policy, logger, sleep):
         port1 = 2222
         host1 = '127.0.0.2'
 
@@ -1158,14 +1159,21 @@ class TestExecute(TestCase):
         stderr = mock.Mock()
         stdout = mock.Mock()
 
-        stderr_readlines = mock.Mock(
-            return_value=[b' \n', b'0\n', b'1\n', b' \n'] if stderr_val else []
+        stdout_lines = [b' \n', b'2\n', b'3\n', b' \n']
+        stderr_lines = (
+            [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
         )
-        stdout_readlines = mock.Mock(
-            return_value=[b' \n', b'2\n', b'3\n', b' \n'])
+        mock_stdout_effect = []
+        mock_stderr_effect = []
+        mock_stdout_effect.extend(stdout_lines)
+        mock_stderr_effect.extend(stderr_lines)
+        mock_stdout_effect.extend([IOError] * 100)
+        mock_stderr_effect.extend([IOError] * 100)
+        stderr_readline = mock.Mock(side_effect=mock_stderr_effect)
+        stdout_readline = mock.Mock(side_effect=mock_stdout_effect)
 
-        stderr.attach_mock(stderr_readlines, 'readlines')
-        stdout.attach_mock(stdout_readlines, 'readlines')
+        stderr.attach_mock(stderr_readline, 'readline')
+        stdout.attach_mock(stdout_readline, 'readline')
 
         exit_code = ec
         chan = mock.Mock()
@@ -1178,27 +1186,60 @@ class TestExecute(TestCase):
         chan.attach_mock(status_event, 'status_event')
         chan.configure_mock(exit_status=exit_code)
 
-        return chan, '', stderr, stdout
+        # noinspection PyTypeChecker
+        exp_result = ExecResult(
+            cmd=command,
+            stderr=stderr_lines,
+            stdout=stdout_lines,
+            exit_code=ec
+        )
 
+        return chan, '', exp_result, stderr, stdout
+
+    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
-    def test_execute(self, execute_async, client, policy, logger):
-        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+    def test_execute(self, execute_async, fcntl, client, policy, logger):
+        (
+            chan, _stdin, exp_result, stderr, stdout
+         ) = self.get_patched_execute_async_retval()
         is_set = mock.Mock(return_value=True)
         chan.status_event.attach_mock(is_set, 'is_set')
 
         execute_async.return_value = chan, _stdin, stderr, stdout
 
-        stderr_lst = stderr.readlines()
-        stdout_lst = stdout.readlines()
+        ssh = self.get_ssh()
+
+        logger.reset_mock()
 
         # noinspection PyTypeChecker
-        expected = ExecResult(
-            cmd=command,
-            stderr=stderr_lst,
-            stdout=stdout_lst,
-            exit_code=0
+        result = ssh.execute(command=command, verbose=False)
+
+        self.assertEqual(
+            result,
+            exp_result
         )
+        execute_async.assert_called_once_with(command)
+        chan.assert_has_calls((mock.call.status_event.is_set(), ))
+        logger.assert_has_calls((
+            mock.call.debug(
+                "{cmd!r} execution results: Exit code: {ec!s}".format(
+                    cmd=exp_result.cmd, ec=exp_result.exit_code)),
+        ))
+
+    @mock.patch('sys.stdout')
+    @mock.patch('fcntl.fcntl', autospec=True)
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute_async')
+    def test_execute_verbose(
+            self, execute_async, fcntl, sys_stdout, client, policy, logger):
+        (
+            chan, _stdin, exp_result, stderr, stdout
+        ) = self.get_patched_execute_async_retval()
+        is_set = mock.Mock(return_value=True)
+        chan.status_event.attach_mock(is_set, 'is_set')
+
+        execute_async.return_value = chan, _stdin, stderr, stdout
 
         ssh = self.get_ssh()
 
@@ -1209,13 +1250,10 @@ class TestExecute(TestCase):
 
         self.assertEqual(
             result,
-            expected
+            exp_result
         )
         execute_async.assert_called_once_with(command)
-        chan.assert_has_calls((
-            mock.call.status_event.wait(None),
-            mock.call.status_event.is_set(),
-            mock.call.close()))
+        chan.assert_has_calls((mock.call.status_event.is_set(), ))
         logger.assert_has_calls((
             mock.call.info(
                 '{cmd!r} execution results:\n'
@@ -1230,65 +1268,49 @@ class TestExecute(TestCase):
                     stderr=result['stderr_str']
                 )),
         ))
+        sys_stdout.assert_has_calls(
+            tuple(mock.call.write(line.strip('\n')) for line in result.stdout))
 
+    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
-    def test_execute_timeout(self, execute_async, client, policy, logger):
-        exit_code = 0
-
-        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+    def test_execute_timeout(
+            self, execute_async, fcntl, client, policy, logger):
+        (
+            chan, _stdin, exp_result, stderr, stdout
+        ) = self.get_patched_execute_async_retval()
         is_set = mock.Mock(return_value=True)
         chan.status_event.attach_mock(is_set, 'is_set')
 
         execute_async.return_value = chan, _stdin, stderr, stdout
-
-        stderr_lst = stderr.readlines()
-        stdout_lst = stdout.readlines()
-
-        # noinspection PyTypeChecker
-        expected = ExecResult(
-            cmd=command,
-            stderr=stderr_lst,
-            stdout=stdout_lst,
-            exit_code=exit_code
-        )
 
         ssh = self.get_ssh()
 
         logger.reset_mock()
 
         # noinspection PyTypeChecker
-        result = ssh.execute(command=command, verbose=True, timeout=1)
+        result = ssh.execute(command=command, verbose=False, timeout=1)
 
         self.assertEqual(
             result,
-            expected
+            exp_result
         )
         execute_async.assert_called_once_with(command)
-        chan.assert_has_calls((
-            mock.call.status_event.wait(1),
-            mock.call.status_event.is_set(),
-            mock.call.close()))
+        chan.assert_has_calls((mock.call.status_event.is_set(), ))
         logger.assert_has_calls((
-            mock.call.info(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'STDOUT:\n'
-                '{stdout}\n'
-                'STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result['exit_code'],
-                    stdout=result['stdout_str'],
-                    stderr=result['stderr_str']
-                )),
+            mock.call.debug(
+                "{cmd!r} execution results: Exit code: {ec!s}".format(
+                    cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
+    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
-    def test_execute_timeout_fail(self, execute_async, client, policy, logger):
-
-        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+    def test_execute_timeout_fail(
+            self, execute_async, fcntl, client, policy, logger):
+        (
+            chan, _stdin, exp_result, stderr, stdout
+        ) = self.get_patched_execute_async_retval()
         is_set = mock.Mock(return_value=False)
         chan.status_event.attach_mock(is_set, 'is_set')
 
@@ -1300,18 +1322,17 @@ class TestExecute(TestCase):
 
         with self.assertRaises(TimeoutError):
             # noinspection PyTypeChecker
-            ssh.execute(command=command, verbose=True, timeout=1)
+            ssh.execute(command=command, verbose=False, timeout=1)
 
         execute_async.assert_called_once_with(command)
-        chan.assert_has_calls((
-            mock.call.status_event.wait(1),
-            mock.call.status_event.is_set(),
-            mock.call.close()))
+        chan.assert_has_calls((mock.call.status_event.is_set(), ))
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_together(self, execute_async, client, policy, logger):
-        chan, _stdin, stderr, stdout = self.get_patched_execute_async_retval()
+        (
+            chan, _stdin, exp_result, stderr, stdout
+        ) = self.get_patched_execute_async_retval()
         execute_async.return_value = chan, _stdin, stderr, stdout
 
         host2 = '127.0.0.2'
@@ -1454,6 +1475,7 @@ class TestExecute(TestCase):
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
+@mock.patch('fcntl.fcntl', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
@@ -1482,12 +1504,12 @@ class TestExecuteThrowHost(TestCase):
 
         makefile = mock.Mock()
         makefile.attach_mock(mock.Mock(
-            return_value=[b' \n', b'2\n', b'3\n', b' \n']),
-            'readlines')
+            side_effect=[b' \n', b'2\n', b'3\n', b' \n'] + [IOError] * 100),
+            'readline')
         makefile_stderr = mock.Mock()
-        makefile_stderr.attach_mock(
-            mock.Mock(return_value=[b' \n', b'0\n', b'1\n', b' \n']),
-            'readlines')
+        makefile_stderr.attach_mock(mock.Mock(
+            side_effect=[b' \n', b'0\n', b'1\n', b' \n'] + [IOError] * 100),
+            'readline')
         channel = mock.Mock()
         channel.attach_mock(mock.Mock(return_value=makefile), 'makefile')
         channel.attach_mock(mock.Mock(
@@ -1511,7 +1533,7 @@ class TestExecuteThrowHost(TestCase):
         )
 
     def test_execute_through_host_no_creds(
-            self, transp, client, policy, logger):
+            self, transp, client, policy, fcntl, logger):
         target = '127.0.0.2'
         exit_code = 0
 
@@ -1553,13 +1575,12 @@ class TestExecuteThrowHost(TestCase):
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command('ls ~ '),
-            mock.call.status_event.wait(None),
             mock.call.status_event.is_set(),
             mock.call.close()
         ))
 
     def test_execute_through_host_auth(
-            self, transp, client, policy, logger):
+            self, transp, client, policy, fcntl, logger):
         _login = 'cirros'
         _password = 'cubswin:)'
 
@@ -1606,7 +1627,6 @@ class TestExecuteThrowHost(TestCase):
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command('ls ~ '),
-            mock.call.status_event.wait(None),
             mock.call.status_event.is_set(),
             mock.call.close()
         ))

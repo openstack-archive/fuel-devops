@@ -49,12 +49,8 @@ class TestSubprocessRunner(TestCase):
         mock_stderr_effect.extend(stderr_lines)
         mock_stdout_effect.extend([IOError] * 100)
         mock_stderr_effect.extend([IOError] * 100)
-        stderr_readline = Mock(
-            side_effect=mock_stderr_effect
-        )
-        stdout_readline = Mock(
-            side_effect=mock_stdout_effect
-        )
+        stderr_readline = Mock(side_effect=mock_stderr_effect)
+        stdout_readline = Mock(side_effect=mock_stdout_effect)
 
         stdout = Mock()
         stderr = Mock()
@@ -106,7 +102,8 @@ class TestSubprocessRunner(TestCase):
             call.poll(), popen_obj.mock_calls
         )
 
-    def test_call_verbose(self, popen, fcntl, logger):
+    @patch('sys.stdout')
+    def test_call_verbose(self, stdout, popen, fcntl, logger):
         _, _ = self.prepare_close(popen)
 
         runner = Subprocess()
@@ -129,6 +126,8 @@ class TestSubprocessRunner(TestCase):
                     stderr=result.stderr_str
                 )),
         ))
+        stdout.assert_has_calls(
+            tuple(call.write(line.strip('\n')) for line in result.stdout))
 
 
 @patch('devops.helpers.subprocess_runner.logger', autospec=True)

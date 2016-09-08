@@ -12,13 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import fcntl
 import os
 from subprocess import PIPE
 from subprocess import Popen
+import sys
 from threading import Event
 from threading import RLock
 from time import sleep
@@ -67,7 +67,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                     if line:
                         result.append(line)
                         if verbose:
-                            print(line.rstrip())
+                            sys.stdout.write(line.rstrip('\n'))
             except IOError:
                 pass
             return result
