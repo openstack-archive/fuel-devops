@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.utils.functional import cached_property
+from django.utils import functional
 from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
 
@@ -26,7 +26,7 @@ class NailgunClient(object):
     def __init__(self, ip):
         self.ip = ip
 
-    @cached_property
+    @functional.cached_property
     def _keystone_session(self):
         keystone_auth = V2Password(
             auth_url="http://{}:5000/v2.0".format(self.ip),

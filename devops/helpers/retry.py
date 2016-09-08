@@ -14,7 +14,7 @@
 
 import functools
 import inspect
-from time import sleep
+import time
 
 from devops import error
 from devops import logger
@@ -63,7 +63,7 @@ def retry(exception, count=10, delay=1):
                         'Exception {!r} while running {!r}. '
                         'Waiting {} seconds.'.format(e, func.__name__, delay),
                         exc_info=True)  # logs traceback
-                    sleep(delay)
+                    time.sleep(delay)
 
                     arg_str = ', '.join((
                         ', '.join(map(repr, args)),

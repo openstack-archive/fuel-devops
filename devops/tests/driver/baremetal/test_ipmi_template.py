@@ -131,20 +131,20 @@ class TestIPMITemplate(TestCase):
     def test_db(self):
         """Tets DB """
         node = self.env.get_node(name='slave-01')
-        assert(node.ipmi_user) == 'user1'
-        assert (node.ipmi_password) == 'pass1'
-        assert (node.ipmi_previlegies) == 'OPERATOR'
-        assert (node.ipmi_host) == 'ipmi-1.host.address.net'
-        assert (node.ipmi_lan_interface) == 'lanplus'
-        assert (node.ipmi_port) == 623
+        assert node.ipmi_user == 'user1'
+        assert node.ipmi_password == 'pass1'
+        assert node.ipmi_previlegies == 'OPERATOR'
+        assert node.ipmi_host == 'ipmi-1.host.address.net'
+        assert node.ipmi_lan_interface == 'lanplus'
+        assert node.ipmi_port == 623
 
         node2 = self.env.get_node(name='slave-02')
-        assert (node2.ipmi_user) == 'user2'
-        assert (node2.ipmi_password) == 'pass2'
-        assert (node2.ipmi_previlegies) == 'OPERATOR'
-        assert (node2.ipmi_host) == 'ipmi-2.host.address.net'
-        assert (node2.ipmi_lan_interface) == 'lanplus'
-        assert (node2.ipmi_port) == 623
+        assert node2.ipmi_user == 'user2'
+        assert node2.ipmi_password == 'pass2'
+        assert node2.ipmi_previlegies == 'OPERATOR'
+        assert node2.ipmi_host == 'ipmi-2.host.address.net'
+        assert node2.ipmi_lan_interface == 'lanplus'
+        assert node2.ipmi_port == 623
 
     def test_life_cycle(self):
         """Test lifecycle """

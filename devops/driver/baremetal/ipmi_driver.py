@@ -111,7 +111,7 @@ class IpmiNode(Node):
         :param: None
         :return: bool - True if successful, False otherwise.
         """
-        return (0 == self.conn.power_status())
+        return 0 == self.conn.power_status()
 
     def define(self):
         """Prepare node to start
