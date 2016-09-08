@@ -14,33 +14,33 @@
 
 import uuid
 
-from django.utils.functional import cached_property
+from django.utils import functional
 
-from devops.driver.baremetal.ipmi_client import IpmiClient
-from devops.helpers.helpers import wait
-from devops.models.base import ParamField
-from devops.models.driver import Driver
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import Volume
+from devops.driver.baremetal import ipmi_client
+from devops.helpers import helpers
+from devops.models import base
+from devops.models import driver
+from devops.models import network
+from devops.models import node
+from devops.models import volume
 
 
-class IpmiDriver(Driver):
+class IpmiDriver(driver.Driver):
     """Driver params from template. keep in DB"""
     pass
 
 
-class IpmiL2NetworkDevice(L2NetworkDevice):
+class IpmiL2NetworkDevice(network.L2NetworkDevice):
     """L2NetworkDevice params from template. keep in DB"""
     pass
 
 
-class IpmiVolume(Volume):
+class IpmiVolume(volume.Volume):
     """Volume params from template"""
     pass
 
 
-class IpmiNode(Node):
+class IpmiNode(node.Node):
     """IPMI Node
 
         Intel IPMI specification:
@@ -71,27 +71,29 @@ class IpmiNode(Node):
         :param ipmi_lan_interface: str - the lan interface (lan, lanplus)
     """
 
-    uuid = ParamField()  # LEGACY, for compatibility reason
-    boot = ParamField(default='pxe')
-    force_set_boot = ParamField(default=True)
-    ipmi_user = ParamField()
-    ipmi_password = ParamField()
-    ipmi_previlegies = ParamField(default='OPERATOR')
-    ipmi_host = ParamField()
-    ipmi_lan_interface = ParamField(default="lanplus")
-    ipmi_port = ParamField(default=623)
+    uuid = base.ParamField()  # LEGACY, for compatibility reason
+    boot = base.ParamField(default='pxe')
+    force_set_boot = base.ParamField(default=True)
+    ipmi_user = base.ParamField()
+    ipmi_password = base.ParamField()
+    ipmi_previlegies = base.ParamField(default='OPERATOR')
+    ipmi_host = base.ParamField()
+    ipmi_lan_interface = base.ParamField(default="lanplus")
+    ipmi_port = base.ParamField(default=623)
 
-    @cached_property
+    @functional.cached_property
     def conn(self):
         """Connection to ipmi api"""
-        return IpmiClient(self.ipmi_user, self.ipmi_password, self.ipmi_host,
-                          self.ipmi_previlegies, self.ipmi_lan_interface,
-                          self.ipmi_port, self.name)
+        return ipmi_client.IpmiClient(
+            self.ipmi_user, self.ipmi_password, self.ipmi_host,
+            self.ipmi_previlegies, self.ipmi_lan_interface,
+            self.ipmi_port, self.name)
 
     def _wait_power_off(self):
-        wait(lambda: not self.is_active(), timeout=60,
-             timeout_msg="Node {0} / {1} wasn't stopped in 60 sec".
-             format(self.name, self.ipmi_host))
+        helpers.wait(
+            lambda: not self.is_active(), timeout=60,
+            timeout_msg="Node {0} / {1} wasn't stopped in 60 sec".format(
+                self.name, self.ipmi_host))
 
     def exists(self):
         """Check if node exists
@@ -111,7 +113,7 @@ class IpmiNode(Node):
         :param: None
         :return: bool - True if successful, False otherwise.
         """
-        return (0 == self.conn.power_status())
+        return 0 == self.conn.power_status()
 
     def define(self):
         """Prepare node to start
@@ -136,9 +138,10 @@ class IpmiNode(Node):
             self.reboot()
         else:
             self.conn.power_on()
-        wait(self.is_active, timeout=60,
-             timeout_msg="Node {0} / {1} wasn't started in 60 sec".
-             format(self.name, self.ipmi_host))
+        helpers.wait(
+            self.is_active, timeout=60,
+            timeout_msg="Node {0} / {1} wasn't started in 60 sec".format(
+                self.name, self.ipmi_host))
 
     def destroy(self):
         """Node destroy. Power off """

@@ -14,13 +14,13 @@
 
 from __future__ import division
 
-from collections import OrderedDict
+import collections
 import os
 
-from netaddr import IPNetwork
+import netaddr
 import yaml
 
-from devops.error import DevopsError
+from devops import error
 
 
 def yaml_template_load(config_file):
@@ -30,7 +30,7 @@ def yaml_template_load(config_file):
     def yaml_include(loader, node):
         file_name = os.path.join(os.path.dirname(loader.name), node.value)
         if not os.path.isfile(file_name):
-            raise DevopsError(
+            raise error.DevopsError(
                 "Cannot load the environment template {0} : include file {1} "
                 "doesn't exist.".format(loader.name, file_name))
         with open(file_name) as inputfile:
@@ -38,7 +38,7 @@ def yaml_template_load(config_file):
 
     def yaml_get_env_variable(loader, node):
         if not node.value.strip():
-            raise DevopsError(
+            raise error.DevopsError(
                 "Environment variable is required after {tag} in "
                 "{filename}".format(tag=node.tag, filename=loader.name))
         node_value = node.value.split(',', 1)
@@ -53,7 +53,7 @@ def yaml_template_load(config_file):
 
         value = os.environ.get(env_variable, default_val)
         if value is None:
-            raise DevopsError(
+            raise error.DevopsError(
                 "Environment variable {var} is not set from shell"
                 " environment! No default value provided in file "
                 "{filename}".format(var=env_variable, filename=loader.name))
@@ -62,10 +62,10 @@ def yaml_template_load(config_file):
 
     def construct_mapping(loader, node):
         loader.flatten_mapping(node)
-        return OrderedDict(loader.construct_pairs(node))
+        return collections.OrderedDict(loader.construct_pairs(node))
 
     if not os.path.isfile(config_file):
-        raise DevopsError(
+        raise error.DevopsError(
             "Cannot load the environment template {0} : file "
             "doesn't exist.".format(config_file))
 
@@ -378,7 +378,7 @@ def create_address_pools(interfaceorder, networks_pools):
         floating_pool_name = 'floating'
 
         # Take a first subnet with necessary size and calculate the size
-        net = IPNetwork(networks_pools['public'][0])
+        net = netaddr.IPNetwork(networks_pools['public'][0])
         new_prefix = int(networks_pools['public'][1])
         subnet = next(net.subnet(prefixlen=new_prefix))
         network_size = subnet.size
@@ -411,12 +411,12 @@ def _calculate_numa(numa_nodes, vcpu, memory, name):
     if numa_nodes:
         cpus_per_numa = vcpu // numa_nodes
         if cpus_per_numa * numa_nodes != vcpu:
-            raise DevopsError(
+            raise error.DevopsError(
                 "NUMA_NODES={0} is not a multiple of the number of CPU={1}"
                 " for node '{2}'".format(numa_nodes, vcpu, name))
         memory_per_numa = memory // numa_nodes
         if memory_per_numa * numa_nodes != memory:
-            raise DevopsError(
+            raise error.DevopsError(
                 "NUMA_NODES={0} is not a multiple of the amount of "
                 "MEMORY={1} for node '{2}'".format(numa_nodes,
                                                    memory,

@@ -229,7 +229,7 @@ class TestLibvirtTemplate(LibvirtTestCase):
         super(TestLibvirtTemplate, self).setUp()
 
         # speed up retry
-        self.sleep_mock = self.patch('devops.helpers.retry.sleep')
+        self.sleep_mock = self.patch('time.sleep')
 
         # mock open
         self.open_mock = mock.mock_open(read_data='image_data')

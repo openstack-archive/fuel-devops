@@ -32,10 +32,9 @@ class TestIpmiNode(TestCase):
 
         # Create Environment
         self.ipmiclient_mock = self.patch(
-            'devops.driver.baremetal.ipmi_driver.IpmiClient', autospec=True)
+            'devops.driver.baremetal.ipmi_client.IpmiClient', autospec=True)
         self.ipmiclient = self.ipmiclient_mock.return_value
-        self.wait_mock = self.patch(
-            'devops.driver.baremetal.ipmi_driver.wait')
+        self.wait_mock = self.patch('devops.helpers.helpers.wait')
 
         self.env = Environment.create('test_env')
         self.group = self.env.add_group(

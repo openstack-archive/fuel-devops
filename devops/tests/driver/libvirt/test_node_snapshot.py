@@ -30,9 +30,7 @@ class TestLibvirtNodeSnapshotBase(LibvirtTestCase):
     def setUp(self):
         super(TestLibvirtNodeSnapshotBase, self).setUp()
 
-        self.sleep_mock = self.patch('devops.helpers.retry.sleep')
-        self.libvirt_sleep_mock = self.patch(
-            'devops.driver.libvirt.libvirt_driver.sleep')
+        self.sleep_mock = self.patch('time.sleep')
 
         self.nwfilter = self.libvirt_nwfilter_lookup_mock.return_value
         self.nwfilter.XMLDesc.return_value = (
@@ -125,6 +123,7 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
         assert snapshot.memory_file is None
         assert snapshot.name == 'test1'
         with self.assertRaises(libvirt.libvirtError):
+            # noinspection PyStatementEffect
             snapshot.parent
         assert snapshot.state == 'shutoff'
 

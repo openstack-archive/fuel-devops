@@ -16,37 +16,30 @@ import datetime
 import itertools
 import os
 import shutil
-from time import sleep
+import time
 import uuid
-from warnings import warn
+import warnings
 import xml.etree.ElementTree as ET
 
 
 from django.conf import settings
-from django.utils.functional import cached_property
+from django.utils import functional
 import libvirt
 import netaddr
 
-from devops.driver.libvirt.libvirt_xml_builder import LibvirtXMLBuilder
-from devops.error import DevopsCalledProcessError
-from devops.error import DevopsError
-from devops.helpers.cloud_image_settings import generate_cloud_image_settings
-from devops.helpers.helpers import deepgetattr
-from devops.helpers.helpers import get_file_size
-from devops.helpers.helpers import underscored
-from devops.helpers.helpers import xml_tostring
+from devops.driver.libvirt import libvirt_xml_builder as builder
+from devops import error
+from devops.helpers import cloud_image_settings
+from devops.helpers import helpers
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
-from devops.helpers.subprocess_runner import Subprocess
+from devops.helpers import subprocess_runner
 from devops import logger
-from devops.models.base import ParamField
-from devops.models.base import ParamMultiField
-from devops.models.driver import Driver
-from devops.models.network import Interface
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
-from devops.models.volume import DiskDevice
-from devops.models.volume import Volume
+from devops.models import base
+from devops.models import driver
+from devops.models import network
+from devops.models import node
+from devops.models import volume
 
 
 class _LibvirtManager(object):
@@ -137,7 +130,7 @@ class Snapshot(object):
                 domain_element.remove(domain_element.findall('./cpu')[0])
                 domain_element.append(cpu_element)
 
-        return xml_tostring(snapshot_xmltree)
+        return helpers.xml_tostring(snapshot_xmltree)
 
     @property
     def _xml_tree(self):
@@ -197,7 +190,7 @@ class Snapshot(object):
                                       self.name, self.created)
 
 
-class LibvirtDriver(Driver):
+class LibvirtDriver(driver.Driver):
     """libvirt driver
 
     :param use_host_cpu: When creating nodes, should libvirt's
@@ -207,20 +200,20 @@ class LibvirtDriver(Driver):
     Note: This class is imported as Driver at .__init__.py
     """
 
-    connection_string = ParamField(default="qemu:///system")
-    storage_pool_name = ParamField(default="default")
-    stp = ParamField(default=True)
-    hpet = ParamField(default=True)
-    use_host_cpu = ParamField(default=True)
-    enable_acpi = ParamField(default=False)
-    enable_nwfilters = ParamField(default=False)
-    reboot_timeout = ParamField()
-    use_hugepages = ParamField(default=False)
-    vnc_password = ParamField()
+    connection_string = base.ParamField(default="qemu:///system")
+    storage_pool_name = base.ParamField(default="default")
+    stp = base.ParamField(default=True)
+    hpet = base.ParamField(default=True)
+    use_host_cpu = base.ParamField(default=True)
+    enable_acpi = base.ParamField(default=False)
+    enable_nwfilters = base.ParamField(default=False)
+    reboot_timeout = base.ParamField()
+    use_hugepages = base.ParamField(default=False)
+    vnc_password = base.ParamField()
 
     _device_name_generators = {}
 
-    @cached_property
+    @functional.cached_property
     def conn(self):
         """Connection to libvirt api"""
         return LibvirtManager.get_connection(self.connection_string)
@@ -234,7 +227,7 @@ class LibvirtDriver(Driver):
         """
         return self.capabilities
 
-    @cached_property
+    @functional.cached_property
     def capabilities(self):
         return ET.fromstring(self.conn.getCapabilities())
 
@@ -249,8 +242,8 @@ class LibvirtDriver(Driver):
         :rtype : List
         """
         allocated_networks = []
-        for network in self.conn.listAllNetworks():
-            et = ET.fromstring(network.XMLDesc())
+        for nwk in self.conn.listAllNetworks():
+            et = ET.fromstring(nwk.XMLDesc())
             ip = et.find('ip[@address]')
             if ip is not None:
                 address = ip.get('address')
@@ -302,7 +295,7 @@ class LibvirtDriver(Driver):
         return self.conn.getLibVersion()
 
 
-class LibvirtL2NetworkDevice(L2NetworkDevice):
+class LibvirtL2NetworkDevice(network.L2NetworkDevice):
     """L2 network device based on libvirt Network
 
        forward:
@@ -429,25 +422,25 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
     Note: This class is imported as L2NetworkDevice at .__init__.py
     """
-    uuid = ParamField()
+    uuid = base.ParamField()
 
-    forward = ParamMultiField(
-        mode=ParamField(
+    forward = base.ParamMultiField(
+        mode=base.ParamField(
             choices=(None, 'nat', 'route', 'bridge', 'private',
                      'vepa', 'passthrough', 'hostdev'),
         )
     )
-    dhcp = ParamField(default=False)
-    stp = ParamField()
+    dhcp = base.ParamField(default=False)
+    stp = base.ParamField()
 
-    has_pxe_server = ParamField(default=False)
-    tftp_root_dir = ParamField()
+    has_pxe_server = base.ParamField(default=False)
+    tftp_root_dir = base.ParamField()
 
-    vlan_ifaces = ParamField(default=[])
-    parent_iface = ParamMultiField(
-        phys_dev=ParamField(default=None),
-        l2_net_dev=ParamField(default=None),
-        tag=ParamField(default=None),
+    vlan_ifaces = base.ParamField(default=[])
+    parent_iface = base.ParamMultiField(
+        phys_dev=base.ParamField(default=None),
+        l2_net_dev=base.ParamField(default=None),
+        tag=base.ParamField(default=None),
     )
 
     @property
@@ -467,8 +460,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
 
         :rtype : String
         """
-        return underscored(
-            deepgetattr(self, 'group.environment.name'),
+        return helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
             self.name)
 
     def is_active(self):
@@ -482,7 +475,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
     def define(self):
         # define filter first
         if self.driver.enable_nwfilters:
-            filter_xml = LibvirtXMLBuilder.build_network_filter(
+            filter_xml = builder.LibvirtXMLBuilder.build_network_filter(
                 name=self.network_name)
             self.driver.conn.nwfilterDefineXML(filter_xml)
 
@@ -525,7 +518,7 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
                             name=interface.node.name
                         ))
 
-        xml = LibvirtXMLBuilder.build_network_xml(
+        xml = builder.LibvirtXMLBuilder.build_network_xml(
             network_name=self.network_name,
             bridge_name=bridge_name,
             addresses=addresses,
@@ -583,8 +576,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             # to any bridge before adding it to the current bridge instead
             # of this try/except workaround
             try:
-                Subprocess.check_call(cmd)
-            except DevopsCalledProcessError:
+                subprocess_runner.Subprocess.check_call(cmd)
+            except error.DevopsCalledProcessError:
                 pass
 
     @retry(libvirt.libvirtError)
@@ -638,7 +631,8 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
             :rtype : None
         """
         self.driver.conn.interfaceDefineXML(
-            LibvirtXMLBuilder.build_iface_xml(name, ip, prefix, vlanid))
+            builder.LibvirtXMLBuilder.build_iface_xml(
+                name, ip, prefix, vlanid))
 
     @retry(libvirt.libvirtError)
     def iface_undefine(self, iface_name):
@@ -679,11 +673,11 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         if not self.driver.enable_nwfilters:
             return
         if not self._nwfilter:
-            raise DevopsError(
+            raise error.DevopsError(
                 'Unable to block network {0}: nwfilter not found!'
                 ''.format(self.network_name))
 
-        filter_xml = LibvirtXMLBuilder.build_network_filter(
+        filter_xml = builder.LibvirtXMLBuilder.build_network_filter(
             name=self.network_name,
             uuid=self._nwfilter.UUIDString(),
             rule=dict(action='drop',
@@ -696,28 +690,28 @@ class LibvirtL2NetworkDevice(L2NetworkDevice):
         if not self.driver.enable_nwfilters:
             return
         if not self._nwfilter:
-            raise DevopsError(
+            raise error.DevopsError(
                 'Unable to unblock network {0}: nwfilter not found!'
                 ''.format(self.network_name))
 
-        filter_xml = LibvirtXMLBuilder.build_network_filter(
+        filter_xml = builder.LibvirtXMLBuilder.build_network_filter(
             name=self.network_name,
             uuid=self._nwfilter.UUIDString())
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
 
-class LibvirtVolume(Volume):
+class LibvirtVolume(volume.Volume):
     """Note: This class is imported as Volume at .__init__.py """
 
-    uuid = ParamField()
-    capacity = ParamField(default=None)  # in gigabytes
-    format = ParamField(default='qcow2', choices=('qcow2', 'raw'))
-    source_image = ParamField(default=None)
-    serial = ParamField()
-    wwn = ParamField()
-    multipath_count = ParamField(default=0)
-    cloudinit_meta_data = ParamField(default=None)
-    cloudinit_user_data = ParamField(default=None)
+    uuid = base.ParamField()
+    capacity = base.ParamField(default=None)  # in gigabytes
+    format = base.ParamField(default='qcow2', choices=('qcow2', 'raw'))
+    source_image = base.ParamField(default=None)
+    serial = base.ParamField()
+    wwn = base.ParamField()
+    multipath_count = base.ParamField(default=0)
+    cloudinit_meta_data = base.ParamField(default=None)
+    cloudinit_user_data = base.ParamField(default=None)
 
     @property
     def _libvirt_volume(self):
@@ -731,27 +725,28 @@ class LibvirtVolume(Volume):
     def define(self):
         # Generate libvirt volume name
         if self.node:
-            name = underscored(
-                deepgetattr(self, 'node.group.environment.name'),
-                deepgetattr(self, 'node.name'),
+            name = helpers.underscored(
+                helpers.deepgetattr(self, 'node.group.environment.name'),
+                helpers.deepgetattr(self, 'node.name'),
                 self.name,
             )
         elif self.group:
-            name = underscored(
-                deepgetattr(self, 'group.environment.name'),
-                deepgetattr(self, 'group.name'),
+            name = helpers.underscored(
+                helpers.deepgetattr(self, 'group.environment.name'),
+                helpers.deepgetattr(self, 'group.name'),
                 self.name,
             )
         else:
-            raise DevopsError("Can't craete volume that is not "
-                              "associated with any node or group")
+            raise error.DevopsError(
+                "Can't craete volume that is not "
+                "associated with any node or group")
 
         # Find backing store format and path
         backing_store_path = None
         backing_store_format = None
         if self.backing_store:
             if not self.backing_store.exists():
-                raise DevopsError(
+                raise error.DevopsError(
                     "Can't create volume {!r}. backing_store volume {!r} does "
                     "not exists.".format(self.name, self.backing_store.name))
             backing_store_path = self.backing_store.get_path()
@@ -763,18 +758,19 @@ class LibvirtVolume(Volume):
             capacity = int(self.capacity * 1024 ** 3)
         elif self.source_image is not None:
             # limit capacity to the sorse image file size
-            capacity = get_file_size(self.source_image)
+            capacity = helpers.get_file_size(self.source_image)
         elif self.backing_store:
             # limit capacity to backing_store capacity
             capacity = self.backing_store.get_capacity()
         else:
-            raise DevopsError("Can't create volume {!r}: no capacity or "
-                              "source_image specified".format(self.name))
+            raise error.DevopsError(
+                "Can't create volume {!r}: no capacity or "
+                "source_image specified".format(self.name))
 
         # Generate xml
         pool_name = self.driver.storage_pool_name
         pool = self.driver.conn.storagePoolLookupByName(pool_name)
-        xml = LibvirtXMLBuilder.build_volume_xml(
+        xml = builder.LibvirtXMLBuilder.build_volume_xml(
             name=name,
             capacity=capacity,
             vol_format=self.format,
@@ -820,7 +816,7 @@ class LibvirtVolume(Volume):
 
     def fill_from_exist(self):
         msg = 'LibvirtVolume.fill_from_exist() is deprecated and do nothing'
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
         logger.debug(msg)
 
     @retry(libvirt.libvirtError, count=2)
@@ -828,7 +824,7 @@ class LibvirtVolume(Volume):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
 
-        size = get_file_size(path)
+        size = helpers.get_file_size(path)
         current_size = self._libvirt_volume.info()[1]
 
         # resize volume if more space required to upload the image
@@ -903,7 +899,7 @@ class LibvirtVolume(Volume):
         """
         msg = ('LibvirtVolume.volume_get_predefined() is deprecated. '
                'Please use Volumes associated with Groups')
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
         logger.debug(msg)
 
         try:
@@ -911,28 +907,29 @@ class LibvirtVolume(Volume):
         except cls.DoesNotExist:
             volume = cls(uuid=uuid)
         if not volume.exists():
-            raise DevopsError(
+            raise error.DevopsError(
                 'Predefined volume {!r} not found'.format(uuid))
         volume.format = volume.get_format()
         volume.save()
         return volume
 
 
-class LibvirtNode(Node):
+class LibvirtNode(node.Node):
     """Note: This class is imported as Node at .__init__.py """
 
-    uuid = ParamField()
-    hypervisor = ParamField(default='kvm', choices=('kvm', 'test'))
-    os_type = ParamField(default='hvm', choices=['hvm'])
-    architecture = ParamField(default='x86_64', choices=['x86_64', 'i686'])
-    boot = ParamField(default=['network', 'cdrom', 'hd'])
-    vcpu = ParamField(default=1)
-    memory = ParamField(default=1024)
-    has_vnc = ParamField(default=True)
-    bootmenu_timeout = ParamField(default=0)
-    numa = ParamField(default=[])
-    cloud_init_volume_name = ParamField()
-    cloud_init_iface_up = ParamField()
+    uuid = base.ParamField()
+    hypervisor = base.ParamField(default='kvm', choices=('kvm', 'test'))
+    os_type = base.ParamField(default='hvm', choices=['hvm'])
+    architecture = base.ParamField(
+        default='x86_64', choices=['x86_64', 'i686'])
+    boot = base.ParamField(default=['network', 'cdrom', 'hd'])
+    vcpu = base.ParamField(default=1)
+    memory = base.ParamField(default=1024)
+    has_vnc = base.ParamField(default=True)
+    bootmenu_timeout = base.ParamField(default=0)
+    numa = base.ParamField(default=[])
+    cloud_init_volume_name = base.ParamField()
+    cloud_init_iface_up = base.ParamField()
 
     @property
     def _libvirt_node(self):
@@ -988,7 +985,7 @@ class LibvirtNode(Node):
         for key_code in key_codes:
             if isinstance(key_code[0], str):
                 if key_code[0] == 'wait':
-                    sleep(1)
+                    time.sleep(1)
                 continue
             self._libvirt_node.sendKey(0, 0, list(key_code), len(key_code), 0)
 
@@ -998,8 +995,8 @@ class LibvirtNode(Node):
 
             :rtype : None
         """
-        name = underscored(
-            deepgetattr(self, 'group.environment.name'),
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
             self.name,
         )
 
@@ -1025,8 +1022,8 @@ class LibvirtNode(Node):
 
             l2_dev = interface.l2_network_device
             if self.driver.enable_nwfilters:
-                filter_name = underscored(
-                    deepgetattr(self, 'group.environment.name'),
+                filter_name = helpers.underscored(
+                    helpers.deepgetattr(self, 'group.environment.name'),
                     l2_dev.name,
                     interface.mac_address
                 )
@@ -1046,7 +1043,7 @@ class LibvirtNode(Node):
             'guest/arch[@name="{0:>s}"]/'
             'domain[@type="{1:>s}"]/emulator'.format(
                 self.architecture, self.hypervisor)).text
-        node_xml = LibvirtXMLBuilder.build_node_xml(
+        node_xml = builder.LibvirtXMLBuilder.build_node_xml(
             name=name,
             hypervisor=self.hypervisor,
             use_host_cpu=self.driver.use_host_cpu,
@@ -1163,7 +1160,7 @@ class LibvirtNode(Node):
         admin_network = str(admin_ap.ip_network)
         hostname = self.name
 
-        generate_cloud_image_settings(
+        cloud_image_settings.generate_cloud_image_settings(
             cloud_image_settings_path=cloud_image_settings_path,
             meta_data_path=meta_data_path,
             user_data_path=user_data_path,
@@ -1197,7 +1194,7 @@ class LibvirtNode(Node):
                     back_vol_name = disk_test.name
                     disk_test = disk_test.backing_store
                     if back_count > 500:
-                        raise DevopsError(
+                        raise error.DevopsError(
                             "More then 500 snapshots in chain for {0}.{1}"
                             .format(back_vol_name, name))
                 # Create new volume for snapshot
@@ -1220,10 +1217,10 @@ class LibvirtNode(Node):
         if len(snap_list) > 0:
             snap_type = snap_list[0].get_type
             if external and snap_type == 'internal':
-                raise DevopsError(
+                raise error.DevopsError(
                     "Cannot create external snapshot when internal exists")
             if not external and snap_type == 'external':
-                raise DevopsError(
+                raise error.DevopsError(
                     "Cannot create internal snapshot when external exists")
 
     # EXTERNAL SNAPSHOT
@@ -1250,8 +1247,8 @@ class LibvirtNode(Node):
             if force:
                 self.erase_snapshot(name)
             else:
-                raise DevopsError("Snapshot with name {0} already exists"
-                                  .format(name))
+                raise error.DevopsError(
+                    "Snapshot with name {0} already exists".format(name))
 
         # Check that existing snapshot has the same type
         self._assert_snapshot_type(external=external)
@@ -1260,7 +1257,7 @@ class LibvirtNode(Node):
         if external:
             # EXTERNAL SNAPSHOTS
             if self.driver.get_libvirt_version() < 1002012:
-                raise DevopsError(
+                raise error.DevopsError(
                     "For external snapshots we need libvirtd >= 1.2.12")
 
             # Check whether we have directory for snapshots, if not
@@ -1274,7 +1271,7 @@ class LibvirtNode(Node):
 
             base_memory_file = '{0}/snapshot-memory-{1}_{2}.{3}'.format(
                 settings.SNAPSHOTS_EXTERNAL_DIR,
-                deepgetattr(self, 'group.environment.name'),
+                helpers.deepgetattr(self, 'group.environment.name'),
                 self.name,
                 name)
             file_count = 0
@@ -1303,7 +1300,7 @@ class LibvirtNode(Node):
             memory_file = ''
             create_xml_flag = 0
 
-        xml = LibvirtXMLBuilder.build_snapshot_xml(
+        xml = builder.LibvirtXMLBuilder.build_snapshot_xml(
             name=name,
             description=description,
             external=external,
@@ -1331,7 +1328,7 @@ class LibvirtNode(Node):
 
         :type snapshot: Snapshot
         """
-        warn(
+        warnings.warn(
             '_delete_snapshot_files(snapshot) has been deprecated in favor of '
             'snapshot.delete_snapshot_files()', DeprecationWarning)
         return snapshot.delete_snapshot_files()
@@ -1353,6 +1350,7 @@ class LibvirtNode(Node):
         # For snapshot with children we need to create new snapshot chain
         # and we need to start from original disks, this disks will get new
         # snapshot point in node class
+        # noinspection PyProtectedMember
         xml_domain = snapshot._xml_tree.find('domain')
         if snapshot.children_num == 0:
             domain_disks = xml_domain.findall('./devices/disk')
@@ -1365,11 +1363,11 @@ class LibvirtNode(Node):
 
         if snapshot.state == 'shutoff':
             # Redefine domain for snapshot without memory save
-            self.driver.conn.defineXML(xml_tostring(xml_domain))
+            self.driver.conn.defineXML(helpers.xml_tostring(xml_domain))
         else:
             self.driver.conn.restoreFlags(
                 snapshot.memory_file,
-                dxml=xml_tostring(xml_domain),
+                dxml=helpers.xml_tostring(xml_domain),
                 flags=libvirt.VIR_DOMAIN_SAVE_PAUSED)
 
         # set snapshot as current
@@ -1493,10 +1491,11 @@ class LibvirtNode(Node):
                 # ORIGINAL SNAPSHOT
                 logger.info("Revert {0} ({1}) to internal snapshot {2}".format(
                     self.name, snapshot.state, name))
+                # noinspection PyProtectedMember
                 self._libvirt_node.revertToSnapshot(snapshot._snapshot, 0)
 
         else:
-            raise DevopsError(
+            raise error.DevopsError(
                 'Domain snapshot for {0} node not found: no domain '
                 'snapshot with matching'
                 ' name {1}'.format(self.name, name))
@@ -1542,8 +1541,9 @@ class LibvirtNode(Node):
                 self.destroy()
 
                 # Update domain to snapshot state
+                # noinspection PyProtectedMember
                 xml_domain = snapshot._xml_tree.find('domain')
-                self.driver.conn.defineXML(xml_tostring(xml_domain))
+                self.driver.conn.defineXML(helpers.xml_tostring(xml_domain))
                 snapshot.delete_snapshot_files()
                 snapshot.delete(2)
 
@@ -1635,7 +1635,7 @@ class LibvirtNode(Node):
             os_el.append(ET.Element('boot', dev=boot_dev))
 
         # apply changes to domain
-        self.driver.conn.defineXML(xml_tostring(domain_xml))
+        self.driver.conn.defineXML(helpers.xml_tostring(domain_xml))
 
         self.boot = boot
         self.save()
@@ -1657,17 +1657,17 @@ class LibvirtNode(Node):
 
         if target_els:
             # apply changes to domain
-            self.driver.conn.defineXML(xml_tostring(domain_xml))
+            self.driver.conn.defineXML(helpers.xml_tostring(domain_xml))
         else:
             logger.warning("Can't close tray: no cdrom devices "
                            "found for Node {!r}".format(self.name))
 
 
-class LibvirtInterface(Interface):
+class LibvirtInterface(network.Interface):
 
     def define(self):
         if self.driver.enable_nwfilters:
-            filter_xml = LibvirtXMLBuilder.build_interface_filter(
+            filter_xml = builder.LibvirtXMLBuilder.build_interface_filter(
                 name=self.nwfilter_name,
                 filterref=self.l2_network_device.network_name)
             self.driver.conn.nwfilterDefineXML(filter_xml)
@@ -1682,7 +1682,7 @@ class LibvirtInterface(Interface):
 
     @property
     def nwfilter_name(self):
-        return underscored(
+        return helpers.underscored(
             self.node.group.environment.name,
             self.l2_network_device.name,
             self.mac_address)
@@ -1711,11 +1711,11 @@ class LibvirtInterface(Interface):
         if not self.driver.enable_nwfilters:
             return
         if not self._nwfilter:
-            raise DevopsError(
+            raise error.DevopsError(
                 "Unable to block interface {} on node {}: nwfilter not"
                 " found!".format(self.label, self.node.name))
 
-        filter_xml = LibvirtXMLBuilder.build_interface_filter(
+        filter_xml = builder.LibvirtXMLBuilder.build_interface_filter(
             name=self.nwfilter_name,
             filterref=self.l2_network_device.network_name,
             uuid=self._nwfilter.UUIDString(),
@@ -1730,23 +1730,23 @@ class LibvirtInterface(Interface):
         if not self.driver.enable_nwfilters:
             return
         if not self._nwfilter:
-            raise DevopsError(
+            raise error.DevopsError(
                 "Unable to unblock interface {} on node {}: nwfilter not"
                 " found!".format(self.label, self.node.name))
 
-        filter_xml = LibvirtXMLBuilder.build_interface_filter(
+        filter_xml = builder.LibvirtXMLBuilder.build_interface_filter(
             name=self.nwfilter_name,
             filterref=self.l2_network_device.network_name,
             uuid=self._nwfilter.UUIDString())
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
 
-class LibvirtDiskDevice(DiskDevice):
+class LibvirtDiskDevice(volume.DiskDevice):
 
-    device = ParamField(default='disk', choices=('disk', 'cdrom'))
-    type = ParamField(default='file', choices=('file'))
-    bus = ParamField(default='virtio', choices=('virtio', 'ide', 'scsi'))
-    target_dev = ParamField()
+    device = base.ParamField(default='disk', choices=('disk', 'cdrom'))
+    type = base.ParamField(default='file', choices='file')
+    bus = base.ParamField(default='virtio', choices=('virtio', 'ide', 'scsi'))
+    target_dev = base.ParamField()
 
     @property
     def multipath_enabled(self):
