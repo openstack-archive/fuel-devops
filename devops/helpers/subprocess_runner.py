@@ -19,19 +19,19 @@ import fcntl
 import os
 import subprocess
 import threading
-from time import sleep
+import time
 
 from six import with_metaclass
 
 from devops import error
-from devops.helpers.decorators import threaded
-from devops.helpers.exec_result import ExecResult
-from devops.helpers.metaclasses import SingletonMeta
-from devops.helpers.proc_enums import ExitCodes
+from devops.helpers import decorators
+from devops.helpers import exec_result
+from devops.helpers import metaclasses
+from devops.helpers import proc_enums
 from devops import logger
 
 
-class Subprocess(with_metaclass(SingletonMeta, object)):
+class Subprocess(with_metaclass(metaclasses.SingletonMeta, object)):
     __lock = threading.RLock()
 
     def __init__(self):
@@ -69,7 +69,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
                 pass
             return result
 
-        @threaded(started=True)
+        @decorators.threaded(started=True)
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
 
@@ -88,7 +88,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
-                sleep(0.1)
+                time.sleep(0.1)
 
                 result.stdout += readlines(proc.stdout, verbose)
                 result.stderr += readlines(proc.stderr, verbose)
@@ -104,7 +104,7 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
 
         # 1 Command per run
         with cls.__lock:
-            result = ExecResult(cmd=command)
+            result = exec_result.ExecResult(cmd=command)
             stop_event = threading.Event()
 
             # Run
@@ -216,13 +216,13 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         """
 
         if expected is None:
-            expected = [ExitCodes.EX_OK]
+            expected = [proc_enums.ExitCodes.EX_OK]
         else:
             expected = [
-                ExitCodes(code)
+                proc_enums.ExitCodes(code)
                 if (
                     isinstance(code, int) and
-                    code in ExitCodes.__members__.values())
+                    code in proc_enums.ExitCodes.__members__.values())
                 else code
                 for code in expected
                 ]

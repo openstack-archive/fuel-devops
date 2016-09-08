@@ -15,11 +15,10 @@
 from django.db import models
 
 from devops.helpers import loader
-from devops.models.base import BaseModel
-from devops.models.base import ParamedModel
+from devops.models import base
 
 
-class Driver(ParamedModel, BaseModel):
+class Driver(base.ParamedModel, base.BaseModel):
 
     class Meta(object):
         db_table = 'devops_driver'

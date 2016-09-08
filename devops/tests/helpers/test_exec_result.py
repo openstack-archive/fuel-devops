@@ -20,8 +20,7 @@ from unittest import TestCase
 
 import mock
 
-from devops.helpers.exec_result import DevopsError
-from devops.helpers.exec_result import DevopsNotImplementedError
+from devops import error
 from devops.helpers.exec_result import ExecResult
 from devops.helpers.proc_enums import ExitCodes
 
@@ -80,7 +79,7 @@ class TestExecResult(TestCase):
             # noinspection PyStatementEffect
             exec_result['nonexistent']
 
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(error.DevopsError):
             # noinspection PyStatementEffect
             exec_result['stdout_json']
         logger.assert_has_calls((
@@ -100,7 +99,7 @@ class TestExecResult(TestCase):
         """Test assertion on non implemented deserializer"""
         exec_result = ExecResult(cmd=cmd)
         deserialize = getattr(exec_result, '_ExecResult__deserialize')
-        with self.assertRaises(DevopsNotImplementedError):
+        with self.assertRaises(error.DevopsNotImplementedError):
             deserialize('tst')
         logger.assert_has_calls((
             mock.call.error(
@@ -141,7 +140,7 @@ class TestExecResult(TestCase):
         with self.assertRaises(TypeError):
             exec_result.exit_code = 'code'
 
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(error.DevopsError):
             exec_result['stdout_brief'] = 'test'
 
         with self.assertRaises(IndexError):

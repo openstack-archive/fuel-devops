@@ -44,7 +44,7 @@ class TestCloudImage(LibvirtTestCase):
         self.os_mock.stat.side_effect = self.file_sizes.get
 
         self.generate_cloud_image_settings_mock = self.patch(
-            'devops.driver.libvirt.libvirt_driver'
+            'devops.helpers.cloud_image_settings'
             '.generate_cloud_image_settings')
 
         self.volume_upload_mock = self.patch(

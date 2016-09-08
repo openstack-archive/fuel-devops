@@ -169,7 +169,7 @@ class TestSSHAuth(TestCase):
 
 
 # noinspection PyTypeChecker
-@mock.patch('devops.helpers.retry.sleep', autospec=True)
+@mock.patch('time.sleep', autospec=True)
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
@@ -821,7 +821,7 @@ class TestSSHClientInit(TestCase):
         ssh004 = SSHAuth(host)
         self.assertFalse(ssh01 is ssh004)
 
-    @mock.patch('devops.helpers.ssh_client.warn')
+    @mock.patch('warnings.warn')
     def test_init_memorize_close_unused(
             self, warn, client, policy, logger, sleep):
         ssh0 = SSHClient(host=host)
@@ -862,10 +862,11 @@ class TestSSHClientInit(TestCase):
         client.assert_called_once()
         policy.assert_called_once()
 
-    @mock.patch('devops.helpers.ssh_client.warn')
+    @mock.patch('warnings.warn')
     def test_init_clear(self, warn, client, policy, logger, sleep):
         ssh01 = SSHClient(host=host, auth=SSHAuth())
 
+        # noinspection PyDeprecation
         ssh01.clear()
         warn.assert_called_once_with(
             "clear is removed: use close() only if it mandatory: "
@@ -878,9 +879,10 @@ class TestSSHClientInit(TestCase):
             client.mock_calls
         )
 
-    @mock.patch('devops.helpers.ssh_client.warn')
+    @mock.patch('warnings.warn')
     def test_deprecated_host(self, warn, client, policy, logger, sleep):
         ssh01 = SSHClient(host=host, auth=SSHAuth())
+        # noinspection PyDeprecation
         self.assertEqual(ssh01.host, ssh01.hostname)
         warn.assert_called_once_with(
             'host has been deprecated in favor of hostname',

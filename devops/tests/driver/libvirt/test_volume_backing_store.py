@@ -25,7 +25,7 @@ class TestLibvirtVolumeBackingStore(LibvirtTestCase):
     def setUp(self):
         super(TestLibvirtVolumeBackingStore, self).setUp()
 
-        self.sleep_mock = self.patch('devops.helpers.retry.sleep')
+        self.sleep_mock = self.patch('time.sleep')
 
         self.open_mock = mock.mock_open(read_data='image_data')
         self.patch('devops.driver.libvirt.libvirt_driver.open',
