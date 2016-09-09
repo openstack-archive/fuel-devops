@@ -17,8 +17,8 @@ from keystoneauth1.identity import V2Password
 from keystoneauth1.session import Session as KeystoneSession
 import mock
 
-from devops.client.nailgun import NailgunClient
-from devops.error import DevopsError
+from devops.client import nailgun
+from devops import error
 
 
 class TestNailgunClient(TestCase):
@@ -40,7 +40,7 @@ class TestNailgunClient(TestCase):
         self.k2_session_inst = self.ks_session_mock.return_value
         self.nodes_mock = self.k2_session_inst.get.return_value
 
-        self.nc = NailgunClient('10.109.0.2')
+        self.nc = nailgun.NailgunClient('10.109.0.2')
 
     def test_get_nodes_json(self):
         data = self.nc.get_nodes_json()
@@ -73,5 +73,5 @@ class TestNailgunClient(TestCase):
         ip = self.nc.get_slave_ip_by_mac('6452dc9612cc')
         assert ip == '10.109.0.100'
 
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(error.DevopsError):
             self.nc.get_slave_ip_by_mac('a1a1a1a1a1a1')

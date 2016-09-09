@@ -14,17 +14,16 @@
 
 import mock
 
-from devops.client.environment import DevopsEnvironment
-from devops.client.nailgun import NailgunClient
+from devops.client import environment
+from devops.client import nailgun
 from devops import error
-from devops.helpers.helpers import wait_tcp
-from devops.helpers.ntp import GroupNtpSync
-from devops.helpers.ssh_client import SSHAuth
-from devops.helpers.ssh_client import SSHClient
-from devops.tests.driver.driverless import DriverlessTestCase
+from devops.helpers import helpers
+from devops.helpers import ntp
+from devops.helpers import ssh_client
+from devops.tests.driver import driverless
 
 
-class TestDevopsEnvironment(DriverlessTestCase):
+class TestDevopsEnvironment(driverless.DriverlessTestCase):
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
@@ -40,11 +39,11 @@ class TestDevopsEnvironment(DriverlessTestCase):
         self.vol_define_mock = self.patch(
             'devops.models.volume.Volume.define')
         self.wait_tcp_mock = self.patch(
-            'devops.helpers.helpers.wait_tcp', spec=wait_tcp)
+            'devops.helpers.helpers.wait_tcp', spec=helpers.wait_tcp)
         self.ssh_mock = self.patch(
-            'devops.helpers.ssh_client.SSHClient', spec=SSHClient)
+            'devops.helpers.ssh_client.SSHClient', spec=ssh_client.SSHClient)
         self.nc_mock = self.patch(
-            'devops.client.nailgun.NailgunClient', spec=NailgunClient)
+            'devops.client.nailgun.NailgunClient', spec=nailgun.NailgunClient)
         self.nc_mock_inst = self.nc_mock.return_value
         self.mac_to_ip = {
             '64:52:dc:96:12:cc': '10.109.0.100',
@@ -52,7 +51,7 @@ class TestDevopsEnvironment(DriverlessTestCase):
         self.nc_mock_inst.get_slave_ip_by_mac.side_effect = self.mac_to_ip.get
 
         self.ntpgroup_mock = self.patch(
-            'devops.helpers.ntp.GroupNtpSync', spec=GroupNtpSync)
+            'devops.helpers.ntp.GroupNtpSync', spec=ntp.GroupNtpSync)
         self.ntpgroup_inst = self.ntpgroup_mock.return_value
 
         self.slave_conf = {
@@ -76,7 +75,7 @@ class TestDevopsEnvironment(DriverlessTestCase):
         self.env.add_group(group_name='default',
                            driver_name='devops.driver.empty')
 
-        self.denv = DevopsEnvironment(self.env)
+        self.denv = environment.DevopsEnvironment(self.env)
 
     def test_add_slaves(self):
         nodes = self.denv.add_slaves(
@@ -159,7 +158,7 @@ class TestDevopsEnvironment(DriverlessTestCase):
         assert ip == '10.109.0.2'
 
     def test_get_admin_remote(self):
-        ssh_client = self.ssh_mock.return_value
+        ssh = self.ssh_mock.return_value
         self.group.add_node(
             name='admin',
             role='fule_master',
@@ -170,9 +169,10 @@ class TestDevopsEnvironment(DriverlessTestCase):
             )])
 
         remote = self.denv.get_admin_remote()
-        assert remote is ssh_client
+        assert remote is ssh
         self.ssh_mock.assert_called_once_with(
-            '10.109.0.2', auth=SSHAuth(username='root', password='r00tme'))
+            '10.109.0.2',
+            auth=ssh_client.SSHAuth(username='root', password='r00tme'))
 
         self.wait_tcp_mock.assert_called_once_with(
             host='10.109.0.2', port=22, timeout=180,
@@ -205,8 +205,8 @@ class TestDevopsEnvironment(DriverlessTestCase):
         assert ip == '10.109.0.100'
 
     def test_get_private_keys(self):
-        ssh_client = self.ssh_mock.return_value.__enter__.return_value
-        ssh_client.open = mock.mock_open()
+        ssh = self.ssh_mock.return_value.__enter__.return_value
+        ssh.open = mock.mock_open()
         key = self.paramiko_mock.RSAKey.from_private_key.return_value
 
         self.group.add_node(
@@ -223,21 +223,22 @@ class TestDevopsEnvironment(DriverlessTestCase):
         assert keys == [key, key]
 
         self.ssh_mock.assert_called_once_with(
-            '10.109.0.2', auth=SSHAuth(username='root', password='r00tme'))
-        assert ssh_client.isfile.call_count == 2
-        ssh_client.isfile.assert_any_call('/root/.ssh/id_rsa')
-        ssh_client.isfile.assert_any_call('/root/.ssh/bootstrap.rsa')
-        assert ssh_client.open.call_count == 2
-        ssh_client.open.assert_any_call('/root/.ssh/id_rsa')
-        ssh_client.open.assert_any_call('/root/.ssh/bootstrap.rsa')
+            '10.109.0.2',
+            auth=ssh_client.SSHAuth(username='root', password='r00tme'))
+        assert ssh.isfile.call_count == 2
+        ssh.isfile.assert_any_call('/root/.ssh/id_rsa')
+        ssh.isfile.assert_any_call('/root/.ssh/bootstrap.rsa')
+        assert ssh.open.call_count == 2
+        ssh.open.assert_any_call('/root/.ssh/id_rsa')
+        ssh.open.assert_any_call('/root/.ssh/bootstrap.rsa')
 
         assert self.paramiko_mock.RSAKey.from_private_key.call_count == 2
         self.paramiko_mock.RSAKey.from_private_key.assert_called_with(
-            ssh_client.open.return_value)
+            ssh.open.return_value)
 
     def test_get_node_remote(self):
-        ssh_client = self.ssh_mock.return_value
-        ssh_client.open = mock.mock_open()
+        ssh = self.ssh_mock.return_value
+        ssh.open = mock.mock_open()
 
         self.group.add_node(
             name='admin',
@@ -264,17 +265,20 @@ class TestDevopsEnvironment(DriverlessTestCase):
         key = self.paramiko_mock.RSAKey.from_private_key.return_value
         keys = [key, key]
         remote = self.denv.get_node_remote('slave-00')
-        assert remote is ssh_client
+        assert remote is ssh
         self.ssh_mock.assert_called_with(
-            '10.109.0.100', auth=SSHAuth(username='root', password='r00tme',
-                                         keys=keys))
+            '10.109.0.100',
+            auth=ssh_client.SSHAuth(
+                username='root',
+                password='r00tme',
+                keys=keys))
 
         self.wait_tcp_mock.assert_called_with(
             host='10.109.0.2', port=22, timeout=180,
             timeout_msg='Admin node 10.109.0.2 is not accessible by SSH.')
 
     def test_sync_time(self):
-        ssh_client = self.ssh_mock.return_value
+        ssh = self.ssh_mock.return_value
         self.patch('devops.models.node.Node.is_active', return_value=True)
 
         self.group.add_node(
@@ -303,8 +307,8 @@ class TestDevopsEnvironment(DriverlessTestCase):
 
         self.ntpgroup_mock.assert_called_once_with()
         self.ntpgroup_inst.add_node.assert_has_calls((
-            mock.call(ssh_client, 'admin'),
-            mock.call(ssh_client, 'slave-00'),
+            mock.call(ssh, 'admin'),
+            mock.call(ssh, 'slave-00'),
         ))
 
         assert self.ntpgroup_inst.sync_time.call_count == 3
@@ -316,7 +320,7 @@ class TestDevopsEnvironment(DriverlessTestCase):
         self.ntpgroup_inst.__exit__.assert_called_once_with(None, None, None)
 
     def test_get_curr_time(self):
-        ssh_client = self.ssh_mock.return_value
+        ssh = self.ssh_mock.return_value
         self.patch('devops.models.node.Node.is_active', return_value=True)
 
         self.group.add_node(
@@ -345,8 +349,8 @@ class TestDevopsEnvironment(DriverlessTestCase):
 
         self.ntpgroup_mock.assert_called_once_with()
         self.ntpgroup_inst.add_node.assert_has_calls((
-            mock.call(ssh_client, 'admin'),
-            mock.call(ssh_client, 'slave-00'),
+            mock.call(ssh, 'admin'),
+            mock.call(ssh, 'slave-00'),
         ))
 
         assert self.ntpgroup_inst.sync_time.call_count == 0

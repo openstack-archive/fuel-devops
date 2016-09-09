@@ -14,13 +14,13 @@
 
 import mock
 
-from devops.client import DevopsClient
-from devops.client.environment import DevopsEnvironment
-from devops.error import DevopsError
-from devops.tests.driver.driverless import DriverlessTestCase
+from devops.client import client
+from devops.client import environment
+from devops import error
+from devops.tests.driver import driverless
 
 
-class TestDevopsClient(DriverlessTestCase):
+class TestDevopsClient(driverless.DriverlessTestCase):
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
@@ -78,15 +78,15 @@ class TestDevopsClient(DriverlessTestCase):
             'devops.helpers.templates.get_devops_config')
         self.get_conf_mock.return_value = self.conf
 
-        self.c = DevopsClient()
+        self.c = client.DevopsClient()
 
     def test_get_env(self):
         test_env = self.c.get_env('test')
         assert test_env.name == 'test'
-        assert isinstance(test_env, DevopsEnvironment)
+        assert isinstance(test_env, environment.DevopsEnvironment)
 
     def test_get_env_error(self):
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(error.DevopsError):
             self.c.get_env('unknown')
 
     def test_list_env_names(self):

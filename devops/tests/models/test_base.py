@@ -16,21 +16,18 @@
 
 from django.test import TestCase
 
-from devops.error import DevopsException
-from devops.models.base import ParamField
-from devops.models.base import ParamMultiField
-from devops.models import Driver
-from devops.models import Group
-from devops.models import Node
+from devops import error
+from devops import models
+from devops.models import base
 
 
-class MyModel(Driver):
+class MyModel(models.Driver):
 
-    field = ParamField(default=10)
-    number = ParamField(default=None, choices=(None, 'one', 'two'))
-    multi = ParamMultiField(
-        sub1=ParamField(default='abc'),
-        sub2=ParamField(default=15, choices=(11, 13, 15)),
+    field = base.ParamField(default=10)
+    number = base.ParamField(default=None, choices=(None, 'one', 'two'))
+    multi = base.ParamMultiField(
+        sub1=base.ParamField(default='abc'),
+        sub2=base.ParamField(default=15, choices=(11, 13, 15)),
     )
 
 
@@ -59,7 +56,7 @@ class TestParamedModel(TestCase):
             'number': None,
         }
 
-        t2 = Driver.objects.get(name='test_driver_model')
+        t2 = models.Driver.objects.get(name='test_driver_model')
         assert isinstance(t2, MyModel)
         assert t2.field == 10
         assert t2.number is None
@@ -120,20 +117,20 @@ class TestParamedModel(TestCase):
     def test_unknown_field(self):
         with self.assertRaises(TypeError):
             MyModel(unknown=0)
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             MyModel(multi=dict(unknown='aaa'))
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             MyModel(multi='aaa')
 
     def test_not_in_choices(self):
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             MyModel(number=0)
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             t = MyModel()
             t.number = 0
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             MyModel(multi=dict(sub2='aaa'))
-        with self.assertRaises(DevopsException):
+        with self.assertRaises(error.DevopsException):
             t = MyModel()
             t.multi.sub2 = 'aaa'
 
@@ -158,9 +155,9 @@ class TestParamedModel(TestCase):
         assert o.get(name='t2', multi__sub1='abc').id == t2.id
 
     def test_related_queryset(self):
-        d = Driver(name='devops.driver.libvirt')
+        d = models.Driver(name='devops.driver.libvirt')
         d.save()
-        g = Group(name='test', driver=d)
+        g = models.Group(name='test', driver=d)
         g.save()
         g.add_node(name='n1', role='fuel_slave', hypervisor='test', uuid='abc')
         g.add_node(name='n2', role='fuel_slave', hypervisor='test', uuid='bcd')
@@ -181,18 +178,18 @@ class TestParamedModel(TestCase):
         assert g.node_set.get(uuid='abc').name == 'n1'
         assert g.node_set.get(role='fuel_slave', uuid='cde').name == 'n3'
         assert g.node_set.get(hypervisor='kvm', name='n4').uuid == 'def'
-        with self.assertRaises(Node.DoesNotExist):
+        with self.assertRaises(models.Node.DoesNotExist):
             g.node_set.get(hypervisor='kvm', uuid='bcd')
-        with self.assertRaises(Node.DoesNotExist):
+        with self.assertRaises(models.Node.DoesNotExist):
             g.node_set.get(role='qqq', hypervisor='kvm')
 
 
-class MyMultiModel(Driver):
+class MyMultiModel(models.Driver):
 
-    multi = ParamMultiField(
-        sub1=ParamField(default='abc'),
-        multi2=ParamMultiField(
-            sub2=ParamField(default=13),
+    multi = base.ParamMultiField(
+        sub1=base.ParamField(default='abc'),
+        multi2=base.ParamMultiField(
+            sub2=base.ParamField(default=13),
         )
     )
 
