@@ -27,9 +27,9 @@ from six.moves import xrange
 # pylint: enable=redefined-builtin
 
 from devops import error
-from devops.helpers.exec_result import ExecResult
+from devops.helpers import exec_result
 from devops.helpers import helpers
-from devops.helpers.ssh_client import SSHAuth
+from devops.helpers import ssh_client
 
 
 class TestHelpersHelpers(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestHelpersHelpers(unittest.TestCase):
 
     @mock.patch(
         'devops.helpers.subprocess_runner.Subprocess.execute',
-        return_value=ExecResult(
+        return_value=exec_result.ExecResult(
             cmd="ping -c 1 -W '{timeout:d}' '{host:s}'".format(
                 host='127.0.0.1', timeout=1,
             ),
@@ -209,7 +209,7 @@ class TestHelpersHelpers(unittest.TestCase):
             host, port, check_cmd, username, password, timeout)
         ssh.assert_called_once_with(
             host=host, port=port,
-            auth=SSHAuth(username=username, password=password)
+            auth=ssh_client.SSHAuth(username=username, password=password)
         )
         wait.assert_called_once()
         # Todo: cover ssh_client.execute

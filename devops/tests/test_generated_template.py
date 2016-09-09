@@ -18,15 +18,14 @@ import yaml
 
 from django.test import TestCase
 
-
-from devops.helpers.templates import create_devops_config
+from devops.helpers import templates
 from devops import settings
 
 
 class TestDefaultTemplate(TestCase):
 
     def test_default(self):
-        config = create_devops_config(
+        config = templates.create_devops_config(
             boot_from='cdrom',
             env_name=settings.ENV_NAME,
             admin_vcpu=settings.HARDWARE["admin_node_cpu"],
@@ -261,7 +260,7 @@ class TestDefaultTemplate(TestCase):
 """
 
     def test_acpi_and_numa(self):
-        config = create_devops_config(
+        config = templates.create_devops_config(
             boot_from='cdrom',
             env_name=settings.ENV_NAME,
             admin_vcpu=4,

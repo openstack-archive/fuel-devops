@@ -16,18 +16,18 @@
 
 from django.test import TestCase
 
-from devops.models import Node
-from devops.models.node_ext.default import NodeExtension
+from devops import models
+from devops.models.node_ext import default
 
 
 class TestNodeExtension(TestCase):
 
     def test_ext(self):
-        node = Node.objects.create(
+        node = models.Node.objects.create(
             group=None,
             name='test-node',
             role='default',
         )
 
-        assert isinstance(node.ext, NodeExtension)
+        assert isinstance(node.ext, default.NodeExtension)
         assert node.ext.node is node

@@ -18,32 +18,32 @@
 
 import unittest
 
-from netaddr import IPNetwork
+import netaddr
 
-from devops.helpers.network import IpNetworksPool
+from devops.helpers import network
 
 
 class TestNetworkHelpers(unittest.TestCase):
 
     def test_getting_subnetworks(self):
-        pool = IpNetworksPool([IPNetwork('10.1.0.0/22')], 24)
+        pool = network.IpNetworksPool([netaddr.IPNetwork('10.1.0.0/22')], 24)
         networks = list(pool)
         assert len(networks) == 4
-        assert (IPNetwork('10.1.0.0/24') in networks) is True
-        assert (IPNetwork('10.1.1.0/24') in networks) is True
-        assert (IPNetwork('10.1.2.0/24') in networks) is True
-        assert (IPNetwork('10.1.3.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.0.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.1.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.2.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.3.0/24') in networks) is True
 
     def test_getting_subnetworks_allocated(self):
-        pool = IpNetworksPool(
-            networks=[IPNetwork('10.1.0.0/22')], prefix=24,
+        pool = network.IpNetworksPool(
+            networks=[netaddr.IPNetwork('10.1.0.0/22')], prefix=24,
             allocated_networks=[
-                IPNetwork('10.1.1.0/24'),
-                IPNetwork('10.1.3.0/24'),
+                netaddr.IPNetwork('10.1.1.0/24'),
+                netaddr.IPNetwork('10.1.3.0/24'),
             ])
         networks = list(pool)
         assert len(networks) == 2
-        assert (IPNetwork('10.1.0.0/24') in networks) is True
-        assert (IPNetwork('10.1.1.0/24') not in networks) is True
-        assert (IPNetwork('10.1.2.0/24') in networks) is True
-        assert (IPNetwork('10.1.3.0/24') not in networks) is True
+        assert (netaddr.IPNetwork('10.1.0.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.1.0/24') not in networks) is True
+        assert (netaddr.IPNetwork('10.1.2.0/24') in networks) is True
+        assert (netaddr.IPNetwork('10.1.3.0/24') not in networks) is True

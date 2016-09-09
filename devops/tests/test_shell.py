@@ -16,17 +16,16 @@
 
 # pylint: disable=no-self-use
 
-from datetime import datetime as dt
+import datetime
 import unittest
 
 from dateutil import tz
 import mock
-from netaddr import IPNetwork
+import netaddr
 
-from devops.error import DevopsError
+from devops import error
 from devops import models
-from devops.shell import main
-from devops.shell import Shell
+from devops import shell
 
 
 class TestMain(unittest.TestCase):
@@ -47,32 +46,32 @@ class TestMain(unittest.TestCase):
     def test_main_sys_args(self):
         self.sys_mock.argv = ['dos.py', 'list']
 
-        main()
+        shell.main()
         self.shell_mock.assert_called_once_with(['list'])
         self.shell_inst.execute.assert_called_once_with()
         assert self.sys_mock.exit.called is False
 
     def test_main(self):
-        main(['show'])
+        shell.main(['show'])
         self.shell_mock.assert_called_once_with(['show'])
         self.shell_inst.execute.assert_called_once_with()
         assert self.sys_mock.exit.called is False
 
     def test_main_devops_error(self):
-        error = DevopsError('my error')
-        self.shell_inst.execute.side_effect = error
+        err = error.DevopsError('my error')
+        self.shell_inst.execute.side_effect = err
 
-        main(['start'])
+        shell.main(['start'])
         self.shell_mock.assert_called_once_with(['start'])
         self.shell_inst.execute.assert_called_once_with()
         self.sys_mock.exit.assert_called_once_with('Error: my error')
 
     def test_main_exception(self):
-        error = ValueError('error')
-        self.shell_inst.execute.side_effect = error
+        err = ValueError('error')
+        self.shell_inst.execute.side_effect = err
 
         with self.assertRaises(ValueError):
-            main(['start'])
+            shell.main(['start'])
 
 
 class TestShell(unittest.TestCase):
@@ -98,7 +97,7 @@ class TestShell(unittest.TestCase):
         def create_snap_mock(name, t):
             m = mock.Mock()
             m.name = name
-            m.created = dt(2016, 5, 12, 15, 12, t)
+            m.created = datetime.datetime(2016, 5, 12, 15, 12, t)
             return m
 
         def create_node_mock(name, vnc_port=5005, snapshots=None):
@@ -129,7 +128,7 @@ class TestShell(unittest.TestCase):
         def create_ap_mock(name, ip_network):
             m = mock.Mock(spec=models.AddressPool)
             m.name = name
-            m.ip_network = IPNetwork(ip_network)
+            m.ip_network = netaddr.IPNetwork(ip_network)
             return m
 
         self.aps = {
@@ -153,32 +152,35 @@ class TestShell(unittest.TestCase):
 
         self.env_mocks = {
             'env1': create_env_mock(
-                env_name='env1', created=dt(2016, 5, 12, 15, 12, 10),
+                env_name='env1',
+                created=datetime.datetime(2016, 5, 12, 15, 12, 10),
                 nodes=self.nodes['env1'], aps=self.aps['env1'],
                 admin_ip='109.10.0.2'),
             'env2': create_env_mock(
-                env_name='env2', created=dt(2016, 5, 12, 15, 12, 11),
+                env_name='env2',
+                created=datetime.datetime(2016, 5, 12, 15, 12, 11),
                 nodes={}, aps=[], admin_ip='109.10.1.2'),
             'env3': create_env_mock(
-                env_name='env3', created=dt(2016, 5, 12, 15, 12, 12),
+                env_name='env3',
+                created=datetime.datetime(2016, 5, 12, 15, 12, 12),
                 nodes={}, aps=[]),
         }
         self.client_inst.list_env_names.side_effect = self.env_mocks.keys
         self.client_inst.get_env.side_effect = self.env_mocks.__getitem__
 
     def test_shell(self):
-        shell = Shell(['list'])
-        assert shell.args == ['list']
+        sh = shell.Shell(['list'])
+        assert sh.args == ['list']
         self.client_mock.assert_called_once_with()
 
     def test_shell_command_not_create(self):
-        shell = Shell(['show', 'env1'])
-        assert shell.args == ['show', 'env1']
+        sh = shell.Shell(['show', 'env1'])
+        assert sh.args == ['show', 'env1']
         self.client_inst.get_env.assert_called_once_with('env1')
 
     def test_list(self):
-        shell = Shell(['list'])
-        shell.execute()
+        sh = shell.Shell(['list'])
+        sh.execute()
 
         self.print_mock.assert_called_once_with(
             'NAME\n'
@@ -188,8 +190,8 @@ class TestShell(unittest.TestCase):
             'env3')
 
     def test_list_ips(self):
-        shell = Shell(['list', '--ips'])
-        shell.execute()
+        sh = shell.Shell(['list', '--ips'])
+        sh.execute()
 
         self.print_mock.assert_called_once_with(
             'NAME    ADMIN IP\n'
@@ -199,8 +201,8 @@ class TestShell(unittest.TestCase):
             'env3')
 
     def test_list_ips_timestamps(self):
-        shell = Shell(['list', '--ips', '--timestamps'])
-        shell.execute()
+        sh = shell.Shell(['list', '--ips', '--timestamps'])
+        sh.execute()
 
         self.print_mock.assert_called_once_with(
             'NAME    ADMIN IP    CREATED\n'
@@ -212,15 +214,15 @@ class TestShell(unittest.TestCase):
     def test_list_none(self):
         self.env_mocks.clear()
 
-        shell = Shell(['list'])
+        sh = shell.Shell(['list'])
         assert self.print_mock.called is False
-        shell.execute()
+        sh.execute()
 
         assert self.print_mock.called is False
 
     def test_show(self):
-        shell = Shell(['show', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['show', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.print_mock.assert_called_once_with(
@@ -231,71 +233,71 @@ class TestShell(unittest.TestCase):
             ' 5005  slave-01     rack-01')
 
     def test_show_none(self):
-        shell = Shell(['show', 'env2'])
-        shell.execute()
+        sh = shell.Shell(['show', 'env2'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env2')
         assert self.print_mock.called is False
 
     def test_erase(self):
-        shell = Shell(['erase', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['erase', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].erase.assert_called_once_with()
 
     def test_start(self):
-        shell = Shell(['start', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['start', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].start.assert_called_once_with()
 
     def test_destroy(self):
-        shell = Shell(['destroy', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['destroy', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].destroy.assert_called_once_with()
 
     def test_suspend(self):
-        shell = Shell(['suspend', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['suspend', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].suspend.assert_called_once_with()
 
     def test_resume(self):
-        shell = Shell(['resume', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['resume', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].resume.assert_called_once_with()
 
     def test_revert(self):
-        shell = Shell(['revert', 'env1', 'snap1'])
-        shell.execute()
+        sh = shell.Shell(['revert', 'env1', 'snap1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].revert.assert_called_once_with(
             'snap1', flag=False)
 
     def test_snapshot(self):
-        shell = Shell(['snapshot', 'env1', 'snap1'])
-        shell.execute()
+        sh = shell.Shell(['snapshot', 'env1', 'snap1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].snapshot.assert_called_once_with('snap1')
 
     def test_sync(self):
-        shell = Shell(['sync'])
-        shell.execute()
+        sh = shell.Shell(['sync'])
+        sh.execute()
 
         self.client_inst.synchronize_all.assert_called_once_with()
 
     def test_snapshot_list(self):
-        shell = Shell(['snapshot-list', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['snapshot-list', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.print_mock.assert_called_once_with(
@@ -305,15 +307,15 @@ class TestShell(unittest.TestCase):
             'snap2       2016-05-12 17:12:16  admin')
 
     def test_snapshot_list_none(self):
-        shell = Shell(['snapshot-list', 'env2'])
-        shell.execute()
+        sh = shell.Shell(['snapshot-list', 'env2'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env2')
         assert self.print_mock.called is False
 
     def test_snapshot_delete(self):
-        shell = Shell(['snapshot-delete', 'env1', 'snap1'])
-        shell.execute()
+        sh = shell.Shell(['snapshot-delete', 'env1', 'snap1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         admin = self.nodes['env1']['admin']
@@ -322,8 +324,8 @@ class TestShell(unittest.TestCase):
         slave.erase_snapshot.assert_called_once_with(name='snap1')
 
     def test_net_list(self):
-        shell = Shell(['net-list', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['net-list', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.print_mock.assert_called_once_with(
@@ -334,8 +336,8 @@ class TestShell(unittest.TestCase):
             'storage-pool01        109.10.2.0/24')
 
     def test_net_list_none(self):
-        shell = Shell(['net-list', 'env2'])
-        shell.execute()
+        sh = shell.Shell(['net-list', 'env2'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env2')
         assert self.print_mock.called is False
@@ -350,8 +352,8 @@ class TestShell(unittest.TestCase):
             'node2': 'Thu May 12 19:00:00 MSK 2016',
         }
 
-        shell = Shell(['time-sync', 'env1'])
-        shell.execute()
+        sh = shell.Shell(['time-sync', 'env1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].get_curr_time.assert_called_once_with(None)
@@ -365,8 +367,8 @@ class TestShell(unittest.TestCase):
             'node1': 'Thu May 12 19:00:00 MSK 2016',
         }
 
-        shell = Shell(['time-sync', 'env1', '--node-name', 'node1'])
-        shell.execute()
+        sh = shell.Shell(['time-sync', 'env1', '--node-name', 'node1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].get_curr_time.assert_called_once_with(['node1'])
@@ -382,8 +384,8 @@ class TestShell(unittest.TestCase):
             'node2': 'Thu May 12 19:00:00 MSK 2016',
         }
 
-        shell = Shell(['revert-resume', 'env1', 'snap1'])
-        shell.execute()
+        sh = shell.Shell(['revert-resume', 'env1', 'snap1'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].revert.assert_called_once_with(
@@ -393,25 +395,27 @@ class TestShell(unittest.TestCase):
         self.env_mocks['env1'].sync_time.assert_called_once_with(None)
 
     def test_version(self):
-        shell = Shell(['version'])
-        shell.execute()
+        sh = shell.Shell(['version'])
+        sh.execute()
 
         assert self.print_mock.called
 
     def test_create(self):
-        shell = Shell(['create', 'test-env',
-                       '--net-pool', '10.109.0.0/16:24',
-                       '--iso-path', '/tmp/my.iso',
-                       '--admin-vcpu', '4',
-                       '--admin-ram', '2048',
-                       '--admin-disk-size', '80',
-                       '--vcpu', '2',
-                       '--ram', '512',
-                       '--node-count', '5',
-                       '--second-disk-size', '35',
-                       '--third-disk-size', '45',
-                       ])
-        shell.execute()
+        sh = shell.Shell(
+            [
+                'create', 'test-env',
+                '--net-pool', '10.109.0.0/16:24',
+                '--iso-path', '/tmp/my.iso',
+                '--admin-vcpu', '4',
+                '--admin-ram', '2048',
+                '--admin-disk-size', '80',
+                '--vcpu', '2',
+                '--ram', '512',
+                '--node-count', '5',
+                '--second-disk-size', '35',
+                '--third-disk-size', '45',
+            ])
+        sh.execute()
 
         self.client_inst.create_env.assert_called_once_with(
             env_name='test-env',
@@ -428,21 +432,23 @@ class TestShell(unittest.TestCase):
         )
 
     def test_create_env(self):
-        shell = Shell(['create-env', 'myenv.yaml'])
-        shell.execute()
+        sh = shell.Shell(['create-env', 'myenv.yaml'])
+        sh.execute()
 
         self.client_inst.create_env_from_config.assert_called_once_with(
             'myenv.yaml')
 
     def test_slave_add(self):
-        shell = Shell(['slave-add', 'env1',
-                       '--node-count', '5',
-                       '--vcpu', '2',
-                       '--ram', '512',
-                       '--second-disk-size', '35',
-                       '--third-disk-size', '45',
-                       ])
-        shell.execute()
+        sh = shell.Shell(
+            [
+                'slave-add', 'env1',
+                '--node-count', '5',
+                '--vcpu', '2',
+                '--ram', '512',
+                '--second-disk-size', '35',
+                '--third-disk-size', '45',
+            ])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].add_slaves.assert_called_once_with(
@@ -454,19 +460,21 @@ class TestShell(unittest.TestCase):
         )
 
     def test_slave_remove(self):
-        shell = Shell(['slave-remove', 'env1', '-N', 'slave-01'])
-        shell.execute()
+        sh = shell.Shell(['slave-remove', 'env1', '-N', 'slave-01'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['slave-01'].remove.assert_called_once_with()
 
     def test_slave_change(self):
-        shell = Shell(['slave-change', 'env1',
-                       '-N', 'slave-01',
-                       '--vcpu', '4',
-                       '--ram', '256',
-                       ])
-        shell.execute()
+        sh = shell.Shell(
+            [
+                'slave-change', 'env1',
+                '-N', 'slave-01',
+                '--vcpu', '4',
+                '--ram', '256',
+            ])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['slave-01'].set_vcpu.assert_called_once_with(
@@ -475,11 +483,13 @@ class TestShell(unittest.TestCase):
             memory=256)
 
     def test_admin_change(self):
-        shell = Shell(['admin-change', 'env1',
-                       '--admin-vcpu', '8',
-                       '--admin-ram', '768',
-                       ])
-        shell.execute()
+        sh = shell.Shell(
+            [
+                'admin-change', 'env1',
+                '--admin-vcpu', '8',
+                '--admin-ram', '768',
+            ])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['admin'].set_vcpu.assert_called_once_with(
@@ -491,11 +501,13 @@ class TestShell(unittest.TestCase):
         group = mock.Mock(spec=models.Group)
         self.env_mocks['env1'].get_groups.return_value = [group]
 
-        shell = Shell(['admin-setup', 'env1',
-                       '--boot-from', 'cdrom',
-                       '--iface', 'eth1',
-                       ])
-        shell.execute()
+        sh = shell.Shell(
+            [
+                'admin-setup', 'env1',
+                '--boot-from', 'cdrom',
+                '--iface', 'eth1',
+            ])
+        sh.execute()
 
         group.start_networks.assert_called_once_with()
         self.client_inst.get_env.assert_called_once_with('env1')
@@ -504,15 +516,15 @@ class TestShell(unittest.TestCase):
             iface='eth1')
 
     def test_node_start(self):
-        shell = Shell(['node-start', 'env1', '-N', 'slave-01'])
-        shell.execute()
+        sh = shell.Shell(['node-start', 'env1', '-N', 'slave-01'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['slave-01'].start.assert_called_once_with()
 
     def test_node_destroy(self):
-        shell = Shell(['node-destroy', 'env1', '-N', 'slave-01'])
-        shell.execute()
+        sh = shell.Shell(['node-destroy', 'env1', '-N', 'slave-01'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].get_node.assert_called_once_with(
@@ -520,8 +532,8 @@ class TestShell(unittest.TestCase):
         self.nodes['env1']['slave-01'].destroy.assert_called_once_with()
 
     def test_node_reset(self):
-        shell = Shell(['node-reset', 'env1', '-N', 'slave-01'])
-        shell.execute()
+        sh = shell.Shell(['node-reset', 'env1', '-N', 'slave-01'])
+        sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['slave-01'].reset.assert_called_once_with()
