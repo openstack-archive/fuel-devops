@@ -14,14 +14,14 @@
 
 # pylint: disable=no-self-use
 
-from collections import OrderedDict
+import collections
 import os
 
 from django.test import TestCase
 import mock
 
-from devops.error import DevopsError
-from devops.helpers.templates import yaml_template_load
+from devops import error
+from devops.helpers import templates
 
 
 class TestTemplateLoader(TestCase):
@@ -43,8 +43,8 @@ class TestTemplateLoader(TestCase):
         self.os_mock.path.join = os.path.join
 
     def test_not_file(self):
-        with self.assertRaises(DevopsError):
-            yaml_template_load('/path/to/dir')
+        with self.assertRaises(error.DevopsError):
+            templates.yaml_template_load('/path/to/dir')
 
     def test_mapping_order(self):
         open_mock = mock.mock_open(
@@ -53,9 +53,9 @@ class TestTemplateLoader(TestCase):
                       '    two: 2\n'
                       '    three: 3\n')
         self.patch('devops.helpers.templates.open', open_mock, create=True)
-        m = yaml_template_load('/path/to/my.yaml')
-        assert isinstance(m['mapping'], OrderedDict)
-        assert m['mapping'] == OrderedDict([
+        m = templates.yaml_template_load('/path/to/my.yaml')
+        assert isinstance(m['mapping'], collections.OrderedDict)
+        assert m['mapping'] == collections.OrderedDict([
             ('one', 1),
             ('two', 2),
             ('three', 3),
@@ -66,7 +66,7 @@ class TestTemplateLoader(TestCase):
             read_data='env_value: !os_env MYVAR, 100\n')
         self.patch('devops.helpers.templates.open', open_mock, create=True)
         self.os_mock.environ = {}
-        m = yaml_template_load('/path/to/my.yaml')
+        m = templates.yaml_template_load('/path/to/my.yaml')
         assert m['env_value'] == 100
 
     def test_os_env(self):
@@ -74,7 +74,7 @@ class TestTemplateLoader(TestCase):
             read_data='env_value: !os_env MYVAR\n')
         self.patch('devops.helpers.templates.open', open_mock, create=True)
         self.os_mock.environ = {'MYVAR': '30'}
-        m = yaml_template_load('/path/to/my.yaml')
+        m = templates.yaml_template_load('/path/to/my.yaml')
         assert m['env_value'] == 30
 
     def test_os_env_required(self):
@@ -82,16 +82,16 @@ class TestTemplateLoader(TestCase):
             read_data='env_value: !os_env\n')
         self.patch('devops.helpers.templates.open', open_mock, create=True)
         self.os_mock.environ = {}
-        with self.assertRaises(DevopsError):
-            yaml_template_load('/path/to/my.yaml')
+        with self.assertRaises(error.DevopsError):
+            templates.yaml_template_load('/path/to/my.yaml')
 
     def test_os_env_no_value(self):
         open_mock = mock.mock_open(
             read_data='env_value: !os_env MYVAR\n')
         self.patch('devops.helpers.templates.open', open_mock, create=True)
         self.os_mock.environ = {}
-        with self.assertRaises(DevopsError):
-            yaml_template_load('/path/to/my.yaml')
+        with self.assertRaises(error.DevopsError):
+            templates.yaml_template_load('/path/to/my.yaml')
 
     def test_include(self):
         self.isfiles.append('/path/to/file2.yaml')
@@ -105,7 +105,7 @@ class TestTemplateLoader(TestCase):
         open_mock.side_effect = (
             mock_open1.return_value, mock_open2.return_value)
 
-        m = yaml_template_load('/path/to/my.yaml')
+        m = templates.yaml_template_load('/path/to/my.yaml')
         assert m == {'myinclude': 10}
 
     def test_include_exception(self):
@@ -119,5 +119,5 @@ class TestTemplateLoader(TestCase):
         open_mock.side_effect = (
             mock_open1.return_value, mock_open2.return_value)
 
-        with self.assertRaises(DevopsError):
-            yaml_template_load('/path/to/my.yaml')
+        with self.assertRaises(error.DevopsError):
+            templates.yaml_template_load('/path/to/my.yaml')

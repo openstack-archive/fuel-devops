@@ -19,12 +19,12 @@ import unittest
 
 import mock
 
-from devops.helpers.decorators import threaded
+from devops.helpers import decorators
 
 
 class ThreadedTest(unittest.TestCase):
     def test_add_basic(self):
-        @threaded
+        @decorators.threaded
         def func_test():
             pass
         test_thread = func_test()
@@ -33,7 +33,7 @@ class ThreadedTest(unittest.TestCase):
         self.assertFalse(test_thread.isAlive())
 
     def test_add_func(self):
-        @threaded()
+        @decorators.threaded()
         def func_test():
             pass
 
@@ -43,7 +43,7 @@ class ThreadedTest(unittest.TestCase):
         self.assertFalse(test_thread.isAlive())
 
     def test_name(self):
-        @threaded(name='test name')
+        @decorators.threaded(name='test name')
         def func_test():
             pass
 
@@ -53,7 +53,7 @@ class ThreadedTest(unittest.TestCase):
         self.assertFalse(test_thread.isAlive())
 
     def test_daemon(self):
-        @threaded(daemon=True)
+        @decorators.threaded(daemon=True)
         def func_test():
             pass
 
@@ -64,7 +64,7 @@ class ThreadedTest(unittest.TestCase):
 
     @mock.patch('threading.Thread', autospec=True)
     def test_started(self, thread):
-        @threaded(started=True)
+        @decorators.threaded(started=True)
         def func_test():
             pass
 
@@ -77,7 +77,7 @@ class ThreadedTest(unittest.TestCase):
         data = []
         global data
 
-        @threaded(started=True)
+        @decorators.threaded(started=True)
         def func_test(add, evnt):
             data.append(add)
             evnt.set()
@@ -91,7 +91,7 @@ class ThreadedTest(unittest.TestCase):
         data = []
         global data
 
-        @threaded(started=True)
+        @decorators.threaded(started=True)
         def func_test(add, evnt):
             data.append(add)
             evnt.set()
