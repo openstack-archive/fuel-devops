@@ -19,7 +19,7 @@ import unittest
 
 import mock
 
-from devops.helpers.cloud_image_settings import generate_cloud_image_settings
+from devops.helpers import cloud_image_settings
 
 
 class TestCloudImageSettings(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestCloudImageSettings(unittest.TestCase):
                    create=True)
 
     def test_generate_cloud_image_settings(self):
-        generate_cloud_image_settings(
+        cloud_image_settings.generate_cloud_image_settings(
             admin_ip='10.109.0.2',
             admin_netmask='255.255.255.0',
             admin_network='10.109.0.0/24',
