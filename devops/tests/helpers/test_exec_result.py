@@ -16,13 +16,12 @@ from __future__ import unicode_literals
 
 # pylint: disable=no-self-use
 
-from unittest import TestCase
+import unittest
 
 import mock
 
-from devops.helpers.exec_result import DevopsError
-from devops.helpers.exec_result import DevopsNotImplementedError
-from devops.helpers.exec_result import ExecResult
+from devops import error
+from devops.helpers import exec_result
 from devops.helpers.proc_enums import ExitCodes
 
 
@@ -30,32 +29,32 @@ cmd = 'ls -la'
 
 
 # noinspection PyTypeChecker
-class TestExecResult(TestCase):
+class TestExecResult(unittest.TestCase):
     @mock.patch('devops.helpers.exec_result.logger')
     def test_create_minimal(self, logger):
         """Test defaults"""
-        exec_result = ExecResult(cmd=cmd)
-        self.assertEqual(exec_result.cmd, cmd)
-        self.assertEqual(exec_result.cmd, exec_result['cmd'])
-        self.assertEqual(exec_result.stdout, [])
-        self.assertEqual(exec_result.stdout, exec_result['stdout'])
-        self.assertEqual(exec_result.stderr, [])
-        self.assertEqual(exec_result.stderr, exec_result['stderr'])
-        self.assertEqual(exec_result.stdout_str, '')
-        self.assertEqual(exec_result.stdout_str, exec_result['stdout_str'])
-        self.assertEqual(exec_result.stderr_str, '')
-        self.assertEqual(exec_result.stderr_str, exec_result['stderr_str'])
-        self.assertEqual(exec_result.stdout_brief, '')
-        self.assertEqual(exec_result.stdout_brief, exec_result['stdout_brief'])
-        self.assertEqual(exec_result.stderr_brief, '')
-        self.assertEqual(exec_result.stderr_brief, exec_result['stderr_brief'])
-        self.assertEqual(exec_result.exit_code, ExitCodes.EX_INVALID)
-        self.assertEqual(exec_result.exit_code, exec_result['exit_code'])
+        result = exec_result.ExecResult(cmd=cmd)
+        self.assertEqual(result.cmd, cmd)
+        self.assertEqual(result.cmd, result['cmd'])
+        self.assertEqual(result.stdout, [])
+        self.assertEqual(result.stdout, result['stdout'])
+        self.assertEqual(result.stderr, [])
+        self.assertEqual(result.stderr, result['stderr'])
+        self.assertEqual(result.stdout_str, '')
+        self.assertEqual(result.stdout_str, result['stdout_str'])
+        self.assertEqual(result.stderr_str, '')
+        self.assertEqual(result.stderr_str, result['stderr_str'])
+        self.assertEqual(result.stdout_brief, '')
+        self.assertEqual(result.stdout_brief, result['stdout_brief'])
+        self.assertEqual(result.stderr_brief, '')
+        self.assertEqual(result.stderr_brief, result['stderr_brief'])
+        self.assertEqual(result.exit_code, ExitCodes.EX_INVALID)
+        self.assertEqual(result.exit_code, result['exit_code'])
         self.assertEqual(
-            repr(exec_result),
+            repr(result),
             '{cls}(cmd={cmd!r}, stdout={stdout}, stderr={stderr}, '
             'exit_code={exit_code!s})'.format(
-                cls=ExecResult.__name__,
+                cls=exec_result.ExecResult.__name__,
                 cmd=cmd,
                 stdout=[],
                 stderr=[],
@@ -63,12 +62,12 @@ class TestExecResult(TestCase):
             )
         )
         self.assertEqual(
-            str(exec_result),
+            str(result),
             "{cls}(\n\tcmd={cmd!r},"
             "\n\t stdout=\n'{stdout_brief}',"
             "\n\tstderr=\n'{stderr_brief}', "
             '\n\texit_code={exit_code!s}\n)'.format(
-                cls=ExecResult.__name__,
+                cls=exec_result.ExecResult.__name__,
                 cmd=cmd,
                 stdout_brief='',
                 stderr_brief='',
@@ -78,29 +77,29 @@ class TestExecResult(TestCase):
 
         with self.assertRaises(IndexError):
             # noinspection PyStatementEffect
-            exec_result['nonexistent']
+            result['nonexistent']
 
-        with self.assertRaises(DevopsError):
+        with self.assertRaises(error.DevopsError):
             # noinspection PyStatementEffect
-            exec_result['stdout_json']
+            result['stdout_json']
         logger.assert_has_calls((
             mock.call.exception(
                 "'{cmd}' stdout is not valid json:\n"
                 "{stdout_str!r}\n".format(cmd=cmd, stdout_str='')),
         ))
-        self.assertIsNone(exec_result['stdout_yaml'])
+        self.assertIsNone(result['stdout_yaml'])
 
         self.assertEqual(
-            hash(exec_result),
-            hash((ExecResult, cmd, '', '', ExitCodes.EX_INVALID))
+            hash(result),
+            hash((exec_result.ExecResult, cmd, '', '', ExitCodes.EX_INVALID))
         )
 
     @mock.patch('devops.helpers.exec_result.logger', autospec=True)
     def test_not_implemented(self, logger):
         """Test assertion on non implemented deserializer"""
-        exec_result = ExecResult(cmd=cmd)
-        deserialize = getattr(exec_result, '_ExecResult__deserialize')
-        with self.assertRaises(DevopsNotImplementedError):
+        result = exec_result.ExecResult(cmd=cmd)
+        deserialize = getattr(result, '_ExecResult__deserialize')
+        with self.assertRaises(error.DevopsNotImplementedError):
             deserialize('tst')
         logger.assert_has_calls((
             mock.call.error(
@@ -109,11 +108,11 @@ class TestExecResult(TestCase):
         ))
 
     def test_setters(self):
-        exec_result = ExecResult(cmd=cmd)
-        self.assertEqual(exec_result.exit_code, ExitCodes.EX_INVALID)
-        exec_result.exit_code = 0
-        self.assertEqual(exec_result.exit_code, 0)
-        self.assertEqual(exec_result.exit_code, exec_result['exit_code'])
+        result = exec_result.ExecResult(cmd=cmd)
+        self.assertEqual(result.exit_code, ExitCodes.EX_INVALID)
+        result.exit_code = 0
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, result['exit_code'])
 
         tst_stdout = [
             b'Test\n',
@@ -130,32 +129,32 @@ class TestExecResult(TestCase):
 
         tst_stderr = [b'test\n'] * 10
 
-        exec_result['stdout'] = tst_stdout
-        self.assertEqual(exec_result.stdout, tst_stdout)
-        self.assertEqual(exec_result.stdout, exec_result['stdout'])
+        result['stdout'] = tst_stdout
+        self.assertEqual(result.stdout, tst_stdout)
+        self.assertEqual(result.stdout, result['stdout'])
 
-        exec_result['stderr'] = tst_stderr
-        self.assertEqual(exec_result.stderr, tst_stderr)
-        self.assertEqual(exec_result.stderr, exec_result['stderr'])
+        result['stderr'] = tst_stderr
+        self.assertEqual(result.stderr, tst_stderr)
+        self.assertEqual(result.stderr, result['stderr'])
 
         with self.assertRaises(TypeError):
-            exec_result.exit_code = 'code'
+            result.exit_code = 'code'
 
-        with self.assertRaises(DevopsError):
-            exec_result['stdout_brief'] = 'test'
+        with self.assertRaises(error.DevopsError):
+            result['stdout_brief'] = 'test'
 
         with self.assertRaises(IndexError):
-            exec_result['test'] = True
+            result['test'] = True
 
         with self.assertRaises(TypeError):
-            exec_result.stdout = 'stdout'
+            result.stdout = 'stdout'
 
-        self.assertEqual(exec_result.stdout, tst_stdout)
+        self.assertEqual(result.stdout, tst_stdout)
 
         with self.assertRaises(TypeError):
-            exec_result.stderr = 'stderr'
+            result.stderr = 'stderr'
 
-        self.assertEqual(exec_result.stderr, tst_stderr)
+        self.assertEqual(result.stderr, tst_stderr)
 
         stdout_br = tst_stdout[:3] + [b'...\n'] + tst_stdout[-3:]
         stderr_br = tst_stderr[:3] + [b'...\n'] + tst_stderr[-3:]
@@ -163,23 +162,23 @@ class TestExecResult(TestCase):
         stdout_brief = b''.join(stdout_br).strip().decode(encoding='utf-8')
         stderr_brief = b''.join(stderr_br).strip().decode(encoding='utf-8')
 
-        self.assertEqual(exec_result.stdout_brief, stdout_brief)
-        self.assertEqual(exec_result.stderr_brief, stderr_brief)
+        self.assertEqual(result.stdout_brief, stdout_brief)
+        self.assertEqual(result.stderr_brief, stderr_brief)
 
     def test_json(self):
-        exec_result = ExecResult('test', stdout=[b'{"test": true}'])
-        self.assertEqual(exec_result.stdout_json, {'test': True})
+        result = exec_result.ExecResult('test', stdout=[b'{"test": true}'])
+        self.assertEqual(result.stdout_json, {'test': True})
 
     @mock.patch('devops.helpers.exec_result.logger', autospec=True)
     def test_deprecations(self, logger):
-        exec_result = ExecResult('test', stdout=[b'{"test": true}'])
+        result = exec_result.ExecResult('test', stdout=[b'{"test": true}'])
         for deprecated in ('stdout_json', 'stdout_yaml'):
-            exec_result['{}'.format(deprecated)] = {'test': False}
+            result['{}'.format(deprecated)] = {'test': False}
             logger.assert_has_calls((
                 mock.call.warning(
                     '{key} is read-only and calculated automatically'.format(
                         key='{}'.format(deprecated)
                     )),
             ))
-            self.assertEqual(exec_result[deprecated], {'test': True})
+            self.assertEqual(result[deprecated], {'test': True})
             logger.reset_mock()

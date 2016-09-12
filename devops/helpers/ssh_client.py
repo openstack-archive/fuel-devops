@@ -19,22 +19,20 @@ import base64
 import fcntl
 import os
 import posixpath
+import select
 import stat
-from sys import getrefcount
-from threading import Event
-from threading import RLock
-from time import sleep
-from warnings import warn
+import sys
+import threading
+import warnings
 
 import paramiko
 import six
 
-from devops.error import DevopsCalledProcessError
-from devops.error import TimeoutError
-from devops.helpers.decorators import threaded
-from devops.helpers.exec_result import ExecResult
-from devops.helpers.proc_enums import ExitCodes
-from devops.helpers.retry import retry
+from devops import error
+from devops.helpers import decorators
+from devops.helpers import exec_result
+from devops.helpers import proc_enums
+from devops.helpers import retry
 from devops import logger
 
 
@@ -264,7 +262,7 @@ class _MemorizedSSH(type):
                     logger.debug('Reconnect {}'.format(ssh))
                     ssh.reconnect()
                 return ssh
-            if getrefcount(cls.__cache[key]) == 2:
+            if sys.getrefcount(cls.__cache[key]) == 2:
                 # If we have only cache reference and temporary getrefcount
                 # reference: close connection before deletion
                 logger.debug('Closing {} as unused'.format(cls.__cache[key]))
@@ -292,7 +290,7 @@ class _MemorizedSSH(type):
         # PY3: cache, ssh, temporary
         # PY4: cache, values mapping, ssh, temporary
         for ssh in mcs.__cache.values():
-            if getrefcount(ssh) == n_count:
+            if sys.getrefcount(ssh) == n_count:
                 logger.debug('Closing {} as unused'.format(ssh))
                 ssh.close()
         mcs.__cache = {}
@@ -346,7 +344,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """Context manager for call commands with sudo"""
 
         def __init__(self, ssh, enforce=True):
-            warn(
+            warnings.warn(
                 'SSHClient.get_sudo(SSHClient()) is deprecated in favor of '
                 'SSHClient().sudo(enforce=...) , which is much more powerful.')
             super(self.__class__, self).__init__(ssh=ssh, enforce=enforce)
@@ -373,7 +371,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type private_keys: list
         :type auth: SSHAuth
         """
-        self.__lock = RLock()
+        self.__lock = threading.RLock()
 
         self.__hostname = host
         self.__port = port
@@ -393,7 +391,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 'Please update your code'.format(
                     host=host, port=port, username=username
                 ))
-            warn(msg, DeprecationWarning)
+            warnings.warn(msg, DeprecationWarning)
             logger.debug(msg)
 
             self.__auth = SSHAuth(
@@ -440,7 +438,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         :rtype: str
         """
-        warn(
+        warnings.warn(
             'host has been deprecated in favor of hostname',
             DeprecationWarning
         )
@@ -485,7 +483,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         return self.__ssh
 
-    @retry(paramiko.SSHException, count=3, delay=3)
+    @retry.retry(paramiko.SSHException, count=3, delay=3)
     def __connect(self):
         """Main method for connection open"""
         with self.lock:
@@ -535,7 +533,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     @staticmethod
     def clear():
-        warn(
+        warnings.warn(
             "clear is removed: use close() only if it mandatory: "
             "it's automatically called on revert|shutdown|suspend|destroy",
             DeprecationWarning
@@ -544,7 +542,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     @classmethod
     def _clear_cache(cls):
         """Enforce clear memorized records"""
-        warn(
+        warnings.warn(
             '_clear_cache() is dangerous and not recommended for normal use!',
             Warning
         )
@@ -608,13 +606,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :raises: DevopsCalledProcessError
         """
         if expected is None:
-            expected = [ExitCodes.EX_OK]
+            expected = [proc_enums.ExitCodes.EX_OK]
         else:
             expected = [
-                ExitCodes(code)
+                proc_enums.ExitCodes(code)
                 if (
                     isinstance(code, int) and
-                    code in ExitCodes.__members__.values())
+                    code in proc_enums.ExitCodes.__members__.values())
                 else code
                 for code in expected
                 ]
@@ -636,7 +634,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 ))
             logger.error(message)
             if raise_on_err:
-                raise DevopsCalledProcessError(
+                raise error.DevopsCalledProcessError(
                     command, ret['exit_code'],
                     expected=expected,
                     stdout=ret['stdout_str'],
@@ -677,9 +675,11 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 ))
             logger.error(message)
             if raise_on_err:
-                raise DevopsCalledProcessError(command, ret['exit_code'],
-                                               stdout=ret['stdout_str'],
-                                               stderr=ret['stderr_str'])
+                raise error.DevopsCalledProcessError(
+                    command,
+                    ret['exit_code'],
+                    stdout=ret['stdout_str'],
+                    stderr=ret['stderr_str'])
         return ret
 
     @classmethod
@@ -706,7 +706,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             if ret not in expected:
                 errors[remote.hostname] = ret
         if errors and raise_on_err:
-            raise DevopsCalledProcessError(command, errors)
+            raise error.DevopsCalledProcessError(command, errors)
 
     @classmethod
     def __exec_command(
@@ -721,24 +721,35 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :rtype: ExecResult
         :raises: TimeoutError
         """
-
-        def readlines(stream, verbose, lines_count=100):
-            """Nonblocking read and log lines from stream"""
-            if lines_count < 1:
-                lines_count = 1
-            result = []
+        def poll_stream(src, verbose):
+            dst = []
             try:
-                for _ in range(1, lines_count):
-                    line = stream.readline()
-                    if line:
-                        result.append(line)
-                        if verbose:
-                            print(line.rstrip())
+                for line in src:
+                    dst.append(line)
+                    if verbose:
+                        print(line, end="")
             except IOError:
                 pass
-            return result
+            return dst
 
-        @threaded(started=True)
+        def poll_streams(result, fd, stdout, stderr, verbose):
+            try:
+                rlist, _, _ = select.select(
+                    [fd],
+                    [],
+                    [])
+            except BaseException:
+                logger.error(
+                    'Error during select.select call: socket is closed.\n'
+                    'Ignore this message, if call used in "wait for message" '
+                    'condition.'
+                )
+                return
+            if rlist:
+                result.stdout += poll_stream(src=stdout, verbose=verbose)
+                result.stderr += poll_stream(src=stderr, verbose=verbose)
+
+        @decorators.threaded(started=True)
         def poll_pipes(stdout, stderr, result, stop, channel):
             """Polling task for FIFO buffers
 
@@ -758,21 +769,29 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             fcntl.fcntl(fd, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
-                sleep(0.1)
-
-                result.stdout += readlines(stdout, verbose)
-                result.stderr += readlines(stderr, verbose)
+                poll_streams(
+                    result=result,
+                    fd=fd,
+                    stdout=stdout,
+                    stderr=stderr,
+                    verbose=verbose
+                )
 
                 if channel.status_event.is_set():
                     result.exit_code = result.exit_code = channel.exit_status
-                    result.stdout += readlines(stdout, verbose)
-                    result.stderr += readlines(stderr, verbose)
+                    poll_streams(
+                        result=result,
+                        fd=fd,
+                        stdout=stdout,
+                        stderr=stderr,
+                        verbose=verbose
+                    )
 
                     stop.set()
 
         # channel.status_event.wait(timeout)
-        result = ExecResult(cmd=command)
-        stop_event = Event()
+        result = exec_result.ExecResult(cmd=command)
+        stop_event = threading.Event()
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -805,7 +824,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 result.stderr
             )
         )
-        raise TimeoutError(
+        raise error.TimeoutError(
             status_tmpl.format(
                 command, timeout,
                 result.stdout_brief,
