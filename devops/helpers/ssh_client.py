@@ -19,7 +19,6 @@ import base64
 import fcntl
 import os
 import posixpath
-import select
 import stat
 import sys
 import threading
@@ -732,21 +731,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 pass
             return dst
 
-        def poll_streams(result, fd, stdout, stderr, verbose):
-            try:
-                rlist, _, _ = select.select(
-                    [fd],
-                    [],
-                    [])
-            except BaseException:
-                logger.error(
-                    'Error during select.select call: socket is closed.\n'
-                    'Ignore this message, if call used in "wait for message" '
-                    'condition.'
-                )
-                return
-            if rlist:
+        def poll_streams(result, channel, stdout, stderr, verbose):
+            if channel.recv_ready():
                 result.stdout += poll_stream(src=stdout, verbose=verbose)
+            if channel.recv_stderr_ready():
                 result.stderr += poll_stream(src=stderr, verbose=verbose)
 
         @decorators.threaded(started=True)
@@ -771,7 +759,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             while not stop.isSet():
                 poll_streams(
                     result=result,
-                    fd=fd,
+                    channel=channel,
                     stdout=stdout,
                     stderr=stderr,
                     verbose=verbose
@@ -781,7 +769,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                     result.exit_code = result.exit_code = channel.exit_status
                     poll_streams(
                         result=result,
-                        fd=fd,
+                        channel=channel,
                         stdout=stdout,
                         stderr=stderr,
                         verbose=verbose

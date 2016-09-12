@@ -766,12 +766,11 @@ class TestSSHClientInit(unittest.TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
-    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch('devops.helpers.exec_result.ExecResult', autospec=True)
     def test_init_memorize(
             self,
-            Result, fcntl, select,
+            Result, fcntl,
             client, policy, logger):
         port1 = 2222
         host1 = '127.0.0.2'
@@ -1188,13 +1187,12 @@ class TestExecute(unittest.TestCase):
 
         return chan, '', exp_result, stderr, stdout
 
-    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute(
             self,
-            execute_async, fcntl, select,
+            execute_async, fcntl,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1223,13 +1221,12 @@ class TestExecute(unittest.TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
-    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_verbose(
             self,
-            execute_async, fcntl, select,
+            execute_async, fcntl,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1267,13 +1264,12 @@ class TestExecute(unittest.TestCase):
                 )),
         ))
 
-    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout(
             self,
-            execute_async, fcntl, select,
+            execute_async, fcntl,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1302,13 +1298,12 @@ class TestExecute(unittest.TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
-    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout_fail(
             self,
-            execute_async, fcntl, select,
+            execute_async, fcntl,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1477,7 +1472,6 @@ class TestExecute(unittest.TestCase):
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
-@mock.patch('select.select', autospec=True, return_value=([1], [], []))
 @mock.patch('fcntl.fcntl', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
@@ -1538,7 +1532,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         )
 
     def test_execute_through_host_no_creds(
-            self, transp, client, policy, fcntl, select, logger):
+            self, transp, client, policy, fcntl, logger):
         target = '127.0.0.2'
         exit_code = 0
 
@@ -1587,12 +1581,16 @@ class TestExecuteThrowHost(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command('ls ~ '),
             mock.call.fileno(),
+            mock.call.recv_ready(),
+            mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
+            mock.call.recv_ready(),
+            mock.call.recv_stderr_ready(),
             mock.call.close()
         ))
 
     def test_execute_through_host_auth(
-            self, transp, client, policy, fcntl, select, logger):
+            self, transp, client, policy, fcntl, logger):
         _login = 'cirros'
         _password = 'cubswin:)'
 
@@ -1640,7 +1638,11 @@ class TestExecuteThrowHost(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command('ls ~ '),
             mock.call.fileno(),
+            mock.call.recv_ready(),
+            mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
+            mock.call.recv_ready(),
+            mock.call.recv_stderr_ready(),
             mock.call.close()
         ))
 
