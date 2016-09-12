@@ -17,21 +17,21 @@ from __future__ import unicode_literals
 
 import fcntl
 import os
+import select
 import subprocess
 import threading
-from time import sleep
 
-from six import with_metaclass
+import six
 
 from devops import error
-from devops.helpers.decorators import threaded
-from devops.helpers.exec_result import ExecResult
-from devops.helpers.metaclasses import SingletonMeta
-from devops.helpers.proc_enums import ExitCodes
+from devops.helpers import decorators
+from devops.helpers import exec_result
+from devops.helpers import metaclasses
+from devops.helpers import proc_enums
 from devops import logger
 
 
-class Subprocess(with_metaclass(SingletonMeta, object)):
+class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
     __lock = threading.RLock()
 
     def __init__(self):
@@ -52,24 +52,29 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         :type timeout: int
         :rtype: ExecResult
         """
-
-        def readlines(stream, verbose, lines_count=100):
-            """Nonblocking read and log lines from stream"""
-            if lines_count < 1:
-                lines_count = 1
-            result = []
+        def poll_stream(src, verbose):
+            dst = []
             try:
-                for _ in range(1, lines_count):
-                    line = stream.readline()
-                    if line:
-                        result.append(line)
-                        if verbose:
-                            print(line.rstrip())
+                for line in src:
+                    dst.append(line)
+                    if verbose:
+                        print(line, end="")
             except IOError:
                 pass
-            return result
+            return dst
 
-        @threaded(started=True)
+        def poll_streams(result, stdout, stderr, verbose):
+            rlist, _, _ = select.select(
+                [stdout, stderr],
+                [],
+                [])
+            if rlist:
+                if stdout in rlist:
+                    result.stdout += poll_stream(src=stdout, verbose=verbose)
+                if stderr in rlist:
+                    result.stderr += poll_stream(src=stderr, verbose=verbose)
+
+        @decorators.threaded(started=True)
         def poll_pipes(proc, result, stop):
             """Polling task for FIFO buffers
 
@@ -88,23 +93,29 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
             fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
-                sleep(0.1)
-
-                result.stdout += readlines(proc.stdout, verbose)
-                result.stderr += readlines(proc.stderr, verbose)
+                poll_streams(
+                    result=result,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    verbose=verbose
+                )
 
                 proc.poll()
 
                 if proc.returncode is not None:
                     result.exit_code = proc.returncode
-                    result.stdout += readlines(proc.stdout, verbose)
-                    result.stderr += readlines(proc.stderr, verbose)
+                    poll_streams(
+                        result=result,
+                        stdout=proc.stdout,
+                        stderr=proc.stderr,
+                        verbose=verbose
+                    )
 
                     stop.set()
 
         # 1 Command per run
         with cls.__lock:
-            result = ExecResult(cmd=command)
+            result = exec_result.ExecResult(cmd=command)
             stop_event = threading.Event()
 
             # Run
@@ -216,13 +227,13 @@ class Subprocess(with_metaclass(SingletonMeta, object)):
         """
 
         if expected is None:
-            expected = [ExitCodes.EX_OK]
+            expected = [proc_enums.ExitCodes.EX_OK]
         else:
             expected = [
-                ExitCodes(code)
+                proc_enums.ExitCodes(code)
                 if (
                     isinstance(code, int) and
-                    code in ExitCodes.__members__.values())
+                    code in proc_enums.ExitCodes.__members__.values())
                 else code
                 for code in expected
                 ]
