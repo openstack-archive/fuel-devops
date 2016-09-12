@@ -17,22 +17,20 @@ from __future__ import unicode_literals
 # pylint: disable=no-self-use
 
 import base64
-from contextlib import closing
-from os.path import basename
+import contextlib
+from os import path
 import posixpath
 import stat
-from unittest import TestCase
+import unittest
 
 import mock
 import paramiko
 # noinspection PyUnresolvedReferences
 from six.moves import cStringIO
 
-from devops.error import DevopsCalledProcessError
-from devops.error import TimeoutError
-from devops.helpers.exec_result import ExecResult
-from devops.helpers.ssh_client import SSHAuth
-from devops.helpers.ssh_client import SSHClient
+from devops import error
+from devops.helpers import exec_result
+from devops.helpers import ssh_client
 
 
 def gen_private_keys(amount=1):
@@ -48,6 +46,15 @@ def gen_public_key(private_key=None):
     return '{0} {1}'.format(private_key.get_name(), private_key.get_base64())
 
 
+class FakeStream(object):
+    def __init__(self, *args):
+        self.__src = list(args)
+
+    def __iter__(self):
+        for _ in range(len(self.__src)):
+            yield self.__src.pop(0)
+
+
 host = '127.0.0.1'
 port = 22
 username = 'user'
@@ -60,9 +67,9 @@ encoded_cmd = base64.b64encode(
 
 
 # noinspection PyTypeChecker
-class TestSSHAuth(TestCase):
+class TestSSHAuth(unittest.TestCase):
     def tearDown(self):
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
 
     def init_checks(self, username=None, password=None, key=None, keys=None):
         """shared positive init checks
@@ -72,7 +79,7 @@ class TestSSHAuth(TestCase):
         :type key: paramiko.RSAKey
         :type keys: list
         """
-        auth = SSHAuth(
+        auth = ssh_client.SSHAuth(
             username=username,
             password=password,
             key=key,
@@ -88,7 +95,7 @@ class TestSSHAuth(TestCase):
                     int_keys.append(k)
 
         self.assertEqual(auth.username, username)
-        with closing(cStringIO()) as tgt:
+        with contextlib.closing(cStringIO()) as tgt:
             auth.enter_password(tgt)
             self.assertEqual(tgt.getvalue(), '{}\n'.format(password))
         self.assertEqual(
@@ -114,7 +121,7 @@ class TestSSHAuth(TestCase):
             "password=<*masked*>, "
             "key={key}, "
             "keys={keys})".format(
-                cls=SSHAuth.__name__,
+                cls=ssh_client.SSHAuth.__name__,
                 username=auth.username,
                 key=_key,
                 keys=_keys
@@ -123,7 +130,7 @@ class TestSSHAuth(TestCase):
         self.assertEqual(
             str(auth),
             '{cls} for {username}'.format(
-                cls=SSHAuth.__name__,
+                cls=ssh_client.SSHAuth.__name__,
                 username=auth.username,
             )
         )
@@ -169,14 +176,13 @@ class TestSSHAuth(TestCase):
 
 
 # noinspection PyTypeChecker
-@mock.patch('devops.helpers.retry.sleep', autospec=True)
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
-class TestSSHClientInit(TestCase):
+class TestSSHClientInit(unittest.TestCase):
     def tearDown(self):
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
 
     def init_checks(
             self,
@@ -195,11 +201,11 @@ class TestSSHClientInit(TestCase):
         :type username: str
         :type password: str
         :type private_keys: list
-        :type auth: SSHAuth
+        :type auth: ssh_client.SSHAuth
         """
         _ssh = mock.call()
 
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
             username=username,
@@ -275,7 +281,7 @@ class TestSSHClientInit(TestCase):
 
             self.assertEqual(
                 ssh.auth,
-                SSHAuth(
+                ssh_client.SSHAuth(
                     username=username,
                     password=password,
                     keys=private_keys
@@ -301,13 +307,13 @@ class TestSSHClientInit(TestCase):
             )
         )
 
-    def test_init_host(self, client, policy, logger, sleep):
+    def test_init_host(self, client, policy, logger):
         """Test with host only set"""
         self.init_checks(
             client, policy, logger,
             host=host)
 
-    def test_init_alternate_port(self, client, policy, logger, sleep):
+    def test_init_alternate_port(self, client, policy, logger):
         """Test with alternate port"""
         self.init_checks(
             client, policy, logger,
@@ -315,7 +321,7 @@ class TestSSHClientInit(TestCase):
             port=2222
         )
 
-    def test_init_username(self, client, policy, logger, sleep):
+    def test_init_username(self, client, policy, logger):
         """Test with username only set from creds"""
         self.init_checks(
             client, policy, logger,
@@ -323,7 +329,7 @@ class TestSSHClientInit(TestCase):
             username=username
         )
 
-    def test_init_username_password(self, client, policy, logger, sleep):
+    def test_init_username_password(self, client, policy, logger):
         """Test with username and password set from creds"""
         self.init_checks(
             client, policy, logger,
@@ -332,8 +338,7 @@ class TestSSHClientInit(TestCase):
             password=password
             )
 
-    def test_init_username_password_empty_keys(
-            self, client, policy, logger, sleep):
+    def test_init_username_password_empty_keys(self, client, policy, logger):
         """Test with username, password and empty keys set from creds"""
         self.init_checks(
             client, policy, logger,
@@ -343,7 +348,7 @@ class TestSSHClientInit(TestCase):
             private_keys=[]
         )
 
-    def test_init_username_single_key(self, client, policy, logger, sleep):
+    def test_init_username_single_key(self, client, policy, logger):
         """Test with username and single key set from creds"""
         connect = mock.Mock(
             side_effect=[
@@ -360,8 +365,7 @@ class TestSSHClientInit(TestCase):
             private_keys=gen_private_keys(1)
             )
 
-    def test_init_username_password_single_key(
-            self, client, policy, logger, sleep):
+    def test_init_username_password_single_key(self, client, policy, logger):
         """Test with username, password and single key set from creds"""
         connect = mock.Mock(
             side_effect=[
@@ -379,7 +383,7 @@ class TestSSHClientInit(TestCase):
             private_keys=gen_private_keys(1)
         )
 
-    def test_init_username_multiple_keys(self, client, policy, logger, sleep):
+    def test_init_username_multiple_keys(self, client, policy, logger):
         """Test with username and multiple keys set from creds"""
         connect = mock.Mock(
             side_effect=[
@@ -397,7 +401,7 @@ class TestSSHClientInit(TestCase):
         )
 
     def test_init_username_password_multiple_keys(
-            self, client, policy, logger, sleep):
+            self, client, policy, logger):
         """Test with username, password and multiple keys set from creds"""
         connect = mock.Mock(
             side_effect=[
@@ -423,42 +427,39 @@ class TestSSHClientInit(TestCase):
             private_keys=gen_private_keys(2)
         )
 
-    def test_init_auth(
-            self, client, policy, logger, sleep):
+    def test_init_auth(self, client, policy, logger):
         self.init_checks(
             client, policy, logger,
             host=host,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password,
                 key=gen_private_keys(1).pop()
             )
         )
 
-    def test_init_auth_break(
-            self, client, policy, logger, sleep):
+    def test_init_auth_break(self, client, policy, logger):
         self.init_checks(
             client, policy, logger,
             host=host,
             username='Invalid',
             password='Invalid',
             private_keys=gen_private_keys(1),
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password,
                 key=gen_private_keys(1).pop()
             )
         )
 
-    def test_init_context(
-            self, client, policy, logger, sleep):
-        with SSHClient(host=host, auth=SSHAuth()) as ssh:
+    def test_init_context(self, client, policy, logger):
+        with ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth()) as ssh:
             client.assert_called_once()
             policy.assert_called_once()
 
             logger.assert_not_called()
 
-            self.assertEqual(ssh.auth, SSHAuth())
+            self.assertEqual(ssh.auth, ssh_client.SSHAuth())
 
             sftp = ssh._sftp
             self.assertEqual(sftp, client().open_sftp())
@@ -468,8 +469,7 @@ class TestSSHClientInit(TestCase):
             self.assertEqual(ssh.hostname, host)
             self.assertEqual(ssh.port, port)
 
-    def test_init_clear_failed(
-            self, client, policy, logger, sleep):
+    def test_init_clear_failed(self, client, policy, logger):
         """Test reconnect
 
         :type client: mock.Mock
@@ -495,13 +495,13 @@ class TestSSHClientInit(TestCase):
         client.return_value = _ssh
         _ssh.attach_mock(mock.Mock(return_value=_sftp), 'open_sftp')
 
-        ssh = SSHClient(host=host, auth=SSHAuth())
+        ssh = ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth())
         client.assert_called_once()
         policy.assert_called_once()
 
         logger.assert_not_called()
 
-        self.assertEqual(ssh.auth, SSHAuth())
+        self.assertEqual(ssh.auth, ssh_client.SSHAuth())
 
         sftp = ssh._sftp
         self.assertEqual(sftp, _sftp)
@@ -520,21 +520,20 @@ class TestSSHClientInit(TestCase):
             mock.call.exception('Could not close sftp connection'),
         ))
 
-    def test_init_reconnect(
-            self, client, policy, logger, sleep):
+    def test_init_reconnect(self, client, policy, logger):
         """Test reconnect
 
         :type client: mock.Mock
         :type policy: mock.Mock
         :type logger: mock.Mock
         """
-        ssh = SSHClient(host=host, auth=SSHAuth())
+        ssh = ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth())
         client.assert_called_once()
         policy.assert_called_once()
 
         logger.assert_not_called()
 
-        self.assertEqual(ssh.auth, SSHAuth())
+        self.assertEqual(ssh.auth, ssh_client.SSHAuth())
 
         sftp = ssh._sftp
         self.assertEqual(sftp, client().open_sftp())
@@ -572,35 +571,34 @@ class TestSSHClientInit(TestCase):
 
         logger.assert_not_called()
 
-        self.assertEqual(ssh.auth, SSHAuth())
+        self.assertEqual(ssh.auth, ssh_client.SSHAuth())
 
         sftp = ssh._sftp
         self.assertEqual(sftp, client().open_sftp())
 
         self.assertEqual(ssh._ssh, client())
 
-    def test_init_password_required(
-            self, client, policy, logger, sleep):
+    def test_init_password_required(self, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
         _ssh = mock.Mock()
         _ssh.attach_mock(connect, 'connect')
         client.return_value = _ssh
 
         with self.assertRaises(paramiko.PasswordRequiredException):
-            SSHClient(host=host, auth=SSHAuth())
+            ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth())
         logger.assert_has_calls((
             mock.call.exception('No password has been set!'),
         ))
 
-    def test_init_password_broken(
-            self, client, policy, logger, sleep):
+    def test_init_password_broken(self, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
         _ssh = mock.Mock()
         _ssh.attach_mock(connect, 'connect')
         client.return_value = _ssh
 
         with self.assertRaises(paramiko.PasswordRequiredException):
-            SSHClient(host=host, auth=SSHAuth(password=password))
+            ssh_client.SSHClient(
+                host=host, auth=ssh_client.SSHAuth(password=password))
 
         logger.assert_has_calls((
             mock.call.critical(
@@ -609,8 +607,7 @@ class TestSSHClientInit(TestCase):
             ),
         ))
 
-    def test_init_auth_impossible_password(
-            self, client, policy, logger, sleep):
+    def test_init_auth_impossible_password(self, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -618,7 +615,8 @@ class TestSSHClientInit(TestCase):
         client.return_value = _ssh
 
         with self.assertRaises(paramiko.AuthenticationException):
-            SSHClient(host=host, auth=SSHAuth(password=password))
+            ssh_client.SSHClient(
+                host=host, auth=ssh_client.SSHAuth(password=password))
 
         logger.assert_has_calls(
             (
@@ -627,8 +625,7 @@ class TestSSHClientInit(TestCase):
             ) * 3
         )
 
-    def test_init_auth_impossible_key(
-            self, client, policy, logger, sleep):
+    def test_init_auth_impossible_key(self, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -636,9 +633,9 @@ class TestSSHClientInit(TestCase):
         client.return_value = _ssh
 
         with self.assertRaises(paramiko.AuthenticationException):
-            SSHClient(
+            ssh_client.SSHClient(
                 host=host,
-                auth=SSHAuth(key=gen_private_keys(1).pop())
+                auth=ssh_client.SSHAuth(key=gen_private_keys(1).pop())
             )
 
         logger.assert_has_calls(
@@ -648,8 +645,7 @@ class TestSSHClientInit(TestCase):
             ) * 3
         )
 
-    def test_init_auth_pass_no_key(
-            self, client, policy, logger, sleep):
+    def test_init_auth_pass_no_key(self, client, policy, logger):
         connect = mock.Mock(
             side_effect=[
                 paramiko.AuthenticationException,
@@ -661,9 +657,9 @@ class TestSSHClientInit(TestCase):
         client.return_value = _ssh
         key = gen_private_keys(1).pop()
 
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password,
                 key=key
@@ -680,7 +676,7 @@ class TestSSHClientInit(TestCase):
 
         self.assertEqual(
             ssh.auth,
-            SSHAuth(
+            ssh_client.SSHAuth(
                 username=username,
                 password=password,
                 keys=[key]
@@ -692,8 +688,7 @@ class TestSSHClientInit(TestCase):
 
         self.assertEqual(ssh._ssh, client())
 
-    def test_init_auth_brute_impossible(
-            self, client, policy, logger, sleep):
+    def test_init_auth_brute_impossible(self, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -701,7 +696,7 @@ class TestSSHClientInit(TestCase):
         client.return_value = _ssh
 
         with self.assertRaises(paramiko.AuthenticationException):
-            SSHClient(
+            ssh_client.SSHClient(
                 host=host,
                 username=username,
                 private_keys=gen_private_keys(2))
@@ -722,15 +717,15 @@ class TestSSHClientInit(TestCase):
             ) * 3
         )
 
-    def test_init_no_sftp(
-            self, client, policy, logger, sleep):
+    def test_init_no_sftp(self, client, policy, logger):
         open_sftp = mock.Mock(side_effect=paramiko.SSHException)
 
         _ssh = mock.Mock()
         _ssh.attach_mock(open_sftp, 'open_sftp')
         client.return_value = _ssh
 
-        ssh = SSHClient(host=host, auth=SSHAuth(password=password))
+        ssh = ssh_client.SSHClient(
+            host=host, auth=ssh_client.SSHAuth(password=password))
 
         with self.assertRaises(paramiko.SSHException):
             # pylint: disable=pointless-statement
@@ -743,8 +738,7 @@ class TestSSHClientInit(TestCase):
                 'SFTP enable failed! SSH only is accessible.'),
         ))
 
-    def test_init_sftp_repair(
-            self, client, policy, logger, sleep):
+    def test_init_sftp_repair(self, client, policy, logger):
         _sftp = mock.Mock()
         open_sftp = mock.Mock(
             side_effect=[
@@ -755,7 +749,8 @@ class TestSSHClientInit(TestCase):
         _ssh.attach_mock(open_sftp, 'open_sftp')
         client.return_value = _ssh
 
-        ssh = SSHClient(host=host, auth=SSHAuth(password=password))
+        ssh = ssh_client.SSHClient(
+            host=host, auth=ssh_client.SSHAuth(password=password))
 
         with self.assertRaises(paramiko.SSHException):
             # pylint: disable=pointless-statement
@@ -771,19 +766,23 @@ class TestSSHClientInit(TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
+    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
-    @mock.patch('devops.helpers.ssh_client.ExecResult', autospec=True)
-    def test_init_memorize(self, Result, fcntl, client, policy, logger, sleep):
+    @mock.patch('devops.helpers.exec_result.ExecResult', autospec=True)
+    def test_init_memorize(
+            self,
+            Result, fcntl, select,
+            client, policy, logger):
         port1 = 2222
         host1 = '127.0.0.2'
 
         # 1. Normal init
-        ssh01 = SSHClient(host=host)
-        ssh02 = SSHClient(host=host)
-        ssh11 = SSHClient(host=host, port=port1)
-        ssh12 = SSHClient(host=host, port=port1)
-        ssh21 = SSHClient(host=host1)
-        ssh22 = SSHClient(host=host1)
+        ssh01 = ssh_client.SSHClient(host=host)
+        ssh02 = ssh_client.SSHClient(host=host)
+        ssh11 = ssh_client.SSHClient(host=host, port=port1)
+        ssh12 = ssh_client.SSHClient(host=host, port=port1)
+        ssh21 = ssh_client.SSHClient(host=host1)
+        ssh22 = ssh_client.SSHClient(host=host1)
 
         self.assertTrue(ssh01 is ssh02)
         self.assertTrue(ssh11 is ssh12)
@@ -815,22 +814,23 @@ class TestSSHClientInit(TestCase):
         ))
 
         # change creds
-        SSHClient(host=host, auth=SSHAuth(username=username))
+        ssh_client.SSHClient(
+            host=host, auth=ssh_client.SSHAuth(username=username))
 
         # Change back: new connection differs from old with the same creds
-        ssh004 = SSHAuth(host)
+        ssh004 = ssh_client.SSHAuth(host)
         self.assertFalse(ssh01 is ssh004)
 
-    @mock.patch('devops.helpers.ssh_client.warn')
-    def test_init_memorize_close_unused(
-            self, warn, client, policy, logger, sleep):
-        ssh0 = SSHClient(host=host)
+    @mock.patch('warnings.warn')
+    def test_init_memorize_close_unused(self, warn, client, policy, logger):
+        ssh0 = ssh_client.SSHClient(host=host)
         text = str(ssh0)
         del ssh0  # remove reference - now it's cached and unused
         client.reset_mock()
         logger.reset_mock()
         # New connection on the same host:port with different auth
-        ssh1 = SSHClient(host=host, auth=SSHAuth(username=username))
+        ssh1 = ssh_client.SSHClient(
+            host=host, auth=ssh_client.SSHAuth(username=username))
         logger.assert_has_calls((
             mock.call.debug('Closing {} as unused'.format(text)),
         ))
@@ -841,7 +841,7 @@ class TestSSHClientInit(TestCase):
         del ssh1  # remove reference - now it's cached and unused
         client.reset_mock()
         logger.reset_mock()
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
         logger.assert_has_calls((
             mock.call.debug('Closing {} as unused'.format(text)),
         ))
@@ -851,21 +851,21 @@ class TestSSHClientInit(TestCase):
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute')
-    def test_init_memorize_reconnect(
-            self, execute, client, policy, logger, sleep):
+    def test_init_memorize_reconnect(self, execute, client, policy, logger):
         execute.side_effect = paramiko.SSHException
-        SSHClient(host=host)
+        ssh_client.SSHClient(host=host)
         client.reset_mock()
         policy.reset_mock()
         logger.reset_mock()
-        SSHClient(host=host)
+        ssh_client.SSHClient(host=host)
         client.assert_called_once()
         policy.assert_called_once()
 
-    @mock.patch('devops.helpers.ssh_client.warn')
-    def test_init_clear(self, warn, client, policy, logger, sleep):
-        ssh01 = SSHClient(host=host, auth=SSHAuth())
+    @mock.patch('warnings.warn')
+    def test_init_clear(self, warn, client, policy, logger):
+        ssh01 = ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth())
 
+        # noinspection PyDeprecation
         ssh01.clear()
         warn.assert_called_once_with(
             "clear is removed: use close() only if it mandatory: "
@@ -878,9 +878,10 @@ class TestSSHClientInit(TestCase):
             client.mock_calls
         )
 
-    @mock.patch('devops.helpers.ssh_client.warn')
-    def test_deprecated_host(self, warn, client, policy, logger, sleep):
-        ssh01 = SSHClient(host=host, auth=SSHAuth())
+    @mock.patch('warnings.warn')
+    def test_deprecated_host(self, warn, client, policy, logger):
+        ssh01 = ssh_client.SSHClient(host=host, auth=ssh_client.SSHAuth())
+        # noinspection PyDeprecation
         self.assertEqual(ssh01.host, ssh01.hostname)
         warn.assert_called_once_with(
             'host has been deprecated in favor of hostname',
@@ -892,21 +893,21 @@ class TestSSHClientInit(TestCase):
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
-class TestExecute(TestCase):
+class TestExecute(unittest.TestCase):
     def tearDown(self):
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
 
     @staticmethod
     def get_ssh():
         """SSHClient object builder for execution tests
 
-        :rtype: SSHClient
+        :rtype: ssh_client.SSHClient
         """
         # noinspection PyTypeChecker
-        return SSHClient(
+        return ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
@@ -1021,7 +1022,7 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
         self.assertFalse(ssh.sudo_mode)
-        with SSHClient.sudo(ssh, enforce=True):
+        with ssh_client.SSHClient.sudo(ssh, enforce=True):
             self.assertTrue(ssh.sudo_mode)
             # noinspection PyTypeChecker
             result = ssh.execute_async(command=command)
@@ -1156,24 +1157,15 @@ class TestExecute(TestCase):
 
     @staticmethod
     def get_patched_execute_async_retval(ec=0, stderr_val=True):
-        stderr = mock.Mock()
-        stdout = mock.Mock()
+        """get patched execute_async retval
 
-        stdout_lines = [b' \n', b'2\n', b'3\n', b' \n']
-        stderr_lines = (
-            [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
-        )
-        mock_stdout_effect = []
-        mock_stderr_effect = []
-        mock_stdout_effect.extend(stdout_lines)
-        mock_stderr_effect.extend(stderr_lines)
-        mock_stdout_effect.extend([IOError] * 100)
-        mock_stderr_effect.extend([IOError] * 100)
-        stderr_readline = mock.Mock(side_effect=mock_stderr_effect)
-        stdout_readline = mock.Mock(side_effect=mock_stdout_effect)
+        :rtype: (mock.Mock, str, int, FakeStream, FakeStream)
+        """
+        out = [b' \n', b'2\n', b'3\n', b' \n']
+        err = [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
 
-        stderr.attach_mock(stderr_readline, 'readline')
-        stdout.attach_mock(stdout_readline, 'readline')
+        stdout = FakeStream(*out)
+        stderr = FakeStream(*err)
 
         exit_code = ec
         chan = mock.Mock()
@@ -1187,19 +1179,23 @@ class TestExecute(TestCase):
         chan.configure_mock(exit_status=exit_code)
 
         # noinspection PyTypeChecker
-        exp_result = ExecResult(
+        exp_result = exec_result.ExecResult(
             cmd=command,
-            stderr=stderr_lines,
-            stdout=stdout_lines,
+            stderr=err,
+            stdout=out,
             exit_code=ec
         )
 
         return chan, '', exp_result, stderr, stdout
 
+    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
-    def test_execute(self, execute_async, fcntl, client, policy, logger):
+    def test_execute(
+            self,
+            execute_async, fcntl, select,
+            client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
         ) = self.get_patched_execute_async_retval()
@@ -1227,11 +1223,14 @@ class TestExecute(TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
+    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_verbose(
-            self, execute_async, fcntl, client, policy, logger):
+            self,
+            execute_async, fcntl, select,
+            client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
         ) = self.get_patched_execute_async_retval()
@@ -1268,11 +1267,14 @@ class TestExecute(TestCase):
                 )),
         ))
 
+    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout(
-            self, execute_async, fcntl, client, policy, logger):
+            self,
+            execute_async, fcntl, select,
+            client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
         ) = self.get_patched_execute_async_retval()
@@ -1300,11 +1302,14 @@ class TestExecute(TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
+    @mock.patch('select.select', autospec=True, return_value=([1], [], []))
     @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout_fail(
-            self, execute_async, fcntl, client, policy, logger):
+            self,
+            execute_async, fcntl, select,
+            client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
         ) = self.get_patched_execute_async_retval()
@@ -1317,7 +1322,7 @@ class TestExecute(TestCase):
 
         logger.reset_mock()
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(error.TimeoutError):
             # noinspection PyTypeChecker
             ssh.execute(command=command, verbose=False, timeout=1)
 
@@ -1336,10 +1341,10 @@ class TestExecute(TestCase):
 
         ssh = self.get_ssh()
         # noinspection PyTypeChecker
-        ssh2 = SSHClient(
+        ssh2 = ssh_client.SSHClient(
             host=host2,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
@@ -1347,7 +1352,7 @@ class TestExecute(TestCase):
         remotes = [ssh, ssh2]
 
         # noinspection PyTypeChecker
-        SSHClient.execute_together(
+        ssh_client.SSHClient.execute_together(
             remotes=remotes, command=command)
 
         self.assertEqual(execute_async.call_count, len(remotes))
@@ -1359,12 +1364,12 @@ class TestExecute(TestCase):
         ))
 
         # noinspection PyTypeChecker
-        SSHClient.execute_together(
+        ssh_client.SSHClient.execute_together(
             remotes=remotes, command=command, expected=[1], raise_on_err=False)
 
-        with self.assertRaises(DevopsCalledProcessError):
+        with self.assertRaises(error.DevopsCalledProcessError):
             # noinspection PyTypeChecker
-            SSHClient.execute_together(
+            ssh_client.SSHClient.execute_together(
                 remotes=remotes, command=command, expected=[1])
 
     @mock.patch(
@@ -1392,7 +1397,7 @@ class TestExecute(TestCase):
         return_value['exit_code'] = exit_code
         execute.reset_mock()
         execute.return_value = return_value
-        with self.assertRaises(DevopsCalledProcessError):
+        with self.assertRaises(error.DevopsCalledProcessError):
             # noinspection PyTypeChecker
             ssh.check_call(command=command, verbose=verbose, timeout=None)
         execute.assert_called_once_with(command, verbose, None)
@@ -1423,7 +1428,7 @@ class TestExecute(TestCase):
         return_value['exit_code'] = exit_code
         execute.reset_mock()
         execute.return_value = return_value
-        with self.assertRaises(DevopsCalledProcessError):
+        with self.assertRaises(error.DevopsCalledProcessError):
             # noinspection PyTypeChecker
             ssh.check_call(
                 command=command, verbose=verbose, timeout=None,
@@ -1461,7 +1466,7 @@ class TestExecute(TestCase):
 
         check_call.reset_mock()
         check_call.return_value = return_value
-        with self.assertRaises(DevopsCalledProcessError):
+        with self.assertRaises(error.DevopsCalledProcessError):
             # noinspection PyTypeChecker
             ssh.check_stderr(
                 command=command, verbose=verbose, timeout=None,
@@ -1472,47 +1477,50 @@ class TestExecute(TestCase):
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
+@mock.patch('select.select', autospec=True, return_value=([1], [], []))
 @mock.patch('fcntl.fcntl', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
 @mock.patch('paramiko.Transport', autospec=True)
-class TestExecuteThrowHost(TestCase):
+class TestExecuteThrowHost(unittest.TestCase):
     def tearDown(self):
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
 
     @staticmethod
     def prepare_execute_through_host(transp, client, exit_code):
-        intermediate_channel = mock.Mock()
+        intermediate_channel = mock.Mock(name='intermediate_channel')
 
-        open_channel = mock.Mock(return_value=intermediate_channel)
-        intermediate_transport = mock.Mock()
+        open_channel = mock.Mock(
+            return_value=intermediate_channel,
+            name='open_channel'
+        )
+        intermediate_transport = mock.Mock(name='intermediate_transport')
         intermediate_transport.attach_mock(open_channel, 'open_channel')
-        get_transport = mock.Mock(return_value=intermediate_transport)
+        get_transport = mock.Mock(
+            return_value=intermediate_transport,
+            name='get_transport'
+        )
 
-        _ssh = mock.Mock()
+        _ssh = mock.Mock(neme='_ssh')
         _ssh.attach_mock(get_transport, 'get_transport')
         client.return_value = _ssh
 
-        transport = mock.Mock()
+        transport = mock.Mock(name='transport')
         transp.return_value = transport
 
         recv_exit_status = mock.Mock(return_value=exit_code)
 
-        makefile = mock.Mock()
-        makefile.attach_mock(mock.Mock(
-            side_effect=[b' \n', b'2\n', b'3\n', b' \n'] + [IOError] * 100),
-            'readline')
-        makefile_stderr = mock.Mock()
-        makefile_stderr.attach_mock(mock.Mock(
-            side_effect=[b' \n', b'0\n', b'1\n', b' \n'] + [IOError] * 100),
-            'readline')
         channel = mock.Mock()
-        channel.attach_mock(mock.Mock(return_value=makefile), 'makefile')
-        channel.attach_mock(mock.Mock(
-            return_value=makefile_stderr), 'makefile_stderr')
+        channel.attach_mock(
+            mock.Mock(return_value=FakeStream(b' \n', b'2\n', b'3\n', b' \n')),
+            'makefile')
+        channel.attach_mock(
+            mock.Mock(return_value=FakeStream(b' \n', b'0\n', b'1\n', b' \n')),
+            'makefile_stderr')
+
         channel.attach_mock(recv_exit_status, 'recv_exit_status')
-        open_session = mock.Mock(return_value=channel)
+        open_session = mock.Mock(return_value=channel, name='open_session')
         transport.attach_mock(open_session, 'open_session')
 
         wait = mock.Mock()
@@ -1530,12 +1538,12 @@ class TestExecuteThrowHost(TestCase):
         )
 
     def test_execute_through_host_no_creds(
-            self, transp, client, policy, fcntl, logger):
+            self, transp, client, policy, fcntl, select, logger):
         target = '127.0.0.2'
         exit_code = 0
 
         # noinspection PyTypeChecker
-        return_value = ExecResult(
+        return_value = exec_result.ExecResult(
             cmd=command,
             stderr=[b' \n', b'0\n', b'1\n', b' \n'],
             stdout=[b' \n', b'2\n', b'3\n', b' \n'],
@@ -1543,16 +1551,22 @@ class TestExecuteThrowHost(TestCase):
         )
 
         (
-            open_session, transport, channel, get_transport,
-            open_channel, intermediate_channel
+            open_session,
+            transport,
+            channel,
+            get_transport,
+            open_channel,
+            intermediate_channel
         ) = self.prepare_execute_through_host(
-            transp, client, exit_code=exit_code)
+            transp=transp,
+            client=client,
+            exit_code=exit_code)
 
         # noinspection PyTypeChecker
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
@@ -1578,7 +1592,7 @@ class TestExecuteThrowHost(TestCase):
         ))
 
     def test_execute_through_host_auth(
-            self, transp, client, policy, fcntl, logger):
+            self, transp, client, policy, fcntl, select, logger):
         _login = 'cirros'
         _password = 'cubswin:)'
 
@@ -1586,7 +1600,7 @@ class TestExecuteThrowHost(TestCase):
         exit_code = 0
 
         # noinspection PyTypeChecker
-        return_value = ExecResult(
+        return_value = exec_result.ExecResult(
             cmd=command,
             stderr=[b' \n', b'0\n', b'1\n', b' \n'],
             stdout=[b' \n', b'2\n', b'3\n', b' \n'],
@@ -1600,10 +1614,10 @@ class TestExecuteThrowHost(TestCase):
             transp, client, exit_code=exit_code)
 
         # noinspection PyTypeChecker
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
@@ -1611,7 +1625,7 @@ class TestExecuteThrowHost(TestCase):
         # noinspection PyTypeChecker
         result = ssh.execute_through_host(
             target, command,
-            auth=SSHAuth(username=_login, password=_password))
+            auth=ssh_client.SSHAuth(username=_login, password=_password))
         self.assertEqual(result, return_value)
         get_transport.assert_called_once()
         open_channel.assert_called_once()
@@ -1635,9 +1649,9 @@ class TestExecuteThrowHost(TestCase):
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
-class TestSftp(TestCase):
+class TestSftp(unittest.TestCase):
     def tearDown(self):
-        SSHClient._clear_cache()
+        ssh_client.SSHClient._clear_cache()
 
     @staticmethod
     def prepare_sftp_file_tests(client):
@@ -1648,10 +1662,10 @@ class TestSftp(TestCase):
         _ssh.attach_mock(open_sftp, 'open_sftp')
 
         # noinspection PyTypeChecker
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
@@ -1661,21 +1675,21 @@ class TestSftp(TestCase):
         ssh, _sftp = self.prepare_sftp_file_tests(client)
         lstat = mock.Mock()
         _sftp.attach_mock(lstat, 'lstat')
-        path = '/etc'
+        dst = '/etc'
 
         # noinspection PyTypeChecker
-        result = ssh.exists(path)
+        result = ssh.exists(dst)
         self.assertTrue(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
         # Negative scenario
         lstat.reset_mock()
         lstat.side_effect = IOError
 
         # noinspection PyTypeChecker
-        result = ssh.exists(path)
+        result = ssh.exists(dst)
         self.assertFalse(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
     def test_stat(self, client, policy, logger):
         class Attrs(object):
@@ -1690,10 +1704,10 @@ class TestSftp(TestCase):
         stat.return_value.st_size = 0
         stat.return_value.st_uid = 0
         stat.return_value.st_gid = 0
-        path = '/etc/passwd'
+        dst = '/etc/passwd'
 
         # noinspection PyTypeChecker
-        result = ssh.stat(path)
+        result = ssh.stat(dst)
         self.assertEqual(result.st_size, 0)
         self.assertEqual(result.st_uid, 0)
         self.assertEqual(result.st_gid, 0)
@@ -1707,29 +1721,29 @@ class TestSftp(TestCase):
         lstat = mock.Mock()
         _sftp.attach_mock(lstat, 'lstat')
         lstat.return_value = Attrs(stat.S_IFREG)
-        path = '/etc/passwd'
+        dst = '/etc/passwd'
 
         # noinspection PyTypeChecker
-        result = ssh.isfile(path)
+        result = ssh.isfile(dst)
         self.assertTrue(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
         # Negative scenario
         lstat.reset_mock()
         lstat.return_value = Attrs(stat.S_IFDIR)
 
         # noinspection PyTypeChecker
-        result = ssh.isfile(path)
+        result = ssh.isfile(dst)
         self.assertFalse(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
         lstat.reset_mock()
         lstat.side_effect = IOError
 
         # noinspection PyTypeChecker
-        result = ssh.isfile(path)
+        result = ssh.isfile(dst)
         self.assertFalse(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
     def test_isdir(self, client, policy, logger):
         class Attrs(object):
@@ -1740,88 +1754,88 @@ class TestSftp(TestCase):
         lstat = mock.Mock()
         _sftp.attach_mock(lstat, 'lstat')
         lstat.return_value = Attrs(stat.S_IFDIR)
-        path = '/etc/passwd'
+        dst = '/etc/passwd'
 
         # noinspection PyTypeChecker
-        result = ssh.isdir(path)
+        result = ssh.isdir(dst)
         self.assertTrue(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
         # Negative scenario
         lstat.reset_mock()
         lstat.return_value = Attrs(stat.S_IFREG)
 
         # noinspection PyTypeChecker
-        result = ssh.isdir(path)
+        result = ssh.isdir(dst)
         self.assertFalse(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
         lstat.reset_mock()
         lstat.side_effect = IOError
         # noinspection PyTypeChecker
-        result = ssh.isdir(path)
+        result = ssh.isdir(dst)
         self.assertFalse(result)
-        lstat.assert_called_once_with(path)
+        lstat.assert_called_once_with(dst)
 
     @mock.patch('devops.helpers.ssh_client.SSHClient.exists')
     @mock.patch('devops.helpers.ssh_client.SSHClient.execute')
     def test_mkdir(self, execute, exists, client, policy, logger):
         exists.side_effect = [False, True]
 
-        path = '~/tst'
+        dst = '~/tst'
 
         # noinspection PyTypeChecker
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
 
         # Path not exists
         # noinspection PyTypeChecker
-        ssh.mkdir(path)
-        exists.assert_called_once_with(path)
-        execute.assert_called_once_with("mkdir -p {}\n".format(path))
+        ssh.mkdir(dst)
+        exists.assert_called_once_with(dst)
+        execute.assert_called_once_with("mkdir -p {}\n".format(dst))
 
         # Path exists
         exists.reset_mock()
         execute.reset_mock()
 
         # noinspection PyTypeChecker
-        ssh.mkdir(path)
-        exists.assert_called_once_with(path)
+        ssh.mkdir(dst)
+        exists.assert_called_once_with(dst)
         execute.assert_not_called()
 
     @mock.patch('devops.helpers.ssh_client.SSHClient.execute')
     def test_rm_rf(self, execute, client, policy, logger):
-        path = '~/tst'
+        dst = '~/tst'
 
         # noinspection PyTypeChecker
-        ssh = SSHClient(
+        ssh = ssh_client.SSHClient(
             host=host,
             port=port,
-            auth=SSHAuth(
+            auth=ssh_client.SSHAuth(
                 username=username,
                 password=password
             ))
 
         # Path not exists
         # noinspection PyTypeChecker
-        ssh.rm_rf(path)
-        execute.assert_called_once_with("rm -rf {}".format(path))
+        ssh.rm_rf(dst)
+        execute.assert_called_once_with("rm -rf {}".format(dst))
 
     def test_open(self, client, policy, logger):
         ssh, _sftp = self.prepare_sftp_file_tests(client)
         fopen = mock.Mock(return_value=True)
         _sftp.attach_mock(fopen, 'open')
 
-        path = '/etc/passwd'
+        dst = '/etc/passwd'
         mode = 'r'
         # noinspection PyTypeChecker
-        result = ssh.open(path)
-        fopen.assert_called_once_with(path, mode)
+        result = ssh.open(dst)
+        fopen.assert_called_once_with(dst, mode)
         self.assertTrue(result)
 
     @mock.patch('devops.helpers.ssh_client.SSHClient.exists')
@@ -1844,11 +1858,12 @@ class TestSftp(TestCase):
         result = ssh.download(destination=dst, target=target)
         self.assertTrue(result)
         isdir.assert_called_once_with(target)
-        exists.assert_called_once_with(posixpath.join(target, basename(dst)))
+        exists.assert_called_once_with(posixpath.join(
+            target, path.basename(dst)))
         remote_isdir.assert_called_once_with(dst)
         remote_exists.assert_called_once_with(dst)
         _sftp.assert_has_calls((
-            mock.call.get(dst, posixpath.join(target, basename(dst))),
+            mock.call.get(dst, posixpath.join(target, path.basename(dst))),
         ))
 
         # Negative scenarios
@@ -1918,7 +1933,7 @@ class TestSftp(TestCase):
         source = '/tmp/bash'
         filename = 'bashrc'
         walk.return_value = (source, '', [filename]),
-        expected_path = posixpath.join(target, basename(source))
+        expected_path = posixpath.join(target, path.basename(source))
         expected_file = posixpath.join(expected_path, filename)
 
         # noinspection PyTypeChecker
