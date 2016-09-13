@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #    Copyright 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -51,6 +53,8 @@ class FakeStream(object):
         self.__src = list(args)
 
     def __iter__(self):
+        if len(self.__src) == 0:
+            raise IOError()
         for _ in range(len(self.__src)):
             yield self.__src.pop(0)
 
@@ -578,7 +582,8 @@ class TestSSHClientInit(unittest.TestCase):
 
         self.assertEqual(ssh._ssh, client())
 
-    def test_init_password_required(self, client, policy, logger):
+    @mock.patch('time.sleep', autospec=True)
+    def test_init_password_required(self, sleep, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
         _ssh = mock.Mock()
         _ssh.attach_mock(connect, 'connect')
@@ -590,7 +595,8 @@ class TestSSHClientInit(unittest.TestCase):
             mock.call.exception('No password has been set!'),
         ))
 
-    def test_init_password_broken(self, client, policy, logger):
+    @mock.patch('time.sleep', autospec=True)
+    def test_init_password_broken(self, sleep, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.PasswordRequiredException)
         _ssh = mock.Mock()
         _ssh.attach_mock(connect, 'connect')
@@ -607,7 +613,9 @@ class TestSSHClientInit(unittest.TestCase):
             ),
         ))
 
-    def test_init_auth_impossible_password(self, client, policy, logger):
+    @mock.patch('time.sleep', autospec=True)
+    def test_init_auth_impossible_password(
+            self, sleep, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -625,7 +633,8 @@ class TestSSHClientInit(unittest.TestCase):
             ) * 3
         )
 
-    def test_init_auth_impossible_key(self, client, policy, logger):
+    @mock.patch('time.sleep', autospec=True)
+    def test_init_auth_impossible_key(self, sleep, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -688,7 +697,8 @@ class TestSSHClientInit(unittest.TestCase):
 
         self.assertEqual(ssh._ssh, client())
 
-    def test_init_auth_brute_impossible(self, client, policy, logger):
+    @mock.patch('time.sleep', autospec=True)
+    def test_init_auth_brute_impossible(self, sleep, client, policy, logger):
         connect = mock.Mock(side_effect=paramiko.AuthenticationException)
 
         _ssh = mock.Mock()
@@ -1278,9 +1288,88 @@ class TestExecute(unittest.TestCase):
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
-    def test_execute_timeout(
+    def test_execute_verbose_cyr(
             self,
             execute_async,
+            client, policy, logger):
+        """Test scenario with non ascii symbols from SSH output.
+
+        1 line is simple utf-8 encoded (standard ssh call)
+        2 line is escaped encoded (call with pty requested)
+        """
+
+        out = [
+            b'\xd1\x82\xd0\xb5\xd1\x81\xd1\x82\n']
+        err = [
+            b"''$'\\321\\202\\320\\265\\321\\201\\321\\202'\r\n"]
+
+        stdout = FakeStream(*out)
+        stderr = FakeStream(*err)
+
+        exit_code = 0
+        chan = mock.Mock()
+        chan.attach_mock(
+            mock.Mock(return_value=exit_code),
+            'recv_exit_status')
+
+        status_event = mock.Mock()
+        status_event.attach_mock(mock.Mock(), 'wait')
+        chan.attach_mock(status_event, 'status_event')
+        chan.configure_mock(exit_status=exit_code)
+
+        # noinspection PyTypeChecker
+        exp_result = exec_result.ExecResult(
+            cmd=command,
+            stderr=[
+                l.decode('unicode-escape').encode('latin1').
+                replace(b"''$", b'')
+                for l in err
+                ],
+            stdout=out,
+            exit_code=exit_code
+        )
+
+        chan.status_event.attach_mock(mock.Mock(return_value=True), 'is_set')
+
+        execute_async.return_value = chan, '', stderr, stdout
+
+        ssh = self.get_ssh()
+
+        logger.reset_mock()
+
+        # noinspection PyTypeChecker
+        result = ssh.execute(command=command, verbose=True)
+
+        self.assertEqual(
+            result,
+            exp_result
+        )
+        execute_async.assert_called_once_with(command)
+        chan.assert_has_calls((mock.call.status_event.is_set(),))
+        logger.assert_has_calls((
+            mock.call.debug(
+                '{cmd!r} execution results:\n'
+                'Exit code: {code!s}\n'
+                'STDOUT:\n'
+                '{stdout}\n'
+                'STDERR:\n'
+                '{stderr}'.format(
+                    cmd=command,
+                    code=result['exit_code'],
+                    stdout=result['stdout_str'],
+                    stderr=result['stderr_str']
+                )),
+        ))
+
+        self.assertEqual(result.stdout_str, 'тест')
+        self.assertEqual(result.stderr_str, "'тест'")
+
+    @mock.patch('time.sleep', autospec=True)
+    @mock.patch(
+        'devops.helpers.ssh_client.SSHClient.execute_async')
+    def test_execute_timeout(
+            self,
+            execute_async, sleep,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1329,6 +1418,7 @@ class TestExecute(unittest.TestCase):
         ) = self.get_patched_execute_async_retval()
         is_set = mock.Mock(return_value=False)
         chan.status_event.attach_mock(is_set, 'is_set')
+        chan.status_event.attach_mock(mock.Mock(), 'wait')
 
         execute_async.return_value = chan, _stdin, stderr, stdout
 
