@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 import base64
 import os
 import posixpath
+import re
 import stat
 import sys
 import threading
@@ -32,6 +33,9 @@ from devops.helpers import exec_result
 from devops.helpers import proc_enums
 from devops.helpers import retry
 from devops import logger
+
+
+find_escaped = re.compile(b"'\$'(?P<escaped>(?:\\\\\d{3})+)'").finditer
 
 
 class SSHAuth(object):
@@ -728,6 +732,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             dst = []
             try:
                 for line in src:
+                    real_line = bytearray(line)
+                    # Clean-up, if escaped by shell with pty (octal values).
+                    for record in find_escaped(line):
+                        rec_start, rec_end = record.span('escaped')
+                        blk = record.group('escaped')
+                        rec = blk.decode('unicode-escape').encode('latin1')
+                        real_line[rec_start-3: rec_end] = rec
+
+                    line = bytes(real_line)  # Get cleaned-up line
                     dst.append(line)
                     if verbose:
                         print(line.decode('utf-8'), end="")
