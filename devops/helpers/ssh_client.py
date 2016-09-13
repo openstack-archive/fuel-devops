@@ -19,6 +19,7 @@ import base64
 import fcntl
 import os
 import posixpath
+import re
 import stat
 import sys
 import threading
@@ -33,6 +34,9 @@ from devops.helpers import exec_result
 from devops.helpers import proc_enums
 from devops.helpers import retry
 from devops import logger
+
+
+replace_escaped = re.compile(b"('\r)|(^''\$')|(^')").sub
 
 
 class SSHAuth(object):
@@ -724,9 +728,17 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             dst = []
             try:
                 for line in src:
+                    # Clean-up, if escaped by pty call (octal values).
+                    # This is python version independent of string-escape
+                    # Not escaped text is not affected
+                    line = line.decode('unicode-escape').encode('latin1')
+
+                    # (Normal call is not broken)
+                    # Replace \r\b by \n (pty produces \r\n instead of \n)
+                    line = replace_escaped(b'', line)
                     dst.append(line)
                     if verbose:
-                        print(line, end="")
+                        print(line.decode('utf-8'), end="")
             except IOError:
                 pass
             return dst
@@ -780,6 +792,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         # channel.status_event.wait(timeout)
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
+        if verbose:
+            print("\nExecuting command: {!r}".format(command.rstrip()))
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -836,6 +850,12 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         )
 
         if verbose:
+            print(
+                '{cmd!r} execution results: Exit code: {code!s}'.format(
+                    cmd=command,
+                    code=result.exit_code
+                )
+            )
             logger.debug(
                 '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
