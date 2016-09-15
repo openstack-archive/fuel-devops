@@ -13,28 +13,26 @@
 #    under the License.
 
 import time
-from warnings import warn
+import warnings
 
 from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
-from netaddr import IPNetwork
-from paramiko import Agent
-from paramiko import RSAKey
+import netaddr
+import paramiko
 
 from devops import error
-from devops.helpers.network import IpNetworksPool
+from devops.helpers import network as network_helpers
 from devops.helpers import ssh_client
 from devops import logger
-from devops.models.base import BaseModel
-from devops.models.driver import Driver
-from devops.models.group import Group
-from devops.models.network import AddressPool
-from devops.models.network import L2NetworkDevice
-from devops.models.node import Node
+from devops.models import base
+from devops.models import driver
+from devops.models import group
+from devops.models import network
+from devops.models import node
 
 
-class Environment(BaseModel):
+class Environment(base.BaseModel):
     class Meta(object):
         db_table = 'devops_environment'
         app_label = 'devops'
@@ -51,7 +49,7 @@ class Environment(BaseModel):
             'Replace by string "admin".'
         )
         logger.warning(msg)
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
         return 'admin'
 
     @property
@@ -60,20 +58,20 @@ class Environment(BaseModel):
             'Environment.nat_interface is deprecated.'
         )
         logger.warning(msg)
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
         return ''
 
     def get_allocated_networks(self):
         allocated_networks = []
-        for group in self.get_groups():
-            allocated_networks += group.get_allocated_networks()
+        for grp in self.get_groups():
+            allocated_networks += grp.get_allocated_networks()
         return allocated_networks
 
     def get_address_pool(self, **kwargs):
         try:
             return self.addresspool_set.get(**kwargs)
-        except AddressPool.DoesNotExist:
-            raise error.DevopsObjNotFound(AddressPool, **kwargs)
+        except network.AddressPool.DoesNotExist:
+            raise error.DevopsObjNotFound(network.AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
         return self.addresspool_set.filter(**kwargs).order_by('id')
@@ -81,8 +79,8 @@ class Environment(BaseModel):
     def get_group(self, **kwargs):
         try:
             return self.group_set.get(**kwargs)
-        except Group.DoesNotExist:
-            raise error.DevopsObjNotFound(Group, **kwargs)
+        except group.Group.DoesNotExist:
+            raise error.DevopsObjNotFound(group.Group, **kwargs)
 
     def get_groups(self, **kwargs):
         return self.group_set.filter(**kwargs).order_by('id')
@@ -91,7 +89,7 @@ class Environment(BaseModel):
         for group_data in groups:
             driver_data = group_data['driver']
             if driver_data['name'] == 'devops.driver.libvirt.libvirt_driver':
-                warn(
+                warnings.warn(
                     "Driver 'devops.driver.libvirt.libvirt_driver' "
                     "has been renamed to 'devops.driver.libvirt', "
                     "please update the tests!",
@@ -108,14 +106,14 @@ class Environment(BaseModel):
             )
 
     def add_group(self, group_name, driver_name, **driver_params):
-        driver = Driver.driver_create(
+        drv = driver.Driver.driver_create(
             name=driver_name,
             **driver_params
         )
-        return Group.group_create(
+        return group.Group.group_create(
             name=group_name,
             environment=self,
-            driver=driver,
+            driver=drv,
         )
 
     def add_address_pools(self, address_pools):
@@ -129,14 +127,14 @@ class Environment(BaseModel):
     def add_address_pool(self, name, net, **params):
 
         networks, prefix = net.split(':')
-        ip_networks = [IPNetwork(x) for x in networks.split(',')]
+        ip_networks = [netaddr.IPNetwork(x) for x in networks.split(',')]
 
-        pool = IpNetworksPool(
+        pool = network_helpers.IpNetworksPool(
             networks=ip_networks,
             prefix=int(prefix),
             allocated_networks=self.get_allocated_networks())
 
-        return AddressPool.address_pool_create(
+        return network.AddressPool.address_pool_create(
             environment=self,
             name=name,
             pool=pool,
@@ -176,35 +174,35 @@ class Environment(BaseModel):
             return False
 
     def define(self):
-        for group in self.get_groups():
-            group.define_networks()
-        for group in self.get_groups():
-            group.define_volumes()
-        for group in self.get_groups():
-            group.define_nodes()
+        for grp in self.get_groups():
+            grp.define_networks()
+        for grp in self.get_groups():
+            grp.define_volumes()
+        for grp in self.get_groups():
+            grp.define_nodes()
 
     def start(self, nodes=None):
-        for group in self.get_groups():
-            group.start_networks()
-        for group in self.get_groups():
-            group.start_nodes(nodes)
+        for grp in self.get_groups():
+            grp.start_networks()
+        for grp in self.get_groups():
+            grp.start_nodes(nodes)
 
     def destroy(self):
-        for group in self.get_groups():
-            group.destroy()
+        for grp in self.get_groups():
+            grp.destroy()
 
     def erase(self):
-        for group in self.get_groups():
-            group.erase()
+        for grp in self.get_groups():
+            grp.erase()
         self.delete()
 
     def suspend(self, **kwargs):
-        for node in self.get_nodes():
-            node.suspend()
+        for nod in self.get_nodes():
+            nod.suspend()
 
     def resume(self, **kwargs):
-        for node in self.get_nodes():
-            node.resume()
+        for nod in self.get_nodes():
+            nod.resume()
 
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
@@ -213,19 +211,19 @@ class Environment(BaseModel):
             raise error.DevopsError(
                 'Snapshot with name {0} already exists.'.format(
                     self.params.snapshot_name))
-        for node in self.get_nodes():
-            node.snapshot(name=name, description=description, force=force,
-                          external=settings.SNAPSHOTS_EXTERNAL)
+        for nod in self.get_nodes():
+            nod.snapshot(name=name, description=description, force=force,
+                         external=settings.SNAPSHOTS_EXTERNAL)
 
     def revert(self, name=None, flag=True):
         if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
-        for node in self.get_nodes():
-            node.revert(name)
+        for nod in self.get_nodes():
+            nod.revert(name)
 
-        for group in self.get_groups():
-            for l2netdev in group.get_l2_network_devices():
+        for grp in self.get_groups():
+            for l2netdev in grp.get_l2_network_devices():
                 l2netdev.unblock()
 
     # NOTE: Does not work
@@ -268,7 +266,7 @@ class Environment(BaseModel):
            Reserved for backward compatibility only.
            Please use self.create_environment() instead.
         """
-        warn(
+        warnings.warn(
             'describe_environment is deprecated in favor of '
             'DevopsClient.create_env_from_config', DeprecationWarning)
 
@@ -340,7 +338,7 @@ class Environment(BaseModel):
         msg = ('router has been deprecated in favor of '
                'DevopsEnvironment.get_default_gw')
         logger.warning(msg)
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
 
         from devops.client import DevopsClient
         env = DevopsClient().get_env(self.name)
@@ -358,7 +356,7 @@ class Environment(BaseModel):
         msg = ('get_admin_remote has been deprecated in favor of '
                'DevopsEnvironment.get_admin_remote')
         logger.warning(msg)
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
 
         from devops.client import DevopsClient
         env = DevopsClient().get_env(self.name)
@@ -372,7 +370,7 @@ class Environment(BaseModel):
         msg = ('get_ssh_to_remote has been deprecated in favor of '
                'DevopsEnvironment.get_node_remote')
         logger.warning(msg)
-        warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning)
 
         from devops.client import DevopsClient
         env = DevopsClient().get_env(self.name)
@@ -386,21 +384,21 @@ class Environment(BaseModel):
     # @logwrap
     @staticmethod
     def get_ssh_to_remote_by_key(ip, keyfile):
-        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
+        warnings.warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
         try:
             with open(keyfile) as f:
-                keys = [RSAKey.from_private_key(f)]
+                keys = [paramiko.RSAKey.from_private_key(f)]
         except IOError:
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
-            keys = Agent().get_keys()
+            keys = paramiko.Agent().get_keys()
         return ssh_client.SSHClient(
             ip,
             auth=ssh_client.SSHAuth(keys=keys))
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
-        warn(
+        warnings.warn(
             'environment.nodes is deprecated in favor of'
             ' environment.get_nodes', DeprecationWarning)
         # DEPRECATED. Please use environment.get_nodes() instead.
@@ -463,13 +461,13 @@ class Environment(BaseModel):
 
     def get_env_l2_network_device(self, **kwargs):
         try:
-            return L2NetworkDevice.objects.get(
+            return network.L2NetworkDevice.objects.get(
                 group__environment=self, **kwargs)
-        except L2NetworkDevice.DoesNotExist:
-            raise error.DevopsObjNotFound(L2NetworkDevice, **kwargs)
+        except network.L2NetworkDevice.DoesNotExist:
+            raise error.DevopsObjNotFound(network.L2NetworkDevice, **kwargs)
 
     def get_env_l2_network_devices(self, **kwargs):
-        return L2NetworkDevice.objects.filter(
+        return network.L2NetworkDevice.objects.filter(
             group__environment=self, **kwargs).order_by('id')
 
     # LEGACY, TO CHECK IN fuel-qa / PROXY
@@ -486,10 +484,11 @@ class Environment(BaseModel):
 
     def get_node(self, *args, **kwargs):
         try:
-            return Node.objects.get(*args, group__environment=self, **kwargs)
-        except Node.DoesNotExist:
-            raise error.DevopsObjNotFound(Node, *args, **kwargs)
+            return node.Node.objects.get(
+                *args, group__environment=self, **kwargs)
+        except node.Node.DoesNotExist:
+            raise error.DevopsObjNotFound(node.Node, *args, **kwargs)
 
     def get_nodes(self, *args, **kwargs):
-        return Node.objects.filter(
+        return node.Node.objects.filter(
             *args, group__environment=self, **kwargs).order_by('id')

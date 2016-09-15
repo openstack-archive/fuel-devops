@@ -23,9 +23,7 @@ class TestLibvirtNodeMultipath(LibvirtTestCase):
     def setUp(self):
         super(TestLibvirtNodeMultipath, self).setUp()
 
-        self.sleep_mock = self.patch('devops.helpers.retry.sleep')
-        self.libvirt_sleep_mock = self.patch(
-            'devops.driver.libvirt.libvirt_driver.sleep')
+        self.sleep_mock = self.patch('time.sleep')
 
         self.env = Environment.create('test_env')
         self.group = self.env.add_group(

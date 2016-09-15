@@ -11,7 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from netaddr import IPSet
+import netaddr
 
 
 class IpNetworksPool(object):
@@ -26,7 +26,9 @@ class IpNetworksPool(object):
 
     @staticmethod
     def _overlaps(network, allocated_networks):
-        return any((IPSet(network) & IPSet(an)) for an in allocated_networks)
+        return any(
+            (netaddr.IPSet(network) & netaddr.IPSet(an))
+            for an in allocated_networks)
 
     def __iter__(self):
         for network in self.networks:

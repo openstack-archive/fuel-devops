@@ -15,24 +15,20 @@
 import functools
 
 from django.db import models
-from django.utils.functional import cached_property
+from django.utils import functional
 import six
 
 from devops import error
-from devops.helpers.helpers import tcp_ping_
-from devops.helpers.helpers import wait_pass
+from devops.helpers import helpers
 from devops.helpers import loader
-from devops.helpers.ssh_client import SSHClient
+from devops.helpers import ssh_client
 from devops import logger
-from devops.models.base import BaseModel
-from devops.models.base import ParamedModel
-from devops.models.base import ParamedModelType
-from devops.models.base import ParamField
-from devops.models.network import NetworkConfig
-from devops.models.volume import Volume
+from devops.models import base
+from devops.models import network
+from devops.models import volume
 
 
-class ExtendableNodeType(ParamedModelType):
+class ExtendableNodeType(base.ParamedModelType):
     """Atomatically installs hooks on Node subclasses
 
     This class dynamically installs hooks for specified methods,
@@ -81,6 +77,7 @@ class ExtendableNodeType(ParamedModelType):
 
     METHOD_NAMES = ('define', 'start', 'destroy', 'remove')
 
+    # noinspection PyMethodParameters
     def __new__(cls, name, bases, attrs):
         super_new = super(ExtendableNodeType, cls).__new__
 
@@ -137,7 +134,11 @@ class ExtendableNodeType(ParamedModelType):
         return method
 
 
-class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
+class Node(
+    six.with_metaclass(
+        ExtendableNodeType,
+        base.ParamedModel,
+        base.BaseModel)):
     class Meta(object):
         unique_together = ('name', 'group')
         db_table = 'devops_node'
@@ -147,11 +148,11 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     name = models.CharField(max_length=255, unique=False, null=False)
     role = models.CharField(max_length=255, null=True)
 
-    kernel_cmd = ParamField()
-    ssh_port = ParamField(default=22)
-    bootstrap_timeout = ParamField(default=600)
-    deploy_timeout = ParamField(default=3600)
-    deploy_check_cmd = ParamField()
+    kernel_cmd = base.ParamField()
+    ssh_port = base.ParamField(default=22)
+    bootstrap_timeout = base.ParamField(default=600)
+    deploy_timeout = base.ParamField(default=3600)
+    deploy_check_cmd = base.ParamField()
 
     @property
     def driver(self):
@@ -164,7 +165,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
 
         return drv
 
-    @cached_property
+    @functional.cached_property
     def ext(self):
         try:
             ExtCls = loader.load_class(
@@ -185,20 +186,20 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def destroy(self, *args, **kwargs):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     def erase(self, *args, **kwargs):
         self.remove()
 
     def remove(self, *args, **kwargs):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
         self.erase_volumes()
         for iface in self.interfaces:
             iface.remove()
         self.delete()
 
     def suspend(self, *args, **kwargs):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     def resume(self, *args, **kwargs):
         pass
@@ -207,10 +208,10 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         return False
 
     def snapshot(self, *args, **kwargs):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     def revert(self, *args, **kwargs):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     # for fuel-qa compatibility
     def has_snapshot(self, *args, **kwargs):
@@ -220,10 +221,10 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
         pass
 
     def shutdown(self):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     def reset(self):
-        SSHClient.close_connections()
+        ssh_client.SSHClient.close_connections()
 
     def get_vnc_port(self):
         return None
@@ -303,7 +304,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
 
         :rtype : SSHClient
         """
-        return SSHClient(
+        return ssh_client.SSHClient(
             self.get_ip_address_by_network_name(network_name),
             username=login,
             password=password, private_keys=private_keys, auth=auth)
@@ -311,8 +312,8 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     # LEGACY
     # NOTE: this method works only for master node
     def await(self, network_name, timeout=120, by_port=22):
-        wait_pass(
-            lambda: tcp_ping_(
+        helpers.wait_pass(
+            lambda: helpers.tcp_ping_(
                 self.get_ip_address_by_network_name(network_name), by_port),
             timeout=timeout)
 
@@ -369,7 +370,7 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
             networks = []
         if parents is None:
             parents = []
-        NetworkConfig.objects.create(
+        network.NetworkConfig.objects.create(
             node=self,
             label=label,
             networks=networks,
@@ -423,8 +424,8 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
     def get_volume(self, **kwargs):
         try:
             return self.volume_set.get(**kwargs)
-        except Volume.DoesNotExist:
-            raise error.DevopsObjNotFound(Volume, **kwargs)
+        except volume.Volume.DoesNotExist:
+            raise error.DevopsObjNotFound(volume.Volume, **kwargs)
 
     # NEW
     def get_volumes(self, **kwargs):
@@ -432,5 +433,5 @@ class Node(six.with_metaclass(ExtendableNodeType, ParamedModel, BaseModel)):
 
     # NEW
     def erase_volumes(self):
-        for volume in self.get_volumes():
-            volume.erase()
+        for vol in self.get_volumes():
+            vol.erase()

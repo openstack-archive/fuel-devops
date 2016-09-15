@@ -82,7 +82,7 @@ class TestCentosMasterExt(LibvirtTestCase):
             'devops.models.node_ext.centos_master.wait_tcp')
 
     @mock.patch(
-        'devops.helpers.cloud_image_settings.Subprocess', autospec=True)
+        'devops.helpers.subprocess_runner.Subprocess', autospec=True)
     @mock.patch('devops.driver.libvirt.libvirt_driver.uuid')
     @mock.patch('libvirt.virConnect.defineXML')
     @mock.patch.multiple(settings, CLOUD_IMAGE_DIR='/tmp/')
