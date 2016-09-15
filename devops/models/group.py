@@ -16,7 +16,7 @@ from copy import deepcopy
 
 from django.db import models
 
-from devops.error import DevopsObjNotFound
+from devops import error
 from devops import logger
 from devops.models.base import BaseModel
 from devops.models.network import L2NetworkDevice
@@ -40,7 +40,7 @@ class Group(BaseModel):
         try:
             return self.l2networkdevice_set.get(**kwargs)
         except L2NetworkDevice.DoesNotExist:
-            raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
+            raise error.DevopsObjNotFound(L2NetworkDevice, **kwargs)
 
     def get_l2_network_devices(self, **kwargs):
         return self.l2networkdevice_set.filter(**kwargs).order_by('id')
@@ -49,7 +49,7 @@ class Group(BaseModel):
         try:
             return self.networkpool_set.get(**kwargs)
         except NetworkPool.DoesNotExist:
-            raise DevopsObjNotFound(NetworkPool, **kwargs)
+            raise error.DevopsObjNotFound(NetworkPool, **kwargs)
 
     def get_network_pools(self, **kwargs):
         return self.networkpool_set.filter(**kwargs).order_by('id')
@@ -58,7 +58,7 @@ class Group(BaseModel):
         try:
             return self.node_set.get(**kwargs)
         except Node.DoesNotExist:
-            raise DevopsObjNotFound(Node, **kwargs)
+            raise error.DevopsObjNotFound(Node, **kwargs)
 
     def get_nodes(self, **kwargs):
         return self.node_set.filter(**kwargs).order_by('id')
@@ -79,7 +79,7 @@ class Group(BaseModel):
         try:
             return cls.objects.get(**kwargs)
         except Group.DoesNotExist:
-            raise DevopsObjNotFound(Group, **kwargs)
+            raise error.DevopsObjNotFound(Group, **kwargs)
 
     @classmethod
     def list_all(cls):
@@ -107,7 +107,9 @@ class Group(BaseModel):
             l2_network_device.start()
 
     def start_nodes(self, nodes=None):
-        for node in nodes or self.get_nodes():
+        if nodes is None:
+            nodes = self.get_nodes()
+        for node in nodes:
             node.start()
 
     def destroy(self, **kwargs):
@@ -187,7 +189,7 @@ class Group(BaseModel):
                           role=node_cfg['role'],
                           **node_cfg['params'])
 
-    def add_node(self, name, role='fuel_slave', **params):
+    def add_node(self, name, role=None, **params):
         new_params = deepcopy(params)
         interfaces = new_params.pop('interfaces', [])
         network_configs = new_params.pop('network_config', {})
@@ -241,7 +243,7 @@ class Group(BaseModel):
         try:
             return self.volume_set.get(**kwargs)
         except Volume.DoesNotExist:
-            raise DevopsObjNotFound(Volume, **kwargs)
+            raise error.DevopsObjNotFound(Volume, **kwargs)
 
     def get_volumes(self, **kwargs):
         return self.volume_set.filter(**kwargs)

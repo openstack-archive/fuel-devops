@@ -22,14 +22,9 @@ from netaddr import IPNetwork
 from paramiko import Agent
 from paramiko import RSAKey
 
-from devops.error import DevopsEnvironmentError
-from devops.error import DevopsError
-from devops.error import DevopsObjNotFound
+from devops import error
 from devops.helpers.network import IpNetworksPool
-from devops.helpers.ssh_client import SSHAuth
-from devops.helpers.ssh_client import SSHClient
-from devops.helpers.templates import create_devops_config
-from devops.helpers.templates import get_devops_config
+from devops.helpers import ssh_client
 from devops import logger
 from devops.models.base import BaseModel
 from devops.models.driver import Driver
@@ -46,17 +41,27 @@ class Environment(BaseModel):
 
     name = models.CharField(max_length=255, unique=True, null=False)
 
-    hostname = 'nailgun'
-    domain = 'test.domain.local'
-    nat_interface = ''  # INTERFACES.get('admin')
-    # TODO(akostrikov) As we providing admin net names in fuel-qa/settings,
-    # we should create constant and use it in fuel-qa or
-    # pass admin net names to Environment from fuel-qa.
-    admin_net = 'admin'
-    admin_net2 = 'admin2'
-
     def __repr__(self):
         return 'Environment(name={name!r})'.format(name=self.name)
+
+    @property
+    def admin_net(self):
+        msg = (
+            'Environment.admin_net is deprecated. '
+            'Replace by string "admin".'
+        )
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+        return 'admin'
+
+    @property
+    def nat_interface(self):
+        msg = (
+            'Environment.nat_interface is deprecated.'
+        )
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+        return ''
 
     def get_allocated_networks(self):
         allocated_networks = []
@@ -68,7 +73,7 @@ class Environment(BaseModel):
         try:
             return self.addresspool_set.get(**kwargs)
         except AddressPool.DoesNotExist:
-            raise DevopsObjNotFound(AddressPool, **kwargs)
+            raise error.DevopsObjNotFound(AddressPool, **kwargs)
 
     def get_address_pools(self, **kwargs):
         return self.addresspool_set.filter(**kwargs).order_by('id')
@@ -77,7 +82,7 @@ class Environment(BaseModel):
         try:
             return self.group_set.get(**kwargs)
         except Group.DoesNotExist:
-            raise DevopsObjNotFound(Group, **kwargs)
+            raise error.DevopsObjNotFound(Group, **kwargs)
 
     def get_groups(self, **kwargs):
         return self.group_set.filter(**kwargs).order_by('id')
@@ -147,15 +152,17 @@ class Environment(BaseModel):
         try:
             return cls.objects.create(name=name)
         except IntegrityError:
-            raise DevopsError('Environment with name {!r} already exists'
-                              ''.format(name))
+            raise error.DevopsError(
+                'Environment with name {!r} already exists. '
+                'Please, set another environment name.'
+                ''.format(name))
 
     @classmethod
     def get(cls, *args, **kwargs):
         try:
             return cls.objects.get(*args, **kwargs)
         except Environment.DoesNotExist:
-            raise DevopsObjNotFound(Environment, *args, **kwargs)
+            raise error.DevopsObjNotFound(Environment, *args, **kwargs)
 
     @classmethod
     def list_all(cls):
@@ -202,6 +209,10 @@ class Environment(BaseModel):
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
+        if self.has_snapshot(name):
+            raise error.DevopsError(
+                'Snapshot with name {0} already exists.'.format(
+                    self.params.snapshot_name))
         for node in self.get_nodes():
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)
@@ -217,6 +228,7 @@ class Environment(BaseModel):
             for l2netdev in group.get_l2_network_devices():
                 l2netdev.unblock()
 
+    # NOTE: Does not work
     # TO REWRITE FOR LIBVIRT DRIVER ONLY
     @classmethod
     def synchronize_all(cls):
@@ -257,43 +269,17 @@ class Environment(BaseModel):
            Please use self.create_environment() instead.
         """
         warn(
-            'describe_environment is deprecated in favor of'
-            ' create_environment', DeprecationWarning)
-        if settings.DEVOPS_SETTINGS_TEMPLATE:
-            config = get_devops_config(
-                settings.DEVOPS_SETTINGS_TEMPLATE)
-        else:
-            config = create_devops_config(
-                boot_from=boot_from,
-                env_name=settings.ENV_NAME,
-                admin_vcpu=settings.HARDWARE["admin_node_cpu"],
-                admin_memory=settings.HARDWARE["admin_node_memory"],
-                admin_sysvolume_capacity=settings.ADMIN_NODE_VOLUME_SIZE,
-                admin_iso_path=settings.ISO_PATH,
-                nodes_count=settings.NODES_COUNT,
-                numa_nodes=settings.HARDWARE['numa_nodes'],
-                slave_vcpu=settings.HARDWARE["slave_node_cpu"],
-                slave_memory=settings.HARDWARE["slave_node_memory"],
-                slave_volume_capacity=settings.NODE_VOLUME_SIZE,
-                second_volume_capacity=settings.NODE_VOLUME_SIZE,
-                third_volume_capacity=settings.NODE_VOLUME_SIZE,
-                use_all_disks=settings.USE_ALL_DISKS,
-                multipath_count=settings.SLAVE_MULTIPATH_DISKS_COUNT,
-                ironic_nodes_count=settings.IRONIC_NODES_COUNT,
-                networks_bonding=settings.BONDING,
-                networks_bondinginterfaces=settings.BONDING_INTERFACES,
-                networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
-                networks_nodegroups=settings.NODEGROUPS,
-                networks_interfaceorder=settings.INTERFACE_ORDER,
-                networks_pools=settings.POOLS,
-                networks_forwarding=settings.FORWARDING,
-                networks_dhcp=settings.DHCP,
-                driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
-                driver_enable_nwfilers=settings.ENABLE_LIBVIRT_NWFILTERS,
-            )
+            'describe_environment is deprecated in favor of '
+            'DevopsClient.create_env_from_config', DeprecationWarning)
 
-        environment = cls.create_environment(config)
-        return environment
+        from devops.client import DevopsClient
+        client = DevopsClient()
+
+        template = settings.DEVOPS_SETTINGS_TEMPLATE
+        if template:
+            return client.create_env_from_config(template)
+        else:
+            return client.create_env()
 
     @classmethod
     def create_environment(cls, full_config):
@@ -349,13 +335,16 @@ class Environment(BaseModel):
             if env.get_nodes().count() == 0:
                 env.erase()
 
-    # TO L2_NETWORK_device, LEGACY
-    # Rename it to default_gw and move to models.Network class
-    def router(self, router_name=None):  # Alternative name: get_host_node_ip
-        router_name = router_name or self.admin_net
-        if router_name == self.admin_net2:
-            return str(self.get_network(name=router_name).ip[2])
-        return str(self.get_network(name=router_name).ip[1])
+    # LEGACY, TO REMOVE
+    def router(self, router_name='admin'):
+        msg = ('router has been deprecated in favor of '
+               'DevopsEnvironment.get_default_gw')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+
+        from devops.client import DevopsClient
+        env = DevopsClient().get_env(self.name)
+        return env.get_default_gw(l2_network_device_name=router_name)
 
     # LEGACY, for fuel-qa compatibility
     # @logwrap
@@ -366,35 +355,32 @@ class Environment(BaseModel):
 
         :rtype : SSHClient
         """
-        admin = sorted(
-            list(self.get_nodes(role__contains='master')),
-            key=lambda node: node.name
-        )[0]
-        return admin.remote(
-            self.admin_net, auth=SSHAuth(
-                username=login,
-                password=password))
+        msg = ('get_admin_remote has been deprecated in favor of '
+               'DevopsEnvironment.get_admin_remote')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
+
+        from devops.client import DevopsClient
+        env = DevopsClient().get_env(self.name)
+        return env.get_admin_remote(login=login, password=password)
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
     def get_ssh_to_remote(self, ip,
                           login=settings.SSH_SLAVE_CREDENTIALS['login'],
                           password=settings.SSH_SLAVE_CREDENTIALS['password']):
-        warn('LEGACY,  for fuel-qa compatibility', DeprecationWarning)
-        keys = []
-        remote = self.get_admin_remote()
-        for key_string in ['/root/.ssh/id_rsa',
-                           '/root/.ssh/bootstrap.rsa']:
-            if remote.isfile(key_string):
-                with remote.open(key_string) as f:
-                    keys.append(RSAKey.from_private_key(f))
+        msg = ('get_ssh_to_remote has been deprecated in favor of '
+               'DevopsEnvironment.get_node_remote')
+        logger.warning(msg)
+        warn(msg, DeprecationWarning)
 
-        return SSHClient(
+        from devops.client import DevopsClient
+        env = DevopsClient().get_env(self.name)
+        return ssh_client.SSHClient(
             ip,
-            auth=SSHAuth(
-                username=login,
-                password=password,
-                keys=keys))
+            auth=ssh_client.SSHAuth(
+                username=login, password=password,
+                keys=env.get_private_keys()))
 
     # LEGACY,  for fuel-qa compatibility
     # @logwrap
@@ -408,7 +394,9 @@ class Environment(BaseModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = Agent().get_keys()
-        return SSHClient(ip, auth=SSHAuth(keys=keys))
+        return ssh_client.SSHClient(
+            ip,
+            auth=ssh_client.SSHAuth(keys=keys))
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()
@@ -434,7 +422,7 @@ class Environment(BaseModel):
                 self.slaves = self.others
                 self.all = self.slaves + self.admins + self.ironics
                 if len(self.admins) == 0:
-                    raise DevopsEnvironmentError(
+                    raise error.DevopsEnvironmentError(
                         "No nodes with role 'fuel_master' found in the "
                         "environment {env_name}, please check environment "
                         "configuration".format(
@@ -478,7 +466,7 @@ class Environment(BaseModel):
             return L2NetworkDevice.objects.get(
                 group__environment=self, **kwargs)
         except L2NetworkDevice.DoesNotExist:
-            raise DevopsObjNotFound(L2NetworkDevice, **kwargs)
+            raise error.DevopsObjNotFound(L2NetworkDevice, **kwargs)
 
     def get_env_l2_network_devices(self, **kwargs):
         return L2NetworkDevice.objects.filter(
@@ -496,14 +484,12 @@ class Environment(BaseModel):
             address_pool__isnull=False, **kwargs)
         return [self._create_network_object(x) for x in l2_network_devices]
 
-    # LEGACY, for fuel-qa compatibility
     def get_node(self, *args, **kwargs):
         try:
             return Node.objects.get(*args, group__environment=self, **kwargs)
         except Node.DoesNotExist:
-            raise DevopsObjNotFound(Node, *args, **kwargs)
+            raise error.DevopsObjNotFound(Node, *args, **kwargs)
 
-    # LEGACY, for fuel-qa compatibility
     def get_nodes(self, *args, **kwargs):
         return Node.objects.filter(
             *args, group__environment=self, **kwargs).order_by('id')
