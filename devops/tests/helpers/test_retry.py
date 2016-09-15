@@ -14,13 +14,13 @@
 
 import mock
 
-from unittest import TestCase
+import unittest
 
-from devops.error import DevopsException
-from devops.helpers.retry import retry
+from devops import error
+from devops.helpers import retry
 
 
-class TestRetry(TestCase):
+class TestRetry(unittest.TestCase):
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
@@ -37,7 +37,7 @@ class TestRetry(TestCase):
             def __init__(self, method):
                 self.m = method
 
-            @retry(TypeError, count=count, delay=delay)
+            @retry.retry(TypeError, count=count, delay=delay)
             def method(self):
                 return self.m()
 
@@ -93,6 +93,6 @@ class TestRetry(TestCase):
         ))
 
     def test_wrong_arg(self):
-        retry_dec = retry(AttributeError)
-        with self.assertRaises(DevopsException):
+        retry_dec = retry.retry(AttributeError)
+        with self.assertRaises(error.DevopsException):
             retry_dec('wrong')

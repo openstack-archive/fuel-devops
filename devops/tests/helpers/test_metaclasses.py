@@ -14,16 +14,16 @@
 
 from __future__ import unicode_literals
 
-from unittest import TestCase
+import unittest
 
-from six import with_metaclass
+import six
 
-from devops.helpers.metaclasses import SingletonMeta
+from devops.helpers import metaclasses
 
 
-class TestSingletone(TestCase):
+class TestSingletone(unittest.TestCase):
     def test(self):
-        class TestClass(with_metaclass(SingletonMeta, object)):
+        class TestClass(six.with_metaclass(metaclasses.SingletonMeta, object)):
             pass
 
         tst_obj1 = TestClass()
