@@ -408,6 +408,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     @property
     def lock(self):
+        """Connection lock
+
+        :rtype: threading.RLock
+        """
         return self.__lock
 
     @property
@@ -858,16 +862,22 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         return result
 
-    def execute_async(self, command, timeout=None, get_pty=False):
+    def execute_async(self, command, get_pty=False):
         """Execute command in async mode and return channel with IO objects
 
         :type command: str
-        :type timeout: int
-        :rtype: tuple
+        :type get_pty: bool
+        :rtype:
+            tuple(
+                paramiko.Channel,
+                paramiko.ChannelFile,
+                paramiko.ChannelFile,
+                paramiko.ChannelFile
+            )
         """
         logger.debug("Executing command: {!r}".format(command.rstrip()))
 
-        chan = self._ssh.get_transport().open_session(timeout=timeout)
+        chan = self._ssh.get_transport().open_session()
 
         if get_pty:
             # Open PTY
@@ -927,7 +937,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         auth.connect(transport)
 
         # open ssh session
-        channel = transport.open_session(timeout=timeout)
+        channel = transport.open_session()
 
         # Make proxy objects for read
         stdout = channel.makefile('rb')
