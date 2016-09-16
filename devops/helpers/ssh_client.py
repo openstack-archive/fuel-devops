@@ -751,14 +751,6 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             :type stop: Event
             :type channel: paramiko.channel.Channel
             """
-            # Get file descriptors for stdout and stderr streams
-            fd = channel.fileno()
-            # Get flags of stdout and stderr streams
-            fl_stdout = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fl_stderr = fcntl.fcntl(fd, fcntl.F_GETFL)
-            # Set nonblock mode for stdout and stderr streams
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
                 poll_streams(

@@ -66,7 +66,7 @@ class AbstractNtp(six.with_metaclass(abc.ABCMeta, object)):
 
     @property
     def date(self):
-        return self.remote.execute("date")['stdout'][0].rstrip()
+        return self.remote.execute("date", verbose=True)['stdout'][0].rstrip()
 
     @abc.abstractmethod
     def start(self):
@@ -98,20 +98,25 @@ class BaseNtp(AbstractNtp):
     def set_actual_time(self, timeout=600):
         # Get IP of a server from which the time will be synchronized.
         srv_cmd = "awk '/^server/ && $2 !~ /^127\./ {print $2}' /etc/ntp.conf"
-        server = self.remote.execute(srv_cmd)['stdout'][0]
+        with self.remote.open('/etc/ntp.conf') as f:
+            logger.debug(
+                '/etc/ntp.conf contents:\n{}'.format(f.read().decode('utf-8')))
+        logger.debug(self.remote.execute('cat /etc/ntp.conf').stdout_str)
+        server = self.remote.execute(srv_cmd, verbose=True)['stdout'][0]
 
         # Waiting for parent server until it starts providing the time
         set_date_cmd = "ntpdate -p 4 -t 0.2 -bu {0}".format(server)
+        logger.info("Wait for ntpdate -p 4 -t 0.2 -bu {0}".format(server))
         helpers.wait(
-            lambda: not self.remote.execute(set_date_cmd)['exit_code'],
+            lambda: not self.remote.execute(set_date_cmd, verbose=True)['exit_code'],
             timeout=timeout,
             timeout_msg='Failed to set actual time on node {!r}'.format(
                 self._node_name))
 
-        self.remote.check_call('hwclock -w')
+        self.remote.check_call('hwclock -w', verbose=True)
 
     def _get_ntpq(self):
-        return self.remote.execute('ntpq -pn 127.0.0.1')['stdout'][2:]
+        return self.remote.execute('ntpq -pn 127.0.0.1', verbose=True)['stdout'][2:]
 
     def _get_sync_complete(self):
         peers = self._get_ntpq()
@@ -161,7 +166,7 @@ class NtpInitscript(BaseNtp):
         super(NtpInitscript, self).__init__(remote, node_name)
         get_ntp_cmd = \
             "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"
-        result = remote.execute(get_ntp_cmd)
+        result = remote.execute(get_ntp_cmd, verbose=True)
         self._service = result['stdout'][0].strip()
 
     def start(self):
@@ -176,16 +181,16 @@ class NtpPacemaker(BaseNtp):
 
     def start(self):
         # Temporary workaround of the LP bug #1441121
-        self.remote.execute('ip netns exec vrouter ip l set dev lo up')
+        self.remote.execute('ip netns exec vrouter ip l set dev lo up', verbose=True)
 
-        self.remote.execute('crm resource start p_ntp')
+        self.remote.execute('crm resource start p_ntp', verbose=True)
 
     def stop(self):
-        self.remote.execute('crm resource stop p_ntp; killall ntpd')
+        self.remote.execute('crm resource stop p_ntp; killall ntpd', verbose=True)
 
     def _get_ntpq(self):
         return self.remote.execute(
-            'ip netns exec vrouter ntpq -pn 127.0.0.1')['stdout'][2:]
+            'ip netns exec vrouter ntpq -pn 127.0.0.1', verbose=True)['stdout'][2:]
 
 
 class NtpSystemd(BaseNtp):
@@ -253,14 +258,14 @@ class GroupNtpSync(object):
         chronyd_cmd = "systemctl is-active chronyd"
         initd_cmd = "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"
 
-        if remote.execute(pcs_cmd)['exit_code'] == 0:
+        if remote.execute(pcs_cmd, verbose=True)['exit_code'] == 0:
             # Pacemaker service found
             return NtpPacemaker(remote, node_name)
-        elif remote.execute(systemd_cmd)['exit_code'] == 0:
+        elif remote.execute(systemd_cmd, verbose=True)['exit_code'] == 0:
             return NtpSystemd(remote, node_name)
-        elif remote.execute(chronyd_cmd)['exit_code'] == 0:
+        elif remote.execute(chronyd_cmd, verbose=True)['exit_code'] == 0:
             return NtpChronyd(remote, node_name)
-        elif len(remote.execute(initd_cmd)['stdout']):
+        elif len(remote.execute(initd_cmd, verbose=True)['stdout']):
             return NtpInitscript(remote, node_name)
         else:
             raise error.DevopsError(
