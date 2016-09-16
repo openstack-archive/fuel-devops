@@ -82,7 +82,10 @@ class ExecResult(object):
         :type src: list
         :rtype: str
         """
-        return b''.join(src).strip().decode(encoding='utf-8')
+        return b''.join(src).strip().decode(
+            encoding='utf-8',
+            errors='backslashreplace'
+        )
 
     @classmethod
     def _get_brief(cls, data):
