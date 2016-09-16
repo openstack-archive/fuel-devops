@@ -17,6 +17,7 @@ import collections
 import warnings
 
 import paramiko
+import re
 import six
 
 from devops import error
@@ -85,6 +86,9 @@ class AbstractNtp(six.with_metaclass(abc.ABCMeta, object)):
         """Wait for connection"""
 
 
+ntp_conf_srv = re.compile(r'server (?P<addr>(?!127.)[a-zA-Z0-9.]+)').findall
+
+
 # pylint: disable=abstract-method
 # noinspection PyAbstractClass
 class BaseNtp(AbstractNtp):
@@ -97,8 +101,10 @@ class BaseNtp(AbstractNtp):
 
     def set_actual_time(self, timeout=600):
         # Get IP of a server from which the time will be synchronized.
-        srv_cmd = "awk '/^server/ && $2 !~ /^127\./ {print $2}' /etc/ntp.conf"
-        server = self.remote.execute(srv_cmd)['stdout'][0]
+        with self.remote.open('/etc/ntp.conf') as f:
+            servers = ntp_conf_srv(f.read().decode('utf-8'))
+        logger.debug('Servers found: {}'.format(servers))
+        server = servers[0]
 
         # Waiting for parent server until it starts providing the time
         set_date_cmd = "ntpdate -p 4 -t 0.2 -bu {0}".format(server)
