@@ -16,7 +16,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import base64
-import fcntl
 import os
 import posixpath
 import stat
@@ -408,6 +407,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     @property
     def lock(self):
+        """Connection lock
+
+        :rtype: threading.RLock
+        """
         return self.__lock
 
     @property
@@ -717,6 +720,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type stdout: paramiko.channel.ChannelFile
         :type stderr: paramiko.channel.ChannelFile
         :type timeout: int
+        :type verbose: bool
         :rtype: ExecResult
         :raises: TimeoutError
         """
@@ -726,7 +730,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 for line in src:
                     dst.append(line)
                     if verbose:
-                        print(line, end="")
+                        print(line.decode('utf-8'), end="")
             except IOError:
                 pass
             return dst
@@ -747,14 +751,6 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             :type stop: Event
             :type channel: paramiko.channel.Channel
             """
-            # Get file descriptors for stdout and stderr streams
-            fd = channel.fileno()
-            # Get flags of stdout and stderr streams
-            fl_stdout = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fl_stderr = fcntl.fcntl(fd, fcntl.F_GETFL)
-            # Set nonblock mode for stdout and stderr streams
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl_stdout | os.O_NONBLOCK)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
                 poll_streams(
@@ -767,19 +763,17 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
                 if channel.status_event.is_set():
                     result.exit_code = result.exit_code = channel.exit_status
-                    poll_streams(
-                        result=result,
-                        channel=channel,
-                        stdout=stdout,
-                        stderr=stderr,
-                        verbose=verbose
-                    )
+
+                    result.stdout += poll_stream(src=stdout, verbose=verbose)
+                    result.stderr += poll_stream(src=stderr, verbose=verbose)
 
                     stop.set()
 
         # channel.status_event.wait(timeout)
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
+        if verbose:
+            print("\nExecuting command: {!r}".format(command.rstrip()))
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -850,24 +844,36 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 ))
         else:
             logger.debug(
-                '{cmd!r} execution results: Exit code: {code!s}'.format(
+                '{cmd!r} execution results:\n'
+                'Exit code: {code!s}\n'
+                'BRIEF STDOUT:\n'
+                '{stdout}\n'
+                'BRIEF STDERR:\n'
+                '{stderr}'.format(
                     cmd=command,
-                    code=result.exit_code
-                )
-            )
+                    code=result.exit_code,
+                    stdout=result.stdout_brief,
+                    stderr=result.stderr_brief
+                ))
 
         return result
 
-    def execute_async(self, command, timeout=None, get_pty=False):
+    def execute_async(self, command, get_pty=False):
         """Execute command in async mode and return channel with IO objects
 
         :type command: str
-        :type timeout: int
-        :rtype: tuple
+        :type get_pty: bool
+        :rtype:
+            tuple(
+                paramiko.Channel,
+                paramiko.ChannelFile,
+                paramiko.ChannelFile,
+                paramiko.ChannelFile
+            )
         """
         logger.debug("Executing command: {!r}".format(command.rstrip()))
 
-        chan = self._ssh.get_transport().open_session(timeout=timeout)
+        chan = self._ssh.get_transport().open_session()
 
         if get_pty:
             # Open PTY
@@ -927,7 +933,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         auth.connect(transport)
 
         # open ssh session
-        channel = transport.open_session(timeout=timeout)
+        channel = transport.open_session()
 
         # Make proxy objects for read
         stdout = channel.makefile('rb')
