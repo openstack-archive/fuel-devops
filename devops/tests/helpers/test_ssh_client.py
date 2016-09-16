@@ -1574,7 +1574,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         open_session.assert_called_once()
         transport.assert_has_calls((
             mock.call.connect(username=username, password=password, pkey=None),
-            mock.call.open_session(timeout=None)
+            mock.call.open_session()
         ))
         channel.assert_has_calls((
             mock.call.makefile('rb'),
@@ -1631,7 +1631,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         open_session.assert_called_once()
         transport.assert_has_calls((
             mock.call.connect(username=_login, password=_password, pkey=None),
-            mock.call.open_session(timeout=None)
+            mock.call.open_session()
         ))
         channel.assert_has_calls((
             mock.call.makefile('rb'),
