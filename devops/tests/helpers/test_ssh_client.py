@@ -766,11 +766,10 @@ class TestSSHClientInit(unittest.TestCase):
             mock.call.debug('SFTP is not connected, try to connect...'),
         ))
 
-    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch('devops.helpers.exec_result.ExecResult', autospec=True)
     def test_init_memorize(
             self,
-            Result, fcntl,
+            Result,
             client, policy, logger):
         port1 = 2222
         host1 = '127.0.0.2'
@@ -1187,12 +1186,11 @@ class TestExecute(unittest.TestCase):
 
         return chan, '', exp_result, stderr, stdout
 
-    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute(
             self,
-            execute_async, fcntl,
+            execute_async,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1221,12 +1219,11 @@ class TestExecute(unittest.TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
-    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_verbose(
             self,
-            execute_async, fcntl,
+            execute_async,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1264,12 +1261,11 @@ class TestExecute(unittest.TestCase):
                 )),
         ))
 
-    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout(
             self,
-            execute_async, fcntl,
+            execute_async,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1298,12 +1294,11 @@ class TestExecute(unittest.TestCase):
                     cmd=exp_result.cmd, ec=exp_result.exit_code)),
         ))
 
-    @mock.patch('fcntl.fcntl', autospec=True)
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_timeout_fail(
             self,
-            execute_async, fcntl,
+            execute_async,
             client, policy, logger):
         (
             chan, _stdin, exp_result, stderr, stdout
@@ -1472,7 +1467,6 @@ class TestExecute(unittest.TestCase):
 
 
 @mock.patch('devops.helpers.ssh_client.logger', autospec=True)
-@mock.patch('fcntl.fcntl', autospec=True)
 @mock.patch(
     'paramiko.AutoAddPolicy', autospec=True, return_value='AutoAddPolicy')
 @mock.patch('paramiko.SSHClient', autospec=True)
@@ -1532,7 +1526,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         )
 
     def test_execute_through_host_no_creds(
-            self, transp, client, policy, fcntl, logger):
+            self, transp, client, policy, logger):
         target = '127.0.0.2'
         exit_code = 0
 
@@ -1574,7 +1568,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         open_session.assert_called_once()
         transport.assert_has_calls((
             mock.call.connect(username=username, password=password, pkey=None),
-            mock.call.open_session(timeout=None)
+            mock.call.open_session()
         ))
         channel.assert_has_calls((
             mock.call.makefile('rb'),
@@ -1590,7 +1584,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         ))
 
     def test_execute_through_host_auth(
-            self, transp, client, policy, fcntl, logger):
+            self, transp, client, policy, logger):
         _login = 'cirros'
         _password = 'cubswin:)'
 
@@ -1631,7 +1625,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         open_session.assert_called_once()
         transport.assert_has_calls((
             mock.call.connect(username=_login, password=_password, pkey=None),
-            mock.call.open_session(timeout=None)
+            mock.call.open_session()
         ))
         channel.assert_has_calls((
             mock.call.makefile('rb'),
