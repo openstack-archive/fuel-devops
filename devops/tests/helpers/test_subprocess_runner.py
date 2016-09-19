@@ -100,9 +100,16 @@ class TestSubprocessRunner(unittest.TestCase):
             mock.call.debug(
                 "Executing command: {!r}".format(command.rstrip())),
             mock.call.debug(
-                '{cmd!r} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results:\n'
+                'Exit code: {code!s}\n'
+                'BRIEF STDOUT:\n'
+                '{stdout}\n'
+                'BRIEF STDERR:\n'
+                '{stderr}'.format(
                     cmd=command,
-                    code=result.exit_code
+                    code=result.exit_code,
+                    stdout=result.stdout_brief,
+                    stderr=result.stderr_brief
                 )),
         ))
         self.assertIn(
