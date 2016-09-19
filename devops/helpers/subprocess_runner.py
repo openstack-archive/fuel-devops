@@ -58,7 +58,7 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                 for line in src:
                     dst.append(line)
                     if verbose:
-                        print(line, end="")
+                        print(line.decode('utf-8'), end="")
             except IOError:
                 pass
             return dst
@@ -104,12 +104,12 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
 
                 if proc.returncode is not None:
                     result.exit_code = proc.returncode
-                    poll_streams(
-                        result=result,
-                        stdout=proc.stdout,
-                        stderr=proc.stderr,
-                        verbose=verbose
-                    )
+                    result.stdout += poll_stream(
+                        src=proc.stdout,
+                        verbose=verbose)
+                    result.stderr += poll_stream(
+                        src=proc.stderr,
+                        verbose=verbose)
 
                     stop.set()
 
@@ -117,6 +117,9 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         with cls.__lock:
             result = exec_result.ExecResult(cmd=command)
             stop_event = threading.Event()
+
+            if verbose:
+                print("\nExecuting command: {!r}".format(command.rstrip()))
 
             # Run
             process = subprocess.Popen(
@@ -184,6 +187,12 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         result = cls.__exec_command(command=command, timeout=timeout,
                                     verbose=verbose, **kwargs)
         if verbose:
+            print(
+                '\n{cmd!r} execution results: Exit code: {code!s}'.format(
+                    cmd=command,
+                    code=result.exit_code
+                )
+            )
             logger.debug(
                 '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
@@ -198,11 +207,17 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                 ))
         else:
             logger.debug(
-                '{cmd!r} execution results: Exit code: {code}'.format(
+                '{cmd!r} execution results:\n'
+                'Exit code: {code!s}\n'
+                'BRIEF STDOUT:\n'
+                '{stdout}\n'
+                'BRIEF STDERR:\n'
+                '{stderr}'.format(
                     cmd=command,
-                    code=result.exit_code
-                )
-            )
+                    code=result.exit_code,
+                    stdout=result.stdout_brief,
+                    stderr=result.stderr_brief
+                ))
 
         return result
 
