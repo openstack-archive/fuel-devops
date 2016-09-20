@@ -40,6 +40,8 @@ class TestExecResult(unittest.TestCase):
         self.assertEqual(result.stdout, result['stdout'])
         self.assertEqual(result.stderr, [])
         self.assertEqual(result.stderr, result['stderr'])
+        self.assertEqual(result.stdout_bin, bytearray())
+        self.assertEqual(result.stderr_bin, bytearray())
         self.assertEqual(result.stdout_str, '')
         self.assertEqual(result.stdout_str, result['stdout_str'])
         self.assertEqual(result.stderr_str, '')
@@ -155,6 +157,9 @@ class TestExecResult(unittest.TestCase):
             result.stderr = 'stderr'
 
         self.assertEqual(result.stderr, tst_stderr)
+
+        self.assertEqual(result.stdout_bin, bytearray(b''.join(tst_stdout)))
+        self.assertEqual(result.stderr_bin, bytearray(b''.join(tst_stderr)))
 
         stdout_br = tst_stdout[:3] + [b'...\n'] + tst_stdout[-3:]
         stderr_br = tst_stderr[:3] + [b'...\n'] + tst_stderr[-3:]

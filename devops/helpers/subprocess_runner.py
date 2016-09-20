@@ -58,7 +58,11 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                 for line in src:
                     dst.append(line)
                     if verbose:
-                        print(line.decode('utf-8'), end="")
+                        print(
+                            line.decode(
+                                'utf-8',
+                                errors='backslashreplace'),
+                            end="")
             except IOError:
                 pass
             return dst

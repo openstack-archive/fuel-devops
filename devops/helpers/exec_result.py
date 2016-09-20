@@ -76,13 +76,22 @@ class ExecResult(object):
         return self.__lock
 
     @staticmethod
-    def _get_str_from_list(src):
+    def _get_bytearray_from_array(src):
+        """Get bytearray from array of bytes blocks
+
+        :type src: list(bytes)
+        :rtype: bytearray
+        """
+        return bytearray(b''.join(src))
+
+    @staticmethod
+    def _get_str_from_bin(src):
         """Join data in list to the string, with python 2&3 compatibility.
 
-        :type src: list
+        :type src: bytearray
         :rtype: str
         """
-        return b''.join(src).strip().decode(
+        return src.strip().decode(
             encoding='utf-8',
             errors='backslashreplace'
         )
@@ -91,15 +100,13 @@ class ExecResult(object):
     def _get_brief(cls, data):
         """Get brief output: 7 lines maximum (3 first + ... + 3 last)
 
-        :type data: list
+        :type data: list(bytes)
         :rtype: str
         """
-        if len(data) <= 7:
-            return cls._get_str_from_list(data)
-        else:
-            return cls._get_str_from_list(
-                data[:3] + [b'...\n'] + data[-3:]
-            )
+        src = data if len(data) <= 7 else data[:3] + [b'...\n'] + data[-3:]
+        return cls._get_str_from_bin(
+            cls._get_bytearray_from_array(src)
+        )
 
     @property
     def cmd(self):
@@ -113,7 +120,7 @@ class ExecResult(object):
     def stdout(self):
         """Stdout output as list of binaries
 
-        :rtype: list
+        :rtype: list(bytes)
         """
         return self.__stdout
 
@@ -121,7 +128,7 @@ class ExecResult(object):
     def stdout(self, new_val):
         """Stdout output as list of binaries
 
-        :type new_val: list
+        :type new_val: list(bytes)
         :raises: TypeError
         """
         if not isinstance(new_val, (list, type(None))):
@@ -137,7 +144,7 @@ class ExecResult(object):
     def stderr(self):
         """Stderr output as list of binaries
 
-        :rtype: list
+        :rtype: list(bytes)
         """
         return self.__stderr
 
@@ -145,7 +152,7 @@ class ExecResult(object):
     def stderr(self, new_val):
         """Stderr output as list of binaries
 
-        :type new_val: list
+        :type new_val: list(bytes)
         :raises: TypeError
         """
         if not isinstance(new_val, (list, None)):
@@ -156,6 +163,26 @@ class ExecResult(object):
             self.__stderr = new_val
 
     @property
+    def stdout_bin(self):
+        """Stdout in binary format
+
+        Sometimes logging is used to log binary objects too (example: Session),
+        and for debug purposes we can use this as data source.
+        :rtype: bytearray
+        """
+        with self.lock:
+            return self._get_bytearray_from_array(self.stdout)
+
+    @property
+    def stderr_bin(self):
+        """Stderr in binary format
+
+        :rtype: bytearray
+        """
+        with self.lock:
+            return self._get_bytearray_from_array(self.stderr)
+
+    @property
     def stdout_str(self):
         """Stdout output as string
 
@@ -163,7 +190,7 @@ class ExecResult(object):
         """
         with self.lock:
             if self.__stdout_str is None:
-                self.__stdout_str = self._get_str_from_list(self.stdout)
+                self.__stdout_str = self._get_str_from_bin(self.stdout_bin)
             return self.__stdout_str
 
     @property
@@ -174,7 +201,7 @@ class ExecResult(object):
         """
         with self.lock:
             if self.__stderr_str is None:
-                self.__stderr_str = self._get_str_from_list(self.stderr)
+                self.__stderr_str = self._get_str_from_bin(self.stderr_bin)
             return self.__stderr_str
 
     @property
@@ -261,7 +288,7 @@ class ExecResult(object):
     def stdout_yaml(self):
         """YAML from stdout
 
-        :rtype: object
+        :rtype: Union(list, dict, None)
         """
         with self.lock:
             if self.__stdout_yaml is None:
@@ -269,10 +296,10 @@ class ExecResult(object):
                 self.__stdout_yaml = self.__deserialize(fmt='yaml')
             return self.__stdout_yaml
 
-    @staticmethod
-    def __dir__():
+    def __dir__(self):
         return [
             'cmd', 'stdout', 'stderr', 'exit_code',
+            'stdout_bin', 'stderr_bin',
             'stdout_str', 'stderr_str', 'stdout_brief', 'stderr_brief',
             'stdout_json', 'stdout_yaml',
             'lock'
