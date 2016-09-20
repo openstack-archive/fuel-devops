@@ -207,7 +207,7 @@ class Environment(base.BaseModel):
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
-        if self.has_snapshot(name):
+        if self.has_snapshot(name) and not force:
             raise error.DevopsError(
                 'Snapshot with name {0} already exists.'.format(
                     self.params.snapshot_name))
