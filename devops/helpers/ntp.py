@@ -20,12 +20,12 @@ import paramiko
 import six
 
 from devops import error
+from devops.helpers import decorators
 from devops.helpers import helpers
-from devops.helpers import retry
 from devops import logger
 
 
-@retry.retry(paramiko.SSHException, count=3, delay=60)
+@decorators.retry(paramiko.SSHException, count=3, delay=60)
 def sync_time(env, node_names, skip_sync=False):
     """Synchronize time on nodes
 
@@ -39,8 +39,8 @@ def sync_time(env, node_names, skip_sync=False):
         'sync_time is deprecated. Use DevopsClient.sync_time instead',
         DeprecationWarning)
 
-    from devops.client import DevopsClient
-    denv = DevopsClient().get_env(env.name)
+    from devops import client
+    denv = client.DevopsClient().get_env(env.name)
     return denv.sync_time(node_names=node_names, skip_sync=skip_sync)
 
 

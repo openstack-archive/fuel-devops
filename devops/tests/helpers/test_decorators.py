@@ -27,7 +27,9 @@ class ThreadedTest(unittest.TestCase):
         @decorators.threaded
         def func_test():
             pass
+        # pylint: disable=assignment-from-no-return
         test_thread = func_test()
+        # pylint: enable=assignment-from-no-return
         self.assertEqual(test_thread.name, 'Threaded func_test')
         self.assertFalse(test_thread.daemon)
         self.assertFalse(test_thread.isAlive())
@@ -37,7 +39,9 @@ class ThreadedTest(unittest.TestCase):
         def func_test():
             pass
 
+        # pylint: disable=assignment-from-no-return
         test_thread = func_test()
+        # pylint: enable=assignment-from-no-return
         self.assertEqual(test_thread.name, 'Threaded func_test')
         self.assertFalse(test_thread.daemon)
         self.assertFalse(test_thread.isAlive())
@@ -47,7 +51,9 @@ class ThreadedTest(unittest.TestCase):
         def func_test():
             pass
 
+        # pylint: disable=assignment-from-no-return
         test_thread = func_test()
+        # pylint: enable=assignment-from-no-return
         self.assertEqual(test_thread.name, 'test name')
         self.assertFalse(test_thread.daemon)
         self.assertFalse(test_thread.isAlive())
@@ -57,7 +63,9 @@ class ThreadedTest(unittest.TestCase):
         def func_test():
             pass
 
+        # pylint: disable=assignment-from-no-return
         test_thread = func_test()
+        # pylint: enable=assignment-from-no-return
         self.assertEqual(test_thread.name, 'Threaded func_test')
         self.assertTrue(test_thread.daemon)
         self.assertFalse(test_thread.isAlive())
@@ -75,7 +83,9 @@ class ThreadedTest(unittest.TestCase):
     def test_args(self):
         event = threading.Event()
         data = []
+        # pylint: disable=global-variable-not-assigned
         global data
+        # pylint: enable=global-variable-not-assigned
 
         @decorators.threaded(started=True)
         def func_test(add, evnt):
@@ -89,7 +99,9 @@ class ThreadedTest(unittest.TestCase):
     def test_kwargs(self):
         event = threading.Event()
         data = []
+        # pylint: disable=global-variable-not-assigned
         global data
+        # pylint: enable=global-variable-not-assigned
 
         @decorators.threaded(started=True)
         def func_test(add, evnt):

@@ -14,9 +14,8 @@
 
 from django.conf import settings
 
-from devops.error import DevopsError
-from devops.helpers.helpers import wait_ssh_cmd
-from devops.helpers.helpers import wait_tcp
+from devops import error
+from devops.helpers import helpers
 
 
 class NodeExtension(object):
@@ -27,7 +26,7 @@ class NodeExtension(object):
 
     def _start_setup(self):
         if self.node.kernel_cmd is None:
-            raise DevopsError('kernel_cmd is None')
+            raise error.DevopsError('kernel_cmd is None')
 
         self.node.start()
         self.send_kernel_keys(self.node.kernel_cmd)
@@ -57,8 +56,9 @@ class NodeExtension(object):
         self._start_setup()
         ip = self.node.get_ip_address_by_network_name(
             settings.SSH_CREDENTIALS['admin_network'])
-        wait_tcp(host=ip, port=self.node.ssh_port,
-                 timeout=self.node.bootstrap_timeout)
+        helpers.wait_tcp(
+            host=ip, port=self.node.ssh_port,
+            timeout=self.node.bootstrap_timeout)
 
     def deploy_wait(self):
         ip = self.node.get_ip_address_by_network_name(
@@ -66,12 +66,13 @@ class NodeExtension(object):
         if self.node.deploy_check_cmd is None:
             self.node.deploy_check_cmd = self.get_deploy_check_cmd()
             self.node.save()
-        wait_ssh_cmd(host=ip,
-                     port=self.node.ssh_port,
-                     check_cmd=self.node.deploy_check_cmd,
-                     username=settings.SSH_CREDENTIALS['login'],
-                     password=settings.SSH_CREDENTIALS['password'],
-                     timeout=self.node.deploy_timeout)
+            helpers.wait_ssh_cmd(
+                host=ip,
+                port=self.node.ssh_port,
+                check_cmd=self.node.deploy_check_cmd,
+                username=settings.SSH_CREDENTIALS['login'],
+                password=settings.SSH_CREDENTIALS['password'],
+                timeout=self.node.deploy_timeout)
 
     def get_kernel_cmd(self, boot_from='cdrom', iface='enp0s3',
                        wait_for_external_config='yes'):

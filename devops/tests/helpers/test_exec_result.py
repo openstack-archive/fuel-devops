@@ -78,12 +78,16 @@ class TestExecResult(unittest.TestCase):
         )
 
         with self.assertRaises(IndexError):
+            # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
             result['nonexistent']
+            # pylint: enable=pointless-statement
 
         with self.assertRaises(error.DevopsError):
+            # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
             result['stdout_json']
+            # pylint: enable=pointless-statement
         logger.assert_has_calls((
             mock.call.exception(
                 "'{cmd}' stdout is not valid json:\n"

@@ -15,13 +15,12 @@
 import os
 import time
 import logging.config
-from devops.settings import LOGS_DIR
-from devops.settings import LOGS_SIZE
+from devops import settings
 
 __version__ = '3.0.2'
 
-if not os.path.exists(LOGS_DIR):
-    os.makedirs(LOGS_DIR)
+if not os.path.exists(settings.LOGS_DIR):
+    os.makedirs(settings.LOGS_DIR)
 
 LOGGER_SETTINGS = {
     'version': 1,
@@ -46,10 +45,10 @@ LOGGER_SETTINGS = {
             'class': 'logging.handlers.RotatingFileHandler',
             'level': 'DEBUG',
             'formatter': 'default',
-            'filename': os.path.join(LOGS_DIR, 'devops.log'),
+            'filename': os.path.join(settings.LOGS_DIR, 'devops.log'),
             'encoding': 'utf8',
             'mode': 'a',
-            'maxBytes': LOGS_SIZE,
+            'maxBytes': settings.LOGS_SIZE,
             'backupCount': 5,
         },
     },

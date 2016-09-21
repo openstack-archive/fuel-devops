@@ -1334,7 +1334,7 @@ class TestExecute(unittest.TestCase):
             execute_async,
             client, policy, logger):
         (
-            chan, _stdin, exp_result, stderr, stdout
+            chan, _stdin, _, stderr, stdout
         ) = self.get_patched_execute_async_retval()
         is_set = mock.Mock(return_value=False)
         chan.status_event.attach_mock(is_set, 'is_set')
@@ -1357,7 +1357,7 @@ class TestExecute(unittest.TestCase):
         'devops.helpers.ssh_client.SSHClient.execute_async')
     def test_execute_together(self, execute_async, client, policy, logger):
         (
-            chan, _stdin, exp_result, stderr, stdout
+            chan, _stdin, _, stderr, stdout
         ) = self.get_patched_execute_async_retval()
         execute_async.return_value = chan, _stdin, stderr, stdout
 
@@ -1716,11 +1716,6 @@ class TestSftp(unittest.TestCase):
         lstat.assert_called_once_with(dst)
 
     def test_stat(self, client, policy, logger):
-        class Attrs(object):
-            def __init__(self, mode):
-                self.st_mode = mode
-                self.st_size = 0
-
         ssh, _sftp = self.prepare_sftp_file_tests(client)
         stat = mock.Mock()
         _sftp.attach_mock(stat, 'stat')
