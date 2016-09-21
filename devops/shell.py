@@ -46,7 +46,8 @@ class Shell(object):
         command_method = getattr(self, command_name)
         command_method()
 
-    def print_table(self, headers, columns):
+    @staticmethod
+    def print_table(headers, columns):
         if not columns:
             return
         print(tabulate.tabulate(columns, headers=headers,
@@ -161,7 +162,8 @@ class Shell(object):
             print('Time synchronization is starting')
             self.do_time_sync()
 
-    def do_version(self):
+    @staticmethod
+    def do_version():
         print(devops.__version__)
 
     def do_create(self):

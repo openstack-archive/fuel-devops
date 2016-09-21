@@ -17,7 +17,7 @@ import hashlib
 
 import six
 
-from devops.helpers.xmlgenerator import XMLGenerator
+from devops.helpers import xmlgenerator
 
 
 class LibvirtXMLBuilder(object):
@@ -49,7 +49,7 @@ class LibvirtXMLBuilder(object):
         if addresses is None:
             addresses = []
 
-        network_xml = XMLGenerator('network')
+        network_xml = xmlgenerator.XMLGenerator('network')
         network_xml.name(cls._crop_name(network_name))
 
         if forward == 'bridge':
@@ -98,7 +98,7 @@ class LibvirtXMLBuilder(object):
         :type volume: Volume
             :rtype : String
         """
-        volume_xml = XMLGenerator('volume')
+        volume_xml = xmlgenerator.XMLGenerator('volume')
         volume_xml.name(cls._crop_name(name))
         volume_xml.capacity(str(capacity))
         with volume_xml.target:
@@ -120,7 +120,7 @@ class LibvirtXMLBuilder(object):
         :type name: String
         :type description: String
         """
-        xml_builder = XMLGenerator('domainsnapshot')
+        xml_builder = xmlgenerator.XMLGenerator('domainsnapshot')
         if name is not None:
             xml_builder.name(name)
         if description is not None:
@@ -204,7 +204,7 @@ class LibvirtXMLBuilder(object):
         :type rule: dict
            :rtype : String
         """
-        filter_xml = XMLGenerator('filter', name=name)
+        filter_xml = xmlgenerator.XMLGenerator('filter', name=name)
         if uuid:
             filter_xml.uuid(uuid)
         if rule:
@@ -222,7 +222,7 @@ class LibvirtXMLBuilder(object):
         :type rule: dict
            :rtype : String
         """
-        filter_xml = XMLGenerator('filter', name=name)
+        filter_xml = xmlgenerator.XMLGenerator('filter', name=name)
         filter_xml.filterref(filter=filterref)
         if uuid:
             filter_xml.uuid(uuid)
@@ -243,13 +243,15 @@ class LibvirtXMLBuilder(object):
         :type emulator: String
             :rtype : String
         """
-        node_xml = XMLGenerator("domain", type=hypervisor)
+        node_xml = xmlgenerator.XMLGenerator("domain", type=hypervisor)
         node_xml.name(cls._crop_name(name))
 
         if acpi:
             with node_xml.features:
+                # pylint: disable=pointless-statement
                 # noinspection PyStatementEffect
                 node_xml.acpi
+                # pylint: enable=pointless-statement
 
         cpu_args = {}
         if use_host_cpu:
@@ -270,8 +272,10 @@ class LibvirtXMLBuilder(object):
 
         if use_hugepages:
             with node_xml.memoryBacking:
+                # pylint: disable=pointless-statement
                 # noinspection PyStatementEffect
                 node_xml.hugepages
+                # pylint: enable=pointless-statement
 
         node_xml.clock(offset='utc')
         with node_xml.clock.timer(name='rtc',
@@ -341,9 +345,10 @@ class LibvirtXMLBuilder(object):
             iface_type = 'ethernet'
             iface_name = "{0}".format(name)
 
-        interface_xml = XMLGenerator('interface',
-                                     type=iface_type,
-                                     name=iface_name)
+        interface_xml = xmlgenerator.XMLGenerator(
+            'interface',
+            type=iface_type,
+            name=iface_name)
         interface_xml.start(mode="onboot")
 
         if vlanid:

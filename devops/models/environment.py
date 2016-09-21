@@ -270,14 +270,14 @@ class Environment(base.BaseModel):
             'describe_environment is deprecated in favor of '
             'DevopsClient.create_env_from_config', DeprecationWarning)
 
-        from devops.client import DevopsClient
-        client = DevopsClient()
+        from devops import client
+        dclient = client.DevopsClient()
 
         template = settings.DEVOPS_SETTINGS_TEMPLATE
         if template:
-            return client.create_env_from_config(template)
+            return dclient.create_env_from_config(template)
         else:
-            return client.create_env()
+            return dclient.create_env()
 
     @classmethod
     def create_environment(cls, full_config):
@@ -358,8 +358,8 @@ class Environment(base.BaseModel):
         logger.warning(msg)
         warnings.warn(msg, DeprecationWarning)
 
-        from devops.client import DevopsClient
-        env = DevopsClient().get_env(self.name)
+        from devops import client
+        env = client.DevopsClient().get_env(self.name)
         return env.get_admin_remote(login=login, password=password)
 
     # LEGACY,  for fuel-qa compatibility
@@ -372,8 +372,8 @@ class Environment(base.BaseModel):
         logger.warning(msg)
         warnings.warn(msg, DeprecationWarning)
 
-        from devops.client import DevopsClient
-        env = DevopsClient().get_env(self.name)
+        from devops import client
+        env = client.DevopsClient().get_env(self.name)
         return ssh_client.SSHClient(
             ip,
             auth=ssh_client.SSHAuth(

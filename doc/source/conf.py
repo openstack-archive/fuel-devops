@@ -30,7 +30,6 @@ sphinx_apidoc_main([
     '../../devops',
     # exclude dirs
     '../../devops/settings.py',
-    '../../devops/test_settings.py',
     '../../devops/migrations/',
     '../../devops/tests/',
     '../../devops/templates/',
