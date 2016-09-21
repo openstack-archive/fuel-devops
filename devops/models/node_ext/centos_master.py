@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from devops.helpers.helpers import wait_tcp
+from devops.helpers import helpers
 from devops import logger
 from devops import settings
 
@@ -28,9 +28,10 @@ class NodeExtension(object):
         self.node.start()
         ip = self.node.get_ip_address_by_network_name(
             settings.SSH_CREDENTIALS['admin_network'])
-        wait_tcp(host=ip, port=self.node.ssh_port,
-                 timeout=self.node.bootstrap_timeout,
-                 timeout_msg='Failed to bootstrap centos master')
+        helpers.wait_tcp(
+            host=ip, port=self.node.ssh_port,
+            timeout=self.node.bootstrap_timeout,
+            timeout_msg='Failed to bootstrap centos master')
         logger.info('Centos cloud image bootstrap complete')
 
     def deploy_wait(self):

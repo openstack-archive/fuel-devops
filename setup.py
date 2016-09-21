@@ -12,13 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from sys import version_info
+import sys
 
-from setuptools import find_packages
-from setuptools import setup
+import setuptools
 
 
-setup(
+setuptools.setup(
     name='fuel-devops',
     version='3.0.2',
     description='Library for creating and manipulating virtual environments',
@@ -28,7 +27,7 @@ setup(
     keywords='devops virtual environment',
     zip_safe=False,
     include_package_data=True,
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
     package_data={'devops': ['templates/*.yaml', 'templates/*.yml']},
     scripts=[
         'bin/dos.py',
@@ -51,7 +50,7 @@ setup(
         'tabulate',
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
-        'enum34' if version_info.major == 2 else ''
+        'enum34' if sys.version_info.major == 2 else ''
     ],
     tests_require=[
         'pytest>=2.7.1',

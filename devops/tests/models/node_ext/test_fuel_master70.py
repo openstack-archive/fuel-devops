@@ -67,9 +67,9 @@ class TestFuelMaster70Ext(DriverlessTestCase):
         self.send_keys_mock = self.patch('devops.models.Node.send_keys',
                                          create=True)
         self.wait_tcp_mock = self.patch(
-            'devops.models.node_ext.fuel_master.wait_tcp')
+            'devops.helpers.helpers.wait_tcp')
         self.wait_ssh_cmd_mock = self.patch(
-            'devops.models.node_ext.fuel_master.wait_ssh_cmd')
+            'devops.helpers.helpers.wait_ssh_cmd')
 
         self.node_ext = NodeExtension(self.node)
 

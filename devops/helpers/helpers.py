@@ -181,8 +181,8 @@ def get_private_keys(env):
     logger.warning(msg)
     warnings.warn(msg, DeprecationWarning)
 
-    from devops.client import DevopsClient
-    denv = DevopsClient().get_env(env.name)
+    from devops import client
+    denv = client.DevopsClient().get_env(env.name)
     return denv.get_private_keys()
 
 
@@ -196,8 +196,8 @@ def get_admin_remote(
     logger.warning(msg)
     warnings.warn(msg, DeprecationWarning)
 
-    from devops.client import DevopsClient
-    denv = DevopsClient().get_env(env.name)
+    from devops import client
+    denv = client.DevopsClient().get_env(env.name)
     return denv.get_admin_remote(login=login, password=password)
 
 
@@ -225,8 +225,8 @@ def get_admin_ip(env):
     logger.warning(msg)
     warnings.warn(msg, DeprecationWarning)
 
-    from devops.client import DevopsClient
-    denv = DevopsClient().get_env(env.name)
+    from devops import client
+    denv = client.DevopsClient().get_env(env.name)
     return denv.get_admin_ip()
 
 

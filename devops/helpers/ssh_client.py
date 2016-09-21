@@ -30,7 +30,6 @@ from devops import error
 from devops.helpers import decorators
 from devops.helpers import exec_result
 from devops.helpers import proc_enums
-from devops.helpers import retry
 from devops import logger
 
 
@@ -485,7 +484,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         return self.__ssh
 
-    @retry.retry(paramiko.SSHException, count=3, delay=3)
+    @decorators.retry(paramiko.SSHException, count=3, delay=3)
     def __connect(self):
         """Main method for connection open"""
         with self.lock:
