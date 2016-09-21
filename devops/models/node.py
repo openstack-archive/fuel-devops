@@ -77,6 +77,7 @@ class ExtendableNodeType(base.ParamedModelType):
 
     METHOD_NAMES = ('define', 'start', 'destroy', 'remove')
 
+    # pylint: disable=bad-mcs-classmethod-argument
     # noinspection PyMethodParameters
     def __new__(cls, name, bases, attrs):
         super_new = super(ExtendableNodeType, cls).__new__
@@ -100,6 +101,8 @@ class ExtendableNodeType(base.ParamedModelType):
             attrs[attr_name] = cls._install_ext_hook(attrs[attr_name])
 
         return super_new(cls, name, bases, attrs)
+
+    # pylint: enable=bad-mcs-classmethod-argument
 
     @staticmethod
     def _install_ext_hook(node_method):

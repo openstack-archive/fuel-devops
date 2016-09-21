@@ -105,9 +105,11 @@ class ParamedModelType(ModelBase):
 
         obj = super(ParamedModelType, cls).__call__(*args, **kwargs)
 
+        # noinspection PyProtectedMember
         if obj._class:
             # we store actual class name in _class attribute
             # so use it to load required class
+            # noinspection PyProtectedMember
             Cls = loader.load_class(obj._class)
             # replace base class
             obj.__class__ = Cls
@@ -273,6 +275,7 @@ class ParamedModelQuerySet(query.QuerySet):
 
     def __get_all_field_names(self):
         field_names = set()
+        # noinspection PyProtectedMember
         _meta = self.model._meta
         fields = _meta.get_fields()
         for field in fields:
@@ -282,6 +285,7 @@ class ParamedModelQuerySet(query.QuerySet):
                     field.related_model is None:
                 continue
             # Relations to child proxy models should not be included.
+            # noinspection PyProtectedMember
             if field.model != _meta.model and\
                     field.model._meta.concrete_model == _meta.concrete_model:
                 continue
@@ -302,7 +306,7 @@ class ParamedModelQuerySet(query.QuerySet):
         # Fix deprecated code usage from django
         field_names = self.__get_all_field_names()
 
-        for param in kwargs.keys():
+        for param in kwargs:
             first_subparam = param.split('__')[0]
             if first_subparam not in field_names:
                 kwargs_for_params[param] = kwargs[param]

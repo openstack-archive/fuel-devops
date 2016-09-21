@@ -19,7 +19,7 @@ from devops import logger
 
 
 def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
-                                  user_data_path,  admin_network,
+                                  user_data_path, admin_network,
                                   interface_name, admin_ip, admin_netmask,
                                   gateway,
                                   hostname,

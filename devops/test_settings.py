@@ -12,7 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# pylint: disable=wildcard-import, unused-wildcard-import
 from devops.settings import *  # noqa
+# pylint: enable=wildcard-import, unused-wildcard-import
 
 # make tests faster
 DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3'}

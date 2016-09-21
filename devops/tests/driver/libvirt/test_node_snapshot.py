@@ -123,8 +123,10 @@ class TestLibvirtNodeSnapshot(TestLibvirtNodeSnapshotBase):
         assert snapshot.memory_file is None
         assert snapshot.name == 'test1'
         with self.assertRaises(libvirt.libvirtError):
+            # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
             snapshot.parent
+            # pylint: enable=pointless-statement
         assert snapshot.state == 'shutoff'
 
         rxml = r"""<domainsnapshot>

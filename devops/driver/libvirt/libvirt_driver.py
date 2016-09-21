@@ -30,8 +30,8 @@ import netaddr
 from devops.driver.libvirt import libvirt_xml_builder as builder
 from devops import error
 from devops.helpers import cloud_image_settings
+from devops.helpers import decorators
 from devops.helpers import helpers
-from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops.helpers import subprocess_runner
 from devops import logger
@@ -471,7 +471,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
         """
         return self._libvirt_network.isActive()
 
-    @retry(libvirt.libvirtError, delay=3)
+    @decorators.retry(libvirt.libvirtError, delay=3)
     def define(self):
         # define filter first
         if self.driver.enable_nwfilters:
@@ -541,7 +541,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
     def start(self):
         self.create()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def create(self, *args, **kwargs):
         if not self.is_active():
             self._libvirt_network.create()
@@ -580,11 +580,11 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             except error.DevopsCalledProcessError:
                 pass
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def destroy(self):
         self._libvirt_network.destroy()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
@@ -620,7 +620,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             else:
                 raise
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def iface_define(self, name, ip=None, prefix=None, vlanid=None):
         """Define bridge interface
 
@@ -634,7 +634,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             builder.LibvirtXMLBuilder.build_iface_xml(
                 name, ip, prefix, vlanid))
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def iface_undefine(self, iface_name):
         """Start interface
 
@@ -721,7 +721,7 @@ class LibvirtVolume(volume.Volume):
             logger.error("Volume not found by UUID: {}".format(self.uuid))
             return None
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def define(self):
         # Generate libvirt volume name
         if self.node:
@@ -796,7 +796,7 @@ class LibvirtVolume(volume.Volume):
         if self.source_image is not None:
             self.upload(self.source_image, capacity)
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
@@ -819,7 +819,7 @@ class LibvirtVolume(volume.Volume):
         warnings.warn(msg, DeprecationWarning)
         logger.debug(msg)
 
-    @retry(libvirt.libvirtError, count=2)
+    @decorators.retry(libvirt.libvirtError, count=2)
     def upload(self, path, capacity=0):
         def chunk_render(_, _size, _fd):
             return _fd.read(_size)
@@ -989,7 +989,7 @@ class LibvirtNode(node.Node):
                 continue
             self._libvirt_node.sendKey(0, 0, list(key_code), len(key_code), 0)
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def define(self):
         """Define node
 
@@ -1075,18 +1075,18 @@ class LibvirtNode(node.Node):
     def start(self):
         self.create()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def create(self, *args, **kwargs):
         if not self.is_active():
             self._libvirt_node.create()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def destroy(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.destroy()
         super(LibvirtNode, self).destroy()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def remove(self, *args, **kwargs):
         if self.uuid:
             if self.exists():
@@ -1238,7 +1238,7 @@ class LibvirtNode(node.Node):
             libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_REDEFINE |
             libvirt.VIR_DOMAIN_SNAPSHOT_CREATE_CURRENT)
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def snapshot(self, name=None, force=False, description=None,
                  disk_only=False, external=False):
         super(LibvirtNode, self).snapshot()
@@ -1393,7 +1393,7 @@ class LibvirtNode(node.Node):
                             uuid=snap_disk_file).backing_store
                     disk.save()
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def _node_revert_snapshot_recreate_disks(self, name):
         """Recreate snapshot disks."""
         snapshot = self._get_snapshot(name)
@@ -1468,7 +1468,7 @@ class LibvirtNode(node.Node):
                 # Create new snapshot
                 self.snapshot(name=revert_name, external=True)
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def revert(self, name=None):
         """Method to revert node in state from snapshot
 
@@ -1525,7 +1525,7 @@ class LibvirtNode(node.Node):
         snapshots = self._libvirt_node.listAllSnapshots(0)
         return [Snapshot(snap) for snap in snapshots]
 
-    @retry(libvirt.libvirtError)
+    @decorators.retry(libvirt.libvirtError)
     def erase_snapshot(self, name):
         if self.has_snapshot(name):
 

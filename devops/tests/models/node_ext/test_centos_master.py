@@ -16,7 +16,7 @@ import collections
 
 import mock
 
-from devops.models import Environment
+from devops import models
 from devops.tests.driver.libvirt.base import LibvirtTestCase
 from django.conf import settings
 
@@ -45,7 +45,7 @@ class TestCentosMasterExt(LibvirtTestCase):
 
         # Environment with an 'admin' network
 
-        self.env = Environment.create('test')
+        self.env = models.Environment.create('test')
         self.group = self.env.add_group(
             group_name='test_group',
             driver_name='devops.driver.libvirt',
@@ -79,7 +79,7 @@ class TestCentosMasterExt(LibvirtTestCase):
             networks=['fuelweb_admin'])
 
         self.wait_tcp_mock = self.patch(
-            'devops.models.node_ext.centos_master.wait_tcp')
+            'devops.helpers.helpers.wait_tcp')
 
     @mock.patch(
         'devops.helpers.subprocess_runner.Subprocess', autospec=True)

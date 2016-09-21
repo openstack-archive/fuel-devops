@@ -111,7 +111,8 @@ class DevopsEnvironment(object):
         raise error.DevopsError(
             'Environment {!r} has no admin node'.format(self._env.name))
 
-    def get_admin_login(self):
+    @staticmethod
+    def get_admin_login():
         return settings.SSH_CREDENTIALS['login']
 
     def get_admin_ip(self):

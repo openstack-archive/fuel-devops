@@ -25,6 +25,7 @@ try:
 except AppRegistryNotReady:
     django.setup()
 
+# pylint: disable=wrong-import-position
 from devops.models.driver import Driver
 from devops.models.environment import Environment
 from devops.models.group import Group
@@ -36,6 +37,7 @@ from devops.models.network import L2NetworkDevice
 from devops.models.node import Node
 from devops.models.volume import Volume
 from devops.models.volume import DiskDevice
+# pylint: enable=wrong-import-position
 
 __all__ = ['Driver', 'Environment', 'Group', 'Address', 'Interface',
            'AddressPool', 'NetworkPool', 'L2NetworkDevice', 'Node',

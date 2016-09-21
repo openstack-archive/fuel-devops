@@ -423,7 +423,9 @@ def _calculate_numa(numa_nodes, vcpu, memory, name):
                                                    name))
         for x in range(numa_nodes):
             # List of cpu IDs for the numa node
+            # pylint: disable=range-builtin-not-iterating
             cpus = range(x * cpus_per_numa, (x + 1) * cpus_per_numa)
+            # pylint: enable=range-builtin-not-iterating
             cell = {
                 'cpus': ','.join(map(str, cpus)),
                 'memory': memory_per_numa,

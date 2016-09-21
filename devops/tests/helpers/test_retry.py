@@ -12,12 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 import unittest
 
+import mock
+
 from devops import error
-from devops.helpers import retry
+from devops.helpers import decorators
 
 
 class TestRetry(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestRetry(unittest.TestCase):
             def __init__(self, method):
                 self.m = method
 
-            @retry.retry(TypeError, count=count, delay=delay)
+            @decorators.retry(TypeError, count=count, delay=delay)
             def method(self):
                 return self.m()
 
@@ -93,6 +93,6 @@ class TestRetry(unittest.TestCase):
         ))
 
     def test_wrong_arg(self):
-        retry_dec = retry.retry(AttributeError)
+        retry_dec = decorators.retry(AttributeError)
         with self.assertRaises(error.DevopsException):
             retry_dec('wrong')
