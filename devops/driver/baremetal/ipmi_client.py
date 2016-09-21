@@ -144,9 +144,6 @@ class IpmiClient(object):
             args = " ".join(cmd).split(" ")
             ipmi_cmd.extend(args)
 
-        out = None
-        err = None
-        code = None
         args = " ".join(ipmi_cmd).split(" ")
 
         try:
