@@ -33,6 +33,7 @@ from devops.helpers import cloud_image_settings
 from devops.helpers import decorators
 from devops.helpers import helpers
 from devops.helpers import scancodes
+from devops.helpers import ssh_client
 from devops.helpers import subprocess_runner
 from devops import logger
 from devops.models import base
@@ -197,10 +198,17 @@ class LibvirtDriver(driver.Driver):
         CPU "host-model" mode be used to set CPU settings. If set to False,
         default mode ("custom") will be used.  (default: True)
 
+    :param remote_host: If remote_host is set, execute commands using
+        SSHClient. Required if connection_string point to remote host too.
+
     Note: This class is imported as Driver at .__init__.py
     """
 
     connection_string = base.ParamField(default="qemu:///system")
+    remote_host = base.ParamField(default="")
+    port = base.ParamField(default=22)
+    username = base.ParamField(default="")
+    password = base.ParamField(default="")
     storage_pool_name = base.ParamField(default="default")
     stp = base.ParamField(default=True)
     hpet = base.ParamField(default=True)
@@ -293,6 +301,16 @@ class LibvirtDriver(driver.Driver):
 
     def get_libvirt_version(self):
         return self.conn.getLibVersion()
+
+    @property
+    def cmd_executor(self):
+        if not self.remote_host:
+            return subprocess_runner.Subprocess
+        return ssh_client.SSHClient(
+            host=self.remote_host, port=self.port,
+            auth=ssh_client.SSHAuth(
+                username=self.username,
+                password=self.password))
 
 
 class LibvirtL2NetworkDevice(network.L2NetworkDevice):
@@ -576,7 +594,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             # to any bridge before adding it to the current bridge instead
             # of this try/except workaround
             try:
-                subprocess_runner.Subprocess.check_call(cmd)
+                self.driver.cmd_executor.check_call(cmd)
             except error.DevopsCalledProcessError:
                 pass
 
