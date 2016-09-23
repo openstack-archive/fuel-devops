@@ -15,17 +15,18 @@
 import datetime
 import itertools
 import os
+import re
 import shutil
 import time
 import uuid
 import warnings
 import xml.etree.ElementTree as ET
 
-
 from django.conf import settings
 from django.utils import functional
 import libvirt
 import netaddr
+import paramiko
 
 from devops.driver.libvirt import libvirt_xml_builder as builder
 from devops import error
@@ -33,6 +34,7 @@ from devops.helpers import cloud_image_settings
 from devops.helpers import helpers
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
+from devops.helpers import ssh_client
 from devops.helpers import subprocess_runner
 from devops import logger
 from devops.models import base
@@ -293,6 +295,54 @@ class LibvirtDriver(driver.Driver):
 
     def get_libvirt_version(self):
         return self.conn.getLibVersion()
+
+    def shell(self):
+        """Return an instance of the shell command runner
+
+        - If self.connection_string contains '+ssh://', then will be used
+          SSHClient with parameters taken from self.connection_string:
+          username, host and port, for example:
+          connection_string: qemu+ssh://<username>@<host>:<port>/system
+        - Else, a Subprocess
+        """
+        if '+ssh://' in self.connection_string:
+            # Using SSHClient to execute shell commands on remote host
+            results = re.search("""
+                \+ssh:\/\/             # prefix: '+ssh://'
+                (?:([\w\-\.\/]+)       # group 1 [optional]: username
+                @)?                    #                     username separator
+                ([\w\-\.\/]+)          # group 2: hostname
+                :?                     # [optional semicolon separator]
+                (\d+)?                 # group 3 [optional]: port
+                \/.+                   # suffix: '/' and the rest of the string
+                """,
+                self.connection_string, re.VERBOSE)
+            username = results.group(1) or os.getlogin()
+            host = results.group(2)
+            port = int(results.group(3)) or 22
+            key_file = '~/.ssh/id_rsa'
+            # TODO(ddmitriev): SSH keys should be used as a default fallback
+            # in the SSHClient for cases when no password or keys were
+            # specified. This try/except code with hardcoded key_file
+            # should be removed after implementation of this fallback.
+            try:
+                key = paramiko.RSAKey.from_private_key_file(
+                    os.path.expanduser(key_file))
+            except (paramiko.SSHException, IOError):
+                raise error.DevopsError(
+                    "Unable to read RSA key from '{}'".format(key_file))
+            logger.debug("Initializing SSHClient for username:{0} host:{1} "
+                         "port:{2}".format(username, host, port))
+            return ssh_client.SSHClient(
+                host=host,
+                port=port,
+                auth=ssh_client.SSHAuth(
+                    username=username,
+                    key=key))
+        else:
+            # Using SubprocessClient to execute shell commands on local host
+            logger.debug("Initializing subprocess_runner for local host")
+            return subprocess_runner.Subprocess()
 
 
 class LibvirtL2NetworkDevice(network.L2NetworkDevice):
@@ -576,7 +626,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             # to any bridge before adding it to the current bridge instead
             # of this try/except workaround
             try:
-                subprocess_runner.Subprocess.check_call(cmd)
+                self.driver.shell.check_call(cmd)
             except error.DevopsCalledProcessError:
                 pass
 
