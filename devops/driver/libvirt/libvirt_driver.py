@@ -15,17 +15,18 @@
 import datetime
 import itertools
 import os
+import re
 import shutil
 import time
 import uuid
 import warnings
 import xml.etree.ElementTree as ET
 
-
 from django.conf import settings
 from django.utils import functional
 import libvirt
 import netaddr
+import paramiko
 
 from devops.driver.libvirt import libvirt_xml_builder as builder
 from devops import error
@@ -33,6 +34,7 @@ from devops.helpers import cloud_image_settings
 from devops.helpers import decorators
 from devops.helpers import helpers
 from devops.helpers import scancodes
+from devops.helpers import ssh_client
 from devops.helpers import subprocess_runner
 from devops import logger
 from devops.models import base
@@ -294,6 +296,60 @@ class LibvirtDriver(driver.Driver):
     def get_libvirt_version(self):
         return self.conn.getLibVersion()
 
+    @property
+    def shell(self):
+        """Return an instance of the shell command runner
+
+        - If self.connection_string contains '+ssh://', then will be used
+          SSHClient with parameters taken from self.connection_string:
+          username, host and port, for example:
+          connection_string: qemu+ssh://<username>@<host>:<port>/system
+        - Else, a subprocess_runner.Subprocess() will be returned
+        """
+        if '+ssh://' in self.connection_string:
+            # Using SSHClient to execute shell commands on remote host
+            # Regexp to extract username from the libvirt URI.
+            # See http://libvirt.org/remote.html#Remote_URI_reference
+            results = re.search("""
+                \+ssh:\/\/                   # prefix: '+ssh://'
+                (?:(?P<user>[\w\-\.\/]+)@)?  # group 1 [optional]: username
+                (?P<host>[\w\-\.\/]+)        # group 2: hostname
+                (?::(?P<port>\d{1,5}))?      # group 3 [optional]: port
+                /.+                          # suffix
+                """, self.connection_string, re.VERBOSE)
+            username = results.group('user') or os.getlogin()
+            host = results.group('host')
+            port = int(results.group('port') or 22)
+
+            agent = paramiko.Agent()
+            keys = agent.get_keys()
+            if not keys:
+                # SSH Agent doesn't contain keys, trying to get key from file
+                key_file = '~/.ssh/id_rsa'
+                # TODO(ddmitriev): SSH keys should be used as a default
+                # fallback in the SSHClient for cases when no password or keys
+                # were specified. This try/except code with hardcoded key_file
+                # should be removed after implementation of this fallback.
+                try:
+                    key = paramiko.RSAKey.from_private_key_file(
+                        os.path.expanduser(key_file))
+                except (paramiko.SSHException, IOError):
+                    raise error.DevopsError(
+                        "Unable to read RSA key from '{}'".format(key_file))
+                logger.debug("Initializing SSHClient for username:'{0}', host:"
+                             "'{1}', port:'{2}'".format(username, host, port))
+                keys = [key]
+            return ssh_client.SSHClient(
+                host=host,
+                port=port,
+                auth=ssh_client.SSHAuth(
+                    username=username,
+                    keys=keys))
+        else:
+            # Using SubprocessClient to execute shell commands on local host
+            logger.debug("Initializing subprocess_runner for local host")
+            return subprocess_runner.Subprocess
+
 
 class LibvirtL2NetworkDevice(network.L2NetworkDevice):
     """L2 network device based on libvirt Network
@@ -443,6 +499,24 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
         tag=base.ParamField(default=None),
     )
 
+    def __repr__(self):
+        return (
+            '{0}(name={1}, address_pool={2!r}, group={3}, uuid={4!r}, '
+            'forward={5!r}, dhcp={6!r}, stp={7!r}, vlan_ifaces={8!r}, '
+            'parent_iface={9!s}@{10})'.format(
+                self.__class__.__name__,
+                self.name,
+                self.address_pool.net,
+                self.group.name,
+                self.uuid,
+                self.forward.mode,
+                self.dhcp,
+                self.stp,
+                self.vlan_ifaces,
+                self.parent_iface.phys_dev or self.parent_iface.l2_net_dev,
+                self.parent_iface.tag
+            ))
+
     @property
     def _libvirt_network(self):
         try:
@@ -576,7 +650,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             # to any bridge before adding it to the current bridge instead
             # of this try/except workaround
             try:
-                subprocess_runner.Subprocess.check_call(cmd)
+                self.driver.shell.check_call(cmd)
             except error.DevopsCalledProcessError:
                 pass
 
