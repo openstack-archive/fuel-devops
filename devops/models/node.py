@@ -13,6 +13,7 @@
 #    under the License.
 
 import functools
+import warnings
 
 from django.db import models
 from django.utils import functional
@@ -269,9 +270,12 @@ class Node(
     def interface_by_network_name(self, network_name):
         logger.warning('interface_by_network_name is deprecated in favor of '
                        'get_interface_by_network_name')
-        raise DeprecationWarning(
+        warnings.warn(
             "'Node.interface_by_network_name' is deprecated. "
-            "Use 'Node.get_interface_by_network_name' instead.")
+            "Use 'Node.get_interface_by_network_name' instead.",
+            DeprecationWarning
+            )
+        return self.get_interface_by_network_name(network_name=network_name)
 
     def get_interface_by_network_name(self, network_name):
         return self.interface_set.get(
