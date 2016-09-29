@@ -53,6 +53,16 @@ class Environment(base.BaseModel):
         return 'admin'
 
     @property
+    def admin_net2(self):
+        msg = (
+            'Environment.admin_net2 is deprecated. '
+            'Replace by string "admin2".'
+        )
+        logger.warning(msg)
+        warnings.warn(msg, DeprecationWarning)
+        return 'admin2'
+
+    @property
     def nat_interface(self):
         msg = (
             'Environment.nat_interface is deprecated.'
