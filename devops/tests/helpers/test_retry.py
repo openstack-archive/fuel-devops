@@ -46,6 +46,7 @@ class TestRetry(unittest.TestCase):
     def test_no_retry(self):
         method_mock = mock.Mock()
 
+        # noinspection PyPep8Naming
         MyClass = self.create_class_with_retry(3, 5)
         c = MyClass(method_mock)
 
@@ -57,6 +58,7 @@ class TestRetry(unittest.TestCase):
         method_mock = mock.Mock()
         method_mock.side_effect = (TypeError, TypeError, 3)
 
+        # noinspection PyPep8Naming
         MyClass = self.create_class_with_retry(3, 5)
         c = MyClass(method_mock)
 
@@ -76,6 +78,7 @@ class TestRetry(unittest.TestCase):
         method_mock = mock.Mock()
         method_mock.side_effect = (TypeError, TypeError, AttributeError)
 
+        # noinspection PyPep8Naming
         MyClass = self.create_class_with_retry(3, 5)
         c = MyClass(method_mock)
 

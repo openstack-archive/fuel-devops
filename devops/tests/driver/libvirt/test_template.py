@@ -238,6 +238,7 @@ class TestLibvirtTemplate(LibvirtTestCase):
 
         self.os_mock = self.patch('devops.helpers.helpers.os')
         self.os_mock.urandom = os.urandom
+        # noinspection PyPep8Naming
         Size = collections.namedtuple('Size', ['st_size'])
         self.file_sizes = {
             '/tmp/admin.iso': Size(st_size=500),

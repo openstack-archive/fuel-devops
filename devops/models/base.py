@@ -75,6 +75,7 @@ class ParamedModelType(ModelBase):
                 # add proxy=True by default
                 if 'Meta' not in attrs:
                     attrs['Meta'] = type('Meta', (object, ), {})
+                # noinspection PyPep8Naming
                 Meta = attrs['Meta']
                 Meta.proxy = True
 
@@ -109,7 +110,7 @@ class ParamedModelType(ModelBase):
         if obj._class:
             # we store actual class name in _class attribute
             # so use it to load required class
-            # noinspection PyProtectedMember
+            # noinspection PyProtectedMember,PyPep8Naming
             Cls = loader.load_class(obj._class)
             # replace base class
             obj.__class__ = Cls
@@ -243,6 +244,7 @@ class ParamMultiField(ParamFieldBase):
 
         self.proxy_fields = {field.param_key: field
                              for field in self.subfields}
+        # noinspection PyPep8Naming
         Proxy = type('ParamMultiFieldProxy', (object, ), self.proxy_fields)
         self._proxy = Proxy()
 

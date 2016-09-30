@@ -32,6 +32,7 @@ class TestLibvirtVolumeBackingStore(LibvirtTestCase):
                    self.open_mock, create=True)
 
         self.os_mock = self.patch('devops.helpers.helpers.os')
+        # noinspection PyPep8Naming
         Size = collections.namedtuple('Size', ['st_size'])
         self.file_sizes = {
             '/tmp/admin.iso': Size(st_size=500),
