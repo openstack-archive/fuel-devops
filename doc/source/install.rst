@@ -160,7 +160,6 @@ You can configure PostgreSQL database or as an alternative SQLite.
 Configuring PostgreSQL
 ++++++++++++++++++++++
 
-
 Set local peers to be trusted by default, create user and db and load fixtures.
 
 .. code-block:: bash
@@ -177,6 +176,21 @@ Set local peers to be trusted by default, create user and db and load fixtures.
       sudo -u postgres createuser -P fuel_devops
       sudo -u postgres psql -c "CREATE ROLE fuel_devops WITH LOGIN PASSWORD 'fuel_devops'"
       sudo -u postgres createdb fuel_devops -O fuel_devops
+
+  If you have already created database from previous install of the same fuel-devops version,
+  you can set environment variables to use it.
+
+  Here are the default values that you can override:
+
+  .. code-block:: bash
+
+      export DEVOPS_DB_ENGINE='django.db.backends.postgresql_psycopg2'
+      export DEVOPS_DB_NAME=fuel_devops
+      export DEVOPS_DB_USER=fuel_devops
+      export DEVOPS_DB_PASSWORD=fuel_devops
+      export DEVOPS_DB_HOST=127.0.0.1
+      export DEVOPS_DB_PORT=5432
+      export DEVOPS_DB_CHARSET=UTF8
 
 Configuring SQLite3 database
 ++++++++++++++++++++++++++++

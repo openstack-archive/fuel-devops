@@ -30,6 +30,13 @@ Requirements to use the template with the baremetal lab:
                                 # which is included into the bridge, and
                                 # another iface is provided in the environment
                                 # variable BAREMETAL_ADMIN_IFACE.
+                                # Example for existing bridge:
+                                # $ ip link add veth0 type veth peer name veth1
+                                # $ ip link set up veth0
+                                # $ ip link set up veth1
+                                # $ brctl addif <br_admin> veth0
+                                # $ export BAREMETAL_ADMIN_IFACE=veth1
+
        - IPMI_HOST{1..5}, IPMI_USER, IPMI_PASSWORD  # Access credentials
                                                     # to IPMI nodes
 3. Configure MACs for *all* interfaces. In this template, order of the
