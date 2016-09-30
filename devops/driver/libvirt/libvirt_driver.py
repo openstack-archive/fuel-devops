@@ -20,6 +20,7 @@ import shutil
 import time
 import uuid
 import warnings
+# noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
 
 from django.conf import settings
@@ -218,6 +219,7 @@ class LibvirtDriver(driver.Driver):
     @functional.cached_property
     def conn(self):
         """Connection to libvirt api"""
+        # noinspection PyTypeChecker
         return LibvirtManager.get_connection(self.connection_string)
 
     def get_capabilities(self):
@@ -888,7 +890,8 @@ class LibvirtVolume(volume.Volume):
     def get_path(self):
         return self._libvirt_volume.path()
 
-    def fill_from_exist(self):
+    @staticmethod
+    def fill_from_exist():
         msg = 'LibvirtVolume.fill_from_exist() is deprecated and do nothing'
         warnings.warn(msg, DeprecationWarning)
         logger.debug(msg)

@@ -106,6 +106,7 @@ class Shell(object):
     def do_snapshot_list(self):
         snapshots = collections.OrderedDict()
 
+        # noinspection PyPep8Naming
         Snap = collections.namedtuple('Snap', ['info', 'nodes'])
 
         for node in self.env.get_nodes():

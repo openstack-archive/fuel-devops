@@ -86,26 +86,9 @@ DEFAULT_MASTER_FQDN = "{hostname}.{domain}".format(
 MASTER_FQDN = os.environ.get('MASTER_FQDN', DEFAULT_MASTER_FQDN)
 MASTER_DNS = os.environ.get('MASTER_DNS', DEFAULT_DNS)
 
-DEFAULT_MASTER_BOOTSTRAP_LOG = '/var/log/puppet/bootstrap_admin_node.log'
-
-MASTER_BOOTSTRAP_LOG = os.environ.get('MASTER_BOOTSTRAP_LOG',
-                                      DEFAULT_MASTER_BOOTSTRAP_LOG)
-
-USE_HUGEPAGES = get_var_as_bool('USE_HUGEPAGES', False)
-
-try:
-    from local_settings import *  # noqa
-except ImportError:
-    pass
-
 #
 # Settings migrated from Fuel system tests
 #
-
-OPENSTACK_RELEASE_CENTOS = 'centos'
-OPENSTACK_RELEASE_UBUNTU = 'ubuntu'
-OPENSTACK_RELEASE = os.environ.get(
-    'OPENSTACK_RELEASE', OPENSTACK_RELEASE_CENTOS).lower()
 
 NODE_VOLUME_SIZE = int(os.environ.get('NODE_VOLUME_SIZE', 50))
 ADMIN_NODE_VOLUME_SIZE = int(os.environ.get('ADMIN_NODE_VOLUME_SIZE', 75))

@@ -13,6 +13,7 @@
 #    under the License.
 
 from xml.dom import minidom
+# noinspection PyPep8Naming
 from xml.etree import ElementTree as ET
 
 import six

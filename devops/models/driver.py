@@ -28,6 +28,7 @@ class Driver(base.ParamedModel, base.BaseModel):
 
     @staticmethod
     def driver_create(name, **params):
+        # noinspection PyPep8Naming
         DriverCls = loader.load_class(
             '{driver_name}:Driver'.format(driver_name=name))
         return DriverCls.objects.create(

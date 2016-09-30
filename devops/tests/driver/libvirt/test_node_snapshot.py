@@ -13,6 +13,7 @@
 #    under the License.
 
 import re
+# noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
 
 import libvirt

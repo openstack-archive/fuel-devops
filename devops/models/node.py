@@ -172,6 +172,7 @@ class Node(
     @functional.cached_property
     def ext(self):
         try:
+            # noinspection PyPep8Naming
             ExtCls = loader.load_class(
                 'devops.models.node_ext.{ext_name}:NodeExtension'
                 ''.format(ext_name=self.role or 'default'))
