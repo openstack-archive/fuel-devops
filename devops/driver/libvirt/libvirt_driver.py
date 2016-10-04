@@ -1141,7 +1141,6 @@ class LibvirtNode(node.Node):
             acpi=self.driver.enable_acpi,
             numa=self.numa,
         )
-        logger.debug(node_xml)
         self.uuid = self.driver.conn.defineXML(node_xml).UUIDString()
 
         if self.cloud_init_volume_name is not None:
@@ -1388,7 +1387,6 @@ class LibvirtNode(node.Node):
         )
 
         domain = self._libvirt_node
-        logger.debug(xml)
         logger.debug(domain.state(0))
 
         domain.snapshotCreateXML(xml, create_xml_flag)
