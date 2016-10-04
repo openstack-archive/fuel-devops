@@ -87,6 +87,8 @@ class TestDefaultTemplate(TestCase):
           ip_reserved:
             gateway: 1
             l2_network_device: 1
+          vlan_end: 999
+          vlan_start: 900
       public:
         net: 10.109.0.0/16:24
         params:
@@ -322,6 +324,8 @@ class TestDefaultTemplate(TestCase):
           ip_reserved:
             gateway: 1
             l2_network_device: 1
+          vlan_end: 999
+          vlan_start: 900
       public:
         net: 10.109.0.0/16:24
         params:
