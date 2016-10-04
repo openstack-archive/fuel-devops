@@ -372,21 +372,26 @@ def create_address_pools(interfaceorder, networks_pools):
         } for iname in interfaceorder
     }
 
-    if 'public' in interfaceorder:
-        # Put floating IP range for public network
-        default_pool_name = 'default'
-        floating_pool_name = 'floating'
+    for address_pool in address_pools:
+        if 'private' in address_pool:
+            address_pools[address_pool][params]['vlan_start'] = 900
+            address_pools[address_pool][params]['vlan_end'] = 999
 
-        # Take a first subnet with necessary size and calculate the size
-        net = netaddr.IPNetwork(networks_pools['public'][0])
-        new_prefix = int(networks_pools['public'][1])
-        subnet = next(net.subnet(prefixlen=new_prefix))
-        network_size = subnet.size
+        if 'public' in address_pool:
+            # Put floating IP range for public network
+            default_pool_name = 'default'
+            floating_pool_name = 'floating'
 
-        address_pools['public']['params']['ip_ranges'][default_pool_name] = [
-            2, network_size // 2 - 1]
-        address_pools['public']['params']['ip_ranges'][floating_pool_name] = [
-            network_size // 2, -2]
+            # Take a first subnet with necessary size and calculate the size
+            net = netaddr.IPNetwork(networks_pools['public'][0])
+            new_prefix = int(networks_pools['public'][1])
+            subnet = next(net.subnet(prefixlen=new_prefix))
+            network_size = subnet.size
+
+            address_pools[address_pool]['params']['ip_ranges'][
+                default_pool_name] = [2, network_size // 2 - 1]
+            address_pools[address_pool]['params']['ip_ranges'][
+                floating_pool_name] = [network_size // 2, -2]
 
     return address_pools
 
