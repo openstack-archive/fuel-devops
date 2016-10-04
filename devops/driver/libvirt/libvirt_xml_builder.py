@@ -18,6 +18,7 @@ import hashlib
 import six
 
 from devops.helpers import xmlgenerator
+from devops import logger
 
 
 class LibvirtXMLBuilder(object):
@@ -88,6 +89,7 @@ class LibvirtXMLBuilder(object):
                         if has_pxe_server:
                             network_xml.bootp(file='pxelinux.0')
 
+        logger.debug(str(network_xml))
         return str(network_xml)
 
     @classmethod
@@ -108,6 +110,7 @@ class LibvirtXMLBuilder(object):
             with volume_xml.backingStore:
                 volume_xml.path(backing_store_path)
                 volume_xml.format(type=backing_store_format)
+        logger.debug(str(volume_xml))
         return str(volume_xml)
 
     @classmethod
@@ -141,6 +144,7 @@ class LibvirtXMLBuilder(object):
                     with xml_builder.disk(name=disk['disk_target_dev'],
                                           snapshot='external'):
                         xml_builder.source(file=disk['disk_volume_path'])
+        logger.debug(str(snapshot_xml))
         return str(xml_builder)
 
     @classmethod
@@ -210,6 +214,7 @@ class LibvirtXMLBuilder(object):
         if rule:
             with filter_xml.rule(**rule):
                 filter_xml.all()
+        logger.debug(str(filter_xml))
         return str(filter_xml)
 
     @classmethod
@@ -229,6 +234,7 @@ class LibvirtXMLBuilder(object):
         if rule:
             with filter_xml.rule(**rule):
                 filter_xml.all()
+        logger.debug(str(filter_xml))
         return str(filter_xml)
 
     @classmethod
@@ -326,6 +332,7 @@ class LibvirtXMLBuilder(object):
                 node_xml.target(port='0')
             with node_xml.console(type='pty'):
                 node_xml.target(type='serial', port='0')
+        logger.debug(str(node_xml))
         return str(node_xml)
 
     @classmethod
@@ -358,4 +365,5 @@ class LibvirtXMLBuilder(object):
         if (ip is not None) and (prefix is not None):
             with interface_xml.protocol(family='ipv4'):
                 interface_xml.ip(address=ip, prefix=prefix)
+        logger.debug(str(interface_xml))
         return str(interface_xml)
