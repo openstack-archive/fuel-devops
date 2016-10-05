@@ -34,7 +34,8 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
 
     # create meta_data and user_data
 
-    meta_data_context = {
+    # Variables in the '{ }' that will be substituted with real values
+    data_context = {
         "interface_name": interface_name,
         "address": admin_ip,
         "network": admin_network,
@@ -56,15 +57,10 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                              "local-hostname: {hostname}")
 
     logger.debug("meta_data contains next data: \n{}".format(
-        meta_data_content.format(**meta_data_context)))
+        meta_data_content.format(**data_context)))
 
     with open(meta_data_path, 'w') as f:
-        f.write(meta_data_content.format(**meta_data_context))
-
-    user_data_context = {
-        "interface_name": interface_name,
-        "gateway": gateway,
-    }
+        f.write(meta_data_content.format(**data_context))
 
     if user_data_content is None:
         user_data_content = ("\n#cloud-config\n"
@@ -82,10 +78,10 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                              "{gateway} {interface_name}")
 
     logger.debug("user_data contains next data: \n{}".format(
-        user_data_content.format(**user_data_context)))
+        user_data_content.format(**data_context)))
 
     with open(user_data_path, 'w') as f:
-        f.write(user_data_content.format(**user_data_context))
+        f.write(user_data_content.format(**data_context))
 
     # Generate cloud_ISO
     cmd = "genisoimage -output {} " \
