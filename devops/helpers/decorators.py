@@ -22,7 +22,6 @@ import sys
 import threading
 import time
 
-import mock  # Used by unit tests
 import six
 
 from devops import error
@@ -178,7 +177,19 @@ def _getcallargs(func, *positional, **named):
 # pylint:enable=no-member
 
 
-def pretty_repr(src, indent=0, no_indent_start=False):
+def _simple(item):
+    """Check for nested iterations: True, if not"""
+    return not isinstance(item, (list, set, tuple, dict))
+
+
+_formatters = {
+    'simple': "{spc:<{indent}}{val!r}".format,
+    'dict': "\n{spc:<{indent}}{key!r:{size}}: {val},".format,
+    'iterable': "{nl}{spc:<{indent}}{elem},".format
+    }
+
+
+def pretty_repr(src, indent=0, no_indent_start=False, max_indent=20):
     """Make human readable repr of object
 
     :param src: object to process
@@ -187,17 +198,15 @@ def pretty_repr(src, indent=0, no_indent_start=False):
     :type indent: int
     :param no_indent_start: do not indent open bracket and simple parameters
     :type no_indent_start: bool
+    :param max_indent: maximal indent before classic repr() call
+    :type max_indent: int
     :return: formatted string
     """
-    formatters = {
-        'simple': "{spc:<{indent}}{val!r}",
-        'dict': "\n{spc:<{indent}}{key!r:{size}}: {val},",
-        'iterable': "\n{spc:<{indent}}{elem!r},"
-    }
-    if not isinstance(src, (list, set, tuple, dict)):
-        return formatters['simple'].format(
+    if _simple(src) or indent >= max_indent:
+        indent = 0 if no_indent_start else indent
+        return _formatters['simple'](
             spc='',
-            indent=0 if no_indent_start else indent,
+            indent=indent,
             val=src
         )
     if isinstance(src, dict):
@@ -205,7 +214,7 @@ def pretty_repr(src, indent=0, no_indent_start=False):
         result = ''
         max_len = len(max([repr(key) for key in src])) if src else 0
         for key, val in src.items():
-            result += formatters['dict'].format(
+            result += _formatters['dict'](
                 spc='',
                 indent=indent + 4,
                 size=max_len,
@@ -215,10 +224,10 @@ def pretty_repr(src, indent=0, no_indent_start=False):
         return (
             '\n{start:>{indent}}'.format(
                 start=prefix,
-                indent=indent
+                indent=indent + 1
             ) +
             result +
-            '\n{end:>{indent}}'.format(end=suffix, indent=indent)
+            '\n{end:>{indent}}'.format(end=suffix, indent=indent + 1)
         )
     if isinstance(src, list):
         prefix, suffix = '[', ']'
@@ -228,17 +237,18 @@ def pretty_repr(src, indent=0, no_indent_start=False):
         prefix, suffix = '{', '}'
     result = ''
     for elem in src:
-        result += formatters['iterable'].format(
+        result += _formatters['iterable'](
+            nl='\n' if _simple(elem) else '',
             spc='',
             indent=indent + 4,
-            elem=elem
+            elem=pretty_repr(elem, indent + 4, no_indent_start=True)
         )
     return (
         '\n{start:>{indent}}'.format(
             start=prefix,
-            indent=indent) +
+            indent=indent + 1) +
         result +
-        '\n{end:>{indent}}'.format(end=suffix, indent=indent)
+        '\n{end:>{indent}}'.format(end=suffix, indent=indent + 1)
     )
 
 
@@ -291,7 +301,7 @@ def logwrap(log=logger, log_level=logging.DEBUG, exc_level=logging.ERROR):
             return result
         return wrapped
 
-    if not isinstance(log, (logging.Logger, mock.Mock)):
+    if not isinstance(log, logging.Logger):
         func, log = log, logger
         return real_decorator(func)
 
