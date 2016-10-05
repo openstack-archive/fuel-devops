@@ -194,10 +194,21 @@ class AddressPool(base.ParamedModel, base.BaseModel):
             return None
 
     def next_ip(self):
+        """Get next IP address from the address pool
+
+        If 'dhcp' ip_range specified for the address pool, then the
+        IP addresses will be taken from this pool.
+        Else, IP addresses will be taken from the range
+        [ x.x.x.x + 2 : x.x.x.x - 2 ]
+        """
+        range_start = netaddr.IPAddress(
+            self.ip_range_start('dhcp') or self.ip_network[2])
+        range_end = netaddr.IPAddress(
+            self.ip_range_end('dhcp') or self.ip_network[-2])
         for ip in self.ip_network.iter_hosts():
             # if ip < self.ip_pool_start or ip > self.ip_pool_end:
             # Skip net, gw and broadcast addresses in the address pool
-            if ip < self.ip_network[2] or ip > self.ip_network[-2]:
+            if ip < range_start or ip > range_end:
                 continue
             already_exists = Address.objects.filter(
                 interface__l2_network_device__address_pool=self,
