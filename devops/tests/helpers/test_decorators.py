@@ -222,6 +222,62 @@ class TestPrettyRepr(unittest.TestCase):
             '\n{\n    1 : 1,\n    2 : 2,\n    33: 33,\n}'
         )
 
+    def test_nested_dict(self):
+        test_obj = [
+            {
+                1:
+                    {
+                        2: 3
+                    },
+                4:
+                    {
+                        5: 6
+                    },
+            },
+            {
+                7: 8,
+                9: (10, 11)
+            },
+            (
+                12,
+                13,
+            ),
+            {14: {15: {16: {17: {18: {19: [20]}}}}}}
+        ]
+        exp_repr = (
+            '\n[    '
+            '\n    {'
+            '\n        1: '
+            '\n            {'
+            '\n                2: 3,'
+            '\n            },'
+            '\n        4: '
+            '\n            {'
+            '\n                5: 6,'
+            '\n            },'
+            '\n    },    '
+            '\n    {'
+            '\n        9: '
+            '\n            ('
+            '\n                10,'
+            '\n                11,'
+            '\n            ),'
+            '\n        7: 8,'
+            '\n    },    '
+            '\n    ('
+            '\n        12,'
+            '\n        13,'
+            '\n    ),    '
+            '\n    {'
+            '\n        14: '
+            '\n            {'
+            '\n                15: {16: {17: {18: {19: [20]}}}},'
+            '\n            },'
+            '\n    },'
+            '\n]'
+        )
+        self.assertEqual(decorators.pretty_repr(test_obj), exp_repr)
+
 
 @mock.patch('devops.helpers.decorators.logger', autospec=True)
 class TestLogWrap(unittest.TestCase):
