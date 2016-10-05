@@ -203,7 +203,7 @@ def pretty_repr(src, indent=0, no_indent_start=False):
     if isinstance(src, dict):
         prefix, suffix = '{', '}'
         result = ''
-        max_len = len(max([repr(key) for key in src]))
+        max_len = len(max([repr(key) for key in src])) if src else 0
         for key, val in src.items():
             result += formatters['dict'].format(
                 spc='',
