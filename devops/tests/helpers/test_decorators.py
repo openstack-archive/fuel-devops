@@ -202,6 +202,16 @@ class TestPrettyRepr(unittest.TestCase):
             decorators.pretty_repr(True), repr(True)
         )
 
+    def test_string(self):
+        self.assertEqual(
+            decorators.pretty_repr('Test'), 'Test'
+        )
+
+    def test_binary_string(self):
+        self.assertEqual(
+            decorators.pretty_repr(b'Test\x01'), 'Test\x01'
+        )
+
     def test_iterable(self):
         self.assertEqual(
             decorators.pretty_repr([1, 2, 3]),

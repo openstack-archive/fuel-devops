@@ -191,9 +191,20 @@ def pretty_repr(src, indent=0, no_indent_start=False):
     """
     formatters = {
         'simple': "{spc:<{indent}}{val!r}",
+        'string': "{spc:<{indent}}{val}",
         'dict': "\n{spc:<{indent}}{key!r:{size}}: {val},",
         'iterable': "\n{spc:<{indent}}{elem!r},"
     }
+    if isinstance(src, (six.text_type, six.binary_type)):
+        if isinstance(src, six.text_type):
+            text = src
+        else:
+            text = src.decode('utf-8', errors='backslashreplace')
+        return formatters['string'].format(
+            spc='',
+            indent=0 if no_indent_start else indent,
+            val=text
+        )
     if not isinstance(src, (list, set, tuple, dict)):
         return formatters['simple'].format(
             spc='',
