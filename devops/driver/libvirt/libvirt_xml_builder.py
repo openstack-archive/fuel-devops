@@ -18,7 +18,7 @@ import hashlib
 import six
 
 from devops.helpers import xmlgenerator
-from devops import logger
+from devops.helpers.decorators import logwrap
 
 
 class LibvirtXMLBuilder(object):
@@ -36,6 +36,7 @@ class LibvirtXMLBuilder(object):
         return name
 
     @classmethod
+    @logwrap
     def build_network_xml(cls, network_name, bridge_name, addresses=None,
                           forward=None, ip_network_address=None,
                           ip_network_prefixlen=None, stp=True,
@@ -44,8 +45,7 @@ class LibvirtXMLBuilder(object):
                           tftp_root_dir=None):
         """Generate network XML
 
-        :type network: Network
-            :rtype : String
+        :rtype : String
         """
         if addresses is None:
             addresses = []
@@ -89,16 +89,15 @@ class LibvirtXMLBuilder(object):
                         if has_pxe_server:
                             network_xml.bootp(file='pxelinux.0')
 
-        logger.debug(str(network_xml))
         return str(network_xml)
 
     @classmethod
+    @logwrap
     def build_volume_xml(cls, name, capacity, vol_format, backing_store_path,
                          backing_store_format):
         """Generate volume XML
 
-        :type volume: Volume
-            :rtype : String
+        :rtype : String
         """
         volume_xml = xmlgenerator.XMLGenerator('volume')
         volume_xml.name(cls._crop_name(name))
@@ -110,10 +109,10 @@ class LibvirtXMLBuilder(object):
             with volume_xml.backingStore:
                 volume_xml.path(backing_store_path)
                 volume_xml.format(type=backing_store_format)
-        logger.debug(str(volume_xml))
         return str(volume_xml)
 
     @classmethod
+    @logwrap
     def build_snapshot_xml(cls, name=None, description=None,
                            external=False, disk_only=False, memory_file='',
                            domain_isactive=False, local_disk_devices=None):
@@ -144,7 +143,6 @@ class LibvirtXMLBuilder(object):
                     with xml_builder.disk(name=disk['disk_target_dev'],
                                           snapshot='external'):
                         xml_builder.source(file=disk['disk_volume_path'])
-        logger.debug(str(xml_builder))
         return str(xml_builder)
 
     @classmethod
@@ -200,6 +198,7 @@ class LibvirtXMLBuilder(object):
                 device_xml.filterref(filter=interface_filter)
 
     @classmethod
+    @logwrap
     def build_network_filter(cls, name, uuid=None, rule=None):
         """Generate nwfilter XML for network
 
@@ -214,10 +213,10 @@ class LibvirtXMLBuilder(object):
         if rule:
             with filter_xml.rule(**rule):
                 filter_xml.all()
-        logger.debug(str(filter_xml))
         return str(filter_xml)
 
     @classmethod
+    @logwrap
     def build_interface_filter(cls, name, filterref, uuid=None, rule=None):
         """Generate nwfilter XML for interface
 
@@ -234,10 +233,10 @@ class LibvirtXMLBuilder(object):
         if rule:
             with filter_xml.rule(**rule):
                 filter_xml.all()
-        logger.debug(str(filter_xml))
         return str(filter_xml)
 
     @classmethod
+    @logwrap
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
                        reboot_timeout, bootmenu_timeout, emulator,
@@ -245,9 +244,7 @@ class LibvirtXMLBuilder(object):
                        acpi, numa):
         """Generate node XML
 
-        :type node: Node
-        :type emulator: String
-            :rtype : String
+        :rtype : String
         """
         node_xml = xmlgenerator.XMLGenerator("domain", type=hypervisor)
         node_xml.name(cls._crop_name(name))
@@ -332,10 +329,10 @@ class LibvirtXMLBuilder(object):
                 node_xml.target(port='0')
             with node_xml.console(type='pty'):
                 node_xml.target(type='serial', port='0')
-        logger.debug(str(node_xml))
         return str(node_xml)
 
     @classmethod
+    @logwrap
     def build_iface_xml(cls, name, ip=None, prefix=None, vlanid=None):
         """Generate interface bridge XML
 
@@ -365,5 +362,4 @@ class LibvirtXMLBuilder(object):
         if (ip is not None) and (prefix is not None):
             with interface_xml.protocol(family='ipv4'):
                 interface_xml.ip(address=ip, prefix=prefix)
-        logger.debug(str(interface_xml))
         return str(interface_xml)
