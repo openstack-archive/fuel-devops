@@ -184,8 +184,8 @@ def _simple(item):
 
 _formatters = {
     'simple': "{spc:<{indent}}{val!r}".format,
+    'text': "{spc:<{indent}}{prefix}'''{string}'''".format,
     'dict': "\n{spc:<{indent}}{key!r:{size}}: {val},".format,
-    'iterable': "{nl}{spc:<{indent}}{elem},".format
     }
 
 
@@ -204,6 +204,22 @@ def pretty_repr(src, indent=0, no_indent_start=False, max_indent=20):
     """
     if _simple(src) or indent >= max_indent:
         indent = 0 if no_indent_start else indent
+        if isinstance(src, (six.binary_type, six.text_type)):
+            if isinstance(src, six.binary_type):
+                string = src.decode(
+                    encoding='utf-8',
+                    errors='backslashreplace'
+                )
+                prefix = 'b'
+            else:
+                string = src
+                prefix = ''
+            return _formatters['text'](
+                spc='',
+                indent=indent,
+                prefix=prefix,
+                string=string
+            )
         return _formatters['simple'](
             spc='',
             indent=indent,
@@ -237,12 +253,9 @@ def pretty_repr(src, indent=0, no_indent_start=False, max_indent=20):
         prefix, suffix = '{', '}'
     result = ''
     for elem in src:
-        result += _formatters['iterable'](
-            nl='\n' if _simple(elem) else '',
-            spc='',
-            indent=indent + 4,
-            elem=pretty_repr(elem, indent + 4, no_indent_start=True)
-        )
+        if _simple(elem):
+            result += '\n'
+        result += pretty_repr(elem, indent + 4) + ','
     return (
         '\n{start:>{indent}}'.format(
             start=prefix,
