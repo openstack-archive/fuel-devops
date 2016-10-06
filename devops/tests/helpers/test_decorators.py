@@ -202,6 +202,14 @@ class TestPrettyRepr(unittest.TestCase):
             decorators.pretty_repr(True), repr(True)
         )
 
+    def test_text(self):
+        self.assertEqual(
+            decorators.pretty_repr('Unicode text'), "u'''Unicode text'''"
+        )
+        self.assertEqual(
+            decorators.pretty_repr(b'bytes text\x01'), "b'''bytes text\x01'''"
+        )
+
     def test_iterable(self):
         self.assertEqual(
             decorators.pretty_repr([1, 2, 3]),
@@ -245,7 +253,7 @@ class TestPrettyRepr(unittest.TestCase):
             {14: {15: {16: {17: {18: {19: [20]}}}}}}
         ]
         exp_repr = (
-            '\n[    '
+            '\n['
             '\n    {'
             '\n        1: '
             '\n            {'
@@ -255,7 +263,7 @@ class TestPrettyRepr(unittest.TestCase):
             '\n            {'
             '\n                5: 6,'
             '\n            },'
-            '\n    },    '
+            '\n    },'
             '\n    {'
             '\n        9: '
             '\n            ('
@@ -263,11 +271,11 @@ class TestPrettyRepr(unittest.TestCase):
             '\n                11,'
             '\n            ),'
             '\n        7: 8,'
-            '\n    },    '
+            '\n    },'
             '\n    ('
             '\n        12,'
             '\n        13,'
-            '\n    ),    '
+            '\n    ),'
             '\n    {'
             '\n        14: '
             '\n            {'
@@ -295,7 +303,8 @@ class TestLogWrap(unittest.TestCase):
             ),
             mock.call.log(
                 level=logging.DEBUG,
-                msg="Done: 'func' with result:\n{}".format(repr(result))
+                msg="Done: 'func' with result:\n{}".format(
+                    decorators.pretty_repr(result))
             ),
         ))
 
@@ -317,7 +326,8 @@ class TestLogWrap(unittest.TestCase):
             ),
             mock.call.log(
                 level=logging.DEBUG,
-                msg="Done: 'func' with result:\n{}".format(repr(result))
+                msg="Done: 'func' with result:\n{}".format(
+                    decorators.pretty_repr(result))
             ),
         ))
 
@@ -339,7 +349,8 @@ class TestLogWrap(unittest.TestCase):
             ),
             mock.call.log(
                 level=logging.DEBUG,
-                msg="Done: 'func' with result:\n{}".format(repr(result))
+                msg="Done: 'func' with result:\n{}".format(
+                    decorators.pretty_repr(result))
             ),
         ))
 
