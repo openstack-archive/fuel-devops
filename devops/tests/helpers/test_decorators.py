@@ -418,6 +418,43 @@ class TestLogWrap(unittest.TestCase):
             ),
         ))
 
+    def test_renamed_args_kwargs(self, logger):
+        arg = 'arg'
+        targs = ['string1', 'string2']
+        tkwargs = {'key': 'tkwargs'}
+
+        @decorators.logwrap
+        def func(arg, *positional, **named):
+            return arg, tuple(positional), named
+
+        result = func(arg, *targs, **tkwargs)
+        self.assertEqual(result, (arg, tuple(targs), tkwargs))
+        # raise ValueError(logger.mock_calls)
+        logger.assert_has_calls((
+            mock.call.log(
+                level=logging.DEBUG,
+                msg="Calling: \n'func'("
+                    "\n    'arg'={arg},"
+                    "\n    'positional'={args},"
+                    "\n    'named'={kwargs},\n)".format(
+                        arg=decorators.pretty_repr(
+                            arg,
+                            indent=8, no_indent_start=True),
+                        args=decorators.pretty_repr(
+                            tuple(targs),
+                            indent=8, no_indent_start=True),
+                        kwargs=decorators.pretty_repr(
+                            tkwargs,
+                            indent=8, no_indent_start=True)
+                    )
+            ),
+            mock.call.log(
+                level=logging.DEBUG,
+                msg="Done: 'func' with result:\n{}".format(
+                    decorators.pretty_repr(result))
+            ),
+        ))
+
     def test_negative(self, logger):
         @decorators.logwrap
         def func():

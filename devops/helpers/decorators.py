@@ -166,10 +166,21 @@ def _getcallargs(func, *positional, **named):
         if six.PY2:
             # args and kwargs is not bound in py27
             # Note: py27 inspect is not unicode
-            if 'args' in orig_args:
-                arguments[b'args'] = orig_args['args']
-            if 'kwargs' in orig_args:
-                arguments[b'kwargs'] = orig_args['kwargs']
+            missed = (
+                (key, val)
+                for key, val in orig_args.items()
+                if key not in arguments)
+            args, kwargs = (), ()
+            for record in missed:
+                if isinstance(record[1], (list, tuple)):
+                    args = record
+                elif isinstance(record[1], dict):
+                    kwargs = record
+
+            if args:
+                arguments[args[0]] = args[1]
+            if kwargs:
+                arguments[kwargs[0]] = kwargs[1]
         return arguments
     sig = inspect.signature(func).bind(*positional, **named)
     sig.apply_defaults()  # after bind we doesn't have defaults
