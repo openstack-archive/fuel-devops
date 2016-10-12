@@ -53,7 +53,7 @@ class DevopsEnvironment(object):
         created_nodes = len(group.get_nodes())
 
         new_nodes = []
-        for node_num in xrange(created_nodes, created_nodes + nodes_count):
+        for node_num in range(created_nodes, created_nodes + nodes_count):
             node_name = "slave-{:02d}".format(node_num)
             slave_conf = templates.create_slave_config(
                 slave_name=node_name,
