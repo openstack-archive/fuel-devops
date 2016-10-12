@@ -49,7 +49,7 @@ class TestHelpersHelpers(unittest.TestCase):
         ping.assert_has_calls(
             [
                 mock.call('localhost', port)
-                for port in xrange(32000, 32100)])
+                for port in range(32000, 32100)])
 
     @mock.patch(
         'devops.helpers.subprocess_runner.Subprocess.execute',
