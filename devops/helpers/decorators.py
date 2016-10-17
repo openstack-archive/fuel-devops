@@ -125,7 +125,7 @@ def retry(exception, count=10, delay=1):
 
 
 # pylint: disable=no-member
-def _get_arg_names(func):
+def get_arg_names(func):
     """get argument names for function
 
     :param func: func
@@ -135,20 +135,25 @@ def _get_arg_names(func):
     >>> def tst_1():
     ...     pass
 
-    >>> _get_arg_names(tst_1)
+    >>> get_arg_names(tst_1)
     []
 
     >>> def tst_2(arg):
     ...     pass
 
-    >>> _get_arg_names(tst_2)
+    >>> get_arg_names(tst_2)
     ['arg']
     """
     # noinspection PyUnresolvedReferences
-    return (
-        [arg for arg in inspect.getargspec(func=func).args] if six.PY2 else
-        list(inspect.signature(obj=func).parameters.keys())
-    )
+    if six.PY2:
+        spec = inspect.getargspec(func=func)
+        args = spec.args[:]
+        if spec.varargs:
+            args.append(spec.varargs)
+        if spec.keywords:
+            args.append(spec.keywords)
+        return args
+    return list(inspect.signature(obj=func).parameters.keys())
 
 
 def _getcallargs(func, *positional, **named):
@@ -161,26 +166,8 @@ def _getcallargs(func, *positional, **named):
         orig_args = inspect.getcallargs(func, *positional, **named)
         # Construct OrderedDict as Py3
         arguments = collections.OrderedDict(
-            [(key, orig_args[key]) for key in _get_arg_names(func)]
+            [(key, orig_args[key]) for key in get_arg_names(func)]
         )
-        if six.PY2:
-            # args and kwargs is not bound in py27
-            # Note: py27 inspect is not unicode
-            missed = (
-                (key, val)
-                for key, val in orig_args.items()
-                if key not in arguments)
-            args, kwargs = (), ()
-            for record in missed:
-                if isinstance(record[1], (list, tuple)):
-                    args = record
-                elif isinstance(record[1], dict):
-                    kwargs = record
-
-            if args:
-                arguments[args[0]] = args[1]
-            if kwargs:
-                arguments[kwargs[0]] = kwargs[1]
         return arguments
     sig = inspect.signature(func).bind(*positional, **named)
     sig.apply_defaults()  # after bind we doesn't have defaults
