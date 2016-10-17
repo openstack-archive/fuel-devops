@@ -156,6 +156,9 @@ class SSHAuth(object):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __deepcopy__(self, memo):
         return self.__class__(
             username=self.username,
