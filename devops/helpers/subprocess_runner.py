@@ -20,6 +20,7 @@ import os
 import select
 import subprocess
 import threading
+import time
 
 import six
 
@@ -97,6 +98,7 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             fcntl.fcntl(fd_stderr, fcntl.F_SETFL, fl_stderr | os.O_NONBLOCK)
 
             while not stop.isSet():
+                time.sleep(0.1)
                 poll_streams(
                     result=result,
                     stdout=proc.stdout,

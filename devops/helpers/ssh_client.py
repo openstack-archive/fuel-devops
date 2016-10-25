@@ -21,6 +21,7 @@ import posixpath
 import stat
 import sys
 import threading
+import time
 import warnings
 
 import paramiko
@@ -759,6 +760,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             """
 
             while not stop.isSet():
+                time.sleep(0.1)
                 poll_streams(
                     result=result,
                     channel=channel,
