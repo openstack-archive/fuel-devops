@@ -302,37 +302,43 @@ class Environment(base.BaseModel):
         config = full_config['template']['devops_settings']
         environment = cls.create(config['env_name'])
 
-        # create groups and drivers
-        groups = config['groups']
-        environment.add_groups(groups)
+        try:
+            # create groups and drivers
+            groups = config['groups']
+            environment.add_groups(groups)
 
-        # create address pools
-        address_pools = config['address_pools']
-        environment.add_address_pools(address_pools)
+            # create address pools
+            address_pools = config['address_pools']
+            environment.add_address_pools(address_pools)
 
-        # process group items
-        for group_data in groups:
-            group = environment.get_group(name=group_data['name'])
+            # process group items
+            for group_data in groups:
+                group = environment.get_group(name=group_data['name'])
 
-            # add l2_network_devices
-            group.add_l2_network_devices(
-                group_data.get('l2_network_devices', {}))
+                # add l2_network_devices
+                group.add_l2_network_devices(
+                    group_data.get('l2_network_devices', {}))
 
-            # add network_pools
-            group.add_network_pools(
-                group_data.get('network_pools', {}))
+                # add network_pools
+                group.add_network_pools(
+                    group_data.get('network_pools', {}))
 
-        # Connect nodes to already created networks
-        for group_data in groups:
-            group = environment.get_group(name=group_data['name'])
+            # Connect nodes to already created networks
+            for group_data in groups:
+                group = environment.get_group(name=group_data['name'])
 
-            # add group volumes
-            group.add_volumes(
-                group_data.get('group_volumes', []))
+                # add group volumes
+                group.add_volumes(
+                    group_data.get('group_volumes', []))
 
-            # add nodes
-            group.add_nodes(
-                group_data.get('nodes', []))
+                # add nodes
+                group.add_nodes(
+                    group_data.get('nodes', []))
+        except Exception:
+            logger.error("Creation of the environment '{0}' failed"
+                         .format(config['env_name']))
+            environment.erase()
+            raise
 
         return environment
 

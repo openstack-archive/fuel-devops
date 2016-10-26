@@ -28,8 +28,10 @@ class TestManager(TestCase):
 
     def test_network_iterator(self):
         environment = models.Environment.create('test_env')
+        group = environment.add_group(group_name='test-group',
+                                      driver_name='devops.driver.empty')
         node = models.Node.objects.create(
-            group=None,
+            group=group,
             name='test_node',
             role='default',
         )
@@ -51,8 +53,10 @@ class TestManager(TestCase):
 
     def test_network_model(self):
         environment = models.Environment.create('test_env')
+        group = environment.add_group(group_name='test-group',
+                                      driver_name='devops.driver.empty')
         node = models.Node.objects.create(
-            group=None,
+            group=group,
             name='test_node',
             role='default',
         )
@@ -116,6 +120,8 @@ class TestManager(TestCase):
 
     def test_node_creation(self):
         environment = models.Environment.create('test_env3')
+        group = environment.add_group(group_name='test-group',
+                                      driver_name='devops.driver.empty')
         pool = network.IpNetworksPool(
             networks=[netaddr.IPNetwork('10.1.0.0/24')], prefix=24)
         address_pool = models.AddressPool.address_pool_create(
@@ -124,7 +130,7 @@ class TestManager(TestCase):
             group=None, address_pool=address_pool, name='test_l2_dev')
 
         node = models.Node.objects.create(
-            group=None,
+            group=group,
             name='test_node',
             role='default',
         )

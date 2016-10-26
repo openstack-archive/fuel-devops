@@ -39,7 +39,10 @@ class AddressPool(base.ParamedModel, base.BaseModel):
           ip_reserved:
             <'gateway'>:<int|IPAddress>            # Reserved for gateway.
             <'l2_network_device'>:<int|IPAddress>  # Reserved for local IP
-                                                   # for libvirt networks.
+                                                   #   for libvirt networks.
+            <'groupname_nodename'>:<int|IPAddress> # Reserved for specific node
+                                                   #   IP address for iface in
+                                                   #   this address pool.
             ...  # user-defined IPs (for fuel-qa)
           ip_ranges:
             <group_name>: [<int|IPAddress>, <int|IPAddress>]
@@ -531,7 +534,18 @@ class Interface(base.ParamedModel):
         self.delete()
 
     def add_address(self):
-        ip = self.l2_network_device.address_pool.next_ip()
+        """Assign an IP address to the interface
+
+        Try to get an IP from reserved IP with name '<group>_<node>'
+        , or generate next IP if reserved IP wasn't found.
+        Next IP is generated from the DHCP ip_range, or from the
+        network range [+2:-2] of all available addresses in the address pool.
+        """
+        reserved_ip_name = helpers.underscored(self.node.group.name,
+                                               self.node.name)
+        reserved_ip = self.l2_network_device.address_pool.get_ip(
+            reserved_ip_name)
+        ip = reserved_ip or self.l2_network_device.address_pool.next_ip()
         Address.objects.create(
             ip_address=str(ip),
             interface=self,
