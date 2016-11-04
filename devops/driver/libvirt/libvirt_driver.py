@@ -57,11 +57,17 @@ class _LibvirtManager(object):
 
         :type connection_string: str
         """
-        if connection_string not in self.connections:
-            conn = libvirt.open(connection_string)
-            self.connections[connection_string] = conn
-        else:
+        if connection_string in self.connections:
             conn = self.connections[connection_string]
+            if conn.isAlive():
+                # Use a cached connection only if it is alive
+                return conn
+            else:
+                logger.error("Connection to libvirt '{0}' is broken, create a"
+                             " new connection".format(connection_string))
+        # Create a new connection
+        conn = libvirt.open(connection_string)
+        self.connections[connection_string] = conn
         return conn
 
     def _error_handler(self, error):
@@ -218,7 +224,7 @@ class LibvirtDriver(driver.Driver):
 
     _device_name_generators = {}
 
-    @functional.cached_property
+    @property
     def conn(self):
         """Connection to libvirt api"""
         # noinspection PyTypeChecker
