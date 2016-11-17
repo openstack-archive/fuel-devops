@@ -25,7 +25,7 @@ from devops.helpers import exec_result
 from devops.helpers.proc_enums import ExitCodes
 
 
-cmd = 'ls -la'
+cmd = "ls -la | awk \'{print $1}\'"
 
 
 # noinspection PyTypeChecker
@@ -90,8 +90,10 @@ class TestExecResult(unittest.TestCase):
             # pylint: enable=pointless-statement
         logger.assert_has_calls((
             mock.call.exception(
-                "'{cmd}' stdout is not valid json:\n"
-                "{stdout_str!r}\n".format(cmd=cmd, stdout_str='')),
+                "{cmd} stdout is not valid json:\n"
+                "{stdout_str!r}\n".format(
+                    cmd=cmd,
+                    stdout_str='')),
         ))
         self.assertIsNone(result['stdout_yaml'])
 

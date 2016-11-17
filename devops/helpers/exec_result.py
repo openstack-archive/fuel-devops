@@ -262,11 +262,10 @@ class ExecResult(object):
                 return yaml.safe_load(self.stdout_str)
         except BaseException:
             tmpl = (
-                "'{cmd}' stdout is not valid {fmt}:\n"
+                " stdout is not valid {fmt}:\n"
                 '{{stdout!r}}\n'.format(
-                    cmd=self.cmd,
                     fmt=fmt))
-            logger.exception(tmpl.format(stdout=self.stdout_str))
+            logger.exception(self.cmd + tmpl.format(stdout=self.stdout_str))
             raise error.DevopsError(tmpl.format(stdout=self.stdout_brief))
         msg = '{fmt} deserialize target is not implemented'.format(fmt=fmt)
         logger.error(msg)
