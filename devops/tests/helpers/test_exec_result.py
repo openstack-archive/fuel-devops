@@ -90,8 +90,8 @@ class TestExecResult(unittest.TestCase):
             # pylint: enable=pointless-statement
         logger.assert_has_calls((
             mock.call.exception(
-                "'{cmd}' stdout is not valid json:\n"
-                "{stdout_str!r}\n".format(cmd=cmd, stdout_str='')),
+                " stdout is not valid json:\n"
+                "{stdout_str!r}\n".format(stdout_str='')),
         ))
         self.assertIsNone(result['stdout_yaml'])
 
