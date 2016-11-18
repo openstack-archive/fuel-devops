@@ -1159,7 +1159,15 @@ class LibvirtNode(node.Node):
     @decorators.retry(libvirt.libvirtError)
     def destroy(self, *args, **kwargs):
         if self.is_active():
-            self._libvirt_node.destroy()
+            try:
+                self._libvirt_node.destroy()
+            except libvirt.libvirtError as e:
+                if e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR:
+                    logger.error("Error appeared while destroying the domain"
+                        " {}, ignoring".format(self._libvirt_node.name()))
+                    return None
+                else:
+                    raise
         super(LibvirtNode, self).destroy()
 
     @decorators.retry(libvirt.libvirtError)
