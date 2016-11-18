@@ -499,7 +499,16 @@ class DevopsDriver(object):
         :type node: Node
             :rtype : None
         """
-        self.conn.lookupByUUIDString(node.uuid).destroy()
+        try:
+            self.conn.lookupByUUIDString(node.uuid).destroy()
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR:
+                logger.error("Error appeared while destroying the domain {}, "
+                    "ignoring".format(
+                        self.conn.lookupByUUIDString(node.uuid).name()))
+                return None
+            else:
+                raise
 
     @retry()
     def node_undefine(self, node, undefine_snapshots=False):
