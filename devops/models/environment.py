@@ -214,18 +214,36 @@ class Environment(base.BaseModel):
         for nod in self.get_nodes():
             nod.resume()
 
-    def snapshot(self, name=None, description=None, force=False):
+    def snapshot(self, name=None, description=None, force=False, suspend=True):
+        """Snapshot the environment
+
+        :param name: name of the snapshot. Current timestamp, if name is None
+        :param description: any string that will be placed to the 'description'
+                            section in the snapshot XML
+        :param force: If True - overwrite the existing snapshot. Default: False
+        :param suspend: suspend environment before snapshot if True (default)
+        """
         if name is None:
             name = str(int(time.time()))
         if self.has_snapshot(name) and not force:
             raise error.DevopsError(
                 'Snapshot with name {0} already exists.'.format(
                     self.params.snapshot_name))
+        if suspend:
+            for nod in self.get_nodes():
+                nod.suspend()
+
         for nod in self.get_nodes():
             nod.snapshot(name=name, description=description, force=force,
                          external=settings.SNAPSHOTS_EXTERNAL)
 
-    def revert(self, name=None, flag=True):
+    def revert(self, name=None, flag=True, resume=True):
+        """Revert the environment from snapshot
+
+        :param name: name of the snapshot
+        :param flag: raise Exception if True (default) and snapshot not found
+        :param resume: resume environment after revert if True (default)
+        """
         if flag and not self.has_snapshot(name):
             raise Exception("some nodes miss snapshot,"
                             " test should be interrupted")
@@ -235,6 +253,10 @@ class Environment(base.BaseModel):
         for grp in self.get_groups():
             for l2netdev in grp.get_l2_network_devices():
                 l2netdev.unblock()
+
+        if resume:
+            for nod in self.get_nodes():
+                nod.resume()
 
     # NOTE: Does not work
     # TO REWRITE FOR LIBVIRT DRIVER ONLY

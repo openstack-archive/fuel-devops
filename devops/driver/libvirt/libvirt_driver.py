@@ -110,6 +110,7 @@ class Snapshot(object):
                                 snap_file))
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def xml(self):
         """Snapshot XML representation
 
@@ -140,6 +141,7 @@ class Snapshot(object):
         return ET.fromstring(self.xml)
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def children_num(self):
         return self._snapshot.numChildren()
 
@@ -240,6 +242,7 @@ class LibvirtDriver(driver.Driver):
         #   https://bugzilla.redhat.com/show_bug.cgi?id=839259
         return [item.name() for item in self.conn.listAllDomains()]
 
+    @decorators.retry(libvirt.libvirtError)
     def get_allocated_networks(self):
         """Get list of allocated networks
 
@@ -256,6 +259,7 @@ class LibvirtDriver(driver.Driver):
                     "{0:>s}/{1:>s}".format(address, prefix_or_netmask)))
         return allocated_networks
 
+    @decorators.retry(libvirt.libvirtError)
     def get_allocated_device_names(self):
         """Get list of existing bridge names and network devices
 
@@ -295,6 +299,7 @@ class LibvirtDriver(driver.Driver):
                 continue
             return name
 
+    @decorators.retry(libvirt.libvirtError)
     def get_libvirt_version(self):
         return self.conn.getLibVersion()
 
@@ -520,13 +525,18 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             ))
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def _libvirt_network(self):
         try:
             return self.driver.conn.networkLookupByUUIDString(self.uuid)
-        except libvirt.libvirtError:
-            logger.error("Network not found by UUID: {}".format(self.uuid))
-            return None
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_NETWORK:
+                logger.error("Network not found by UUID: {}".format(self.uuid))
+                return None
+            else:
+                raise
 
+    @decorators.retry(libvirt.libvirtError)
     def bridge_name(self):
         return self._libvirt_network.bridgeName()
 
@@ -540,6 +550,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             helpers.deepgetattr(self, 'group.environment.name'),
             self.name)
 
+    @decorators.retry(libvirt.libvirtError)
     def is_active(self):
         """Check if network is active
 
@@ -681,6 +692,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
                         self._nwfilter.undefine()
         super(LibvirtL2NetworkDevice, self).remove()
 
+    @decorators.retry(libvirt.libvirtError)
     def exists(self):
         """Check if network exists
 
@@ -724,6 +736,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
         iface.undefine()
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def _nwfilter(self):
         """Returns NWFilter object"""
         try:
@@ -744,6 +757,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
         filter_xml = ET.fromstring(self._nwfilter.XMLDesc())
         return filter_xml.find('./rule') is not None
 
+    @decorators.retry(libvirt.libvirtError)
     def block(self):
         """Block all traffic in network"""
         if not self.driver.enable_nwfilters:
@@ -761,6 +775,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
                       priority='-1000'))
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
+    @decorators.retry(libvirt.libvirtError)
     def unblock(self):
         """Unblock all traffic in network"""
         if not self.driver.enable_nwfilters:
@@ -790,12 +805,16 @@ class LibvirtVolume(volume.Volume):
     cloudinit_user_data = base.ParamField(default=None)
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def _libvirt_volume(self):
         try:
             return self.driver.conn.storageVolLookupByKey(self.uuid)
-        except libvirt.libvirtError:
-            logger.error("Volume not found by UUID: {}".format(self.uuid))
-            return None
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_VOL:
+                logger.error("Volume not found by UUID: {}".format(self.uuid))
+                return None
+            else:
+                raise
 
     @decorators.retry(libvirt.libvirtError)
     def define(self):
@@ -879,14 +898,17 @@ class LibvirtVolume(volume.Volume):
                 self._libvirt_volume.delete(0)
         super(LibvirtVolume, self).remove()
 
+    @decorators.retry(libvirt.libvirtError)
     def get_capacity(self):
         """Get volume capacity in bytes"""
         return self._libvirt_volume.info()[1]
 
+    @decorators.retry(libvirt.libvirtError)
     def get_format(self):
         xml_desc = ET.fromstring(self._libvirt_volume.XMLDesc(0))
         return xml_desc.find('target/format[@type]').get('type')
 
+    @decorators.retry(libvirt.libvirtError)
     def get_path(self):
         return self._libvirt_volume.path()
 
@@ -933,6 +955,7 @@ class LibvirtVolume(volume.Volume):
                 else:
                     raise
 
+    @decorators.retry(libvirt.libvirtError)
     def get_allocation(self):
         """Get allocated volume size
 
@@ -940,6 +963,7 @@ class LibvirtVolume(volume.Volume):
         """
         return self._libvirt_volume.info()[2]
 
+    @decorators.retry(libvirt.libvirtError)
     def exists(self):
         """Check if volume exists"""
         try:
@@ -1009,12 +1033,16 @@ class LibvirtNode(node.Node):
     cloud_init_iface_up = base.ParamField()
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def _libvirt_node(self):
         try:
             return self.driver.conn.lookupByUUIDString(self.uuid)
-        except libvirt.libvirtError:
-            logger.error("Domain not found by UUID: {}".format(self.uuid))
-            return None
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+                logger.error("Domain not found by UUID: {}".format(self.uuid))
+                return None
+            else:
+                raise
 
     def get_vnc_port(self):
         """Get VNC port
@@ -1031,6 +1059,7 @@ class LibvirtNode(node.Node):
     def vnc_password(self):
         return self.driver.vnc_password
 
+    @decorators.retry(libvirt.libvirtError)
     def exists(self):
         """Check if node exists
 
@@ -1045,6 +1074,7 @@ class LibvirtNode(node.Node):
             else:
                 raise
 
+    @decorators.retry(libvirt.libvirtError)
     def is_active(self):
         """Check if node is active
 
@@ -1187,15 +1217,18 @@ class LibvirtNode(node.Node):
                         libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         super(LibvirtNode, self).remove()
 
+    @decorators.retry(libvirt.libvirtError)
     def suspend(self, *args, **kwargs):
         if self.is_active():
             self._libvirt_node.suspend()
         super(LibvirtNode, self).suspend()
 
+    @decorators.retry(libvirt.libvirtError)
     def resume(self, *args, **kwargs):
         if self._libvirt_node.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
             self._libvirt_node.resume()
 
+    @decorators.retry(libvirt.libvirtError)
     def reboot(self):
         """Reboot node
 
@@ -1204,6 +1237,7 @@ class LibvirtNode(node.Node):
         self._libvirt_node.reboot()
         super(LibvirtNode, self).reboot()
 
+    @decorators.retry(libvirt.libvirtError)
     def shutdown(self):
         """Shutdown node
 
@@ -1212,10 +1246,12 @@ class LibvirtNode(node.Node):
         self._libvirt_node.shutdown()
         super(LibvirtNode, self).shutdown()
 
+    @decorators.retry(libvirt.libvirtError)
     def reset(self):
         self._libvirt_node.reset()
         super(LibvirtNode, self).reset()
 
+    @decorators.retry(libvirt.libvirtError)
     def has_snapshot(self, name):
         return name in self._libvirt_node.snapshotListNames()
 
@@ -1309,6 +1345,7 @@ class LibvirtNode(node.Node):
                     "Cannot create internal snapshot when external exists")
 
     # EXTERNAL SNAPSHOT
+    @decorators.retry(libvirt.libvirtError)
     def set_snapshot_current(self, name):
         snapshot = self._get_snapshot(name)
 
@@ -1418,6 +1455,7 @@ class LibvirtNode(node.Node):
         return snapshot.delete_snapshot_files()
 
     # EXTERNAL SNAPSHOT
+    @decorators.retry(libvirt.libvirtError)
     def _redefine_external_snapshot(self, name=None):
         snapshot = self._get_snapshot(name)
 
@@ -1593,6 +1631,7 @@ class LibvirtNode(node.Node):
                                 iface.l2_network_device.name))
                 iface.unblock()
 
+    @decorators.retry(libvirt.libvirtError)
     def _get_snapshot(self, name):
         """Get snapshot
 
@@ -1604,6 +1643,7 @@ class LibvirtNode(node.Node):
         else:
             return Snapshot(self._libvirt_node.snapshotLookupByName(name, 0))
 
+    @decorators.retry(libvirt.libvirtError)
     def get_snapshots(self):
         """Return full snapshots objects"""
         snapshots = self._libvirt_node.listAllSnapshots(0)
@@ -1669,6 +1709,7 @@ class LibvirtNode(node.Node):
             domain.setMemoryFlags(memory * 1024, 2)
             self.save()
 
+    @decorators.retry(libvirt.libvirtError)
     def get_interface_target_dev(self, mac):
         """Get target device
 
@@ -1700,6 +1741,7 @@ class LibvirtNode(node.Node):
                 target_dev=target_dev or self.next_disk_name(),
                 volume=volume, node=self)
 
+    @decorators.retry(libvirt.libvirtError)
     def set_boot(self, boot):
         """Set boot order on node
 
@@ -1724,6 +1766,7 @@ class LibvirtNode(node.Node):
         self.boot = boot
         self.save()
 
+    @decorators.retry(libvirt.libvirtError)
     def close_tray(self):
         """Closes tray for all cdrom devices
 
@@ -1749,6 +1792,7 @@ class LibvirtNode(node.Node):
 
 class LibvirtInterface(network.Interface):
 
+    @decorators.retry(libvirt.libvirtError)
     def define(self):
         if self.driver.enable_nwfilters:
             filter_xml = builder.LibvirtXMLBuilder.build_interface_filter(
@@ -1758,6 +1802,7 @@ class LibvirtInterface(network.Interface):
 
         super(LibvirtInterface, self).define()
 
+    @decorators.retry(libvirt.libvirtError)
     def remove(self):
         if self.driver.enable_nwfilters:
             if self._nwfilter:
@@ -1772,6 +1817,7 @@ class LibvirtInterface(network.Interface):
             self.mac_address)
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def _nwfilter(self):
         try:
             return self.driver.conn.nwfilterLookupByName(self.nwfilter_name)
@@ -1780,6 +1826,7 @@ class LibvirtInterface(network.Interface):
                 self.nwfilter_name))
 
     @property
+    @decorators.retry(libvirt.libvirtError)
     def is_blocked(self):
         """Show state of interface"""
         if not self.driver.enable_nwfilters:
@@ -1790,6 +1837,7 @@ class LibvirtInterface(network.Interface):
         filter_xml = ET.fromstring(self._nwfilter.XMLDesc())
         return filter_xml.find('./rule') is not None
 
+    @decorators.retry(libvirt.libvirtError)
     def block(self):
         """Block traffic on interface"""
         if not self.driver.enable_nwfilters:
@@ -1809,6 +1857,7 @@ class LibvirtInterface(network.Interface):
                 priority='-950'))
         self.driver.conn.nwfilterDefineXML(filter_xml)
 
+    @decorators.retry(libvirt.libvirtError)
     def unblock(self):
         """Unblock traffic on interface"""
         if not self.driver.enable_nwfilters:
