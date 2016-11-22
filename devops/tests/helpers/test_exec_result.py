@@ -23,9 +23,10 @@ import mock
 from devops import error
 from devops.helpers import exec_result
 from devops.helpers.proc_enums import ExitCodes
+from devops.helpers.subprocess_runner import Subprocess
 
 
-cmd = 'ls -la'
+cmd = "ls -la | awk \'{print $1}\'"
 
 
 # noinspection PyTypeChecker
@@ -90,8 +91,10 @@ class TestExecResult(unittest.TestCase):
             # pylint: enable=pointless-statement
         logger.assert_has_calls((
             mock.call.exception(
-                "'{cmd}' stdout is not valid json:\n"
-                "{stdout_str!r}\n".format(cmd=cmd, stdout_str='')),
+                "{cmd} stdout is not valid json:\n"
+                "{stdout_str!r}\n".format(
+                    cmd=cmd,
+                    stdout_str='')),
         ))
         self.assertIsNone(result['stdout_yaml'])
 
@@ -191,3 +194,22 @@ class TestExecResult(unittest.TestCase):
             ))
             self.assertEqual(result[deprecated], {'test': True})
             logger.reset_mock()
+
+    @mock.patch('devops.helpers.exec_result.logger', autospec=True)
+    def test_wrong_result(self, logger):
+        """Test logging exception if stdout if not a correct json"""
+        cmd = "ls -la | awk \'{print $1\}\'"
+        result = Subprocess.execute(command=cmd)
+        with self.assertRaises(error.DevopsError):
+            # pylint: disable=pointless-statement
+            # noinspection PyStatementEffect
+            result.stdout_json
+            # pylint: enable=pointless-statement
+        logger.assert_has_calls((
+            mock.call.exception(
+                "{cmd} stdout is not valid json:\n"
+                "{stdout_str!r}\n".format(
+                    cmd=cmd,
+                    stdout_str='')),
+        ))
+        self.assertIsNone(result['stdout_yaml'])
