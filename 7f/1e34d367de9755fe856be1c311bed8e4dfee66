@@ -1,0 +1,11 @@
+Code-Review+1: Alexey Stepanov <penguinolog@gmail.com>
+Code-Review+2: Nastya Urlapova <aurlapova@mirantis.com>
+Code-Review+1: Artem Panchenko <apanchenko@mirantis.com>
+Code-Review+1: Gerald Lonlas <g.lonlas@gmail.com>
+Workflow+1: Nastya Urlapova <aurlapova@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 29 Nov 2016 08:31:09 +0000
+Reviewed-on: https://review.openstack.org/403365
+Project: openstack/fuel-devops
+Branch: refs/heads/master
