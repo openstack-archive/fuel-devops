@@ -13,6 +13,12 @@
 #    under the License.
 
 import os
+import sys
+import codecs
+
+# Set default io encoding
+sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
