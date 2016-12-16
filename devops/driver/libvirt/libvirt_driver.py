@@ -437,9 +437,9 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
              phys_dev: !os_env BAREMETAL_OS_NETS_IFACE
 
          # Public libvirt bridge, only for keeping IP address.
-         # 'nat' forward can be ommited if the baremetal network has
+         # 'nat' forward can be omitted if the baremetal network has
          # it's own gateway.
-         # This l2 libvirt network can be ommited if no access required
+         # This l2 libvirt network can be omitted if no access required
          # from system tests to the nodes via public addresses.
          # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
          # ONLY FOR ACCESS TO THE PUBLIC NETWORK ADDRESSES
@@ -454,7 +454,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
              tag: 100
 
          # Storage libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
+         # This l2 libvirt network can be omitted if no access required
          # from system tests to the nodes via storage addresses.
          # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
          # ONLY FOR ACCESS TO THE STORAGE NETWORK ADDRESSES
@@ -466,7 +466,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
              tag: 101
 
          # Management libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
+         # This l2 libvirt network can be omitted if no access required
          # from system tests to the nodes via management addresses.
          # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
          # ONLY FOR ACCESS TO THE MANAGEMENT NETWORK ADDRESSES
@@ -478,7 +478,7 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
              tag: 102
 
          # Private libvirt bridge, only for keeping IP address.
-         # This l2 libvirt network can be ommited if no access required
+         # This l2 libvirt network can be omitted if no access required
          # from system tests to the nodes via private addresses.
          # IT IS *NOT* FOR CONNECTING VM's INTERFACES!
          # ONLY FOR ACCESS TO THE PRIVATE NETWORK ADDRESSES
