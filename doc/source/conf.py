@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # devops documentation build configuration file, created by
 # sphinx-quickstart on Tue May 14 16:11:37 2013.
 #
