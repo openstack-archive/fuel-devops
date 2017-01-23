@@ -208,10 +208,11 @@ class Shell(object):
     def do_slave_add(self, force_define=True):
         vcpu = self.params.vcpu_count
         memory = self.params.ram_size
-        created_nodes = len(self.env.get_nodes())
-        node_count = self.params.node_count
+        node_ids = {int(node.name[-2:]) for node in
+                    self.env.get_nodes(role='fuel_slave')}
+        full_ids = set(xrange(1, len(node_ids) + self.params.node_count + 1))
 
-        for node in xrange(created_nodes, created_nodes + node_count):
+        for node in sorted(full_ids - node_ids)[:self.params.node_count]:
             node_name = "slave-{node:02d}".format(node=node)
             node = self.env.add_node(name=node_name, vcpu=vcpu, memory=memory)
             disknames_capacity = {
@@ -232,6 +233,12 @@ class Shell(object):
                 print("Created node '{}'".format(node.name))
 
     def do_slave_remove(self):
+        slaves = [node.name for node in
+                  self.env.get_nodes(role='fuel_slave')]
+        if self.params.node_name not in slaves:
+            sys.exit("Node with name {} doesn't exist."
+                     .format(self.params.node_name))
+
         volumes = []
         for drive in self.env.get_node(
                 name=self.params.node_name).disk_devices:
