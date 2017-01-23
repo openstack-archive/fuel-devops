@@ -100,6 +100,17 @@ class TestShell(unittest.TestCase):
             m.created = datetime.datetime(2016, 5, 12, 15, 12, t)
             return m
 
+        def create_l2netdev_mock(name):
+            m = mock.Mock(spec=models.L2NetworkDevice)
+            m.name = name
+            return m
+
+        self.l2netdevs = {
+            'fuelweb_admin': create_l2netdev_mock('fuelweb_admin'),
+            'public': create_l2netdev_mock('public'),
+            'storage': create_l2netdev_mock('storage'),
+        }
+
         def create_node_mock(name, vnc_port=5005, snapshots=None):
             m = mock.Mock(spec=models.Node)
             m.name = name
@@ -148,6 +159,7 @@ class TestShell(unittest.TestCase):
             m.get_admin.side_effect = lambda: nodes['admin']
             m.get_admin_ip.return_value = admin_ip
             m.has_admin.side_effect = lambda: bool(admin_ip)
+            m.get_env_l2_network_devices = lambda: [{'name': 'fuelweb_admin'}]
             return m
 
         self.env_mocks = {

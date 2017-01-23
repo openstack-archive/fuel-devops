@@ -143,6 +143,18 @@ class Shell(object):
                    for net in self.env.get_address_pools()]
         self.print_table(headers=headers, columns=columns)
 
+    def do_slave_ip_list(self):
+        slave_ips = []
+        for l2dev in self.env.get_env_l2_network_devices():
+            for node in self.env.get_nodes():
+                slave_ips.append(
+                    node.get_ip_address_by_network_name(l2dev.name))
+
+        if not slave_ips:
+            print('No IPs allocated for environment!')
+        else:
+            print(' '.join(slave_ips))
+
     def do_time_sync(self):
         node_name = self.params.node_name
         node_names = [node_name] if node_name else None
@@ -434,6 +446,11 @@ class Shell(object):
                               help="Show networks in environment",
                               description="Display allocated networks for "
                               "environment")
+        subparsers.add_parser('slave-ip-list',
+                              parents=[name_parser],
+                              help="Show slave node IPs in environment",
+                              description="Display allocated IPs for "
+                              "environment slave nodes")
         subparsers.add_parser('time-sync',
                               parents=[name_parser, node_name_parser],
                               help="Sync time on all env nodes",
