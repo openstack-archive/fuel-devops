@@ -65,6 +65,14 @@ class Shell(object):
                     column['ADMIN IP'] = env.get_admin_ip()
                 else:
                     column['ADMIN IP'] = ''
+
+                slave_ips = []
+                for l2dev in env.get_env_l2_network_devices():
+                    for node in env.get_nodes():
+                        slave_ips.append(
+                            node.get_ip_address_by_network_name(l2dev.name))
+
+                column['SLAVE_IPS'] = ' '.join(slave_ips)
             if self.params.timestamps:
                 column['CREATED'] = helpers.utc_to_local(env.created).strftime(
                     '%Y-%m-%d_%H:%M:%S')
@@ -142,6 +150,18 @@ class Shell(object):
         columns = [(net.name, net.ip_network)
                    for net in self.env.get_address_pools()]
         self.print_table(headers=headers, columns=columns)
+
+    def do_slave_ip_list(self):
+        slave_ips = []
+        for l2dev in self.env.get_env_l2_network_devices():
+            for node in self.env.get_nodes():
+                slave_ips.append(
+                    node.get_ip_address_by_network_name(l2dev.name))
+
+        if not slave_ips:
+            print('No IPs allocated for environment!')
+        else:
+            print(' '.join(slave_ips))
 
     def do_time_sync(self):
         node_name = self.params.node_name
@@ -434,6 +454,11 @@ class Shell(object):
                               help="Show networks in environment",
                               description="Display allocated networks for "
                               "environment")
+        subparsers.add_parser('slave-ip-list',
+                              parents=[name_parser],
+                              help="Show slave node IPs in environment",
+                              description="Display allocated IPs for "
+                              "environment slave nodes")
         subparsers.add_parser('time-sync',
                               parents=[name_parser, node_name_parser],
                               help="Sync time on all env nodes",
