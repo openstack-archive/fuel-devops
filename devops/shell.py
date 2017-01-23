@@ -208,10 +208,11 @@ class Shell(object):
     def do_slave_add(self, force_define=True):
         vcpu = self.params.vcpu_count
         memory = self.params.ram_size
-        created_nodes = len(self.env.get_nodes())
-        node_count = self.params.node_count
+        node_ids = {int(node.name[-2:]) for node in
+                    self.env.get_nodes(role='fuel_slave')}
+        full_ids = set(range(1, len(node_ids) + self.params.node_count + 1))
 
-        for node in xrange(created_nodes, created_nodes + node_count):
+        for node in list(full_ids - node_ids)[:self.params.node_count]:
             node_name = "slave-{node:02d}".format(node=node)
             node = self.env.add_node(name=node_name, vcpu=vcpu, memory=memory)
             disknames_capacity = {
