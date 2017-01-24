@@ -16,6 +16,7 @@
 
 # pylint: disable=no-self-use
 
+import collections
 import datetime
 import unittest
 
@@ -100,7 +101,19 @@ class TestShell(unittest.TestCase):
             m.created = datetime.datetime(2016, 5, 12, 15, 12, t)
             return m
 
-        def create_node_mock(name, vnc_port=5005, snapshots=None):
+        def create_l2netdev_mock(name, dhcp=False):
+            m = mock.Mock(spec=models.L2NetworkDevice)
+            m.name = name
+            m.dhcp = dhcp
+            return name, m
+
+        self.l2netdevs = collections.OrderedDict((
+            create_l2netdev_mock('fuelweb_admin', dhcp=True),
+            create_l2netdev_mock('public', dhcp=True),
+            create_l2netdev_mock('storage'),
+        ))
+
+        def create_node_mock(name, vnc_port=5005, snapshots=None, ips=None):
             m = mock.Mock(spec=models.Node)
             m.name = name
             m.group.name = 'rack-01'
@@ -113,16 +126,26 @@ class TestShell(unittest.TestCase):
                 snap_mocks = [
                     create_snap_mock(s_name, t) for s_name, t in snapshots]
             m.get_snapshots.return_value = snap_mocks
-            return m
+            m.get_ip_address_by_network_name.side_effect = (
+                lambda name: ips[name])
+            return name, m
 
         self.nodes = {
-            'env1': {
-                'admin': create_node_mock('admin', snapshots=[('snap1', 15),
-                                                              ('snap2', 16)]),
-                'slave-00': create_node_mock('slave-00',
-                                             snapshots=[('snap1', 15)]),
-                'slave-01': create_node_mock('slave-01'),
-            }
+            'env1': collections.OrderedDict((
+                create_node_mock('admin', snapshots=[('snap1', 15),
+                                                     ('snap2', 16)],
+                                 ips={'fuelweb_admin': '192.168.1.2',
+                                      'public': '192.168.2.2',
+                                      'storage': '192.168.3.2'}),
+                create_node_mock('slave-00', snapshots=[('snap1', 15)],
+                                 ips={'fuelweb_admin': '192.168.1.3',
+                                      'public': '192.168.2.3',
+                                      'storage': '192.168.3.3'}),
+                create_node_mock('slave-01',
+                                 ips={'fuelweb_admin': '192.168.1.4',
+                                      'public': '192.168.2.4',
+                                      'storage': '192.168.3.4'}),
+            ))
         }
 
         def create_ap_mock(name, ip_network):
@@ -148,6 +171,7 @@ class TestShell(unittest.TestCase):
             m.get_admin.side_effect = lambda: nodes['admin']
             m.get_admin_ip.return_value = admin_ip
             m.has_admin.side_effect = lambda: bool(admin_ip)
+            m.get_env_l2_network_devices.return_value = self.l2netdevs.values()
             return m
 
         self.env_mocks = {
@@ -322,6 +346,21 @@ class TestShell(unittest.TestCase):
         admin.erase_snapshot.assert_called_once_with(name='snap1')
         slave = self.nodes['env1']['slave-00']
         slave.erase_snapshot.assert_called_once_with(name='snap1')
+
+    def test_slave_ip_list(self):
+        sh = shell.Shell(['slave-ip-list', 'env1'])
+        sh.execute()
+
+        self.print_mock.assert_called_once_with(
+            '192.168.1.2 192.168.1.3 192.168.1.4 '
+            '192.168.2.2 192.168.2.3 192.168.2.4')
+
+    def test_slave_ip_list_empty(self):
+        sh = shell.Shell(['slave-ip-list', 'env2'])
+        sh.execute()
+
+        self.print_mock.assert_called_once_with(
+            'No IPs allocated for environment!')
 
     def test_net_list(self):
         sh = shell.Shell(['net-list', 'env1'])
