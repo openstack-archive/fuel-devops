@@ -55,7 +55,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         self.ntpgroup_inst = self.ntpgroup_mock.return_value
 
         self.slave_conf = {
-            'name': 'slave-00',
+            'name': 'slave-01',
             'role': 'fuel_slave',
             'params': {},
             'volumes': [
@@ -82,7 +82,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
             nodes_count=1)
 
         self.cr_sl_conf_mock.assert_called_once_with(
-            slave_name='slave-00',
+            slave_name='slave-01',
             slave_role='fuel_slave',
             slave_vcpu=1,
             slave_memory=1024,
