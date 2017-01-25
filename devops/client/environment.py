@@ -50,10 +50,12 @@ class DevopsEnvironment(object):
                    ):
         group = self._env.get_group(name=group_name)
 
-        created_nodes = len(group.get_nodes())
+        created_nodes = {int(node.name[-2:0]) for node in
+                         group.get_nodes(role='fuel_slave')}
+        full_ids = set(xrange(1, len(created_nodes) + nodes_count + 1))
 
         new_nodes = []
-        for node_num in xrange(created_nodes, created_nodes + nodes_count):
+        for node_num in sorted(full_ids - created_nodes)[:nodes_count]:
             node_name = "slave-{:02d}".format(node_num)
             slave_conf = templates.create_slave_config(
                 slave_name=node_name,
