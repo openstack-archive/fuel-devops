@@ -55,7 +55,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         self.ntpgroup_inst = self.ntpgroup_mock.return_value
 
         self.slave_conf = {
-            'name': 'slave-00',
+            'name': 'slave-01',
             'role': 'fuel_slave',
             'params': {},
             'volumes': [
@@ -82,7 +82,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
             nodes_count=1)
 
         self.cr_sl_conf_mock.assert_called_once_with(
-            slave_name='slave-00',
+            slave_name='slave-01',
             slave_role='fuel_slave',
             slave_vcpu=1,
             slave_memory=1024,
@@ -102,7 +102,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         )
 
         assert len(nodes) == 1
-        assert nodes[0].name == 'slave-00'
+        assert nodes[0].name == 'slave-01'
 
         self.vol_define_mock.assert_called_once_with()
 
@@ -189,7 +189,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
             )])
 
         slave = self.group.add_node(
-            name='slave-00',
+            name='slave-01',
             role='fule_slave',
             interfaces=[dict(
                 label='eth0',
@@ -201,7 +201,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         eth0.mac_address = '64:52:dc:96:12:cc'
         eth0.save()
 
-        ip = self.denv.get_node_ip('slave-00')
+        ip = self.denv.get_node_ip('slave-01')
         assert ip == '10.109.0.100'
 
     def test_get_private_keys(self):
@@ -250,7 +250,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
             )])
 
         slave = self.group.add_node(
-            name='slave-00',
+            name='slave-01',
             role='fule_slave',
             interfaces=[dict(
                 label='eth0',
@@ -264,7 +264,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
 
         key = self.paramiko_mock.RSAKey.from_private_key.return_value
         keys = [key, key]
-        remote = self.denv.get_node_remote('slave-00')
+        remote = self.denv.get_node_remote('slave-01')
         assert remote is ssh
         self.ssh_mock.assert_called_with(
             '10.109.0.100',
@@ -290,7 +290,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
                 interface_model='e1000',
             )])
         slave = self.group.add_node(
-            name='slave-00',
+            name='slave-01',
             role='fule_slave',
             interfaces=[dict(
                 label='eth0',
@@ -308,7 +308,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         self.ntpgroup_mock.assert_called_once_with()
         self.ntpgroup_inst.add_node.assert_has_calls((
             mock.call(ssh, 'admin'),
-            mock.call(ssh, 'slave-00'),
+            mock.call(ssh, 'slave-01'),
         ))
 
         assert self.ntpgroup_inst.sync_time.call_count == 3
@@ -332,7 +332,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
                 interface_model='e1000',
             )])
         slave = self.group.add_node(
-            name='slave-00',
+            name='slave-01',
             role='fule_slave',
             interfaces=[dict(
                 label='eth0',
@@ -344,13 +344,13 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         eth0.mac_address = '64:52:dc:96:12:cc'
         eth0.save()
 
-        t = self.denv.get_curr_time(node_names=['admin', 'slave-00'])
+        t = self.denv.get_curr_time(node_names=['admin', 'slave-01'])
         assert t is self.ntpgroup_inst.get_curr_time.return_value
 
         self.ntpgroup_mock.assert_called_once_with()
         self.ntpgroup_inst.add_node.assert_has_calls((
             mock.call(ssh, 'admin'),
-            mock.call(ssh, 'slave-00'),
+            mock.call(ssh, 'slave-01'),
         ))
 
         assert self.ntpgroup_inst.sync_time.call_count == 0
