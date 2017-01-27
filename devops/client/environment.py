@@ -49,12 +49,20 @@ class DevopsEnvironment(object):
                    group_name='default',
                    ):
         group = self._env.get_group(name=group_name)
+        created_node_names = [n.name for n in group.get_nodes()]
 
-        created_nodes = len(group.get_nodes())
+        def get_available_slave_name():
+            for i in xrange(1, 1000):
+                name = "slave-{:02d}".format(i)
+                if name in created_node_names:
+                    continue
+
+                created_node_names.append(name)
+                return name
 
         new_nodes = []
-        for node_num in xrange(created_nodes, created_nodes + nodes_count):
-            node_name = "slave-{:02d}".format(node_num)
+        for node_num in xrange(nodes_count):
+            node_name = get_available_slave_name()
             slave_conf = templates.create_slave_config(
                 slave_name=node_name,
                 slave_role='fuel_slave',

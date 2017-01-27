@@ -137,11 +137,11 @@ class TestShell(unittest.TestCase):
                                  ips={'fuelweb_admin': '192.168.1.2',
                                       'public': '192.168.2.2',
                                       'storage': '192.168.3.2'}),
-                create_node_mock('slave-00', snapshots=[('snap1', 15)],
+                create_node_mock('slave-01', snapshots=[('snap1', 15)],
                                  ips={'fuelweb_admin': '192.168.1.3',
                                       'public': '192.168.2.3',
                                       'storage': '192.168.3.3'}),
-                create_node_mock('slave-01',
+                create_node_mock('slave-02',
                                  ips={'fuelweb_admin': '192.168.1.4',
                                       'public': '192.168.2.4',
                                       'storage': '192.168.3.4'}),
@@ -253,8 +253,8 @@ class TestShell(unittest.TestCase):
             '  VNC  NODE-NAME    GROUP-NAME\n'
             '-----  -----------  ------------\n'
             ' 5005  admin        rack-01\n'
-            ' 5005  slave-00     rack-01\n'
-            ' 5005  slave-01     rack-01')
+            ' 5005  slave-01     rack-01\n'
+            ' 5005  slave-02     rack-01')
 
     def test_show_none(self):
         sh = shell.Shell(['show', 'env2'])
@@ -327,7 +327,7 @@ class TestShell(unittest.TestCase):
         self.print_mock.assert_called_once_with(
             'SNAPSHOT    CREATED              NODES-NAMES\n'
             '----------  -------------------  ---------------\n'
-            'snap1       2016-05-12 17:12:15  admin, slave-00\n'
+            'snap1       2016-05-12 17:12:15  admin, slave-01\n'
             'snap2       2016-05-12 17:12:16  admin')
 
     def test_snapshot_list_none(self):
@@ -344,7 +344,7 @@ class TestShell(unittest.TestCase):
         self.client_inst.get_env.assert_called_once_with('env1')
         admin = self.nodes['env1']['admin']
         admin.erase_snapshot.assert_called_once_with(name='snap1')
-        slave = self.nodes['env1']['slave-00']
+        slave = self.nodes['env1']['slave-01']
         slave.erase_snapshot.assert_called_once_with(name='snap1')
 
     def test_slave_ip_list(self):
