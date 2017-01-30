@@ -134,9 +134,7 @@ class TestNtpInitscript(NtpTestCase):
         self.remote_mock.execute.assert_has_calls((
             mock.call(
                 "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"),
-            mock.call("awk '/^server/ && $2 !~ /^127\./ {print $2}' "
-                      "/etc/ntp.conf"),
-            mock.call('ntpdate -p 4 -t 0.2 -bu server1.com'),
+            mock.call('ntpd -gq'),
         ))
 
         self.remote_mock.check_call.assert_called_once_with('hwclock -w')
