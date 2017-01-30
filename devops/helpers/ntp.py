@@ -96,12 +96,9 @@ class BaseNtp(AbstractNtp):
     """
 
     def set_actual_time(self, timeout=600):
-        # Get IP of a server from which the time will be synchronized.
-        srv_cmd = "awk '/^server/ && $2 !~ /^127\./ {print $2}' /etc/ntp.conf"
-        server = self.remote.execute(srv_cmd)['stdout'][0]
 
         # Waiting for parent server until it starts providing the time
-        set_date_cmd = "ntpdate -p 4 -t 0.2 -bu {0}".format(server)
+        set_date_cmd = "ntpd -gq"
         helpers.wait(
             lambda: not self.remote.execute(set_date_cmd)['exit_code'],
             timeout=timeout,
@@ -276,15 +273,13 @@ class GroupNtpSync(object):
     def __exit__(self, exp_type, exp_value, traceback):
         pass
 
-    def add_node(self, remote, node_name):
-        group = 'other'
+    def add_node(self, remote, node_name, group='other'):
+        ntp = self.get_ntp(remote, node_name)
+
         if node_name == 'admin':
             group = 'admin'
-            ntp = self.get_ntp(remote, 'admin')
-        else:
-            ntp = self.get_ntp(remote, node_name)
-            if isinstance(ntp, NtpPacemaker):
-                group = 'pacemaker'
+        elif isinstance(ntp, NtpPacemaker):
+            group = 'pacemaker'
 
         self.ntp_groups[group].append(ntp)
 
