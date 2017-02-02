@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import base64
@@ -738,9 +737,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 for line in src:
                     dst.append(line)
                     if verbose:
-                        print(
-                            line.decode('utf-8', errors='backslashreplace'),
-                            end="")
+                        logger.info(
+                            line.decode('utf-8',
+                                        errors='backslashreplace').rstrip()
+                        )
             except IOError:
                 pass
             return dst
@@ -784,7 +784,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
         if verbose:
-            print("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.info("\nExecuting command: {!r}".format(command.rstrip()))
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -841,7 +841,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         )
 
         if verbose:
-            print(
+            logger.info(
                 '\n{cmd!r} execution results: Exit code: {code!s}'.format(
                     cmd=command,
                     code=result.exit_code

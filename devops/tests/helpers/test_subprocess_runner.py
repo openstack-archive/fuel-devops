@@ -24,6 +24,8 @@ from devops.helpers import exec_result
 from devops.helpers import subprocess_runner
 
 command = 'ls ~ '
+stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
+stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 
 
 class FakeFileStream(object):
@@ -48,10 +50,8 @@ class FakeFileStream(object):
 class TestSubprocessRunner(unittest.TestCase):
     @staticmethod
     def prepare_close(popen, stderr_val=None, ec=0):
-        stdout_lines = [b' \n', b'2\n', b'3\n', b' \n']
-        stderr_lines = (
-            [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
-        )
+        stdout_lines = stdout_list
+        stderr_lines = (stderr_list if stderr_val is None else [])
 
         stdout = FakeFileStream(*stdout_lines)
         stderr = FakeFileStream(*stderr_lines)
@@ -125,9 +125,22 @@ class TestSubprocessRunner(unittest.TestCase):
         # noinspection PyTypeChecker
         result = runner.execute(command, verbose=True)
 
-        logger.assert_has_calls((
+        logger.assert_has_calls([
             mock.call.debug(
                 "Executing command: {!r}".format(command.rstrip())),
+            mock.call.info(
+                "\nExecuting command: {!r}".format(command.rstrip())),
+            ] + [
+                mock.call.info(x.rstrip()) for x in stdout_list
+            ] + [
+                mock.call.info(x.rstrip()) for x in stderr_list
+            ] + [
+            mock.call.info(
+                '\n{cmd!r} execution results: '
+                'Exit code: {code!s}'.format(
+                    cmd=command,
+                    code=result.exit_code,
+                )),
             mock.call.debug(
                 '{cmd!r} execution results:\n'
                 'Exit code: {code!s}\n'
@@ -140,7 +153,7 @@ class TestSubprocessRunner(unittest.TestCase):
                     stdout=result.stdout_str,
                     stderr=result.stderr_str
                 )),
-        ))
+        ])
 
 
 @mock.patch('devops.helpers.subprocess_runner.logger', autospec=True)
