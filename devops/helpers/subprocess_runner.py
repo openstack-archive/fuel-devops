@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import fcntl
@@ -59,11 +58,10 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                 for line in src:
                     dst.append(line)
                     if verbose:
-                        print(
-                            line.decode(
-                                'utf-8',
-                                errors='backslashreplace'),
-                            end="")
+                        logger.info(
+                            line.decode('utf-8',
+                                        errors='backslashreplace').rstrip()
+                        )
             except IOError:
                 pass
             return dst
@@ -125,8 +123,8 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             stop_event = threading.Event()
 
             if verbose:
-                print("\nExecuting command: {!r}".format(command.rstrip()))
-
+                logger.info("\nExecuting command: {!r}"
+                            .format(command.rstrip()))
             # Run
             process = subprocess.Popen(
                 args=[command],
@@ -193,7 +191,7 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         result = cls.__exec_command(command=command, timeout=timeout,
                                     verbose=verbose, **kwargs)
         if verbose:
-            print(
+            logger.info(
                 '\n{cmd!r} execution results: Exit code: {code!s}'.format(
                     cmd=command,
                     code=result.exit_code
