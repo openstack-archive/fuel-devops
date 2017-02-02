@@ -63,6 +63,8 @@ username = 'user'
 password = 'pass'
 private_keys = []
 command = 'ls ~ '
+stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
+stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 encoded_cmd = base64.b64encode(
     "{}\n".format(command).encode('utf-8')
 ).decode('utf-8')
@@ -1162,7 +1164,7 @@ class TestExecute(unittest.TestCase):
         )
 
     @staticmethod
-    def get_patched_execute_async_retval(ec=0, stderr_val=True):
+    def get_patched_execute_async_retval(ec=0, stderr_val=None):
         """get patched execute_async retval
 
         :rtype:
@@ -1173,8 +1175,8 @@ class TestExecute(unittest.TestCase):
                 FakeStream,
                 FakeStream)
         """
-        out = [b' \n', b'2\n', b'3\n', b' \n']
-        err = [b' \n', b'0\n', b'1\n', b' \n'] if stderr_val is None else []
+        out = stdout_list
+        err = stderr_list if stderr_val is None else []
 
         stdout = FakeStream(*out)
         stderr = FakeStream(*err)
@@ -1227,20 +1229,23 @@ class TestExecute(unittest.TestCase):
         )
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
-        logger.assert_has_calls((
+        logger.assert_has_calls([
             mock.call.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'BRIEF STDOUT:\n'
-                '{stdout}\n'
-                'BRIEF STDERR:\n'
-                '{stderr}'.format(
-                    cmd=exp_result.cmd,
-                    code=exp_result.exit_code,
-                    stdout=exp_result.stdout_brief,
-                    stderr=exp_result.stderr_brief
+                "\nExecuting command: {!r}".format(command.rstrip())),
+            ] + [
+                mock.call.debug(str(x.rstrip().decode('utf-8')))
+                for x in stdout_list
+            ] + [
+                mock.call.debug(str(x.rstrip().decode('utf-8')))
+                for x in stderr_list
+            ] + [
+            mock.call.debug(
+                '\n{cmd!r} execution results: '
+                'Exit code: {code!s}'.format(
+                    cmd=command,
+                    code=result.exit_code,
                 )),
-        ))
+        ])
 
     @mock.patch(
         'devops.helpers.ssh_client.SSHClient.execute_async')
@@ -1269,20 +1274,24 @@ class TestExecute(unittest.TestCase):
         )
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
-        logger.assert_has_calls((
-            mock.call.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'STDOUT:\n'
-                '{stdout}\n'
-                'STDERR:\n'
-                '{stderr}'.format(
+
+        logger.assert_has_calls([
+            mock.call.info(
+                "\nExecuting command: {!r}".format(command.rstrip())),
+            ] + [
+                mock.call.info(str(x.rstrip().decode('utf-8')))
+                for x in stdout_list
+            ] + [
+                mock.call.error(str(x.rstrip().decode('utf-8')))
+                for x in stderr_list
+            ] + [
+            mock.call.info(
+                '\n{cmd!r} execution results: '
+                'Exit code: {code!s}'.format(
                     cmd=command,
-                    code=result['exit_code'],
-                    stdout=result['stdout_str'],
-                    stderr=result['stderr_str']
+                    code=result.exit_code,
                 )),
-        ))
+        ])
 
     @mock.patch('time.sleep', autospec=True)
     @mock.patch(
@@ -1314,16 +1323,10 @@ class TestExecute(unittest.TestCase):
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
         logger.assert_has_calls((
             mock.call.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'BRIEF STDOUT:\n'
-                '{stdout}\n'
-                'BRIEF STDERR:\n'
-                '{stderr}'.format(
+                '\n{cmd!r} execution results: '
+                'Exit code: {code!s}'.format(
                     cmd=exp_result.cmd,
-                    code=exp_result.exit_code,
-                    stdout=exp_result.stdout_brief,
-                    stderr=exp_result.stderr_brief
+                    code=exp_result.exit_code
                 )),
         ))
 
