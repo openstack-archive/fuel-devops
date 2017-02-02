@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import base64
@@ -630,17 +629,11 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if ret['exit_code'] not in expected:
             message = (
                 "{append}Command '{cmd!r}' returned exit code {code!s} while "
-                "expected {expected!s}\n"
-                "\tSTDOUT:\n"
-                "{stdout}"
-                "\n\tSTDERR:\n"
-                "{stderr}".format(
+                "expected {expected!s}\n".format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
                     expected=expected,
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str']
                 ))
             logger.error(message)
             if raise_on_err:
@@ -672,16 +665,10 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         if ret['stderr']:
             message = (
                 "{append}Command '{cmd!r}' STDERR while not expected\n"
-                "\texit code: {code!s}\n"
-                "\tSTDOUT:\n"
-                "{stdout}"
-                "\n\tSTDERR:\n"
-                "{stderr}".format(
+                "\texit code: {code!s}\n".format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str']
                 ))
             logger.error(message)
             if raise_on_err:
@@ -732,24 +719,27 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :rtype: ExecResult
         :raises: TimeoutError
         """
-        def poll_stream(src, verbose):
+        def poll_stream(src, verb_logger=None):
             dst = []
             try:
                 for line in src:
                     dst.append(line)
-                    if verbose:
-                        print(
-                            line.decode('utf-8', errors='backslashreplace'),
-                            end="")
+                    if verb_logger is not None:
+                        verb_logger(
+                            line.decode('utf-8',
+                                        errors='backslashreplace').rstrip()
+                        )
             except IOError:
                 pass
             return dst
 
         def poll_streams(result, channel, stdout, stderr, verbose):
             if channel.recv_ready():
-                result.stdout += poll_stream(src=stdout, verbose=verbose)
+                result.stdout += poll_stream(
+                    src=stdout, verb_logger=logger.info if verbose else None)
             if channel.recv_stderr_ready():
-                result.stderr += poll_stream(src=stderr, verbose=verbose)
+                result.stderr += poll_stream(
+                    src=stderr, verb_logger=logger.error if verbose else None)
 
         @decorators.threaded(started=True)
         def poll_pipes(stdout, stderr, result, stop, channel):
@@ -775,8 +765,12 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 if channel.status_event.is_set():
                     result.exit_code = result.exit_code = channel.exit_status
 
-                    result.stdout += poll_stream(src=stdout, verbose=verbose)
-                    result.stderr += poll_stream(src=stderr, verbose=verbose)
+                    result.stdout += poll_stream(
+                        src=stdout,
+                        verb_logger=logger.info if verbose else None)
+                    result.stderr += poll_stream(
+                        src=stderr,
+                        verb_logger=logger.error if verbose else None)
 
                     stop.set()
 
@@ -784,7 +778,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
         if verbose:
-            print("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.info("\nExecuting command: {!r}".format(command.rstrip()))
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -804,25 +798,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         stop_event.set()
         channel.close()
 
-        status_tmpl = (
-            'Wait for {0!r} during {1}s: no return code!\n'
-            '\tSTDOUT:\n'
-            '{2}\n'
-            '\tSTDERR"\n'
-            '{3}')
-        logger.debug(
-            status_tmpl.format(
-                command, timeout,
-                result.stdout,
-                result.stderr
-            )
-        )
-        raise error.TimeoutError(
-            status_tmpl.format(
-                command, timeout,
-                result.stdout_brief,
-                result.stderr_brief
-            ))
+        wait_err_msg = ('Wait for {0!r} during {1}s: no return code!\n'
+                        .format(command, timeout))
+        output_brief_msg = ('\tSTDOUT:\n'
+                            '{0}\n'
+                            '\tSTDERR"\n'
+                            '{1}'.format(result.stdout_brief,
+                                         result.stderr_brief))
+        logger.debug(wait_err_msg)
+        raise error.TimeoutError(wait_err_msg + output_brief_msg)
 
     def execute(self, command, verbose=False, timeout=None, **kwargs):
         """Execute command and wait for return code
@@ -840,39 +824,15 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             verbose=verbose
         )
 
+        message = (
+            '\n{cmd!r} execution results: Exit code: {code!s}'.format(
+                cmd=command,
+                code=result.exit_code
+            ))
         if verbose:
-            print(
-                '\n{cmd!r} execution results: Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code
-                )
-            )
-            logger.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'STDOUT:\n'
-                '{stdout}\n'
-                'STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                    stdout=result.stdout_str,
-                    stderr=result.stderr_str
-                ))
+            logger.info(message)
         else:
-            logger.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'BRIEF STDOUT:\n'
-                '{stdout}\n'
-                'BRIEF STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                    stdout=result.stdout_brief,
-                    stderr=result.stderr_brief
-                ))
-
+            logger.debug(message)
         return result
 
     def execute_async(self, command, get_pty=False):
