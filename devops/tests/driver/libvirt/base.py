@@ -123,7 +123,8 @@ class LibvirtTestCase(TestCase):
         for domain in conn.listAllDomains():
             for snapshot in domain.listAllSnapshots(0):
                 snapshot.delete()
-            domain.destroy()
+            if domain.isActive():
+                domain.destroy()
             domain.undefine()
         for network in conn.listAllNetworks():
             network.destroy()
