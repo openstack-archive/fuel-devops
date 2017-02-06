@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import fcntl
@@ -53,17 +52,16 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         :type timeout: int
         :rtype: ExecResult
         """
-        def poll_stream(src, verbose):
+        def poll_stream(src, verb_logger=None):
             dst = []
             try:
                 for line in src:
                     dst.append(line)
-                    if verbose:
-                        print(
-                            line.decode(
-                                'utf-8',
-                                errors='backslashreplace'),
-                            end="")
+                    if verb_logger is not None:
+                        verb_logger(
+                            line.decode('utf-8',
+                                        errors='backslashreplace').rstrip()
+                        )
             except IOError:
                 pass
             return dst
@@ -75,9 +73,13 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                 [])
             if rlist:
                 if stdout in rlist:
-                    result.stdout += poll_stream(src=stdout, verbose=verbose)
+                    result.stdout += poll_stream(
+                        src=stdout,
+                        verb_logger=logger.info if verbose else logger.debug)
                 if stderr in rlist:
-                    result.stderr += poll_stream(src=stderr, verbose=verbose)
+                    result.stderr += poll_stream(
+                        src=stderr,
+                        verb_logger=logger.error if verbose else logger.debug)
 
         @decorators.threaded(started=True)
         def poll_pipes(proc, result, stop):
@@ -112,10 +114,10 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                     result.exit_code = proc.returncode
                     result.stdout += poll_stream(
                         src=proc.stdout,
-                        verbose=verbose)
+                        verb_logger=logger.info if verbose else logger.debug)
                     result.stderr += poll_stream(
                         src=proc.stderr,
-                        verbose=verbose)
+                        verb_logger=logger.error if verbose else logger.debug)
 
                     stop.set()
 
@@ -125,8 +127,11 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             stop_event = threading.Event()
 
             if verbose:
-                print("\nExecuting command: {!r}".format(command.rstrip()))
-
+                logger.info("\nExecuting command: {!r}"
+                            .format(command.rstrip()))
+            else:
+                logger.debug("\nExecuting command: {!r}"
+                             .format(command.rstrip()))
             # Run
             process = subprocess.Popen(
                 args=[command],
@@ -157,25 +162,15 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
                     "{!r} has been completed just after timeout: "
                     "please validate timeout.".format(command))
 
-            status_tmpl = (
-                'Wait for {0!r} during {1}s: no return code!\n'
-                '\tSTDOUT:\n'
-                '{2}\n'
-                '\tSTDERR"\n'
-                '{3}')
-            logger.debug(
-                status_tmpl.format(
-                    command, timeout,
-                    result.stdout,
-                    result.stderr
-                )
-            )
-            raise error.TimeoutError(
-                status_tmpl.format(
-                    command, timeout,
-                    result.stdout_brief,
-                    result.stderr_brief
-                ))
+            wait_err_msg = ('Wait for {0!r} during {1}s: no return code!\n'
+                            .format(command, timeout))
+            output_brief_msg = ('\tSTDOUT:\n'
+                                '{0}\n'
+                                '\tSTDERR"\n'
+                                '{1}'.format(result.stdout_brief,
+                                             result.stderr_brief))
+            logger.debug(wait_err_msg)
+            raise error.TimeoutError(wait_err_msg + output_brief_msg)
 
     @classmethod
     def execute(cls, command, verbose=False, timeout=None, **kwargs):
@@ -189,41 +184,17 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         :rtype: ExecResult
         :raises: TimeoutError
         """
-        logger.debug("Executing command: {!r}".format(command.rstrip()))
         result = cls.__exec_command(command=command, timeout=timeout,
                                     verbose=verbose, **kwargs)
+        message = (
+            '\n{cmd!r} execution results: Exit code: {code!s}'.format(
+                cmd=command,
+                code=result.exit_code
+            ))
         if verbose:
-            print(
-                '\n{cmd!r} execution results: Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code
-                )
-            )
-            logger.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'STDOUT:\n'
-                '{stdout}\n'
-                'STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                    stdout=result.stdout_str,
-                    stderr=result.stderr_str
-                ))
+            logger.info(message)
         else:
-            logger.debug(
-                '{cmd!r} execution results:\n'
-                'Exit code: {code!s}\n'
-                'BRIEF STDOUT:\n'
-                '{stdout}\n'
-                'BRIEF STDERR:\n'
-                '{stderr}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                    stdout=result.stdout_brief,
-                    stderr=result.stderr_brief
-                ))
+            logger.debug(message)
 
         return result
 
@@ -262,17 +233,11 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         if ret['exit_code'] not in expected:
             message = (
                 "{append}Command '{cmd!r}' returned exit code {code!s} while "
-                "expected {expected!s}\n"
-                "\tSTDOUT:\n"
-                "{stdout}"
-                "\n\tSTDERR:\n"
-                "{stderr}".format(
+                "expected {expected!s}\n".format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
-                    expected=expected,
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str']
+                    expected=expected
                 ))
             logger.error(message)
             if raise_on_err:
@@ -307,16 +272,10 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         if ret['stderr']:
             message = (
                 "{append}Command '{cmd!r}' STDERR while not expected\n"
-                "\texit code: {code!s}\n"
-                "\tSTDOUT:\n"
-                "{stdout}"
-                "\n\tSTDERR:\n"
-                "{stderr}".format(
+                "\texit code: {code!s}\n".format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
-                    code=ret['exit_code'],
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str']
+                    code=ret['exit_code']
                 ))
             logger.error(message)
             if raise_on_err:
