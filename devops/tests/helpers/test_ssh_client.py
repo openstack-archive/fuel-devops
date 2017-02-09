@@ -1010,7 +1010,7 @@ class TestExecute(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command(
                 "sudo -S bash -c '"
-                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
+                "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
@@ -1046,7 +1046,7 @@ class TestExecute(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command(
                 "sudo -S bash -c '"
-                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
+                "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
@@ -1155,7 +1155,7 @@ class TestExecute(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command(
                 "sudo -S bash -c '"
-                "eval $(base64 -d <(echo \"{0}\"))'".format(encoded_cmd))
+                "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
             mock.call.debug(
