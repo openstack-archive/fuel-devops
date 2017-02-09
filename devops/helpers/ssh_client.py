@@ -870,7 +870,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         cmd = "{}\n".format(command)
         if self.sudo_mode:
             encoded_cmd = base64.b64encode(cmd.encode('utf-8')).decode('utf-8')
-            cmd = "sudo -S bash -c 'eval $(base64 -d <(echo \"{0}\"))'".format(
+            cmd = ("sudo -S bash -c 'eval \"$(base64 -d "
+                   "<(echo \"{0}\"))\"'").format(
                 encoded_cmd
             )
             chan.exec_command(cmd)
