@@ -1,0 +1,9 @@
+Code-Review+2: Andrey Sledzinskiy <asledzinskiy@mirantis.com>
+Code-Review+2: tatyana-leontovich <tleontovich@mirantis.com>
+Workflow+1: tatyana-leontovich <tleontovich@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Mon, 13 Feb 2017 15:27:18 +0000
+Reviewed-on: https://review.openstack.org/431584
+Project: openstack/fuel-devops
+Branch: refs/heads/master
