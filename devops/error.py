@@ -12,8 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import unicode_literals
+
 from warnings import warn
 
+import six
 
 class DevopsError(Exception):
     """Base class for errors"""
@@ -24,6 +27,15 @@ class AuthenticationError(DevopsError):
 
 
 class DevopsCalledProcessError(DevopsError):
+    @staticmethod
+    def _makestr(data):
+        if isinstance(data, six.binary_type):
+            return data.decode('utf-8', errors='backslashreplace')
+        elif isinstance(data, six.text_type):
+            return data
+        else:
+            return repr(data)
+
     def __init__(
             self, command, returncode, expected=0, stdout=None, stderr=None):
         self.returncode = returncode
@@ -34,14 +46,14 @@ class DevopsCalledProcessError(DevopsError):
         message = (
             "Command '{cmd}' returned exit code {code} while "
             "expected {expected}".format(
-                cmd=self.cmd,
+                cmd=self._makestr(self.cmd),
                 code=self.returncode,
                 expected=self.expected
             ))
         if self.stdout:
-            message += "\n\tSTDOUT:\n{}".format(self.stdout)
+            message += "\n\tSTDOUT:\n{}".format(self._makestr(self.stdout))
         if self.stderr:
-            message += "\n\tSTDERR:\n{}".format(self.stderr)
+            message += "\n\tSTDERR:\n{}".format(self._makestr(self.stderr))
         super(DevopsCalledProcessError, self).__init__(message)
 
     @property
@@ -60,7 +72,7 @@ class DevopsEnvironmentError(DevopsError, EnvironmentError):
     def __init__(self, command):
         self.cmd = command
         super(DevopsEnvironmentError, self).__init__(
-            "Command '{0}' is not found".format(self.cmd)
+            "Command '{!r}' is not found".format(self.cmd)
         )
 
 
