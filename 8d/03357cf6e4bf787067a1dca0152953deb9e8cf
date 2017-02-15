@@ -1,0 +1,10 @@
+Code-Review+1: Dmitry Belyaninov <dbelyaninov@mirantis.com>
+Code-Review+1: Vladimir Khlyunev <vkhlyunev@mirantis.com>
+Code-Review+2: Alexey Stepanov <penguinolog@gmail.com>
+Workflow+1: Nastya Urlapova <aurlapova@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 15 Feb 2017 09:49:17 +0000
+Reviewed-on: https://review.openstack.org/433657
+Project: openstack/fuel-devops
+Branch: refs/heads/release/2.9
