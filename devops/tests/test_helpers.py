@@ -14,8 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
 import unittest
 
+import devops.error
 from devops.helpers import helpers
 
 
@@ -67,3 +69,67 @@ class TestSnaphotList(unittest.TestCase):
         self.assertIn('dhcp_interface=NAT_INTERFACE', keys)
         self.assertIn('showmenu=SHOWMENU', keys)
         self.assertIn('build_images=BUILD_IMAGES', keys)
+
+    def test_wait(self):
+
+        self.external_storage = None
+
+        def dummy_method(to_sleep, *args, **kwargs):
+            time.sleep(to_sleep)
+            item = self.external_storage.pop(0)
+            try:
+                if issubclass(item, Exception):
+                    raise item("message")
+            except TypeError:
+                return item
+
+        self.external_storage = [False, False, True]
+        self.assertTrue(
+            helpers.wait(dummy_method, interval=1, timeout=9,
+                         predicate_kwargs={'to_sleep': 2}))
+
+        self.external_storage = [False, False, True]
+        self.assertRaises(devops.error.TimeoutError,
+                          helpers.wait, dummy_method, interval=1, timeout=8,
+                          predicate_args=(5, "qwerty", 123456,),
+                          predicate_kwargs={'another_arg': -1})
+
+        self.external_storage = [devops.error.DevopsEnvironmentError,
+                                 devops.error.DevopsEnvironmentError,
+                                 'useful_result']
+        self.assertEqual(
+            'useful_result',
+            helpers.wait_pass(
+                dummy_method, interval=1, timeout=6,
+                predicate_kwargs={'to_sleep': 1},
+                expected=devops.error.DevopsEnvironmentError))
+
+        self.external_storage = [devops.error.DevopsEnvironmentError,
+                                 devops.error.DevopsEnvironmentError,
+                                 'result']
+        self.assertRaises(devops.error.TimeoutError,
+                          helpers.wait_pass, dummy_method,
+                          interval=1, timeout=8,
+                          predicate_kwargs={'to_sleep': 5},
+                          expected=devops.error.DevopsEnvironmentError)
+
+        self.external_storage = [devops.error.DevopsEnvironmentError,
+                                 devops.error.AuthenticationError]
+
+        self.assertRaises(devops.error.AuthenticationError,
+                          helpers.wait_pass, dummy_method,
+                          interval=1, timeout=8,
+                          predicate_kwargs={'to_sleep': 1},
+                          expected=devops.error.DevopsEnvironmentError)
+
+        self.external_storage = [devops.error.DevopsEnvironmentError,
+                                 devops.error.DevopsCalledProcessError,
+                                 True]
+
+        self.assertTrue(
+            helpers.wait_pass(
+                dummy_method, interval=1, timeout=5,
+                predicate_kwargs={'to_sleep': 1},
+                expected=(
+                    devops.error.DevopsEnvironmentError,
+                    devops.error.DevopsCalledProcessError)))
