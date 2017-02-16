@@ -120,34 +120,49 @@ class TestHelpersHelpers(unittest.TestCase):
         ping.assert_called_once_with(host, port, timeout)
         self.assertFalse(result)
 
-    @mock.patch('time.time', autospec=True)
-    @mock.patch('time.sleep', autospec=True)
-    def test_wait(self, sleep, time):
-        time.return_value = 1
-        predicate = mock.Mock(return_value=True)
+    def test__check_wait_args(self):
+        helpers._check_wait_args(lambda: None, [], {}, 1, 1)
 
-        result = helpers.wait(predicate, interval=0, timeout=0)
+    def test__check_wait_args_wrong_predicate(self):
+        with self.assertRaises(TypeError):
+            helpers._check_wait_args('predicate', [], {}, 1, 1)
+
+    def test__check_wait_args_wrong_predicate_args(self):
+        with self.assertRaises(TypeError):
+            helpers._check_wait_args(lambda: None, 12, {}, 1, 1)
+
+    def test__check_wait_args_wrong_predicate_kwargs(self):
+        with self.assertRaises(TypeError):
+            helpers._check_wait_args(lambda: None, [], {'one', 'two'}, 1, 1)
+
+    def test__check_wait_args_wrong_interval(self):
+        with self.assertRaises(ValueError):
+            helpers._check_wait_args(lambda: None, ['one'], {'two': 2}, -2, 1)
+
+    def test__check_wait_args_wrong_timeout(self):
+        with self.assertRaises(ValueError):
+            helpers._check_wait_args(lambda: None, (1, 2, 3), {}, 10, 0)
+
+    @mock.patch('time.sleep', autospec=True)
+    def test_wait(self, sleep):
+
+        predicate = mock.Mock(return_value=True)
+        result = helpers.wait(predicate, interval=1, timeout=1)
 
         self.assertTrue(result)
         predicate.assert_called_once()
-        time.assert_called_once()
         sleep.assert_not_called()
 
-        time.reset_mock()
-        time.return_value = 1
         sleep.reset_mock()
         predicate.reset_mock()
-        predicate.return_value = True
 
+        predicate.return_value = 2
         result = helpers.wait(predicate, interval=2, timeout=2)
 
         self.assertEqual(result, 2)
         predicate.assert_called_once()
         sleep.assert_not_called()
-        time.assert_has_calls([mock.call(), mock.call()])
 
-        time.reset_mock()
-        time.return_value = 1
         sleep.reset_mock()
         predicate.reset_mock()
         predicate.return_value = False
@@ -155,45 +170,31 @@ class TestHelpersHelpers(unittest.TestCase):
         self.assertRaises(
             error.TimeoutError,
             helpers.wait,
-            predicate, interval=2, timeout=-2)
-        sleep.assert_not_called()
-        time.assert_has_calls([mock.call(), mock.call()])
+            predicate, interval=1, timeout=1)
+        predicate.assert_called()
 
-    @mock.patch('time.time', autospec=True)
     @mock.patch('time.sleep', autospec=True)
-    def test_wait_pass(self, sleep, time):
+    def test_wait_pass(self, sleep):
         predicate = mock.Mock(return_value=True)
-
         result = helpers.wait_pass(predicate)
         self.assertTrue(result)
-        time.assert_called_once()
-        sleep.assert_not_called()
 
-        time.reset_mock()
-        time.return_value = 1
-        sleep.reset_mock()
         predicate.reset_mock()
         predicate.side_effect = ValueError
+
         self.assertRaises(
-            ValueError,
+            error.TimeoutError,
             helpers.wait_pass,
-            predicate, timeout=-1)
-        sleep.assert_not_called()
-        time.assert_has_calls([mock.call(), mock.call()])
+            predicate, timeout=1)
 
     @mock.patch('devops.helpers.helpers.tcp_ping', autospec=True)
-    @mock.patch('time.time', autospec=True)
-    @mock.patch('time.sleep', autospec=True)
-    def test_wait_tcp(self, sleep, time, ping):
+    def test_wait_tcp(self, ping):
         host = '127.0.0.1'
         port = 65535
-        timeout = 0
+        timeout = 1
 
         helpers.wait_tcp(host, port, timeout)
-
         ping.assert_called_once_with(host=host, port=port)
-        time.assert_called_once()
-        sleep.assert_not_called()
 
     @mock.patch('devops.helpers.ssh_client.SSHClient', autospec=True)
     @mock.patch('devops.helpers.helpers.wait')
