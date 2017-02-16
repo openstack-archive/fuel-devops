@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import functools
 import os
+import signal
 import socket
 import time
 import warnings
@@ -79,69 +80,125 @@ def tcp_ping(host, port, timeout=None):
     return True
 
 
-def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out"):
-    """Wait until predicate will become True.
+class RunLimit(object):
+    def __init__(self, timeout=60, timeout_msg='Timeout'):
+        self.seconds = int(timeout)
+        self.error_message = timeout_msg
+        logger.debug("RunLimit.__init__(timeout={0}, timeout_msg='{1}'"
+                     .format(timeout, timeout_msg))
 
-    returns number of seconds that is left or 0 if timeout is None.
+    def handle_timeout(self, signum, frame):
+        logger.debug("RunLimit.handle_timeout reached!")
+        raise error.TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+        logger.debug("RunLimit.__enter__(seconds={0}".format(self.seconds))
+
+    def __exit__(self, exc_type, value, traceback):
+        time_remained = signal.alarm(0)
+        logger.debug("RunLimit.__exit__ , remained '{0}' sec"
+                     .format(time_remained))
+
+
+def _check_wait_args(predicate,
+                     predicate_args,
+                     predicate_kwargs,
+                     interval,
+                     timeout):
+
+    if not callable(predicate):
+        raise TypeError("Not callable raising_predicate has been posted: '{0}'"
+                        .format(predicate))
+    if not isinstance(predicate_args, (list, tuple)):
+        raise TypeError("Incorrect predicate_args type for '{0}', should be "
+                        "list or tuple, got '{1}'"
+                        .format(predicate, type(predicate_args)))
+    if not isinstance(predicate_kwargs, dict):
+        raise TypeError("Incorrect predicate_kwargs type, should be dict, "
+                        "got {}".format(type(predicate_kwargs)))
+    if interval <= 0:
+        raise ValueError("For '{0}(*{1}, **{2})', waiting interval '{3}'sec is"
+                         " wrong".format(predicate,
+                                         predicate_args,
+                                         predicate_kwargs,
+                                         interval))
+    if timeout <= 0:
+        raise ValueError("For '{0}(*{1}, **{2})', timeout '{3}'sec is "
+                         "wrong".format(predicate,
+                                        predicate_args,
+                                        predicate_kwargs,
+                                        timeout))
+
+
+def wait(predicate, interval=5, timeout=60, timeout_msg="Waiting timed out",
+         predicate_args=None, predicate_kwargs=None):
+    """Wait until predicate will become True.
 
     Options:
 
-    interval - seconds between checks.
-
-    timeout  - raise error.TimeoutError if predicate won't become True after
-    this amount of seconds. 'None' disables timeout.
-
-    timeout_msg - text of the error.TimeoutError
+    :param interval: - seconds between checks.
+    :param timeout:  - raise TimeoutError if predicate won't become True after
+                      this amount of seconds.
+    :param timeout_msg: - text of the TimeoutError
+    :param predicate_args: - positional arguments for given predicate wrapped
+                            in list or tuple
+    :param predicate_kwargs: - dict with named arguments for the predicate
 
     """
-    start_time = time.time()
-    if not timeout:
-        return predicate()
-    while not predicate():
-        if start_time + timeout < time.time():
-            msg = (
-                "{msg}\nWaited for pass {cmd}: {spent:0.3f} seconds."
-                "".format(
-                    msg=timeout_msg,
-                    cmd=predicate.func_name,
-                    spent=time.time() - start_time
-                ))
-            logger.debug(msg)
-            raise error.TimeoutError(timeout_msg)
+    predicate_args = predicate_args or []
+    predicate_kwargs = predicate_kwargs or {}
+    _check_wait_args(predicate, predicate_args, predicate_kwargs,
+                     interval, timeout)
 
-        seconds_to_sleep = max(
-            0,
-            min(interval, start_time + timeout - time.time()))
-        time.sleep(seconds_to_sleep)
-
-    return timeout + start_time - time.time()
+    with RunLimit(timeout, timeout_msg):
+        while True:
+            result = predicate(*predicate_args, **predicate_kwargs)
+            if result:
+                logger.debug("wait() completed with result='{0}'"
+                             .format(result))
+                return result
+            else:
+                time.sleep(interval)
 
 
-def wait_pass(
-        raising_predicate,
-        expected=Exception,
-        interval=5, timeout=None,
-        timeout_msg="Waiting timed out"
-):
-    """Wait for successful return from predicate or expected exception"""
-    if not callable(raising_predicate):
-        raise TypeError('Not callable raising_predicate has been posted')
-    start_time = time.time()
-    while True:
-        try:
-            return raising_predicate()
-        except expected:
-            if timeout and start_time + timeout < time.time():
-                msg = (
-                    "{msg}\nWaited for pass {cmd}: {spent:0.3f} seconds."
-                    "".format(
-                        msg=timeout_msg,
-                        cmd=raising_predicate.func_name,
-                        spent=time.time() - start_time
-                    ))
-                logger.error(msg)
-                raise
-            time.sleep(interval)
+def wait_pass(raising_predicate, expected=Exception,
+              interval=5, timeout=60, timeout_msg="Waiting timed out",
+              predicate_args=None, predicate_kwargs=None):
+    """Wait for successful return from predicate ignoring expected exception
+
+    Options:
+
+    :param interval: - seconds between checks.
+    :param timeout:  - raise TimeoutError if predicate still throwing expected
+                       exception after this amount of seconds.
+    :param timeout_msg: - text of the TimeoutError
+    :param predicate_args: - positional arguments for given predicate wrapped
+                            in list or tuple
+    :param predicate_kwargs: - dict with named arguments for the predicate
+    :param expected_exc: Exception that can be ignored while waiting (its
+                         possible to pass several using list/tuple
+
+    """
+
+    predicate_args = predicate_args or []
+    predicate_kwargs = predicate_kwargs or {}
+    _check_wait_args(raising_predicate, predicate_args, predicate_kwargs,
+                     interval, timeout)
+
+    with RunLimit(timeout, timeout_msg):
+        while True:
+            try:
+                result = raising_predicate(*predicate_args, **predicate_kwargs)
+                logger.debug("wait_pass() completed with result='{0}'"
+                             .format(result))
+                return result
+#            except error.TimeoutError:
+#                raise
+            except expected as e:
+                logger.debug("Got expected exception {!r}, continue".format(e))
+                time.sleep(interval)
 
 
 def wait_tcp(host, port, timeout, timeout_msg="Waiting timed out"):
