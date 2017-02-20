@@ -153,6 +153,8 @@ class TestSubprocessRunnerHelpers(unittest.TestCase):
         return_value = {
             'stderr_str': '0\n1',
             'stdout_str': '2\n3',
+            'stderr_brief': '0\n1',
+            'stdout_brief': '2\n3',
             'exit_code': exit_code,
             'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
             'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
@@ -183,6 +185,8 @@ class TestSubprocessRunnerHelpers(unittest.TestCase):
         return_value = {
             'stderr_str': '0\n1',
             'stdout_str': '2\n3',
+            'stderr_brief': '0\n1',
+            'stdout_brief': '2\n3',
             'exit_code': exit_code,
             'stderr': [b' \n', b'0\n', b'1\n', b' \n'],
             'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
@@ -215,6 +219,8 @@ class TestSubprocessRunnerHelpers(unittest.TestCase):
         return_value = {
             'stderr_str': '',
             'stdout_str': '2\n3',
+            'stderr_brief': '',
+            'stdout_brief': '2\n3',
             'exit_code': 0,
             'stderr': [],
             'stdout': [b' \n', b'2\n', b'3\n', b' \n']}
@@ -235,6 +241,7 @@ class TestSubprocessRunnerHelpers(unittest.TestCase):
         self.assertEqual(result, return_value)
 
         return_value['stderr_str'] = '0\n1'
+        return_value['stderr_brief'] = '0\n1'
         return_value['stderr'] = [b' \n', b'0\n', b'1\n', b' \n']
 
         check_call.reset_mock()
