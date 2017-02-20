@@ -291,13 +291,12 @@ class Node(
             return None
         return self.interface_set.get(label=label)
 
-    # NOTE: this method works only for master node
     def get_ip_address_by_network_name(self, name, interface=None):
         interface = interface or self.interface_set.filter(
             l2_network_device__name=name).order_by('id')[0]
         return interface.address_set.get(interface=interface).ip_address
 
-    # NOTE: this method works only for master node
+    # NOTE: this method works only for Fuel master node
     def get_ip_address_by_nailgun_network_name(self, name):
         interface = self.get_interface_by_nailgun_network_name(name)
         return interface.address_set.first().ip_address
@@ -318,7 +317,6 @@ class Node(
             password=password, private_keys=private_keys, auth=auth)
 
     # LEGACY
-    # NOTE: this method works only for master node
     def await(self, network_name, timeout=120, by_port=22):
         helpers.wait_pass(
             lambda: helpers.tcp_ping_(
