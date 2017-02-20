@@ -144,19 +144,35 @@ class Shell(object):
         self.print_table(headers=headers, columns=columns)
 
     def do_slave_ip_list(self):
-        slave_ips = []
+        address_pool_name = self.params.address_pool_name
+
+        slave_ips = {}
         for l2dev in self.env.get_env_l2_network_devices():
-            # Suppress output of IPs from non-DHCP nets
-            if not l2dev.dhcp:
+            if address_pool_name and \
+                    l2dev.address_pool.name != address_pool_name:
                 continue
+
+            ap_slave_ips = []
             for node in self.env.get_nodes():
-                slave_ips.append(
-                    node.get_ip_address_by_network_name(l2dev.name))
+                if self.params.ip_only:
+                    ap_slave_ips.append(
+                        node.get_ip_address_by_network_name(l2dev.name))
+                else:
+                    ap_slave_ips.append(
+                        "{0},{1}".format(
+                            node.name,
+                            node.get_ip_address_by_network_name(l2dev.name)))
+            if ap_slave_ips:
+                slave_ips[l2dev.address_pool.name] = ap_slave_ips
 
         if not slave_ips:
-            print('No IPs allocated for environment!')
-        else:
-            print(' '.join(slave_ips))
+            sys.exit('No IPs were allocated for environment!')
+
+        for ap, n_ips in sorted(slave_ips.items()):
+            if address_pool_name:
+                print(' '.join(n_ips))
+            else:
+                print(ap + ": " + ' '.join(n_ips))
 
     def do_time_sync(self):
         if not self.env.has_admin():
@@ -379,6 +395,17 @@ class Shell(object):
         net_pool.add_argument('--net-pool', '-P', dest='net_pool',
                               help='Set ip network pool (cidr)',
                               default="10.21.0.0/16:24", type=str)
+        address_pool_name = argparse.ArgumentParser(add_help=False)
+        address_pool_name.add_argument(
+            '--address-pool-name', '-A',
+            dest='address_pool_name',
+            help='Specified address pool for printing IPs',
+            default=None, type=str)
+        ip_only_parser = argparse.ArgumentParser(add_help=False)
+        ip_only_parser.add_argument('--ip-only', dest='ip_only',
+                                    action='store_const', const=True,
+                                    help='Print just IP addresses',
+                                    default=False)
         second_disk_size = argparse.ArgumentParser(add_help=False)
         second_disk_size.add_argument('--second-disk-size',
                                       dest='second_disk_size',
@@ -453,7 +480,9 @@ class Shell(object):
                               description="Display allocated networks for "
                               "environment")
         subparsers.add_parser('slave-ip-list',
-                              parents=[name_parser],
+                              parents=[name_parser,
+                                       address_pool_name,
+                                       ip_only_parser],
                               help="Show slave node IPs in environment",
                               description="Display allocated IPs for "
                               "environment slave nodes")

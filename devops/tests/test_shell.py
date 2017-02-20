@@ -86,6 +86,7 @@ class TestShell(unittest.TestCase):
     def setUp(self):
         super(TestShell, self).setUp()
 
+        self.sys_mock = self.patch('devops.shell.sys')
         self.print_mock = self.patch('devops.shell.print')
         self.tzlocal_mock = self.patch(
             'devops.helpers.helpers.tz.tzlocal',
@@ -101,16 +102,32 @@ class TestShell(unittest.TestCase):
             m.created = datetime.datetime(2016, 5, 12, 15, 12, t)
             return m
 
-        def create_l2netdev_mock(name, dhcp=False):
+        def create_ap_mock(name, ip_network):
+            m = mock.Mock(spec=models.AddressPool)
+            m.name = name
+            m.ip_network = netaddr.IPNetwork(ip_network)
+            return m
+
+        self.aps = {
+            'env1': [
+                create_ap_mock('fuelweb_admin-pool01', '109.10.0.0/24'),
+                create_ap_mock('public-pool01', '109.10.1.0/24'),
+                create_ap_mock('storage-pool01', '109.10.2.0/24'),
+            ]
+        }
+
+        def create_l2netdev_mock(name, address_pool, dhcp=False):
             m = mock.Mock(spec=models.L2NetworkDevice)
             m.name = name
             m.dhcp = dhcp
+            m.address_pool = address_pool
             return name, m
 
         self.l2netdevs = collections.OrderedDict((
-            create_l2netdev_mock('fuelweb_admin', dhcp=True),
-            create_l2netdev_mock('public', dhcp=True),
-            create_l2netdev_mock('storage'),
+            create_l2netdev_mock('fuelweb_admin', self.aps['env1'][0],
+                                 dhcp=True),
+            create_l2netdev_mock('public', self.aps['env1'][1], dhcp=True),
+            create_l2netdev_mock('storage', self.aps['env1'][2], ),
         ))
 
         def create_node_mock(name, vnc_port=5005, snapshots=None, ips=None):
@@ -146,20 +163,6 @@ class TestShell(unittest.TestCase):
                                       'public': '192.168.2.4',
                                       'storage': '192.168.3.4'}),
             ))
-        }
-
-        def create_ap_mock(name, ip_network):
-            m = mock.Mock(spec=models.AddressPool)
-            m.name = name
-            m.ip_network = netaddr.IPNetwork(ip_network)
-            return m
-
-        self.aps = {
-            'env1': [
-                create_ap_mock('fuelweb_admin-pool01', '109.10.0.0/24'),
-                create_ap_mock('public-pool01', '109.10.1.0/24'),
-                create_ap_mock('storage-pool01', '109.10.2.0/24'),
-            ]
         }
 
         def create_env_mock(env_name, created, nodes, aps, admin_ip=None):
@@ -351,16 +354,51 @@ class TestShell(unittest.TestCase):
         sh = shell.Shell(['slave-ip-list', 'env1'])
         sh.execute()
 
+        self.print_mock.assert_has_calls((
+            mock.call('fuelweb_admin-pool01: admin,192.168.1.2'
+                      ' slave-01,192.168.1.3 slave-02,192.168.1.4'),
+            mock.call('public-pool01: admin,192.168.2.2'
+                      ' slave-01,192.168.2.3 slave-02,192.168.2.4'),
+            mock.call('storage-pool01: admin,192.168.3.2'
+                      ' slave-01,192.168.3.3 slave-02,192.168.3.4'),
+        ))
+
+    def test_slave_ip_list_ip_only(self):
+        sh = shell.Shell(['slave-ip-list', 'env1', '--ip-only'])
+        sh.execute()
+
+        self.print_mock.assert_has_calls((
+            mock.call(
+                'fuelweb_admin-pool01: 192.168.1.2 192.168.1.3 192.168.1.4'),
+            mock.call('public-pool01: 192.168.2.2 192.168.2.3 192.168.2.4'),
+            mock.call('storage-pool01: 192.168.3.2 192.168.3.3 192.168.3.4'),
+        ))
+
+    def test_slave_ip_list_specific_ap(self):
+        sh = shell.Shell(['slave-ip-list', 'env1',
+                          '--address-pool-name', 'public-pool01'])
+        sh.execute()
+
         self.print_mock.assert_called_once_with(
-            '192.168.1.2 192.168.1.3 192.168.1.4 '
-            '192.168.2.2 192.168.2.3 192.168.2.4')
+            'admin,192.168.2.2 slave-01,192.168.2.3 slave-02,192.168.2.4')
+
+    def test_slave_ip_list_specific_ap_ip_only(self):
+        sh = shell.Shell([
+            'slave-ip-list', 'env1',
+            '--address-pool-name', 'fuelweb_admin-pool01',
+            '--ip-only'])
+        sh.execute()
+
+        self.print_mock.assert_called_once_with(
+            '192.168.1.2 192.168.1.3 192.168.1.4'
+        )
 
     def test_slave_ip_list_empty(self):
         sh = shell.Shell(['slave-ip-list', 'env2'])
         sh.execute()
 
-        self.print_mock.assert_called_once_with(
-            'No IPs allocated for environment!')
+        self.sys_mock.exit.assert_called_once_with(
+            'No IPs were allocated for environment!')
 
     def test_net_list(self):
         sh = shell.Shell(['net-list', 'env1'])
