@@ -18,7 +18,7 @@ import logging.config
 from devops.settings import LOGS_DIR
 from devops.settings import LOGS_SIZE
 
-__version__ = '2.9.23'
+__version__ = '2.9.24'
 
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
