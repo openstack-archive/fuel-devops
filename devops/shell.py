@@ -148,6 +148,8 @@ class Shell(object):
 
         slave_ips = {}
         for l2dev in self.env.get_env_l2_network_devices():
+            if l2dev.address_pool is None:
+                continue
             if address_pool_name and \
                     l2dev.address_pool.name != address_pool_name:
                 continue
