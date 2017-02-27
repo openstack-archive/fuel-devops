@@ -640,8 +640,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 raise error.DevopsCalledProcessError(
                     command, ret['exit_code'],
                     expected=expected,
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str'])
+                    stdout=ret['stdout_brief'],
+                    stderr=ret['stdout_brief'])
         return ret
 
     def check_stderr(
@@ -675,8 +675,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 raise error.DevopsCalledProcessError(
                     command,
                     ret['exit_code'],
-                    stdout=ret['stdout_str'],
-                    stderr=ret['stderr_str'])
+                    stdout=ret['stdout_brief'],
+                    stderr=ret['stdout_brief'])
         return ret
 
     @classmethod
