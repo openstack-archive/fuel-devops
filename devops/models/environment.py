@@ -411,6 +411,12 @@ class Environment(DriverModel):
             return str(self.get_network(name=router_name).ip[2])
         return str(self.get_network(name=router_name).ip[1])
 
+    def get_admin_nodes(self):
+        return sorted(
+            list(self.get_nodes(role='fuel_master')),
+            key=lambda node: node.name
+        )
+
     # @logwrap
     def get_admin_remote(self,
                          login=settings.SSH_CREDENTIALS['login'],
@@ -419,10 +425,7 @@ class Environment(DriverModel):
 
         :rtype : SSHClient
         """
-        admin = sorted(
-            list(self.get_nodes(role='fuel_master')),
-            key=lambda node: node.name
-        )[0]
+        admin = self.get_admin_nodes()[0]
         return admin.remote(
             self.admin_net, auth=SSHAuth(
                 username=login,

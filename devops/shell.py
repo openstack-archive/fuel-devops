@@ -154,6 +154,9 @@ class Shell(object):
         self.print_table(headers=headers, columns=columns)
 
     def do_timesync(self):
+        if not self.env.get_admin_nodes():
+            print('There is no FuelAdmin node. It is impossible to sync time')
+            return
         if not self.params.node_name:
             nodes = [node.name for node in self.env.get_nodes()
                      if node.driver.node_active(node)]
