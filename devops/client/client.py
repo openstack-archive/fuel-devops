@@ -68,6 +68,15 @@ class DevopsClient(object):
         """
         hw = settings.HARDWARE
 
+        networks_pools = dict(
+            admin=net_pool or settings.POOLS['admin'],
+            public=net_pool or settings.POOLS['public'],
+            management=net_pool or settings.POOLS['management'],
+            private=net_pool or settings.POOLS['private'],
+            storage=net_pool or settings.POOLS['storage'])
+        if settings.IRONIC_ENABLED:
+                networks_pools['ironic'] = net_pool or settings.POOLS['ironic']
+
         config = templates.create_devops_config(
             boot_from=boot_from,
             env_name=env_name or settings.ENV_NAME,
@@ -93,13 +102,7 @@ class DevopsClient(object):
             networks_multiplenetworks=settings.MULTIPLE_NETWORKS,
             networks_nodegroups=settings.NODEGROUPS,
             networks_interfaceorder=settings.INTERFACE_ORDER,
-            networks_pools=dict(
-                admin=net_pool or settings.POOLS['admin'],
-                public=net_pool or settings.POOLS['public'],
-                management=net_pool or settings.POOLS['management'],
-                private=net_pool or settings.POOLS['private'],
-                storage=net_pool or settings.POOLS['storage'],
-            ),
+            networks_pools=networks_pools,
             networks_forwarding=settings.FORWARDING,
             networks_dhcp=settings.DHCP,
             driver_enable_acpi=settings.DRIVER_PARAMETERS['enable_acpi'],
