@@ -396,8 +396,8 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
                              # to include virbrNN@200 to the current network
                              # device (linux bridge).
 
-       Template example
-       ----------------
+       Template example for NATed networks
+       -----------------------------------
        # Nodes should have at least two interfaces connected to the following
        # L2 networks:
        # admin: for admin/PXE network
@@ -488,6 +488,29 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
            parent_iface:
              l2_net_dev: openstack_br
              tag: 103
+
+       Template example for existing bridges
+       -------------------------------------
+
+       l2_network_devices:  # Libvirt bridges. It is *NOT* Nailgun networks
+         admin:
+           forward:
+             mode: bridge
+           parent_iface:
+             phys_dev: !os_env BAREMETAL_ADMIN_IFACE
+
+         public:
+           forward:
+             mode: bridge
+           parent_iface:
+             phys_dev: !os_env BAREMETAL_PUBLIC_IFACE
+
+         private:
+           forward:
+             mode: bridge
+           parent_iface:
+             phys_dev: !os_env BAREMETAL_PRIVATE_IFACE
+
 
     Note: This class is imported as L2NetworkDevice at .__init__.py
     """
