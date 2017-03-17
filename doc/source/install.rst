@@ -166,7 +166,7 @@ Set local peers to be trusted by default, create user and db and load fixtures.
 
     pg_version=$(dpkg-query --show --showformat='${version;3}' postgresql)
     pg_createcluster $pg_version main --start
-    sudo sed -ir 's/peer/trust/' /etc/postgresql/9.*/main/pg_hba.conf
+    sudo sed -ir 's/peer\|md5/trust/' /etc/postgresql/9.*/main/pg_hba.conf
     sudo service postgresql restart
 
 * default <user>, <db> and <password> are **fuel_devops** (for **2.9.x and 3.0.x version**)
