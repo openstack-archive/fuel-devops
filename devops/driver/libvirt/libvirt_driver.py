@@ -1907,7 +1907,8 @@ class LibvirtDiskDevice(volume.DiskDevice):
 
     device = base.ParamField(default='disk', choices=('disk', 'cdrom'))
     type = base.ParamField(default='file', choices='file')
-    bus = base.ParamField(default='virtio', choices=('virtio', 'ide', 'scsi'))
+    bus = base.ParamField(default='virtio', choices=('virtio', 'ide',
+                                                     'scsi', 'usb'))
     target_dev = base.ParamField()
 
     @property
