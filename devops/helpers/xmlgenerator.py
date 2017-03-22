@@ -13,8 +13,8 @@
 #    under the License.
 
 from xml.dom import minidom
-# noinspection PyPep8Naming
-from xml.etree import ElementTree as ET
+
+from lxml import etree  # nosec  # We are authors of this XML
 
 import six
 
@@ -22,7 +22,9 @@ import six
 class XMLGeneratorElement(object):
 
     def __init__(self, name, parent, builder):
-        self.elem = ET.SubElement(parent, name)
+        # pylint: disable=no-member
+        self.elem = etree.SubElement(parent, name)
+        # pylint: enable=no-member
         self.parent = parent
         self.builder = builder
         self.prev_elem = None
@@ -57,7 +59,9 @@ class XMLGeneratorElement(object):
 class XMLGenerator(object):
 
     def __init__(self, root_name, **kwargs):
-        self.root = ET.Element(root_name)
+        # pylint: disable=no-member
+        self.root = etree.Element(root_name)
+        # pylint: enable=no-member
         kwargs = {k: str(v) for k, v in kwargs.items()}
         self.root.attrib.update(kwargs)
         self.curr_el = self.root
@@ -69,7 +73,9 @@ class XMLGenerator(object):
             builder=self)
 
     def __str__(self):
-        rough_string = ET.tostring(self.root, encoding='utf-8')
+        # pylint: disable=no-member
+        rough_string = etree.tostring(self.root, encoding='utf-8')
+        # pylint: enable=no-member
         reparsed = minidom.parseString(rough_string)
         s = reparsed.toprettyxml(indent='    ', encoding='utf-8')
         if six.PY2:
