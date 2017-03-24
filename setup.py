@@ -50,6 +50,7 @@ setuptools.setup(
         'tabulate',
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
+        'lxml',
         'enum34' if sys.version_info.major == 2 else ''
     ],
     tests_require=[
