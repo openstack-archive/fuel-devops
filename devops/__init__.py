@@ -17,7 +17,7 @@ import time
 import logging.config
 from devops import settings
 
-__version__ = '3.0.3'
+__version__ = '3.0.4'
 
 if not os.path.exists(settings.LOGS_DIR):
     os.makedirs(settings.LOGS_DIR)
