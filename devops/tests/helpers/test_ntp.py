@@ -155,7 +155,7 @@ class TestNtpInitscript(NtpTestCase):
         ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
         assert ntp_init._get_sync_complete() is True
 
-    def test_get_sync_complete_false(self):
+    def test_get_sync_complete_with_unstable_peer(self):
         self.remote_mock.execute.side_effect = (
             self.make_exec_result('/etc/init.d/ntp'),
             self.make_exec_result("""\
@@ -169,7 +169,7 @@ class TestNtpInitscript(NtpTestCase):
 """))
 
         ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')
-        assert ntp_init._get_sync_complete() is False
+        assert ntp_init._get_sync_complete() is True
 
     def test_wait_peer(self):
         ntp_init = ntp.NtpInitscript(self.remote_mock, 'node')

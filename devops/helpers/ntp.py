@@ -119,7 +119,7 @@ class BaseNtp(AbstractNtp):
         for peer in peers:
             p = peer.split()
             remote = str(p[0])
-            reach = int(p[6], 8)  # From octal to int
+            # reach = int(p[6], 8)  # From octal to int
             offset = float(p[8])
             jitter = float(p[9])
 
@@ -134,8 +134,12 @@ class BaseNtp(AbstractNtp):
 
             # 3. reachability bit array should have '1' at least in
             # two lower bits as the last two successful checks
-            if reach & 3 != 3:
-                continue
+            # TODO(sbog): we should improve this, as unstable reference
+            # is still a reference and can be used for time sync. Moreover,
+            # if there are other servers which can easily be a reference
+            # one, that reachability of current one is not a problem at all.
+            # if reach & 3 != 3:
+            #     continue
 
             return True
         return False
