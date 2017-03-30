@@ -134,7 +134,7 @@ class TestNtpInitscript(NtpTestCase):
         self.remote_mock.execute.assert_has_calls((
             mock.call(
                 "find /etc/init.d/ -regex '/etc/init.d/ntp.?' -executable"),
-            mock.call('ntpd -gq'),
+            mock.call('ntpd -gqd'),
         ))
 
         self.remote_mock.check_call.assert_called_once_with('hwclock -w')
