@@ -94,13 +94,25 @@ class BaseNtp(AbstractNtp):
     - set_actual_time
     - wait_peer
     """
+    set_date_cmd = "ntpd -gqd"
+
+    def _set_time(self):
+        # Try to get current time from a parent server
+        res = self.remote.execute(self.set_date_cmd)
+
+        if res['exit_code']:
+            # Exit code is not 0
+            return False
+        if any(['no servers found' in s for s in res['stdout']])
+            # Workaround for "exit_code == 0" if no servers found
+            return False
+
+        return True
 
     def set_actual_time(self, timeout=600):
-
-        # Waiting for parent server until it starts providing the time
-        set_date_cmd = "ntpd -gq"
+        # Wait for a parent server until it starts providing the time
         helpers.wait(
-            lambda: not self.remote.execute(set_date_cmd)['exit_code'],
+            self._set_time,
             timeout=timeout,
             timeout_msg='Failed to set actual time on node {!r}'.format(
                 self._node_name))
