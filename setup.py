@@ -19,7 +19,7 @@ import setuptools
 
 setuptools.setup(
     name='fuel-devops',
-    version='3.0.4',
+    version='3.0.5',
     description='Library for creating and manipulating virtual environments',
     author='Mirantis, Inc.',
     author_email='product@mirantis.com',
