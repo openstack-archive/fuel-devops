@@ -1131,6 +1131,17 @@ class LibvirtNode(node.Node):
 
             :rtype : None
         """
+        emulator_field = self.driver.get_capabilities().find(
+            'guest/arch[@name="{0:>s}"]/'
+            'domain[@type="{1:>s}"]/emulator'.format(
+                self.architecture, self.hypervisor))
+        if not emulator_field:
+            raise error.DevopsError(
+                "No suitable emulator found in libvirt for arch = '{0}'"
+                " and domain type = '{1}', please check 'virsh capabilities'"
+                .format(self.architecture, self.hypervisor))
+        emulator = emulator_field.text
+
         name = helpers.underscored(
             helpers.deepgetattr(self, 'group.environment.name'),
             self.name,
@@ -1175,10 +1186,6 @@ class LibvirtNode(node.Node):
                 interface_filter=filter_name,
             ))
 
-        emulator = self.driver.get_capabilities().find(
-            'guest/arch[@name="{0:>s}"]/'
-            'domain[@type="{1:>s}"]/emulator'.format(
-                self.architecture, self.hypervisor)).text
         node_xml = builder.LibvirtXMLBuilder.build_node_xml(
             name=name,
             hypervisor=self.hypervisor,
