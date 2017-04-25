@@ -41,6 +41,14 @@ class TestTemplateLoader(TestCase):
         self.os_mock.path.isfile.side_effect = self.isfiles.__contains__
         self.os_mock.path.dirname = os.path.dirname
         self.os_mock.path.join = os.path.join
+        self.os_mock.path.split = os.path.split
+
+        self.jpath_mock = self.patch('jinja2.loaders.path')
+        self.jpath_mock.getmtime.return_value = 42
+        self.jpath_mock.join.return_value = '/path/to/my.yaml'
+        self.jpath_mock.sep = os.path.sep
+        self.jpath_mock.altsep = os.path.altsep
+        self.jpath_mock.pardir = os.path.pardir
 
     def test_not_file(self):
         with self.assertRaises(error.DevopsError):
@@ -52,7 +60,7 @@ class TestTemplateLoader(TestCase):
                       '    one: 1\n'
                       '    two: 2\n'
                       '    three: 3\n')
-        self.patch('devops.helpers.templates.open', open_mock, create=True)
+        self.patch('jinja2.utils.open', open_mock, create=True)
         m = templates.yaml_template_load('/path/to/my.yaml')
         assert isinstance(m['mapping'], collections.OrderedDict)
         assert m['mapping'] == collections.OrderedDict([
@@ -64,23 +72,40 @@ class TestTemplateLoader(TestCase):
     def test_os_env_default(self):
         open_mock = mock.mock_open(
             read_data='env_value: !os_env MYVAR, 100\n')
-        self.patch('devops.helpers.templates.open', open_mock, create=True)
+        self.patch('jinja2.utils.open', open_mock, create=True)
         self.os_mock.environ = {}
         m = templates.yaml_template_load('/path/to/my.yaml')
         assert m['env_value'] == 100
 
+    def test_jinja_os_env_default(self):
+        open_mock = mock.mock_open(
+            read_data='env_value: {{ os_env("MYVAR", 200) }}\n')
+        self.patch('jinja2.utils.open', open_mock, create=True)
+
+        self.os_mock.environ = {}
+        m = templates.yaml_template_load('/path/to/my.yaml')
+        assert m['env_value'] == 200
+
     def test_os_env(self):
         open_mock = mock.mock_open(
             read_data='env_value: !os_env MYVAR\n')
-        self.patch('devops.helpers.templates.open', open_mock, create=True)
+        self.patch('jinja2.utils.open', open_mock, create=True)
         self.os_mock.environ = {'MYVAR': '30'}
         m = templates.yaml_template_load('/path/to/my.yaml')
         assert m['env_value'] == 30
 
+    def test_jinja_os_env(self):
+        open_mock = mock.mock_open(
+            read_data='env_value: {{ os_env("MYVAR") }}\n')
+        self.patch('jinja2.utils.open', open_mock, create=True)
+        self.os_mock.environ = {'MYVAR': '10.20.30.40/32'}
+        m = templates.yaml_template_load('/path/to/my.yaml')
+        assert m['env_value'] == '10.20.30.40/32'
+
     def test_os_env_required(self):
         open_mock = mock.mock_open(
             read_data='env_value: !os_env\n')
-        self.patch('devops.helpers.templates.open', open_mock, create=True)
+        self.patch('jinja2.utils.open', open_mock, create=True)
         self.os_mock.environ = {}
         with self.assertRaises(error.DevopsError):
             templates.yaml_template_load('/path/to/my.yaml')
@@ -88,7 +113,7 @@ class TestTemplateLoader(TestCase):
     def test_os_env_no_value(self):
         open_mock = mock.mock_open(
             read_data='env_value: !os_env MYVAR\n')
-        self.patch('devops.helpers.templates.open', open_mock, create=True)
+        self.patch('jinja2.utils.open', open_mock, create=True)
         self.os_mock.environ = {}
         with self.assertRaises(error.DevopsError):
             templates.yaml_template_load('/path/to/my.yaml')
@@ -100,8 +125,7 @@ class TestTemplateLoader(TestCase):
         mock_open2 = mock.mock_open(read_data='10')
         mock_open2.return_value.name = '/path/to/file2.yaml'
         open_mock = self.patch(
-            'devops.helpers.templates.open',
-            new_callable=mock.mock_open, create=True)
+            'jinja2.utils.open', new_callable=mock.mock_open, create=True)
         open_mock.side_effect = (
             mock_open1.return_value, mock_open2.return_value)
 
@@ -114,8 +138,7 @@ class TestTemplateLoader(TestCase):
         mock_open2 = mock.mock_open(read_data='10')
         mock_open2.return_value.name = '/path/to/file2.yaml'
         open_mock = self.patch(
-            'devops.helpers.templates.open',
-            new_callable=mock.mock_open, create=True)
+            'jinja2.utils.open', new_callable=mock.mock_open, create=True)
         open_mock.side_effect = (
             mock_open1.return_value, mock_open2.return_value)
 
