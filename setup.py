@@ -44,6 +44,7 @@ setuptools.setup(
         'netaddr>=0.7.12,!=0.7.16',
         'paramiko>=1.16.0,!=2.0.1',
         'Django>=1.8,<1.9',
+        'jinja2>=2.1',
         'jsonfield',
         'PyYAML>=3.1.0',
         'libvirt-python',
