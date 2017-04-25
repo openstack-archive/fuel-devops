@@ -17,24 +17,77 @@ from __future__ import division
 import collections
 import os
 
+import jinja2
 import netaddr
 import yaml
 
 from devops import error
+from devops import logger
+
+
+def render_template(file_path, options=None):
+    """Read a file and render it with jinja2
+
+    :param file_path: str, path to the file to read
+    :param options: dict of objects that will be available for jinja2 render
+    :rtype: unicode string with rendered jinja2 template
+    """
+    required_env_vars = set()
+    optional_env_vars = dict()
+
+    def os_env(var_name, default=None):
+        var = os.environ.get(var_name, default)
+
+        if var is None:
+            raise Exception("Environment variable '{0}' is undefined!"
+                            .format(var_name))
+
+        if default is None:
+            required_env_vars.add(var_name)
+        else:
+            optional_env_vars[var_name] = default
+
+        return var
+
+    if options is None:
+        options = {}
+    options.update({'os_env': os_env, })
+
+    logger.info("Reading template {0}".format(file_path))
+
+    path, filename = os.path.split(file_path)
+    environment = jinja2.Environment(
+        loader=jinja2.FileSystemLoader([path, os.path.dirname(path)],
+                                       followlinks=True)
+    )
+    template = environment.get_template(filename).render(options)
+
+    if required_env_vars:
+        logger.info("Required environment variables:")
+        for var in required_env_vars:
+            logger.info("    {0}".format(var))
+    if optional_env_vars:
+        logger.info("Optional environment variables:")
+        for var, default in sorted(optional_env_vars.iteritems()):
+            logger.info("    {0} , default value = {1}".format(var, default))
+    return template
 
 
 def yaml_template_load(config_file):
+    """Load hardware configuration from YAML template rendered with jinja2"""
+    dirname = os.path.dirname(config_file)
+
     class TemplateLoader(yaml.Loader):
         pass
 
     def yaml_include(loader, node):
-        file_name = os.path.join(os.path.dirname(loader.name), node.value)
+        file_name = os.path.join(dirname, node.value)
         if not os.path.isfile(file_name):
             raise error.DevopsError(
                 "Cannot load the environment template {0} : include file {1} "
-                "doesn't exist.".format(loader.name, file_name))
-        with open(file_name) as inputfile:
-            return yaml.load(inputfile, TemplateLoader)
+                "doesn't exist.".format(dirname, file_name))
+        including_config = render_template(file_name)
+        return yaml.load(including_config, TemplateLoader)
 
     def yaml_get_env_variable(loader, node):
         if not node.value.strip():
@@ -74,8 +127,8 @@ def yaml_template_load(config_file):
     TemplateLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
 
-    with open(config_file) as f:
-        return yaml.load(f, TemplateLoader)
+    rendered_config = render_template(config_file)
+    return yaml.load(rendered_config, TemplateLoader)
 
 
 def get_devops_config(filename):
