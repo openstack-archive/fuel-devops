@@ -60,7 +60,7 @@ Devops installation in `virtualenv <http://virtualenv.readthedocs.org/en/latest/
 
 .. code-block:: bash
 
-    sudo apt-get install --yes python-virtualenv libgmp-dev pkg-config
+    sudo apt-get install --yes python-virtualenv libgmp-dev libssl-dev pkg-config
 
 2. In case you are using *Ubuntu 12.04* or *RHEL* let's update pip and virtualenv,
    otherwise you can skip this step
@@ -102,13 +102,26 @@ In order to indentify the latest available versions you would like to install,
 visit `fuel-devops <https://github.com/openstack/fuel-devops/tags>`_ repo.
 Please use the latest tag from 2.9.x tags for Fuel 6.1 or later.
 
+Install fuel-devops with SQLite3 database:
+
 .. code-block:: bash
 
     . fuel-devops-venv/bin/activate
-    pip install git+https://github.com/openstack/fuel-devops.git@2.9.21 --upgrade   # For fuel-devops 2.9.x
-    # pip install git+https://github.com/openstack/fuel-devops.git@3.0.1 --upgrade   # For fuel-devops 3.0.x with SQLite3 database
-    # pip install git+https://github.com/openstack/fuel-devops.git@3.0.1#egg=project[postgre] --upgrade   # For fuel-devops 3.0.x with PostgreSQL database
+    pip install git+https://github.com/openstack/fuel-devops.git --upgrade
 
+[Optional] Install fuel-devops with PostgreSQL database:
+
+.. code-block:: bash
+
+    . fuel-devops-venv/bin/activate
+    pip install git+https://github.com/openstack/fuel-devops.git#egg=project[postgre] --upgrade
+
+[Optional] Install fuel-devops with specified tag:
+
+.. code-block:: bash
+
+    . fuel-devops-venv/bin/activate
+    pip install git+https://github.com/openstack/fuel-devops.git@2.9.21 --upgrade  # Do not install 2.9.x over 3.x !
 
 setup.py in fuel-devops repository does everything required.
 
