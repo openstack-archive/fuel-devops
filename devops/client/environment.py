@@ -172,6 +172,31 @@ class DevopsEnvironment(object):
                 password=password,
                 keys=self.get_private_keys()))
 
+    def find_node_ip(self, node_name):
+        node = self.get_node(name=node_name)
+        for interface in node.interfaces:
+            ip = interface.address_set.get(interface=interface).ip_address
+            try:
+                helpers.wait_tcp(
+                    host=ip, port=node.ssh_port, timeout=10,
+                    timeout_msg=("Node {ip} is not accessible by SSH."
+                                 .format(ip=ip)))
+                return ip
+            except error.TimeoutError:
+                pass
+        raise error.DevopsError("Cannot find SSH endpoint for node {0}"
+                                .format(node.name))
+
+    def find_node_remote(self, node_name,
+                         login=settings.SSH_SLAVE_CREDENTIALS['login'],
+                         password=settings.SSH_SLAVE_CREDENTIALS['password']):
+        ip = self.find_node_ip(node_name)
+        return ssh_client.SSHClient(
+            ip,
+            auth=ssh_client.SSHAuth(
+                username=login,
+                password=password))
+
     def sync_time(self, node_names=None, skip_sync=False):
         """Synchronize time on nodes
 
@@ -183,13 +208,21 @@ class DevopsEnvironment(object):
             node_names = [node.name for node in self.get_active_nodes()]
 
         group = ntp.GroupNtpSync()
-        for node_name in node_names:
-            if node_name == 'admin':
-                remote = self.get_admin_remote()
-            else:
-                remote = self.get_node_remote(node_name=node_name)
 
-            group.add_node(remote, node_name)
+        if self.has_admin():
+            # Assume that the node with name 'admin' is a Fuel master node
+            for node_name in node_names:
+                if node_name == 'admin':
+                    remote = self.get_admin_remote()
+                else:
+                    remote = self.get_node_remote(node_name=node_name)
+                group.add_node(remote, node_name)
+        else:
+            #  There is no FuelAdmin node, fallback to trying assigned
+            #  addresses.
+            for node_name in node_names:
+                remote = self.find_node_remote(node_name=node_name)
+                group.add_node(remote, node_name)
 
         with group:
             if not skip_sync:

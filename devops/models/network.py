@@ -482,6 +482,46 @@ class L2NetworkDevice(base.ParamedModel, base.BaseModel):
 
 
 class NetworkConfig(models.Model):
+    """Metadata that describes desired interfaces configuration
+
+    When envrironment hardware have been created/adopted,
+    user may want to execute some post-provisioning steps
+    to configure interfaces respecting the current network topology.
+
+    This metadata helps to describe the expected configuration
+    that can be taken by any 3rd-party component to perform these steps.
+
+    In fuel-devops, this data is not used, so you can skip this object
+    if network interfaces are configured using some different inventory.
+
+    Template example (network_config):
+    ---------------------------------
+      - name: some_node_name
+        params:
+          ...
+          interfaces:
+            - label: eth0
+            - label: eth1
+            - label: eth2
+
+          network_config:
+            eth0:         # matches the first interface name
+              networks:
+               - admin    # expecting interface configuration
+                          # (vlan, ip, ) for network with name 'admin'
+                          # in your inventory.
+            bond0:
+              networks:
+               - control  # expecting interface configuration
+                          # (vlan, ip, ) for network with name 'admin'
+                          # in your inventory.
+              aggregation: active-backup  # use 'aggregation' to determine
+                                          # that bond0 is a bond interface.
+              parents:  # Slave interfaces for creating this 'bond0'.
+               - eth1
+               - eth2
+    """
+
     class Meta(object):
         db_table = 'devops_network_config'
         app_label = 'devops'
@@ -494,6 +534,32 @@ class NetworkConfig(models.Model):
 
 
 class Interface(base.ParamedModel):
+    """Describes a network interface configuration
+
+    Specify the abstract label of the interface (you can use labels
+    that match the real interface names or use any suitable names).
+
+    'l2_network_device' describes the switch name (virtual or hardware)
+    to which the interface is connected.
+
+    'features' is a json list with any strings you want use to mark
+    interfaces with specific features and use these marks in 3rd-party
+    libraries to perform highlevel configuration of the right interfaces
+    for your product.
+
+    Template example (interfaces):
+    ---------------------------------
+      - name: some_node_name
+        params:
+          ...
+          interfaces:
+            - label: iface0
+              l2_network_device: admin
+            - label: iface1
+              l2_network_device: data
+              mac_address: !os_env IFACE_MAC_ADDRESS, 00:11:22:33:44:55
+              features: ['dpdk', 'dpdk_pci: 0000:05:00.1']
+    """
     class Meta(object):
         db_table = 'devops_interface'
         app_label = 'devops'

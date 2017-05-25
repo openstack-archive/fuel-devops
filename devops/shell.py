@@ -177,9 +177,6 @@ class Shell(object):
                 print(ap + ": " + ' '.join(n_ips))
 
     def do_time_sync(self):
-        if not self.env.has_admin():
-            print('There is no FuelAdmin node. It is impossible to sync time')
-            return
         node_name = self.params.node_name
         node_names = [node_name] if node_name else None
         cur_time = self.env.get_curr_time(node_names)
