@@ -379,7 +379,9 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
                      #  than will be used 'stp' setting from the driver object.
 
        has_pxe_server: false  #  Enable PXE server for this device
-       tftp_root_dir: /tmp    #  Specity root directory for TFTP server
+       pxe_bootp_file: pxelinux.0  #  Name of the PXE loader file
+       tftp_root_dir: /tmp     #  Specify root directory for TFTP server, or
+       pxe_bootp_server: None  #  Specify IP address of the TFTP server
 
        vlan_ifaces: []  #  List of integer values that will be used to create
                         #  tagged interfaces to the network device.
@@ -527,6 +529,8 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
     stp = base.ParamField()
 
     has_pxe_server = base.ParamField(default=False)
+    pxe_bootp_file = base.ParamField(default='pxelinux.0')
+    pxe_bootp_server = base.ParamField()
     tftp_root_dir = base.ParamField()
 
     vlan_ifaces = base.ParamField(default=[])
@@ -648,6 +652,8 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
             has_pxe_server=self.has_pxe_server,
             dhcp=self.dhcp,
             tftp_root_dir=self.tftp_root_dir,
+            pxe_bootp_file=self.pxe_bootp_file,
+            pxe_bootp_server=self.pxe_bootp_server,
         )
         ret = self.driver.conn.networkDefineXML(xml)
         ret.setAutostart(True)

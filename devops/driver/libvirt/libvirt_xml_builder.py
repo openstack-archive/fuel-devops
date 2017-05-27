@@ -42,7 +42,8 @@ class LibvirtXMLBuilder(object):
                           ip_network_prefixlen=None, stp=True,
                           has_pxe_server=False, dhcp=False,
                           dhcp_range_start=None, dhcp_range_end=None,
-                          tftp_root_dir=None):
+                          tftp_root_dir=None, pxe_bootp_file='pxelinux.0',
+                          pxe_bootp_server=None):
         """Generate network XML
 
         :rtype : String
@@ -87,8 +88,11 @@ class LibvirtXMLBuilder(object):
                                 name=address['name'],
                             )
                         if has_pxe_server:
-                            network_xml.bootp(file='pxelinux.0')
-
+                            if pxe_bootp_server:
+                                network_xml.bootp(file=pxe_bootp_file,
+                                                  server=pxe_bootp_server)
+                            else:
+                                network_xml.bootp(file=pxe_bootp_file)
         return str(network_xml)
 
     @classmethod
