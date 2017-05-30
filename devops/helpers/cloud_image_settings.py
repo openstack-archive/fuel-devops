@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
 import os
 
 from devops.helpers import subprocess_runner
@@ -77,11 +78,24 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                              " - sudo route add default gw "
                              "{gateway} {interface_name}")
 
-    logger.debug("user_data contains next data: \n{}".format(
-        user_data_content.format(**data_context)))
+    # FIXME this hack should be rewrited!
+    # Workaround to be able pass bash-style variables ${}
+    fmt_user_data_content = deepcopy(user_data_content)
+    for _key in data_context.keys():
+        logger.warning("Searching key:%s in user_data" % _key)
+        fmt_user_data_content = fmt_user_data_content.replace("{%s}" % _key,
+                                                              data_context[
+                                                                  _key])
 
+    logger.debug("user_data contains next data: \n%s" % fmt_user_data_content)
     with open(user_data_path, 'w') as f:
-        f.write(user_data_content.format(**data_context))
+        f.write(fmt_user_data_content)
+
+    # logger.debug("user_data contains next data: \n{}".format(
+    #     user_data_content.format(**data_context)))
+    #
+    # with open(user_data_path, 'w') as f:
+    #     f.write(user_data_content.format(**data_context))
 
     # Generate cloud_ISO
     cmd = "genisoimage -output {} " \
