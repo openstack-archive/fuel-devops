@@ -82,13 +82,13 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
     # Workaround to be able pass bash-style variables ${}
     fmt_user_data_content = deepcopy(user_data_content)
     for _key in data_context.keys():
-        logger.warning("Searching key:{} in user_data".format(_key))
         _repl = "{{{0}}}".format(_key)
         fmt_user_data_content = \
             fmt_user_data_content.replace(_repl, data_context[_key])
     with open(user_data_path, 'w') as f:
         f.write(fmt_user_data_content)
-
+    logger.debug(
+        "user_data contains next data:\n{}".format(fmt_user_data_content))
     # Generate cloud_ISO
     cmd = "genisoimage -output {} " \
           "-volid cidata -joliet " \
