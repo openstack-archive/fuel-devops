@@ -137,7 +137,8 @@ class SSHAuth(object):
                         'Unexpected PasswordRequiredException, '
                         'when password is set!')
                     raise
-            except paramiko.AuthenticationException:
+            except (paramiko.AuthenticationException,
+                    paramiko.BadHostKeyException):
                 continue
         msg = 'Connection using stored authentication info failed!'
         if log:
