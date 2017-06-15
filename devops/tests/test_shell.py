@@ -307,7 +307,7 @@ class TestShell(unittest.TestCase):
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].revert.assert_called_once_with(
-            'snap1', flag=False)
+            'snap1', flag=False, resume=False)
 
     def test_snapshot(self):
         sh = shell.Shell(['snapshot', 'env1', 'snap1'])
@@ -466,8 +466,24 @@ class TestShell(unittest.TestCase):
 
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].revert.assert_called_once_with(
-            'snap1', flag=False)
-        self.env_mocks['env1'].resume.assert_called_once_with()
+            'snap1', flag=False, resume=True)
+
+    def test_revert_resume_with_time_sync(self):
+        self.env_mocks['env1'].get_curr_time.return_value = {
+            'node1': 'Thu May 12 18:26:34 MSK 2016',
+            'node2': 'Thu May 12 18:13:44 MSK 2016',
+        }
+        self.env_mocks['env1'].sync_time.return_value = {
+            'node1': 'Thu May 12 19:00:00 MSK 2016',
+            'node2': 'Thu May 12 19:00:00 MSK 2016',
+        }
+
+        sh = shell.Shell(['revert-resume', '--timesync', 'env1', 'snap1'])
+        sh.execute()
+
+        self.client_inst.get_env.assert_called_once_with('env1')
+        self.env_mocks['env1'].revert.assert_called_once_with(
+            'snap1', flag=False, resume=True)
         self.env_mocks['env1'].get_curr_time.assert_called_once_with(None)
         self.env_mocks['env1'].sync_time.assert_called_once_with(None)
 

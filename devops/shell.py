@@ -95,7 +95,7 @@ class Shell(object):
         self.env.resume()
 
     def do_revert(self):
-        self.env.revert(self.params.snapshot_name, flag=False)
+        self.env.revert(self.params.snapshot_name, flag=False, resume=False)
 
     def do_snapshot(self):
         self.env.snapshot(self.params.snapshot_name)
@@ -190,9 +190,8 @@ class Shell(object):
             print("New time on '{0}' = {1}".format(name, new_time[name]))
 
     def do_revert_resume(self):
-        self.env.revert(self.params.snapshot_name, flag=False)
-        self.env.resume()
-        if not self.params.no_timesync:
+        self.env.revert(self.params.snapshot_name, flag=False, resume=True)
+        if self.params.timesync:
             print('Time synchronization is starting')
             self.do_time_sync()
 
@@ -310,11 +309,11 @@ class Shell(object):
         node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
                                       default=None)
-        no_timesync_parser = argparse.ArgumentParser(add_help=False)
-        no_timesync_parser.add_argument('--no-timesync', dest='no_timesync',
-                                        action='store_const', const=True,
-                                        help='revert without timesync',
-                                        default=False)
+        timesync_parser = argparse.ArgumentParser(add_help=False)
+        timesync_parser.add_argument('--timesync', dest='timesync',
+                                     action='store_const', const=True,
+                                     help='revert with timesync',
+                                     default=False)
 
         list_ips_parser = argparse.ArgumentParser(add_help=False)
         list_ips_parser.add_argument('--ips', dest='list_ips',
@@ -493,11 +492,13 @@ class Shell(object):
                                           "admin")
         subparsers.add_parser('revert-resume',
                               parents=[name_parser, snapshot_name_parser,
-                                       node_name_parser, no_timesync_parser],
+                                       node_name_parser, timesync_parser],
                               help="Revert, resume, sync time on VMs",
                               description="Revert and resume VMs in selected"
-                                          "environment, then"
-                                          " sync time on VMs")
+                                          "environment, then optionally sync "
+                                          "time on VMs (by default time is "
+                                          "not synced, additional '--timesync'"
+                                          " flag is required)")
         subparsers.add_parser('version',
                               help="Show devops version")
         subparsers.add_parser('create',
