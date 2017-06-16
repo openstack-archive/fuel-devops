@@ -98,7 +98,7 @@ class TestSubprocessRunner(unittest.TestCase):
         ))
         logger.assert_has_calls([
             mock.call.debug(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             ] + [
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -128,7 +128,7 @@ class TestSubprocessRunner(unittest.TestCase):
 
         logger.assert_has_calls([
             mock.call.info(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+                "Executing command: {!r}".format(command.rstrip())),
             ] + [
                 mock.call.info(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
