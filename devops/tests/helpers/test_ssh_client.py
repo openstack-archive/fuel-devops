@@ -62,7 +62,10 @@ port = 22
 username = 'user'
 password = 'pass'
 private_keys = []
-command = 'ls ~ '
+command = 'ls ~\nline 2\nline 3'.encode("utf8","ignore")
+command_log = '''Executing command: \'ls ~
+line 2
+line 3\''''.encode("utf8","ignore")
 stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
 stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 encoded_cmd = base64.b64encode(
@@ -944,9 +947,9 @@ class TestExecute(unittest.TestCase):
             mock.call.makefile_stderr('rb'),
             mock.call.exec_command('{}\n'.format(command))
         ))
+        import pdb;pdb.set_trace()
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -980,8 +983,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1013,8 +1015,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1049,8 +1050,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1081,8 +1081,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1113,8 +1112,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1158,8 +1156,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1230,8 +1227,7 @@ class TestExecute(unittest.TestCase):
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
         logger.assert_has_calls([
-            mock.call.debug(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             ] + [
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -1276,8 +1272,7 @@ class TestExecute(unittest.TestCase):
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
 
         logger.assert_has_calls([
-            mock.call.info(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.info(command_log),
             ] + [
                 mock.call.info(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -1616,7 +1611,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         channel.assert_has_calls((
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('ls ~ '),
+            mock.call.exec_command(command),
             mock.call.recv_ready(),
             mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
@@ -1670,7 +1665,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         channel.assert_has_calls((
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('ls ~ '),
+            mock.call.exec_command(command),
             mock.call.recv_ready(),
             mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
