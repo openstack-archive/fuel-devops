@@ -1,3 +1,4 @@
+# coding=utf-8
 #    Copyright 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,7 +24,8 @@ from devops import error
 from devops.helpers import exec_result
 from devops.helpers import subprocess_runner
 
-command = 'ls ~ '
+command = 'ls ~\nline 2\nline 3\nline с кирилицей'
+command_log = u"Executing command: {!s}".format(command.rstrip())
 stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
 stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 
@@ -73,6 +75,11 @@ class TestSubprocessRunner(unittest.TestCase):
 
         return popen_obj, exp_result
 
+    @staticmethod
+    def gen_cmd_result_log_message(result):
+        return u'{cmd!s}\nexecution results: Exit code: {code!s}'.format(
+            cmd=result.cmd.rstrip(), code=result.exit_code)
+
     def test_call(self, popen, fcntl, select, logger):
         popen_obj, exp_result = self.prepare_close(popen)
         select.return_value = [popen_obj.stdout, popen_obj.stderr], [], []
@@ -97,8 +104,7 @@ class TestSubprocessRunner(unittest.TestCase):
                 universal_newlines=False),
         ))
         logger.assert_has_calls([
-            mock.call.debug(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             ] + [
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -106,12 +112,7 @@ class TestSubprocessRunner(unittest.TestCase):
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stderr_list
             ] + [
-            mock.call.debug(
-                '\n{cmd!r} execution results: '
-                'Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code
-                )),
+            mock.call.debug(self.gen_cmd_result_log_message(result)),
         ])
         self.assertIn(
             mock.call.poll(), popen_obj.mock_calls
@@ -127,8 +128,7 @@ class TestSubprocessRunner(unittest.TestCase):
         result = runner.execute(command, verbose=True)
 
         logger.assert_has_calls([
-            mock.call.info(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.info(command_log),
             ] + [
                 mock.call.info(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -136,12 +136,7 @@ class TestSubprocessRunner(unittest.TestCase):
                 mock.call.error(str(x.rstrip().decode('utf-8')))
                 for x in stderr_list
             ] + [
-            mock.call.info(
-                '\n{cmd!r} execution results: '
-                'Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                )),
+            mock.call.info(self.gen_cmd_result_log_message(result)),
         ])
 
 
