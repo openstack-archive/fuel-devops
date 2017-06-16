@@ -29,6 +29,7 @@ import six
 from devops import error
 from devops.helpers import decorators
 from devops.helpers import exec_result
+from devops.helpers import log_templates
 from devops.helpers import proc_enums
 from devops import logger
 
@@ -629,8 +630,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         ret = self.execute(command, verbose, timeout, **kwargs)
         if ret['exit_code'] not in expected:
             message = (
-                "{append}Command '{cmd!r}' returned exit code {code!s} while "
-                "expected {expected!s}\n".format(
+                log_templates.CMD_UNEXPECTED_EXIT_CODE.format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
@@ -665,8 +665,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             error_info=error_info, raise_on_err=raise_on_err, **kwargs)
         if ret['stderr']:
             message = (
-                "{append}Command '{cmd!r}' STDERR while not expected\n"
-                "\texit code: {code!s}\n".format(
+                log_templates.CMD_UNEXPECTED_STDERR.format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
@@ -780,10 +779,12 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         # channel.status_event.wait(timeout)
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
+        message = log_templates.CMD_EXEC.format(cmd=command.rstrip())
         if verbose:
-            logger.info("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.info(message)
         else:
-            logger.debug("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.debug(message)
+
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -802,9 +803,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         stop_event.set()
         channel.close()
-
-        wait_err_msg = ('Wait for {0!r} during {1}s: no return code!\n'
-                        .format(command, timeout))
+        wait_err_msg = log_templates.CMD_WAIT_ERROR.format(
+            cmd=command.rstrip(),
+            timeout=timeout)
         output_brief_msg = ('\tSTDOUT:\n'
                             '{0}\n'
                             '\tSTDERR"\n'
@@ -828,12 +829,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             command, chan, stdout, stderr, timeout,
             verbose=verbose
         )
-
-        message = (
-            '\n{cmd!r} execution results: Exit code: {code!s}'.format(
-                cmd=command,
-                code=result.exit_code
-            ))
+        message = (log_templates.CMD_RESULT.format(
+                   cmd=command.rstrip(), code=result.exit_code))
         if verbose:
             logger.info(message)
         else:
@@ -853,7 +850,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 paramiko.ChannelFile
             )
         """
-        logger.debug("Executing command: {!r}".format(command.rstrip()))
+        message = log_templates.CMD_EXEC.format(cmd=command.rstrip())
+        logger.debug(message)
 
         chan = self._ssh.get_transport().open_session()
 

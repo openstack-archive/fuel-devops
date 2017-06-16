@@ -1,3 +1,5 @@
+# coding=utf-8
+
 #    Copyright 2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -62,7 +64,8 @@ port = 22
 username = 'user'
 password = 'pass'
 private_keys = []
-command = 'ls ~ '
+command = 'ls ~\nline 2\nline 3\nline с кирилицей'
+command_log = u"Executing command: '{!s}'".format(command.rstrip())
 stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
 stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 encoded_cmd = base64.b64encode(
@@ -920,6 +923,12 @@ class TestExecute(unittest.TestCase):
                 password=password
             ))
 
+    @staticmethod
+    def gen_cmd_result_log_message(result):
+        return (u"Command '{cmd!s}'\nexecution results: "
+                u"Exit code: '{code!s}'".format(
+                    cmd=result.cmd.rstrip(), code=result.exit_code))
+
     def test_execute_async(self, client, policy, logger):
         chan = mock.Mock()
         open_session = mock.Mock(return_value=chan)
@@ -945,8 +954,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -980,8 +988,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1013,8 +1020,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1049,8 +1055,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1081,8 +1086,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1113,8 +1117,7 @@ class TestExecute(unittest.TestCase):
             mock.call.exec_command('{}\n'.format(command))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1158,8 +1161,7 @@ class TestExecute(unittest.TestCase):
                 "eval \"$(base64 -d <(echo \"{0}\"))\"'".format(encoded_cmd))
         ))
         self.assertIn(
-            mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             logger.mock_calls
         )
 
@@ -1229,9 +1231,9 @@ class TestExecute(unittest.TestCase):
         )
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
+        message = self.gen_cmd_result_log_message(result)
         logger.assert_has_calls([
-            mock.call.debug(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.debug(command_log),
             ] + [
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -1239,12 +1241,7 @@ class TestExecute(unittest.TestCase):
                 mock.call.debug(str(x.rstrip().decode('utf-8')))
                 for x in stderr_list
             ] + [
-            mock.call.debug(
-                '\n{cmd!r} execution results: '
-                'Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                )),
+            mock.call.debug(message),
         ])
 
     @mock.patch(
@@ -1275,9 +1272,9 @@ class TestExecute(unittest.TestCase):
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
 
+        message = self.gen_cmd_result_log_message(result)
         logger.assert_has_calls([
-            mock.call.info(
-                "\nExecuting command: {!r}".format(command.rstrip())),
+            mock.call.info(command_log),
             ] + [
                 mock.call.info(str(x.rstrip().decode('utf-8')))
                 for x in stdout_list
@@ -1285,12 +1282,7 @@ class TestExecute(unittest.TestCase):
                 mock.call.error(str(x.rstrip().decode('utf-8')))
                 for x in stderr_list
             ] + [
-            mock.call.info(
-                '\n{cmd!r} execution results: '
-                'Exit code: {code!s}'.format(
-                    cmd=command,
-                    code=result.exit_code,
-                )),
+            mock.call.info(message),
         ])
 
     @mock.patch('time.sleep', autospec=True)
@@ -1321,13 +1313,9 @@ class TestExecute(unittest.TestCase):
         )
         execute_async.assert_called_once_with(command)
         chan.assert_has_calls((mock.call.status_event.is_set(), ))
+        message = self.gen_cmd_result_log_message(result)
         logger.assert_has_calls((
-            mock.call.debug(
-                '\n{cmd!r} execution results: '
-                'Exit code: {code!s}'.format(
-                    cmd=exp_result.cmd,
-                    code=exp_result.exit_code
-                )),
+            mock.call.debug(message),
         ))
 
     @mock.patch(
@@ -1616,7 +1604,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         channel.assert_has_calls((
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('ls ~ '),
+            mock.call.exec_command(command),
             mock.call.recv_ready(),
             mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
@@ -1670,7 +1658,7 @@ class TestExecuteThrowHost(unittest.TestCase):
         channel.assert_has_calls((
             mock.call.makefile('rb'),
             mock.call.makefile_stderr('rb'),
-            mock.call.exec_command('ls ~ '),
+            mock.call.exec_command(command),
             mock.call.recv_ready(),
             mock.call.recv_stderr_ready(),
             mock.call.status_event.is_set(),
