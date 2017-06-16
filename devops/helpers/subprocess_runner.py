@@ -28,6 +28,11 @@ from devops.helpers import decorators
 from devops.helpers import exec_result
 from devops.helpers import metaclasses
 from devops.helpers import proc_enums
+from devops.helpers import TEMPLATE_CMD_EXEC
+from devops.helpers import TEMPLATE_CMD_RESULT
+from devops.helpers import TEMPLATE_CMD_UNEXPECTED_EXIT_CODE
+from devops.helpers import TEMPLATE_CMD_UNEXPECTED_STDERR
+from devops.helpers import TEMPLATE_CMD_WAIT_ERROR
 from devops import logger
 
 
@@ -125,13 +130,11 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         with cls.__lock:
             result = exec_result.ExecResult(cmd=command)
             stop_event = threading.Event()
-
+            message = TEMPLATE_CMD_EXEC.format(command.rstrip())
             if verbose:
-                logger.info("\nExecuting command: {!r}"
-                            .format(command.rstrip()))
+                logger.info(message)
             else:
-                logger.debug("\nExecuting command: {!r}"
-                             .format(command.rstrip()))
+                logger.debug(message)
             # Run
             process = subprocess.Popen(
                 args=[command],
@@ -150,7 +153,6 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             if stop_event.isSet():
                 stop_event.clear()
                 return result
-
             # Kill not ended process and wait for close
             try:
                 process.kill()  # kill -9
@@ -159,11 +161,11 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             except OSError:
                 # Nothing to kill
                 logger.warning(
-                    "{!r} has been completed just after timeout: "
+                    u"{!s} has been completed just after timeout: "
                     "please validate timeout.".format(command))
 
-            wait_err_msg = ('Wait for {0!r} during {1}s: no return code!\n'
-                            .format(command, timeout))
+            wait_err_msg = TEMPLATE_CMD_WAIT_ERROR.format(
+                command.rstrip(), timeout)
             output_brief_msg = ('\tSTDOUT:\n'
                                 '{0}\n'
                                 '\tSTDERR"\n'
@@ -186,11 +188,8 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         """
         result = cls.__exec_command(command=command, timeout=timeout,
                                     verbose=verbose, **kwargs)
-        message = (
-            '\n{cmd!r} execution results: Exit code: {code!s}'.format(
-                cmd=command,
-                code=result.exit_code
-            ))
+        message = TEMPLATE_CMD_RESULT.format(
+            cmd=command, code=result.exit_code)
         if verbose:
             logger.info(message)
         else:
@@ -232,8 +231,7 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         ret = cls.execute(command, verbose, timeout, **kwargs)
         if ret['exit_code'] not in expected:
             message = (
-                "{append}Command '{cmd!r}' returned exit code {code!s} while "
-                "expected {expected!s}\n".format(
+                TEMPLATE_CMD_UNEXPECTED_EXIT_CODE.format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code'],
@@ -271,8 +269,7 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             error_info=error_info, raise_on_err=raise_on_err, **kwargs)
         if ret['stderr']:
             message = (
-                "{append}Command '{cmd!r}' STDERR while not expected\n"
-                "\texit code: {code!s}\n".format(
+                TEMPLATE_CMD_UNEXPECTED_STDERR.format(
                     append=error_info + '\n' if error_info else '',
                     cmd=command,
                     code=ret['exit_code']
