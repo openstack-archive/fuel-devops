@@ -125,13 +125,14 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         with cls.__lock:
             result = exec_result.ExecResult(cmd=command)
             stop_event = threading.Event()
+            message = "\n".join(
+                "Executing command: {!r}".format(
+                    command.rstrip()).split("\\n"))
 
             if verbose:
-                logger.info("\nExecuting command: {!r}"
-                            .format(command.rstrip()))
+                logger.info(message)
             else:
-                logger.debug("\nExecuting command: {!r}"
-                             .format(command.rstrip()))
+                logger.debug(message)
             # Run
             process = subprocess.Popen(
                 args=[command],
@@ -150,7 +151,6 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
             if stop_event.isSet():
                 stop_event.clear()
                 return result
-
             # Kill not ended process and wait for close
             try:
                 process.kill()  # kill -9

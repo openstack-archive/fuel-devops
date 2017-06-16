@@ -780,10 +780,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         # channel.status_event.wait(timeout)
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
+        message = "\n".join(
+            "Executing command: {!r}".format(command.rstrip()).split("\\n"))
         if verbose:
-            logger.info("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.info(message)
         else:
-            logger.debug("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.debug(message)
+
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -802,9 +805,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         stop_event.set()
         channel.close()
-
-        wait_err_msg = ('Wait for {0!r} during {1}s: no return code!\n'
-                        .format(command, timeout))
+        wait_err_msg = ("\n".join(
+            'Wait for {0!r} during {1}s: no return code!\n'.format(
+                command.rstrip(), timeout).split("\\n")))
         output_brief_msg = ('\tSTDOUT:\n'
                             '{0}\n'
                             '\tSTDERR"\n'
@@ -828,12 +831,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             command, chan, stdout, stderr, timeout,
             verbose=verbose
         )
-
-        message = (
-            '\n{cmd!r} execution results: Exit code: {code!s}'.format(
-                cmd=command,
-                code=result.exit_code
-            ))
+        message = ("\n".join(
+            '{cmd!r}\nexecution results: Exit code: {code!s}'.format(
+                cmd=command.rstrip(), code=result.exit_code).split("\\n")))
         if verbose:
             logger.info(message)
         else:
@@ -853,7 +853,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 paramiko.ChannelFile
             )
         """
-        logger.debug("Executing command: {!r}".format(command.rstrip()))
+        message = "\n".join(
+            "Executing command: {!r}".format(command.rstrip()).split("\\n"))
+        logger.debug(message)
 
         chan = self._ssh.get_transport().open_session()
 
