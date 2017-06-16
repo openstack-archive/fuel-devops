@@ -946,7 +946,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -981,7 +981,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1014,7 +1014,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1050,7 +1050,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1082,7 +1082,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1114,7 +1114,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 
@@ -1159,7 +1159,7 @@ class TestExecute(unittest.TestCase):
         ))
         self.assertIn(
             mock.call.debug(
-                "Executing command: {!r}".format(command.rstrip())),
+                "\nExecuting command: {!r}".format(command.rstrip())),
             logger.mock_calls
         )
 

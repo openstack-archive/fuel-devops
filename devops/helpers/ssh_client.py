@@ -780,10 +780,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         # channel.status_event.wait(timeout)
         result = exec_result.ExecResult(cmd=command)
         stop_event = threading.Event()
+        message = "\n".join(
+            "\nExecuting command: {!r}".format(command.rstrip()).split("\\n"))
         if verbose:
-            logger.info("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.info(message)
         else:
-            logger.debug("\nExecuting command: {!r}".format(command.rstrip()))
+            logger.debug(message)
+
         poll_pipes(
             stdout=stdout,
             stderr=stderr,
@@ -853,7 +856,9 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
                 paramiko.ChannelFile
             )
         """
-        logger.debug("Executing command: {!r}".format(command.rstrip()))
+        message = "\n".join(
+            "\nExecuting command: {!r}".format(command.rstrip()).split("\\n"))
+        logger.debug(message)
 
         chan = self._ssh.get_transport().open_session()
 
