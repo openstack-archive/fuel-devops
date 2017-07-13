@@ -130,10 +130,22 @@ class TestShell(unittest.TestCase):
             create_l2netdev_mock('storage', self.aps['env1'][2], ),
         ))
 
-        def create_node_mock(name, vnc_port=5005, snapshots=None, ips=None):
+        def create_volume_mock(name, capacity):
+            m = mock.Mock(spec=models.Volume)
+            m.name = name
+            m.capacity = capacity
+            m.get_defined_params.return_value = ['capacity']
+            return m
+
+        def create_node_mock(name, role, vcpu=1, memory=1,
+                             vnc_port=5005, volumes=None,
+                             snapshots=None, ips=None):
             m = mock.Mock(spec=models.Node)
             m.name = name
+            m.role = role
             m.group.name = 'rack-01'
+            m.vcpu = vcpu
+            m.memory = memory
             m.set_vcpu = mock.Mock(return_value=None)
             m.set_memory = mock.Mock(return_value=None)
             m.get_vnc_port = mock.Mock(return_value=vnc_port)
@@ -145,20 +157,65 @@ class TestShell(unittest.TestCase):
             m.get_snapshots.return_value = snap_mocks
             m.get_ip_address_by_network_name.side_effect = (
                 lambda name: ips[name])
+            m.get_defined_params.return_value = ['vcpu', 'memory']
+            vol_mocks = []
+            if volumes:
+                vol_mocks = [
+                    create_volume_mock(vol['name'], vol['capacity'])
+                    for vol in volumes]
+            m.get_volumes.return_value = vol_mocks
             return name, m
 
         self.nodes = {
             'env1': collections.OrderedDict((
-                create_node_mock('admin', snapshots=[('snap1', 15),
-                                                     ('snap2', 16)],
+                create_node_mock('admin',
+                                 role='master',
+                                 snapshots=[('snap1', 15),
+                                            ('snap2', 16)],
+                                 vcpu=2,
+                                 memory=2,
+                                 volumes=[
+                                     {
+                                         'name': 'system',
+                                         'capacity': 2,
+                                     },
+                                     {
+                                         'name': 'iso',
+                                         'capacity': 1,
+                                     }],
                                  ips={'fuelweb_admin': '192.168.1.2',
                                       'public': '192.168.2.2',
                                       'storage': '192.168.3.2'}),
-                create_node_mock('slave-01', snapshots=[('snap1', 15)],
+                create_node_mock('slave-01',
+                                 role='slave',
+                                 snapshots=[('snap1', 15)],
+                                 vcpu=4,
+                                 memory=8,
+                                 volumes=[
+                                     {
+                                         'name': 'system',
+                                         'capacity': 4,
+                                     },
+                                     {
+                                         'name': 'ceph',
+                                         'capacity': 32,
+                                     }],
                                  ips={'fuelweb_admin': '192.168.1.3',
                                       'public': '192.168.2.3',
                                       'storage': '192.168.3.3'}),
                 create_node_mock('slave-02',
+                                 role='slave',
+                                 vcpu=2,
+                                 memory=16,
+                                 volumes=[
+                                     {
+                                         'name': 'system',
+                                         'capacity': 2,
+                                     },
+                                     {
+                                         'name': 'glusterfs',
+                                         'capacity': 8,
+                                     }],
                                  ips={'fuelweb_admin': '192.168.1.4',
                                       'public': '192.168.2.4',
                                       'storage': '192.168.3.4'}),
@@ -258,6 +315,19 @@ class TestShell(unittest.TestCase):
             ' 5005  admin        rack-01\n'
             ' 5005  slave-01     rack-01\n'
             ' 5005  slave-02     rack-01')
+
+    def test_show_resources(self):
+        sh = shell.Shell(['show-resources', 'env1'])
+        sh.execute()
+
+        self.client_inst.get_env.assert_called_once_with('env1')
+        self.print_mock.assert_called_once_with(
+            'NAME      ROLE    GROUP      VCPU    MEMORY,Gb    STORAGE,Gb\n'
+            '--------  ------  -------  ------  -----------  ------------\n'
+            'admin     master  rack-01       2            2             3\n'
+            'slave-01  slave   rack-01       4            8            36\n'
+            'slave-02  slave   rack-01       2           16            10\n'
+            'Total:                          8           26            49')
 
     def test_show_none(self):
         sh = shell.Shell(['show', 'env2'])

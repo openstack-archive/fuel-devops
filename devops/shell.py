@@ -79,6 +79,55 @@ class Shell(object):
                    for node in nodes]
         self.print_table(headers=headers, columns=columns)
 
+    def do_show_resources(self):
+        nodes = sorted(self.env.get_nodes(), key=lambda node: node.name)
+        headers = ("NAME", "ROLE", "GROUP", "VCPU", "MEMORY,Gb", "STORAGE,Gb")
+        total_vcpu = 0
+        total_memory = 0
+        total_storage = 0
+        columns = list()
+        for node in nodes:
+            vcpu = 0
+            memory = 0
+            storage = 0
+
+            if 'vcpu' in node.get_defined_params():
+                vcpu = node.vcpu
+
+            if 'memory' in node.get_defined_params():
+                memory = node.memory
+
+            volumes = node.get_volumes()
+            for volume in volumes:
+                if 'capacity' in volume.get_defined_params():
+                    storage += int(volume.capacity)
+
+            columns.append(
+                (
+                    node.name,
+                    node.role,
+                    node.group.name,
+                    vcpu or '-',
+                    memory or '-',
+                    storage or '-',
+                )
+            )
+            total_vcpu += vcpu
+            total_memory += memory
+            total_storage += storage
+
+        columns.append(
+            (
+                "Total:",
+                '',
+                '',
+                total_vcpu or '-',
+                total_memory or '-',
+                total_storage or '-',
+            )
+        )
+        self.print_table(headers=headers, columns=columns)
+
     def do_erase(self):
         self.env.erase()
 
@@ -433,6 +482,11 @@ class Shell(object):
         subparsers.add_parser('show', parents=[name_parser],
                               help="Show VMs in environment",
                               description="Show VMs in environment")
+        subparsers.add_parser('show-resources', parents=[name_parser],
+                              help=("Show resources consumed by VMs "
+                                    "in environment"),
+                              description=("Show resources consumed by VMs "
+                                           "in environment"))
         subparsers.add_parser('erase', parents=[name_parser],
                               help="Delete environment",
                               description="Delete environment and VMs on it")
