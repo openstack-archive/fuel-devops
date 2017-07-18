@@ -205,6 +205,12 @@ class Shell(object):
 
             ap_slave_ips = []
             for node in self.env.get_nodes():
+                try:
+                    node.get_interface_by_network_name(l2dev.name)
+                except devops.models.network.Interface.DoesNotExist:
+                    # Skip if l2 network device is not attached to the node
+                    continue
+
                 if self.params.ip_only:
                     ap_slave_ips.append(
                         node.get_ip_address_by_network_name(l2dev.name))
