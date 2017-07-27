@@ -211,7 +211,11 @@ class TestLibvirtNode(LibvirtTestCase):
                 mock.call(0, 0, [4], 1, 0),
                 mock.call(0, 0, [28], 1, 0),
             ])
-            self.sleep_mock.assert_called_once_with(1)
+            assert self.sleep_mock.call_args_list == [mock.call(0.05),
+                                                      mock.call(0.05),
+                                                      mock.call(0.05),
+                                                      mock.call(1),
+                                                      mock.call(0.05)]
 
     def test_start_reboot(self):
         self.node.define()
