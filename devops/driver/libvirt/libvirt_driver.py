@@ -43,6 +43,7 @@ from devops.models import driver
 from devops.models import network
 from devops.models import node
 from devops.models import volume
+from devops.settings import LIBVIRT_KEYPRESS_DELAY
 
 
 class _LibvirtManager(object):
@@ -1124,6 +1125,8 @@ class LibvirtNode(node.Node):
                     time.sleep(1)
                 continue
             self._libvirt_node.sendKey(0, 0, list(key_code), len(key_code), 0)
+            # Limit Keypress rate with configurable delay between sending
+            time.sleep(LIBVIRT_KEYPRESS_DELAY)
 
     @decorators.retry(libvirt.libvirtError)
     def define(self):
