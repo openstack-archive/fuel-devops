@@ -1124,6 +1124,8 @@ class LibvirtNode(node.Node):
                     time.sleep(1)
                 continue
             self._libvirt_node.sendKey(0, 0, list(key_code), len(key_code), 0)
+            # Limit Keypress rate to 100 characters per second
+            time.sleep(1.0/100)
 
     @decorators.retry(libvirt.libvirtError)
     def define(self):
