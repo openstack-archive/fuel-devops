@@ -67,8 +67,8 @@ class NodeExtension(object):
                 " gateway {gateway}\n" +
                 " dns-nameservers {dns}\n"
                 "local-hostname: {hostname}".format(
-                    dns=settings.DEFAULT_DNS,
-                    hostname=settings.DEFAULT_MASTER_FQDN))
+                    dns=settings.MASTER_DNS,
+                    hostname=settings.MASTER_FQDN))
 
         if volume.cloudinit_user_data is None:
             volume.cloudinit_user_data = (

@@ -44,8 +44,8 @@ class NodeExtension(object):
             ip=ip,
             mask=admin_ap.ip_network.netmask,
             gw=admin_ap.gateway,
-            hostname=settings.DEFAULT_MASTER_FQDN,
-            nameserver=settings.DEFAULT_DNS,
+            hostname=settings.MASTER_FQDN,
+            nameserver=settings.MASTER_DNS,
         )
         self.node.send_keys(result_kernel_cmd)
 
