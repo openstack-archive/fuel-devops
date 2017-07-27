@@ -31,6 +31,8 @@ DRIVER_PARAMETERS = {
     'use_host_cpu': get_var_as_bool('DRIVER_USE_HOST_CPU', True),
     'enable_acpi': get_var_as_bool('DRIVER_ENABLE_ACPI', False),
 }
+LIBVIRT_KEYPRESS_DELAY = float(
+    os.environ.get("LIBVIRT_KEYPRESS_DELAY", "0.05"))
 
 INSTALLED_APPS = ['south', 'devops']
 

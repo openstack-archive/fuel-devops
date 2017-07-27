@@ -30,6 +30,7 @@ from devops.helpers.helpers import get_file_size
 from devops.helpers.retry import retry
 from devops.helpers import scancodes
 from devops import logger
+from devops.settings import LIBVIRT_KEYPRESS_DELAY
 
 
 class Snapshot(object):
@@ -895,14 +896,15 @@ class DevopsDriver(object):
         """
 
         key_codes = scancodes.from_string(str(keys))
+        node = self.conn.lookupByUUIDString(node.uuid)
         for key_code in key_codes:
             if isinstance(key_code[0], str):
                 if key_code[0] == 'wait':
                     sleep(1)
                 continue
-            self.conn.lookupByUUIDString(node.uuid).sendKey(0, 0,
-                                                            list(key_code),
-                                                            len(key_code), 0)
+            node.sendKey(0, 0, list(key_code), len(key_code), 0)
+            # Limit Keypress rate with configurable delay between sending
+            sleep(LIBVIRT_KEYPRESS_DELAY)
 
     @retry()
     def node_set_vcpu(self, node, vcpu):
