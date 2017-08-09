@@ -57,6 +57,7 @@ class TestCloudImageSettings(unittest.TestCase):
             interface_name=u'enp0s3')
 
         self.os_mock.makedirs.assert_called_once_with('/mydir')
+
         self.open_mock.assert_has_calls((
             mock.call('/mydir/meta-data', 'w'),
             mock.call().__enter__(),
@@ -71,8 +72,7 @@ class TestCloudImageSettings(unittest.TestCase):
                 ' gateway 10.109.0.1\n'
                 ' dns-nameservers 8.8.8.8\n'
                 'local-hostname: nailgun.domain.local'),
-            mock.call().__exit__(None, None, None)))
-        self.open_mock.assert_has_calls((
+            mock.call().__exit__(None, None, None),
             mock.call('/mydir/user-data', 'w'),
             mock.call().__enter__(),
             mock.call().write(
