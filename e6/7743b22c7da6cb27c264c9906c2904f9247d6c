@@ -1,0 +1,8 @@
+Code-Review+2: Dennis Dmitriev <ddmitriev@mirantis.com>
+Workflow+1: Dennis Dmitriev <ddmitriev@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 17 Aug 2017 07:05:30 +0000
+Reviewed-on: https://review.openstack.org/487674
+Project: openstack/fuel-devops
+Branch: refs/heads/master
