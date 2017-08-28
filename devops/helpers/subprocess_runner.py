@@ -42,6 +42,12 @@ class Subprocess(six.with_metaclass(metaclasses.SingletonMeta, object)):
         """
         pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     @classmethod
     def __exec_command(cls, command, cwd=None, env=None, timeout=None,
                        verbose=False):
