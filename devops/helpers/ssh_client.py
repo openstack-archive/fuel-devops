@@ -930,6 +930,13 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
         return result
 
+    def _path_esc(self, path):
+        """Escape space character in the path"""
+        if type(path) is str:
+            return (path.replace(' ', '\ '))
+        else:
+            return path
+
     def mkdir(self, path):
         """run 'mkdir -p path' on remote
 
@@ -937,18 +944,18 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         """
         if self.exists(path):
             return
-        logger.debug("Creating directory: {}".format(path))
+        logger.debug("Creating directory: {}".format(self._path_esc(path)))
         # noinspection PyTypeChecker
-        self.execute("mkdir -p {}\n".format(path))
+        self.execute("mkdir -p {}\n".format(self._path_esc(path)))
 
     def rm_rf(self, path):
         """run 'rm -rf path' on remote
 
         :type path: str
         """
-        logger.debug("rm -rf {}".format(path))
+        logger.debug("rm -rf {}".format(self._path_esc(path)))
         # noinspection PyTypeChecker
-        self.execute("rm -rf {}".format(path))
+        self.execute("rm -rf {}".format(self._path_esc(path)))
 
     def open(self, path, mode='r'):
         """Open file on remote using SFTP session
