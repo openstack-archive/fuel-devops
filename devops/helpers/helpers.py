@@ -18,6 +18,7 @@ import functools
 import os
 import signal
 import socket
+import string
 import time
 import warnings
 # noinspection PyPep8Naming
@@ -424,3 +425,19 @@ def utc_to_local(t):
     t = t.replace(tzinfo=tz.tzutc())
     # convert to local timezone
     return t.astimezone(tz.tzlocal())
+
+
+def format_data(data_content, data_context):
+    """Dict wrapper that returns key name
+    in case of key missing in the dictionary
+    """
+
+    class temp_dict(dict):
+        def __init__(self, kw):
+            self.__dict = kw
+
+        def __getitem__(self, key):
+            return self.__dict.get(key, '{' + str(key) + '}')
+
+    return string.Formatter().vformat(data_content, [], temp_dict(
+        data_context))

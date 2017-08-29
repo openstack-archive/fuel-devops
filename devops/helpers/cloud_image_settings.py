@@ -12,12 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from copy import deepcopy
 import os
 
 from devops.helpers import subprocess_runner
 from devops import logger
-
+from devops.helpers import format_data
 
 def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                                   user_data_path, admin_network,
@@ -78,21 +77,17 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                              " - sudo route add default gw "
                              "{gateway} {interface_name}")
 
-    # FIXME this hack should be rewrited!
-    # Workaround to be able pass bash-style variables ${}
-    fmt_user_data_content = deepcopy(user_data_content)
-    for _key in data_context.keys():
-        _repl = "{{{0}}}".format(_key)
-        fmt_user_data_content = \
-            fmt_user_data_content.replace(_repl, data_context[_key])
+    fmt_user_data = format_data(user_data_content, data_context)
+    logger.debug("user_data contains next data: \n{}".format(fmt_user_data))
+
     with open(user_data_path, 'w') as f:
-        f.write(fmt_user_data_content)
-    logger.debug(
-        "user_data contains next data:\n{}".format(fmt_user_data_content))
+        f.write(fmt_user_data)
+
     # Generate cloud_ISO
     cmd = "genisoimage -output {} " \
           "-volid cidata -joliet " \
           "-rock {} {}".format(cloud_image_settings_path,
                                user_data_path,
                                meta_data_path)
+
     subprocess_runner.Subprocess.check_call(cmd)
