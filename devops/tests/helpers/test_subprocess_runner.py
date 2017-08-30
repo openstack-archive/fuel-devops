@@ -26,7 +26,7 @@ from devops.helpers import exec_result
 from devops.helpers import subprocess_runner
 
 command = 'ls ~\nline 2\nline 3\nline с кирилицей'
-command_log = u"\nExecuting command: '{!s}'".format(command.rstrip())
+command_log = u"Executing command:\n{!s}\n".format(command.rstrip())
 stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
 stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 
@@ -78,9 +78,8 @@ class TestSubprocessRunner(unittest.TestCase):
 
     @staticmethod
     def gen_cmd_result_log_message(result):
-        return (u"\nCommand '{cmd!s}'\nexecution results: "
-                u"Exit code: '{code!s}'".format(
-                    cmd=result.cmd.rstrip(), code=result.exit_code))
+        return (u"Command exit code '{code!s}':\n{cmd!s}\n"
+                .format(cmd=result.cmd.rstrip(), code=result.exit_code))
 
     def test_call(self, popen, fcntl, select, logger):
         popen_obj, exp_result = self.prepare_close(popen)

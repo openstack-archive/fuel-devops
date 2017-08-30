@@ -14,9 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-CMD_EXEC = u"\nExecuting command: '{cmd!s}'"
-CMD_RESULT = (u"\nCommand '{cmd!s}'\nexecution results: "
-              u"Exit code: '{code!s}'")
+CMD_EXEC = u"Executing command:\n{cmd!s}\n"
+CMD_RESULT = (u"Command exit code '{code!s}':\n{cmd!s}\n")
 CMD_UNEXPECTED_EXIT_CODE = (u"{append}Command '{cmd!s}' returned "
                             u"exit code '{code!s}' while "
                             u"expected '{expected!s}'\n")

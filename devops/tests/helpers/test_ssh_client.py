@@ -65,7 +65,7 @@ username = 'user'
 password = 'pass'
 private_keys = []
 command = 'ls ~\nline 2\nline 3\nline с кирилицей'
-command_log = u"\nExecuting command: '{!s}'".format(command.rstrip())
+command_log = u"Executing command:\n{!s}\n".format(command.rstrip())
 stdout_list = [b' \n', b'2\n', b'3\n', b' \n']
 stderr_list = [b' \n', b'0\n', b'1\n', b' \n']
 encoded_cmd = base64.b64encode(
@@ -925,9 +925,8 @@ class TestExecute(unittest.TestCase):
 
     @staticmethod
     def gen_cmd_result_log_message(result):
-        return (u"\nCommand '{cmd!s}'\nexecution results: "
-                u"Exit code: '{code!s}'".format(
-                    cmd=result.cmd.rstrip(), code=result.exit_code))
+        return (u"Command exit code '{code!s}':\n{cmd!s}\n"
+                .format(cmd=result.cmd.rstrip(), code=result.exit_code))
 
     def test_execute_async(self, client, policy, logger):
         chan = mock.Mock()
