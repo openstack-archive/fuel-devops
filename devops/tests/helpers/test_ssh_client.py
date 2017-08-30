@@ -1797,7 +1797,8 @@ class TestSftp(unittest.TestCase):
     def test_mkdir(self, execute, exists, client, policy, logger):
         exists.side_effect = [False, True]
 
-        dst = '~/tst'
+        dst = '~/tst dir'
+        escaped_dst = '~/tst\ dir'
 
         # noinspection PyTypeChecker
         ssh = ssh_client.SSHClient(
@@ -1812,7 +1813,7 @@ class TestSftp(unittest.TestCase):
         # noinspection PyTypeChecker
         ssh.mkdir(dst)
         exists.assert_called_once_with(dst)
-        execute.assert_called_once_with("mkdir -p {}\n".format(dst))
+        execute.assert_called_once_with("mkdir -p {}\n".format(escaped_dst))
 
         # Path exists
         exists.reset_mock()
