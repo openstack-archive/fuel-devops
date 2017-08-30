@@ -932,10 +932,8 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
 
     def _path_esc(self, path):
         """Escape space character in the path"""
-        if type(path) is str:
+        if path:
             return (path.replace(' ', '\ '))
-        else:
-            return path
 
     def mkdir(self, path):
         """run 'mkdir -p path' on remote
