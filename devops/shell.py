@@ -19,7 +19,10 @@ import collections
 import os
 import sys
 
+import datetime
 import tabulate
+
+from six.moves import input
 
 import devops
 from devops import client
@@ -52,6 +55,50 @@ class Shell(object):
             return
         print(tabulate.tabulate(columns, headers=headers,
                                 tablefmt="simple"))
+
+    @staticmethod
+    def query_yes_no(question, default=None):
+        """Ask a yes/no question via standard input and return the answer.
+
+        If invalid input is given, the user will be asked until
+        they acutally give valid input.
+
+        Args:
+            question(str):
+                A question that is presented to the user.
+            default(bool|None):
+                The default value when enter is pressed with no value.
+                When None, there is no default value and the query
+                will loop.
+        Returns:
+            A bool indicating whether user has entered yes or no.
+
+        Side Effects:
+            Blocks program execution until valid input(y/n) is given.
+        """
+        yes_list = ["yes", "y"]
+        no_list = ["no", "n"]
+
+        default_dict = {  # default => prompt default string
+            None: "[y/n]",
+            True: "[Y/n]",
+            False: "[y/N]",
+        }
+        default_str = default_dict[default]
+        prompt_str = "{} {} ".format(question, default_str)
+
+        while True:
+            choice = input(prompt_str).lower()
+
+            if not choice and default is not None:
+                return default
+            if choice in yes_list:
+                return True
+            if choice in no_list:
+                return False
+
+            notification_str = "Please respond with 'y' or 'n'"
+            print(notification_str)
 
     def do_list(self):
         env_names = self.client.list_env_names()
@@ -130,6 +177,57 @@ class Shell(object):
 
     def do_erase(self):
         self.env.erase()
+
+    def get_lifetime_delta(self):
+        data = self.params.env_lifetime
+        multipliers = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+        if data[-1] not in multipliers:
+            raise ValueError(
+                'Value should end with '
+                'one of "{}", got "{}"'.format(
+                    " ".join(multipliers.keys()), data
+                ))
+        num = int(data[:-1])
+        mul = data[-1]
+        return datetime.timedelta(seconds=num*multipliers[mul])
+
+    def get_old_environments(self):
+        delta = self.get_lifetime_delta()
+        timestamp_now = datetime.datetime.now().replace(microsecond=0)
+        envs_to_erase = []
+        for env_name in client.DevopsClient.list_env_names():
+            env = client.DevopsClient.get_env(env_name)
+            if (timestamp_now - env.created) > delta:
+                envs_to_erase.append(env)
+        return envs_to_erase
+
+    def do_cleanup_old(self):
+        envs_to_erase = self.get_old_environments()
+
+        for env in envs_to_erase:
+            print("Env '{}' will be erased!".format(env.name))
+
+        if envs_to_erase:
+            if not self.params.force_cleanup:
+                answer = self.query_yes_no(
+                    "The cleanup operation is destructive one, "
+                    "all environments listed above will be erased. "
+                    "DELETION CAN NOT BE UNDONE! Proceed? ",
+                    default=False)
+                if not answer:
+                    print("Wise choice, aborting...")
+                    sys.exit(0)
+        else:
+            print("Nothing to erase, exiting...")
+            sys.exit(0)
+
+        for env in envs_to_erase:
+            print("Erasing '{}'...".format(env.name))
+            env.erase()
+
+    def do_list_old(self):
+        for env in self.get_old_environments():
+            print(env.name)
 
     def do_start(self):
         self.env.start()
@@ -475,6 +573,22 @@ class Shell(object):
                                           'If set to 0, the disk will not be '
                                           'allocated',
                                      default=50, type=int)
+
+        force_cleanup_parser = argparse.ArgumentParser(add_help=False)
+        force_cleanup_parser.add_argument(
+            '--force-cleanup',
+            dest='force_cleanup',
+            action='store_const', const=True,
+            help='Do not ask confirmation for cleanup action.',
+            default=False)
+
+        env_lifetime = argparse.ArgumentParser(add_help=False)
+        env_lifetime.add_argument(
+            dest='env_lifetime',
+            help='Erase environments older than given time interval. '
+                 'Example:"45m", "12h", "3d"',
+            default="", type=str)
+
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For additional help, use with -h/--help option")
@@ -485,6 +599,17 @@ class Shell(object):
                               parents=[list_ips_parser, timestamps_parser],
                               help="Show virtual environments",
                               description="Show virtual environments on host")
+        subparsers.add_parser('cleanup-old',
+                              parents=[force_cleanup_parser,
+                                       env_lifetime],
+                              help="Show virtual environments",
+                              description="Show virtual environments on host")
+        subparsers.add_parser('list-old',
+                              parents=[env_lifetime],
+                              help="Show virtual environments older than given"
+                                   " lifetime interval",
+                              description="Show old virtual "
+                                          "environments on host")
         subparsers.add_parser('show', parents=[name_parser],
                               help="Show VMs in environment",
                               description="Show VMs in environment")
