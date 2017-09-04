@@ -19,11 +19,14 @@ import collections
 import os
 import sys
 
+import datetime
 from netaddr import IPNetwork
 # pylint: disable=redefined-builtin
 from six.moves import xrange
+from six.moves import input
 # pylint: enable=redefined-builtin
 import tabulate
+
 
 import devops
 from devops.helpers.helpers import get_file_size
@@ -51,26 +54,70 @@ class Shell(object):
                          "".format(self.params.name))
 
     def execute(self):
+        print(self.params.command)
         self.commands.get(self.params.command)(self)
 
     def print_table(self, headers, columns):
         print(tabulate.tabulate(columns, headers=headers,
                                 tablefmt="simple"))
 
-    def do_list(self):
-        env_list = Environment.list_all().values('name', 'created')
+    @staticmethod
+    def query_yes_no(question, default=None):
+        """Ask a yes/no question via standard input and return the answer.
+
+        If invalid input is given, the user will be asked until
+        they acutally give valid input.
+
+        Args:
+            question(str):
+                A question that is presented to the user.
+            default(bool|None):
+                The default value when enter is pressed with no value.
+                When None, there is no default value and the query
+                will loop.
+        Returns:
+            A bool indicating whether user has entered yes or no.
+
+        Side Effects:
+            Blocks program execution until valid input(y/n) is given.
+        """
+        yes_list = ["yes", "y"]
+        no_list = ["no", "n"]
+
+        default_dict = {  # default => prompt default string
+            None: "[y/n]",
+            True: "[Y/n]",
+            False: "[y/N]",
+        }
+        default_str = default_dict[default]
+        prompt_str = "{} {} ".format(question, default_str)
+
+        while True:
+            choice = input(prompt_str).lower()
+
+            if not choice and default is not None:
+                return default
+            if choice in yes_list:
+                return True
+            if choice in no_list:
+                return False
+
+            notification_str = "Please respond with 'y' or 'n'"
+            print(notification_str)
+
+    def print_envs_table(self, env_list):
         columns = []
-        for env in env_list:
-            column = collections.OrderedDict({'NAME': env['name']})
+        for env in sorted(env_list, key=lambda item: item.name):
+            column = collections.OrderedDict()
+            column['NAME'] = env.name
             if self.params.list_ips:
-                cur_env = Environment.get(name=env['name'])
                 admin_ip = ''
-                if 'admin' in [node.name for node in cur_env.get_nodes()]:
-                    admin_ip = (cur_env.get_node(name='admin').
+                if 'admin' in [node.name for node in env.get_nodes()]:
+                    admin_ip = (env.get_node(name='admin').
                                 get_ip_address_by_network_name('admin'))
                 column['ADMIN IP'] = admin_ip
             if self.params.timestamps:
-                column['CREATED'] = env['created'].strftime(
+                column['CREATED'] = env.created.strftime(
                     '%Y-%m-%d_%H:%M:%S')
             columns.append(column)
 
@@ -81,6 +128,9 @@ class Shell(object):
         return {'name': node.name,
                 'vnc': node.get_vnc_port()}
 
+    def do_list(self):
+        self.print_envs_table(Environment.list_all())
+
     def do_show(self):
         headers = ("VNC", "NODE-NAME")
         columns = [(node.get_vnc_port(), node.name)
@@ -89,6 +139,57 @@ class Shell(object):
 
     def do_erase(self):
         self.env.erase()
+
+    def get_lifetime_delta(self):
+        data = self.params.env_lifetime
+        multipliers = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+        if data[-1] not in multipliers:
+            raise ValueError(
+                'Value should end with '
+                'one of "{}", got "{}"'.format(
+                    " ".join(multipliers.keys()), data
+                ))
+        num = int(data[:-1])
+        mul = data[-1]
+        return datetime.timedelta(seconds=num*multipliers[mul])
+
+    def get_old_environments(self):
+        delta = self.get_lifetime_delta()
+        # devops uses utc timestamps for BaseModel
+        timestamp_now = datetime.datetime.utcnow()
+        envs_to_erase = []
+        env_list = Environment.list_all()
+        for env in env_list:
+            if (timestamp_now - env.created) > delta:
+                envs_to_erase.append(env)
+        return envs_to_erase
+
+    def do_erase_old(self):
+        envs_to_erase = self.get_old_environments()
+
+        for env in envs_to_erase:
+            print("Env '{}' will be erased!".format(env.name))
+
+        if envs_to_erase:
+            if not self.params.force_cleanup:
+                answer = self.query_yes_no(
+                    "The cleanup operation is destructive one, "
+                    "all environments listed above will be erased. "
+                    "DELETION CAN NOT BE UNDONE! Proceed? ",
+                    default=False)
+                if not answer:
+                    print("Wise choice, aborting...")
+                    sys.exit(0)
+        else:
+            print("Nothing to erase, exiting...")
+            sys.exit(0)
+
+        for env in envs_to_erase:
+            print("Erasing '{}'...".format(env.name))
+            env.erase()
+
+    def do_list_old(self):
+        self.print_envs_table(self.get_old_environments())
 
     def do_start(self):
         self.env.start()
@@ -349,8 +450,10 @@ class Shell(object):
 
     commands = {
         'list': do_list,
+        'list-old': do_list_old,
         'show': do_show,
         'erase': do_erase,
+        'erase-old': do_erase_old,
         'start': do_start,
         'destroy': do_destroy,
         'suspend': do_suspend,
@@ -487,6 +590,22 @@ class Shell(object):
                                           'If set to 0, the disk will not be '
                                           'allocated',
                                      default=50, type=int)
+
+        force_cleanup_parser = argparse.ArgumentParser(add_help=False)
+        force_cleanup_parser.add_argument(
+            '--force-cleanup',
+            dest='force_cleanup',
+            action='store_const', const=True,
+            help='Do not ask confirmation for cleanup action.',
+            default=False)
+
+        env_lifetime = argparse.ArgumentParser(add_help=False)
+        env_lifetime.add_argument(
+            dest='env_lifetime',
+            help='Erase environments older than given time interval. '
+                 'Example:"45m", "12h", "3d"',
+            default="", type=str)
+
         parser = argparse.ArgumentParser(
             description="Manage virtual environments. "
                         "For additional help, use with -h/--help option")
@@ -497,6 +616,19 @@ class Shell(object):
                               parents=[list_ips_parser, timestamps_parser],
                               help="Show virtual environments",
                               description="Show virtual environments on host")
+        subparsers.add_parser('erase-old',
+                              parents=[force_cleanup_parser,
+                                       env_lifetime],
+                              help="Cleanup old virtual environments",
+                              description="Cleanup virtual environments on "
+                                          "host")
+        subparsers.add_parser('list-old',
+                              parents=[env_lifetime, list_ips_parser,
+                                       timestamps_parser],
+                              help="Show virtual environments older than given"
+                                   " lifetime interval",
+                              description="Show old virtual "
+                                          "environments on host")
         subparsers.add_parser('show', parents=[name_parser],
                               help="Show VMs in environment",
                               description="Show VMs in environment")
