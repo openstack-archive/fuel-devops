@@ -54,7 +54,6 @@ class Shell(object):
                          "".format(self.params.name))
 
     def execute(self):
-        print(self.params.command)
         self.commands.get(self.params.command)(self)
 
     def print_table(self, headers, columns):
