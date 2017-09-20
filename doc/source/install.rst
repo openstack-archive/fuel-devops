@@ -98,7 +98,7 @@ Devops installation in `virtualenv <http://virtualenv.readthedocs.org/en/latest/
         virtualenv --no-site-packages fuel-devops-venv-3.0    # For fuel-devops 3.0.x
 
 5. Activate virtualenv and install *devops* package using PyPI.
-In order to indentify the latest available versions you would like to install,
+In order to identify the latest available versions you would like to install,
 visit `fuel-devops <https://github.com/openstack/fuel-devops/tags>`_ repo.
 Please use the latest tag from 2.9.x tags for Fuel 6.1 or later.
 
