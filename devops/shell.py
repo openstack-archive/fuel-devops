@@ -417,6 +417,9 @@ class Shell(object):
             self.env.get_admin_ip()))
 
     def do_node_start(self):
+        # ensure networks are running prior to starting a node
+        for group in self.env.get_groups():
+            group.start_networks()
         # TODO(astudenov): add positional argument instead of
         # checking that option is present
         self.check_param_show_help(self.params.node_name)

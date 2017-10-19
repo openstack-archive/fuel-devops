@@ -679,9 +679,13 @@ class TestShell(unittest.TestCase):
             iface='eth1')
 
     def test_node_start(self):
+        group = mock.Mock(spec=models.Group)
+        self.env_mocks['env1'].get_groups.return_value = [group]
+
         sh = shell.Shell(['node-start', 'env1', '-N', 'slave-01'])
         sh.execute()
 
+        group.start_networks.assert_called_once_with()
         self.client_inst.get_env.assert_called_once_with('env1')
         self.nodes['env1']['slave-01'].start.assert_called_once_with()
 
