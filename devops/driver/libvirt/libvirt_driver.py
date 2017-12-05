@@ -833,6 +833,7 @@ class LibvirtVolume(volume.Volume):
     multipath_count = base.ParamField(default=0)
     cloudinit_meta_data = base.ParamField(default=None)
     cloudinit_user_data = base.ParamField(default=None)
+    shared_backing_store_name = base.ParamField(default=None)
 
     @property
     @decorators.retry(libvirt.libvirtError)
@@ -876,6 +877,17 @@ class LibvirtVolume(volume.Volume):
                     "not exists.".format(self.name, self.backing_store.name))
             backing_store_path = self.backing_store.get_path()
             backing_store_format = self.backing_store.format
+        elif self.shared_backing_store_name:
+            b_pool = self.driver.conn.storagePoolLookupByName(
+                self.driver.storage_pool_name)
+            if self.shared_backing_store_name not in b_pool.listVolumes():
+                raise error.DevopsError(
+                    "Can't create volume {!r}. backing_store volume {!r} does "
+                    "not exists.".format(self.name, self.backing_store.name))
+            b_vol = next(v for v in b_pool.listAllVolumes()
+                         if v.name() == self.shared_backing_store_name)
+            backing_store_path = b_vol.path()
+            backing_store_format = self.format
 
         # Select capacity
         if self.capacity:
