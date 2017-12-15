@@ -240,8 +240,8 @@ class LibvirtXMLBuilder(object):
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
                        reboot_timeout, bootmenu_timeout, emulator,
-                       has_vnc, vnc_password, local_disk_devices, interfaces,
-                       acpi, numa):
+                       has_vnc, has_videocard, vnc_password,
+                       local_disk_devices, interfaces, acpi, numa):
         """Generate node XML
 
         :rtype : String
@@ -323,8 +323,9 @@ class LibvirtXMLBuilder(object):
                 cls._build_disk_device(node_xml, **disk_device)
             for interface in interfaces:
                 cls._build_interface_device(node_xml, **interface)
-            with node_xml.video:
-                node_xml.model(type='vga', vram='9216', heads='1')
+            if has_videocard:
+                with node_xml.video:
+                    node_xml.model(type='vga', vram='9216', heads='1')
             with node_xml.serial(type='pty'):
                 node_xml.target(port='0')
             with node_xml.console(type='pty'):

@@ -1081,6 +1081,7 @@ class LibvirtNode(node.Node):
     vcpu = base.ParamField(default=1)
     memory = base.ParamField(default=1024)
     has_vnc = base.ParamField(default=True)
+    has_videocard = base.ParamField(default=True)
     bootmenu_timeout = base.ParamField(default=0)
     numa = base.ParamField(default=[])
     cloud_init_volume_name = base.ParamField()
@@ -1221,6 +1222,7 @@ class LibvirtNode(node.Node):
             bootmenu_timeout=self.bootmenu_timeout,
             emulator=emulator,
             has_vnc=self.has_vnc,
+            has_videocard=self.has_videocard,
             vnc_password=self.driver.vnc_password,
             local_disk_devices=local_disk_devices,
             interfaces=local_interfaces,

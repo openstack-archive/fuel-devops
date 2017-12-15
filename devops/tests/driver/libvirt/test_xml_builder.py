@@ -378,6 +378,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             bootmenu_timeout=0,
             emulator='/usr/lib64/xen/bin/qemu-dm',
             has_vnc=True,
+            has_videocard=True,
             vnc_password='123456',
             local_disk_devices=[],
             interfaces=[],
@@ -442,6 +443,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             bootmenu_timeout=3000,
             emulator='/usr/lib64/xen/bin/qemu-dm',
             has_vnc=True,
+            has_videocard=False,
             vnc_password=None,
             local_disk_devices=self.disk_devices,
             interfaces=self.interfaces,
@@ -508,9 +510,6 @@ class TestNodeXml(BaseTestXMLBuilder):
             <model type="pcnet"/>
             <filterref filter="test_filter2"/>
         </interface>
-        <video>
-            <model heads="1" type="vga" vram="9216"/>
-        </video>
         <serial type="pty">
             <target port="0"/>
         </serial>
@@ -537,6 +536,7 @@ class TestNodeXml(BaseTestXMLBuilder):
             bootmenu_timeout=3000,
             emulator='/usr/lib64/xen/bin/qemu-dm',
             has_vnc=True,
+            has_videocard=True,
             vnc_password=None,
             local_disk_devices=[],
             interfaces=[],
