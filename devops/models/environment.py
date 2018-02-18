@@ -22,6 +22,7 @@ from paramiko import Agent
 from paramiko import RSAKey
 
 from devops.error import DevopsEnvironmentError
+from devops.helpers import decorators
 from devops.helpers.helpers import get_file_size
 from devops.helpers.ssh_client import SSHAuth
 from devops.helpers.ssh_client import SSHClient
@@ -128,6 +129,7 @@ class Environment(DriverModel):
     def has_snapshot(self, name):
         return all(n.has_snapshot(name) for n in self.get_nodes())
 
+    @decorators.proc_lock()
     def define(self, skip=True):
         # 'skip' param is a temporary workaround.
         # It will be removed with introducing the new database schema
@@ -150,6 +152,7 @@ class Environment(DriverModel):
         for node in self.get_nodes():
             node.destroy(verbose=verbose)
 
+    @decorators.proc_lock()
     def erase(self):
         for node in self.get_nodes():
             node.erase()
@@ -173,6 +176,7 @@ class Environment(DriverModel):
         for node in self.get_nodes():
             node.resume(verbose)
 
+    @decorators.proc_lock()
     def snapshot(self, name=None, description=None, force=False):
         if name is None:
             name = str(int(time.time()))
@@ -180,6 +184,7 @@ class Environment(DriverModel):
             node.snapshot(name=name, description=description, force=force,
                           external=settings.SNAPSHOTS_EXTERNAL)
 
+    @decorators.proc_lock()
     def revert(self, name=None, destroy=True, flag=True):
         if destroy:
             for node in self.get_nodes():
@@ -263,6 +268,7 @@ class Environment(DriverModel):
         return environment
 
     @classmethod
+    @decorators.proc_lock()
     def create_environment(cls, full_config):
         """Create a new environment using full_config object
 
