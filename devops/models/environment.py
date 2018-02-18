@@ -22,6 +22,7 @@ import netaddr
 import paramiko
 
 from devops import error
+from devops.helpers import decorators
 from devops.helpers import network as network_helpers
 from devops.helpers import ssh_client
 from devops import logger
@@ -183,6 +184,7 @@ class Environment(base.BaseModel):
         else:
             return False
 
+    @decorators.proc_lock()
     def define(self):
         for grp in self.get_groups():
             grp.define_networks()
@@ -201,6 +203,7 @@ class Environment(base.BaseModel):
         for grp in self.get_groups():
             grp.destroy()
 
+    @decorators.proc_lock()
     def erase(self):
         for grp in self.get_groups():
             grp.erase()
@@ -214,6 +217,7 @@ class Environment(base.BaseModel):
         for nod in self.get_nodes():
             nod.resume()
 
+    @decorators.proc_lock()
     def snapshot(self, name=None, description=None, force=False, suspend=True):
         """Snapshot the environment
 
@@ -237,6 +241,7 @@ class Environment(base.BaseModel):
             nod.snapshot(name=name, description=description, force=force,
                          external=settings.SNAPSHOTS_EXTERNAL)
 
+    @decorators.proc_lock()
     def revert(self, name=None, flag=True, resume=True):
         """Revert the environment from snapshot
 
@@ -312,6 +317,7 @@ class Environment(base.BaseModel):
             return dclient.create_env()
 
     @classmethod
+    @decorators.proc_lock()
     def create_environment(cls, full_config):
         """Create a new environment using full_config object
 
