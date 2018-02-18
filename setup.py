@@ -41,6 +41,7 @@ setup(
         'libvirt-python!=4.1.0',
         'tabulate',
         'six>=1.9.0',
+        'fasteners>=0.7.0'
     ],
     tests_require=[
         'factory_boy>=2.4.1',
