@@ -51,7 +51,8 @@ setuptools.setup(
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
         'lxml',
-        'enum34' if sys.version_info.major == 2 else ''
+        'enum34' if sys.version_info.major == 2 else '',
+        'fasteners>=0.7.0'
     ],
     tests_require=[
         'pytest>=2.7.1',
