@@ -17,6 +17,12 @@ from __future__ import unicode_literals
 from functools import wraps
 from threading import Thread
 
+import fasteners
+
+from devops import error
+from devops import logger
+from devops import settings
+
 
 def threaded(name=None, started=False, daemon=False):
     """Make function or method threaded with passing arguments
@@ -55,4 +61,41 @@ def threaded(name=None, started=False, daemon=False):
         func, name = name, None
         return real_decorator(func)
 
+    return real_decorator
+
+def proc_lock(path=settings.DEVOPS_LOCK_FILE, timeout=300):
+    """Process lock based on fcntl.lockf
+
+    Avoid race condition between different processes which
+    use fuel-devops at the same time during the resources
+    creation/modification/erase.
+
+    :param path: str, path to the lock file
+    :param timeout: int, timeout in second for waiting the lock file
+    """
+    def real_decorator(func):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            acquired = False
+            if path is not None:
+                logger.debug('Acquiring lock file {0} for {1}'
+                             .format(path, func.__name__))
+                lock = fasteners.InterProcessLock(path)
+                acquired = lock.acquire(blocking=True,
+                                        delay=5, timeout=timeout)
+                logger.debug('Acquired the lock file {0} for {1}'
+                             .format(path, func.__name__))
+                if not acquired:
+                    raise error.DevopsException(
+                        'Failed to aquire lock file in {0} sec'
+                        .format(timeout))
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                if acquired:
+                    logger.debug('Releasing the lock file {0} for {1}'
+                                 .format(path, func.__name__))
+                    lock.release()
+            return result
+        return wrapped
     return real_decorator
