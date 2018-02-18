@@ -99,3 +99,74 @@ class ThreadedTest(TestCase):
         func_test(add=2, rlock=lock)
         with lock:
             self.assertEqual(data, [2])
+
+class TestProcLock(TestCase):
+
+    def patch(self, *args, **kwargs):
+        patcher = mock.patch(*args, **kwargs)
+        m = patcher.start()
+        self.addCleanup(patcher.stop)
+        return m
+
+    def setUp(self):
+        self.sleep_mock = self.patch(
+            'time.sleep')
+
+    def create_class_with_proc_lock(self, path, timeout):
+        class MyClass(object):
+            def __init__(self, method):
+                self.m = method
+
+            @decorators.proc_lock(path=path, timeout=timeout)
+            def method(self):
+                return self.m()
+
+        return MyClass
+
+    @mock.patch('fasteners.InterProcessLock.acquire')
+    @mock.patch('fasteners.InterProcessLock.release')
+    def test_default_no_proc_lock(self, release, acquire):
+        method_mock = mock.Mock()
+
+        # noinspection PyPep8Naming
+        MyClass = self.create_class_with_proc_lock(None, 10)
+        c = MyClass(method_mock)
+
+        c.method()
+
+        acquire.assert_not_called()
+        method_mock.assert_called_once()
+        release.assert_not_called()
+
+    @mock.patch('fasteners.InterProcessLock.acquire')
+    @mock.patch('fasteners.InterProcessLock.release')
+    def test_passed_proc_lock(self, release, acquire):
+        acquire.return_value = True
+        method_mock = mock.Mock()
+
+        # noinspection PyPep8Naming
+        MyClass = self.create_class_with_proc_lock('/run/lock/devops_lock', 20)
+        c = MyClass(method_mock)
+
+        c.method()
+
+        acquire.assert_called_once()
+        method_mock.assert_called_once()
+        release.assert_called_once()
+
+    @mock.patch('fasteners.InterProcessLock.acquire')
+    @mock.patch('fasteners.InterProcessLock.release')
+    def test_acquire_timeout(self, release, acquire):
+        acquire.return_value = False
+        method_mock = mock.Mock()
+
+        # noinspection PyPep8Naming
+        MyClass = self.create_class_with_proc_lock('/run/lock/devops_lock', 30)
+        c = MyClass(method_mock)
+
+        with self.assertRaises(error.DevopsException):
+            c.method()
+
+        acquire.assert_called_once()
+        method_mock.assert_not_called()
+        release.assert_not_called()

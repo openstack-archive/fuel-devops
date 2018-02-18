@@ -52,6 +52,8 @@ DATABASES = {
     }
 }
 
+DEVOPS_LOCK_FILE = os.environ.get('DEVOPS_LOCK_FILE', None)
+
 KEYSTONE_CREDS = {'username': os.environ.get('KEYSTONE_USERNAME', 'admin'),
                   'password': os.environ.get('KEYSTONE_PASSWORD', 'admin'),
                   'tenant_name': os.environ.get('KEYSTONE_TENANT', 'admin')}
