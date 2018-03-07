@@ -38,7 +38,7 @@ setup(
         'psycopg2>=2.5',
         'south',
         'PyYAML>=3.1.0',
-        'libvirt-python',
+        'libvirt-python!=4.1.0',
         'tabulate',
         'six>=1.9.0',
     ],
