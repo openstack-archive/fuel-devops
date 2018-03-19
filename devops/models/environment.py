@@ -181,8 +181,8 @@ class Environment(base.BaseModel):
     def has_snapshot(self, name):
         if self.get_nodes():
             return all(n.has_snapshot(name) for n in self.get_nodes())
-        else:
-            return False
+
+        return False
 
     @decorators.proc_lock()
     def define(self):
