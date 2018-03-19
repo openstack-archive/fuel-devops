@@ -20,6 +20,7 @@ import shutil
 import time
 import uuid
 import warnings
+import subprocess
 # noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
 
@@ -28,6 +29,8 @@ from django.utils import functional
 import libvirt
 import netaddr
 import paramiko
+
+import virtualbmc.manager
 
 from devops.driver.libvirt import libvirt_xml_builder as builder
 from devops import error
@@ -1086,6 +1089,10 @@ class LibvirtNode(node.Node):
     numa = base.ParamField(default=[])
     cloud_init_volume_name = base.ParamField()
     cloud_init_iface_up = base.ParamField()
+    bmc_network = base.ParamField(default=False)
+    bmc_user = base.ParamField(default="admin")
+    bmc_password = base.ParamField(default="r00tme")
+    bmc_port = base.ParamField(default=None)
 
     @property
     @decorators.retry(libvirt.libvirtError)
@@ -1235,6 +1242,43 @@ class LibvirtNode(node.Node):
             self._create_cloudimage_settings_iso()
 
         super(LibvirtNode, self).define()
+
+    def define_bmc(self):
+        bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        net = self.get_interface_by_network_name('admin').l2_network_device
+        bind_ip = net.address_pool.get_ip('l2_network_device')
+
+        bmc.add(
+            username=self.bmc_user,
+            password=self.bmc_password,
+            port=self.bmc_port,
+            address=bind_ip,
+            domain_name=name,
+            libvirt_uri=self.driver.connection_string,
+            libvirt_sasl_username=None,
+            libvirt_sasl_password=None)
+
+    def undefine_bmc(self):
+        bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        bmc.stop(name)
+        bmc.delete(name)
+
+    def start_bmc(self):
+        # bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        # bmc.start(name)
+        subprocess.call(["vbmc", "start", name])
 
     def start(self):
         self.create()
