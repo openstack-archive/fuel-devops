@@ -101,6 +101,14 @@ class Group(base.BaseModel):
                 vol.define()
             nod.define()
 
+    def define_bmc(self):
+        for nod in self.get_nodes():
+            nod.define_bmc()
+
+    def undefine_bmc(self):
+        for nod in self.get_nodes():
+            nod.undefine_bmc()
+
     def start_networks(self):
         for l2_network_device in self.get_l2_network_devices():
             l2_network_device.start()
@@ -110,6 +118,10 @@ class Group(base.BaseModel):
             nodes = self.get_nodes()
         for nod in nodes:
             nod.start()
+
+    def start_bmc(self):
+        for nod in self.get_nodes():
+            nod.start_bmc()
 
     def destroy(self, **kwargs):
         for nod in self.get_nodes():

@@ -192,12 +192,16 @@ class Environment(base.BaseModel):
             grp.define_volumes()
         for grp in self.get_groups():
             grp.define_nodes()
+        for grp in self.get_groups():
+            grp.define_bmc()
 
     def start(self, nodes=None):
         for grp in self.get_groups():
             grp.start_networks()
         for grp in self.get_groups():
             grp.start_nodes(nodes)
+        for grp in self.get_groups():
+            grp.start_bmc()
 
     def destroy(self):
         for grp in self.get_groups():
@@ -205,6 +209,8 @@ class Environment(base.BaseModel):
 
     @decorators.proc_lock()
     def erase(self):
+        for grp in self.get_groups():
+            grp.undefine_bmc()
         for grp in self.get_groups():
             grp.erase()
         self.delete()
