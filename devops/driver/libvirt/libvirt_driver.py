@@ -29,6 +29,8 @@ import libvirt
 import netaddr
 import paramiko
 
+import virtualbmc.manager
+
 from devops.driver.libvirt import libvirt_xml_builder as builder
 from devops import error
 from devops.helpers import cloud_image_settings
@@ -1086,6 +1088,10 @@ class LibvirtNode(node.Node):
     numa = base.ParamField(default=[])
     cloud_init_volume_name = base.ParamField()
     cloud_init_iface_up = base.ParamField()
+    bmc_network = base.ParamField(default=False)
+    bmc_user = base.ParamField(default="admin")
+    bmc_password = base.ParamField(default="r00tme")
+    bmc_port = base.ParamField(default=None)
 
     @property
     @decorators.retry(libvirt.libvirtError)
@@ -1236,8 +1242,55 @@ class LibvirtNode(node.Node):
 
         super(LibvirtNode, self).define()
 
+        if self.virtualbmc_enabled:
+            self.define_bmc()
+
+    @property
+    def virtualbmc_enabled(self):
+        return bool(self.bmc_network) and bool(self.bmc_port)
+
+    def define_bmc(self):
+        bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        net = self.get_interface_by_network_name(self.bmc_network)
+        net = net.l2_network_device
+        bind_ip = net.address_pool.get_ip('l2_network_device')
+
+        bmc.add(
+            username=self.bmc_user,
+            password=self.bmc_password,
+            port=self.bmc_port,
+            address=bind_ip,
+            domain_name=name,
+            libvirt_uri=self.driver.connection_string,
+            libvirt_sasl_username=None,
+            libvirt_sasl_password=None)
+
+    def undefine_bmc(self):
+        bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        bmc.stop(name)
+        bmc.delete(name)
+
+    def start_bmc(self):
+        # bmc = virtualbmc.manager.VirtualBMCManager()
+        name = helpers.underscored(
+            helpers.deepgetattr(self, 'group.environment.name'),
+            self.name,
+        )
+        # bmc.start(name)
+        self.driver.shell.check_call(["vbmc", "start", name])
+
     def start(self):
         self.create()
+        if self.virtualbmc_enabled:
+            self.start_bmc()
 
     @decorators.retry(libvirt.libvirtError)
     def create(self, *args, **kwargs):
@@ -1274,6 +1327,9 @@ class LibvirtNode(node.Node):
                     self._libvirt_node.undefineFlags(
                         libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
         super(LibvirtNode, self).remove()
+
+        if self.virtualbmc_enabled:
+            self.undefine_bmc()
 
     @decorators.retry(libvirt.libvirtError)
     def suspend(self, *args, **kwargs):

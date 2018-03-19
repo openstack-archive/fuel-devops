@@ -52,7 +52,9 @@ setuptools.setup(
         'python-dateutil>=2.4.2',
         'lxml',
         'enum34' if sys.version_info.major == 2 else '',
-        'fasteners>=0.7.0'
+        'fasteners>=0.7.0',
+        'dateutil',
+        'virtualbmc'
     ],
     tests_require=[
         'pytest>=2.7.1',
