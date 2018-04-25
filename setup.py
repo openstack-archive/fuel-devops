@@ -46,7 +46,7 @@ setuptools.setup(
         'Django>=1.8,<1.9',
         'jsonfield',
         'PyYAML>=3.1.0',
-        'libvirt-python!=4.1.0',
+        'libvirt-python>=3.5.0,<4.1.0',
         'tabulate',
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
