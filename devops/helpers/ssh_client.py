@@ -323,7 +323,7 @@ class _MemorizedSSH(type):
 class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
     __slots__ = [
         '__hostname', '__port', '__auth', '__ssh', '__sftp', 'sudo_mode',
-        '__lock'
+        '__lock', '__verbose'
     ]
 
     class __get_sudo(object):
@@ -367,7 +367,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             self,
             host, port=22,
             username=None, password=None, private_keys=None,
-            auth=None
+            auth=None, verbose=True
     ):
         """SSHClient helper
 
@@ -377,6 +377,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         :type password: str
         :type private_keys: list
         :type auth: SSHAuth
+        :type verbose: bool, show additional error/warning messages
         """
         self.__lock = threading.RLock()
 
@@ -389,6 +390,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
         self.__sftp = None
 
         self.__auth = auth if auth is None else auth.copy()
+        self.__verbose = verbose
 
         if auth is None:
             msg = (
@@ -501,7 +503,7 @@ class SSHClient(six.with_metaclass(_MemorizedSSH, object)):
             self.auth.connect(
                 client=self.__ssh,
                 hostname=self.hostname, port=self.port,
-                log=True)
+                log=self.__verbose)
 
     def __connect_sftp(self):
         """SFTP connection opener"""
