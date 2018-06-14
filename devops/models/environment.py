@@ -231,8 +231,7 @@ class Environment(base.BaseModel):
             name = str(int(time.time()))
         if self.has_snapshot(name) and not force:
             raise error.DevopsError(
-                'Snapshot with name {0} already exists.'.format(
-                    self.params.snapshot_name))
+                'Snapshot with name "{0}" already exists.'.format(name))
         if suspend:
             for nod in self.get_nodes():
                 nod.suspend()
