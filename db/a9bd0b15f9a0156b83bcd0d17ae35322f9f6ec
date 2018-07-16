@@ -1,0 +1,8 @@
+Code-Review+2: Dennis Dmitriev <dis.xcom@gmail.com>
+Workflow+1: Dennis Dmitriev <dis.xcom@gmail.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Mon, 16 Jul 2018 15:58:19 +0000
+Reviewed-on: https://review.openstack.org/575472
+Project: openstack/fuel-devops
+Branch: refs/heads/master
