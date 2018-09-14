@@ -491,20 +491,26 @@ class TestShell(unittest.TestCase):
 
     def test_time_sync(self):
         self.env_mocks['env1'].get_curr_time.return_value = {
-            'node1': 'Thu May 12 18:26:34 MSK 2016',
-            'node2': 'Thu May 12 18:13:44 MSK 2016',
+            'slave-01': 'Thu May 12 18:26:34 MSK 2016',
+            'slave-02': 'Thu May 12 18:13:44 MSK 2016',
         }
         self.env_mocks['env1'].sync_time.return_value = {
-            'node1': 'Thu May 12 19:00:00 MSK 2016',
-            'node2': 'Thu May 12 19:00:00 MSK 2016',
+            'slave-01': 'Thu May 12 19:00:00 MSK 2016',
+            'slave-02': 'Thu May 12 19:00:00 MSK 2016',
         }
+
+        self.env_mocks['env1'].get_active_nodes.return_value = [
+            self.nodes['env1']['slave-01'], self.nodes['env1']['slave-02']
+        ]
 
         sh = shell.Shell(['time-sync', 'env1'])
         sh.execute()
 
         self.client_inst.get_env.assert_called_once_with('env1')
-        self.env_mocks['env1'].get_curr_time.assert_called_once_with(None)
-        self.env_mocks['env1'].sync_time.assert_called_once_with(None)
+        self.env_mocks['env1'].get_curr_time.assert_called_once_with(
+            ['slave-01', 'slave-02'])
+        self.env_mocks['env1'].sync_time.assert_called_once_with(
+            ['slave-01', 'slave-02'])
 
     def test_time_sync_node(self):
         self.env_mocks['env1'].get_curr_time.return_value = {
@@ -540,13 +546,17 @@ class TestShell(unittest.TestCase):
 
     def test_revert_resume_with_time_sync(self):
         self.env_mocks['env1'].get_curr_time.return_value = {
-            'node1': 'Thu May 12 18:26:34 MSK 2016',
-            'node2': 'Thu May 12 18:13:44 MSK 2016',
+            'slave-01': 'Thu May 12 18:26:34 MSK 2016',
+            'slave-02': 'Thu May 12 18:13:44 MSK 2016',
         }
         self.env_mocks['env1'].sync_time.return_value = {
-            'node1': 'Thu May 12 19:00:00 MSK 2016',
-            'node2': 'Thu May 12 19:00:00 MSK 2016',
+            'slave-01': 'Thu May 12 19:00:00 MSK 2016',
+            'slave-02': 'Thu May 12 19:00:00 MSK 2016',
         }
+
+        self.env_mocks['env1'].get_active_nodes.return_value = [
+            self.nodes['env1']['slave-01'], self.nodes['env1']['slave-02']
+        ]
 
         sh = shell.Shell(['revert-resume', '--timesync', 'env1', 'snap1'])
         sh.execute()
@@ -554,8 +564,10 @@ class TestShell(unittest.TestCase):
         self.client_inst.get_env.assert_called_once_with('env1')
         self.env_mocks['env1'].revert.assert_called_once_with(
             'snap1', flag=False, resume=True)
-        self.env_mocks['env1'].get_curr_time.assert_called_once_with(None)
-        self.env_mocks['env1'].sync_time.assert_called_once_with(None)
+        self.env_mocks['env1'].get_curr_time.assert_called_once_with(
+            ['slave-01', 'slave-02'])
+        self.env_mocks['env1'].sync_time.assert_called_once_with(
+            ['slave-01', 'slave-02'])
 
     def test_version(self):
         sh = shell.Shell(['version'])
