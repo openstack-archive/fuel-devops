@@ -334,7 +334,14 @@ class Shell(object):
 
     def do_time_sync(self):
         node_name = self.params.node_name
-        node_names = [node_name] if node_name else None
+        skip_sync = (self.params.skip_sync or '').split(",")
+
+        if node_name:
+            node_names = [node_name]
+        else:
+            node_names = [node.name for node in self.env.get_active_nodes()
+                          if node.name not in skip_sync]
+
         cur_time = self.env.get_curr_time(node_names)
         for name in sorted(cur_time):
             print('Current time on {0!r} = {1}'.format(name, cur_time[name]))
@@ -468,6 +475,12 @@ class Shell(object):
         node_name_parser.add_argument('--node-name', '-N',
                                       help='node name',
                                       default=None)
+
+        skip_sync_parser = argparse.ArgumentParser(add_help=False)
+        skip_sync_parser.add_argument('--skip-sync', '-K',
+                                          help='Comma-separated list of nodes '
+                                               'to skip time-sync',
+                                          default=None)
         timesync_parser = argparse.ArgumentParser(add_help=False)
         timesync_parser.add_argument('--timesync', dest='timesync',
                                      action='store_const', const=True,
@@ -678,14 +691,16 @@ class Shell(object):
                               description="Display allocated IPs for "
                               "environment slave nodes")
         subparsers.add_parser('time-sync',
-                              parents=[name_parser, node_name_parser],
+                              parents=[name_parser, node_name_parser,
+                                       skip_sync_parser],
                               help="Sync time on all env nodes",
                               description="Sync time on all active nodes "
                                           "of environment starting from "
                                           "admin")
         subparsers.add_parser('revert-resume',
                               parents=[name_parser, snapshot_name_parser,
-                                       node_name_parser, timesync_parser],
+                                       node_name_parser, timesync_parser,
+                                       skip_sync_parser],
                               help="Revert, resume, sync time on VMs",
                               description="Revert and resume VMs in selected"
                                           "environment, then optionally sync "
