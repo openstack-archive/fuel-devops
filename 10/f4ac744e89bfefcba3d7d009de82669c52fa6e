@@ -1,0 +1,10 @@
+Code-Review+1: Dmitry Tyzhnenko <t.dmitry@gmail.com>
+Code-Review+1: Sergii <sgudz@mirantis.com>
+Code-Review+2: Dennis Dmitriev <dis.xcom@gmail.com>
+Workflow+1: Dennis Dmitriev <dis.xcom@gmail.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Fri, 14 Sep 2018 11:02:06 +0000
+Reviewed-on: https://review.openstack.org/602579
+Project: openstack/fuel-devops
+Branch: refs/heads/master
