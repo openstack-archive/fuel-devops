@@ -1,0 +1,9 @@
+Code-Review+2: Dennis Dmitriev <dis.xcom@gmail.com>
+Code-Review+1: Filippo Inzaghi <zhao.daqing@99cloud.net>
+Workflow+1: Dennis Dmitriev <dis.xcom@gmail.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Tue, 25 Sep 2018 05:55:52 +0000
+Reviewed-on: https://review.openstack.org/573778
+Project: openstack/fuel-devops
+Branch: refs/heads/master
