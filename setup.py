@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
-
 import setuptools
 
 
@@ -51,9 +49,13 @@ setuptools.setup(
         'six>=1.9.0',
         'python-dateutil>=2.4.2',
         'lxml',
-        'enum34' if sys.version_info.major == 2 else '',
+        'enum34; python_version < "3.4"',
         'fasteners>=0.7.0',
-        'virtualbmc'
+        'virtualbmc',
+        'tenacity',
+        'logwrap',
+        'exec-helpers',
+        'threaded'
     ],
     tests_require=[
         'pytest>=2.7.1',

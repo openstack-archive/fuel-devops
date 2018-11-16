@@ -17,7 +17,7 @@ from __future__ import unicode_literals
 import inspect
 import warnings
 
-import six
+import exec_helpers
 
 
 class DevopsException(Exception):
@@ -35,36 +35,7 @@ class AuthenticationError(DevopsError):
     pass
 
 
-class DevopsCalledProcessError(DevopsError):
-    @staticmethod
-    def _makestr(data):
-        if isinstance(data, six.binary_type):
-            return data.decode('utf-8', errors='backslashreplace')
-        elif isinstance(data, six.text_type):
-            return data
-        else:
-            return repr(data)
-
-    def __init__(
-            self, command, returncode, expected=0, stdout=None, stderr=None):
-        self.returncode = returncode
-        self.expected = expected
-        self.cmd = command
-        self.stdout = stdout
-        self.stderr = stderr
-        message = (
-            "Command '{cmd}' returned exit code {code} while "
-            "expected {expected}".format(
-                cmd=self._makestr(self.cmd),
-                code=self.returncode,
-                expected=self.expected
-            ))
-        if self.stdout:
-            message += "\n\tSTDOUT:\n{}".format(self._makestr(self.stdout))
-        if self.stderr:
-            message += "\n\tSTDERR:\n{}".format(self._makestr(self.stderr))
-        super(DevopsCalledProcessError, self).__init__(message)
-
+class DevopsCalledProcessError(DevopsError, exec_helpers.CalledProcessError):
     @property
     def output(self):
         warnings.warn(

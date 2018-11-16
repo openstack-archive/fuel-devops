@@ -25,6 +25,7 @@ import xml.etree.ElementTree as ET
 
 from django.conf import settings
 from django.utils import functional
+import exec_helpers
 import libvirt
 import netaddr
 import paramiko
@@ -37,8 +38,6 @@ from devops.helpers import cloud_image_settings
 from devops.helpers import decorators
 from devops.helpers import helpers
 from devops.helpers import scancodes
-from devops.helpers import ssh_client
-from devops.helpers import subprocess_runner
 from devops import logger
 from devops.models import base
 from devops.models import driver
@@ -355,16 +354,16 @@ class LibvirtDriver(driver.Driver):
                 logger.debug("Initializing SSHClient for username:'{0}', host:"
                              "'{1}', port:'{2}'".format(username, host, port))
                 keys = [key]
-            return ssh_client.SSHClient(
+            return exec_helpers.SSHClient(
                 host=host,
                 port=port,
-                auth=ssh_client.SSHAuth(
+                auth=exec_helpers.SSHAuth(
                     username=username,
                     keys=keys))
         else:
             # Using SubprocessClient to execute shell commands on local host
             logger.debug("Initializing subprocess_runner for local host")
-            return subprocess_runner.Subprocess
+            return exec_helpers.Subprocess()
 
 
 class LibvirtL2NetworkDevice(network.L2NetworkDevice):
