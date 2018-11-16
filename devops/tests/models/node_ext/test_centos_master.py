@@ -82,8 +82,7 @@ class TestCentosMasterExt(LibvirtTestCase):
         self.wait_tcp_mock = self.patch(
             'devops.helpers.helpers.wait_tcp')
 
-    @mock.patch(
-        'devops.helpers.subprocess_runner.Subprocess', autospec=True)
+    @mock.patch('exec_helpers.Subprocess', autospec=True)
     @mock.patch('devops.driver.libvirt.libvirt_driver.uuid')
     @mock.patch('libvirt.virConnect.defineXML')
     @mock.patch.multiple(settings, CLOUD_IMAGE_DIR='/tmp/')
