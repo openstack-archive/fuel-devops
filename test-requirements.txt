@@ -1,3 +1,4 @@
+-r requirements.txt
 sphinx<=1.4.9
 mock>=1.2
 pytest>=2.7.1

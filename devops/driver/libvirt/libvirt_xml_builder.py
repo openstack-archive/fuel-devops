@@ -15,10 +15,14 @@ from __future__ import unicode_literals
 
 import hashlib
 
+import logwrap
 import six
 
-from devops.helpers.decorators import logwrap
 from devops.helpers import xmlgenerator
+from devops import logger
+
+
+log_call = logwrap.logwrap(log=logger)
 
 
 class LibvirtXMLBuilder(object):
@@ -36,7 +40,7 @@ class LibvirtXMLBuilder(object):
         return name
 
     @classmethod
-    @logwrap
+    @log_call
     def build_network_xml(cls, network_name, bridge_name, addresses=None,
                           forward=None, ip_network_address=None,
                           ip_network_prefixlen=None, stp=True,
@@ -92,7 +96,7 @@ class LibvirtXMLBuilder(object):
         return str(network_xml)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_volume_xml(cls, name, capacity, vol_format, backing_store_path,
                          backing_store_format):
         """Generate volume XML
@@ -112,7 +116,7 @@ class LibvirtXMLBuilder(object):
         return str(volume_xml)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_snapshot_xml(cls, name=None, description=None,
                            external=False, disk_only=False, memory_file='',
                            domain_isactive=False, local_disk_devices=None):
@@ -198,7 +202,7 @@ class LibvirtXMLBuilder(object):
                 device_xml.filterref(filter=interface_filter)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_network_filter(cls, name, uuid=None, rule=None):
         """Generate nwfilter XML for network
 
@@ -216,7 +220,7 @@ class LibvirtXMLBuilder(object):
         return str(filter_xml)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_interface_filter(cls, name, filterref, uuid=None, rule=None):
         """Generate nwfilter XML for interface
 
@@ -236,7 +240,7 @@ class LibvirtXMLBuilder(object):
         return str(filter_xml)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_node_xml(cls, name, hypervisor, use_host_cpu, vcpu, memory,
                        use_hugepages, hpet, os_type, architecture, boot,
                        reboot_timeout, bootmenu_timeout, emulator,
@@ -333,7 +337,7 @@ class LibvirtXMLBuilder(object):
         return str(node_xml)
 
     @classmethod
-    @logwrap
+    @log_call
     def build_iface_xml(cls, name, ip=None, prefix=None, vlanid=None):
         """Generate interface bridge XML
 

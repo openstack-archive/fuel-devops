@@ -12,9 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
-
 import setuptools
+
+
+with open("requirements.txt") as f:
+    required = f.read().splitlines()
 
 
 setuptools.setup(
@@ -39,22 +41,7 @@ setuptools.setup(
     ],
     data_files=[('bin', ['bin/dos_functions.sh'])],
     # Use magic in install_requires due to risk of old setuptools
-    install_requires=[
-        'keystoneauth1>=2.1.0',
-        'netaddr>=0.7.12,!=0.7.16',
-        'paramiko>=1.16.0,!=2.0.1',
-        'Django>=1.8,<1.9',
-        'jsonfield',
-        'PyYAML>=3.1.0',
-        'libvirt-python>=3.5.0,<4.1.0',
-        'tabulate',
-        'six>=1.9.0',
-        'python-dateutil>=2.4.2',
-        'lxml',
-        'enum34' if sys.version_info.major == 2 else '',
-        'fasteners>=0.7.0',
-        'virtualbmc'
-    ],
+    install_requires=required,
     tests_require=[
         'pytest>=2.7.1',
         'pytest-django >= 2.8.0',
