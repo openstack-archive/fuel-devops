@@ -32,7 +32,7 @@ class TestCloudImageSettings(unittest.TestCase):
 
     def setUp(self):
         self.subprocess_mock = self.patch(
-            'devops.helpers.subprocess_runner.Subprocess', autospec=True)
+            'exec_helpers.Subprocess', autospec=True)
 
         self.os_mock = self.patch(
             'devops.helpers.cloud_image_settings.os', autospec=True)

@@ -18,11 +18,11 @@
 
 import unittest
 
+import exec_helpers
 import mock
 
 from devops import error
 from devops.helpers import ntp
-from devops.helpers import ssh_client
 
 
 class NtpTestCase(unittest.TestCase):
@@ -34,18 +34,18 @@ class NtpTestCase(unittest.TestCase):
         return m
 
     def setUp(self):
-        self.remote_mock = mock.Mock(spec=ssh_client.SSHClient)
+        self.remote_mock = mock.Mock(spec=exec_helpers.SSHClient)
         self.remote_mock.__repr__ = mock.Mock(return_value='<SSHClient()>')
 
         self.wait_mock = self.patch('devops.helpers.helpers.wait')
 
     @staticmethod
     def make_exec_result(stdout, exit_code=0):
-        return {
-            'exit_code': exit_code,
-            'stderr': [],
-            'stdout': stdout.splitlines(True),
-        }
+        return exec_helpers.ExecResult(
+            cmd='n/a',
+            exit_code=exit_code,
+            stdout=stdout.splitlines(True)
+        )
 
 
 class TestNtpInitscript(NtpTestCase):
