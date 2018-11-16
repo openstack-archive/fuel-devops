@@ -19,6 +19,7 @@
 import socket
 import unittest
 
+import exec_helpers
 import mock
 
 # pylint: disable=redefined-builtin
@@ -27,9 +28,7 @@ from six.moves import xrange
 # pylint: enable=redefined-builtin
 
 from devops import error
-from devops.helpers import exec_result
 from devops.helpers import helpers
-from devops.helpers import ssh_client
 
 
 class TestHelpersHelpers(unittest.TestCase):
@@ -52,8 +51,8 @@ class TestHelpersHelpers(unittest.TestCase):
                 for port in xrange(32000, 32100)])
 
     @mock.patch(
-        'devops.helpers.subprocess_runner.Subprocess.execute',
-        return_value=exec_result.ExecResult(
+        'exec_helpers.Subprocess.execute',
+        return_value=exec_helpers.ExecResult(
             cmd="ping -c 1 -W '{timeout:d}' '{host:s}'".format(
                 host='127.0.0.1', timeout=1,
             ),
@@ -196,7 +195,7 @@ class TestHelpersHelpers(unittest.TestCase):
         helpers.wait_tcp(host, port, timeout)
         ping.assert_called_once_with(host=host, port=port)
 
-    @mock.patch('devops.helpers.ssh_client.SSHClient', autospec=True)
+    @mock.patch('exec_helpers.SSHClient', autospec=True)
     @mock.patch('devops.helpers.helpers.wait')
     def test_wait_ssh_cmd(self, wait, ssh):
         host = '127.0.0.1'
@@ -210,7 +209,7 @@ class TestHelpersHelpers(unittest.TestCase):
             host, port, check_cmd, username, password, timeout)
         ssh.assert_called_once_with(
             host=host, port=port,
-            auth=ssh_client.SSHAuth(username=username, password=password)
+            auth=exec_helpers.SSHAuth(username=username, password=password)
         )
         wait.assert_called_once()
         # Todo: cover ssh_client.execute
