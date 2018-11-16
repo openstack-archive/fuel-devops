@@ -18,13 +18,13 @@ import warnings
 from django.conf import settings
 from django.db import IntegrityError
 from django.db import models
+import exec_helpers
 import netaddr
 import paramiko
 
 from devops import error
 from devops.helpers import decorators
 from devops.helpers import network as network_helpers
-from devops.helpers import ssh_client
 from devops import logger
 from devops.models import base
 from devops.models import driver
@@ -417,9 +417,9 @@ class Environment(base.BaseModel):
 
         from devops import client
         env = client.DevopsClient().get_env(self.name)
-        return ssh_client.SSHClient(
+        return exec_helpers.SSHClient(
             ip,
-            auth=ssh_client.SSHAuth(
+            auth=exec_helpers.SSHAuth(
                 username=login, password=password,
                 keys=env.get_private_keys()))
 
@@ -435,9 +435,9 @@ class Environment(base.BaseModel):
             logger.warning('Loading of SSH key from file failed. Trying to use'
                            ' SSH agent ...')
             keys = paramiko.Agent().get_keys()
-        return ssh_client.SSHClient(
+        return exec_helpers.SSHClient(
             ip,
-            auth=ssh_client.SSHAuth(keys=keys))
+            auth=exec_helpers.SSHAuth(keys=keys))
 
     # LEGACY, TO REMOVE (for fuel-qa compatibility)
     def nodes(self):  # migrated from EnvironmentModel.nodes()

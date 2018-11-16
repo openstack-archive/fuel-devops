@@ -14,12 +14,13 @@
 
 import mock
 
+import exec_helpers
+
 from devops.client import environment
 from devops.client import nailgun
 from devops import error
 from devops.helpers import helpers
 from devops.helpers import ntp
-from devops.helpers import ssh_client
 from devops.tests.driver import driverless
 
 
@@ -41,7 +42,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         self.wait_tcp_mock = self.patch(
             'devops.helpers.helpers.wait_tcp', spec=helpers.wait_tcp)
         self.ssh_mock = self.patch(
-            'devops.helpers.ssh_client.SSHClient', spec=ssh_client.SSHClient)
+            'exec_helpers.SSHClient', spec=exec_helpers.SSHClient)
         self.nc_mock = self.patch(
             'devops.client.nailgun.NailgunClient', spec=nailgun.NailgunClient)
         self.nc_mock_inst = self.nc_mock.return_value
@@ -172,7 +173,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         assert remote is ssh
         self.ssh_mock.assert_called_once_with(
             '10.109.0.2',
-            auth=ssh_client.SSHAuth(username='root', password='r00tme'))
+            auth=exec_helpers.SSHAuth(username='root', password='r00tme'))
 
         self.wait_tcp_mock.assert_called_once_with(
             host='10.109.0.2', port=22, timeout=180,
@@ -224,7 +225,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
 
         self.ssh_mock.assert_called_once_with(
             '10.109.0.2',
-            auth=ssh_client.SSHAuth(username='root', password='r00tme'))
+            auth=exec_helpers.SSHAuth(username='root', password='r00tme'))
         assert ssh.isfile.call_count == 2
         ssh.isfile.assert_any_call('/root/.ssh/id_rsa')
         ssh.isfile.assert_any_call('/root/.ssh/bootstrap.rsa')
@@ -268,7 +269,7 @@ class TestDevopsEnvironment(driverless.DriverlessTestCase):
         assert remote is ssh
         self.ssh_mock.assert_called_with(
             '10.109.0.100',
-            auth=ssh_client.SSHAuth(
+            auth=exec_helpers.SSHAuth(
                 username='root',
                 password='r00tme',
                 keys=keys))
