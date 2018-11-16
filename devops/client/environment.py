@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import exec_helpers
 import paramiko
 # pylint: disable=redefined-builtin
 # noinspection PyUnresolvedReferences
@@ -22,7 +23,6 @@ from devops.client import nailgun
 from devops import error
 from devops.helpers import helpers
 from devops.helpers import ntp
-from devops.helpers import ssh_client
 from devops.helpers import templates
 from devops import settings
 
@@ -135,9 +135,9 @@ class DevopsEnvironment(object):
             host=admin_ip, port=admin_node.ssh_port, timeout=180,
             timeout_msg=("Admin node {ip} is not accessible by SSH."
                          "".format(ip=admin_ip)))
-        return ssh_client.SSHClient(
+        return exec_helpers.SSHClient(
             admin_ip,
-            auth=ssh_client.SSHAuth(username=login, password=password))
+            auth=exec_helpers.SSHAuth(username=login, password=password))
 
     def get_private_keys(self):
         ssh_keys = []
@@ -165,9 +165,9 @@ class DevopsEnvironment(object):
         helpers.wait_tcp(
             host=ip, port=node.ssh_port, timeout=180,
             timeout_msg="Node {ip} is not accessible by SSH.".format(ip=ip))
-        return ssh_client.SSHClient(
+        return exec_helpers.SSHClient(
             ip,
-            auth=ssh_client.SSHAuth(
+            auth=exec_helpers.SSHAuth(
                 username=login,
                 password=password,
                 keys=self.get_private_keys()))
@@ -191,9 +191,9 @@ class DevopsEnvironment(object):
                          login=settings.SSH_SLAVE_CREDENTIALS['login'],
                          password=settings.SSH_SLAVE_CREDENTIALS['password']):
         ip = self.find_node_ip(node_name)
-        return ssh_client.SSHClient(
+        return exec_helpers.SSHClient(
             ip,
-            auth=ssh_client.SSHAuth(
+            auth=exec_helpers.SSHAuth(
                 username=login,
                 password=password))
 

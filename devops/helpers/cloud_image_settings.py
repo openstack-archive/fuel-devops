@@ -14,9 +14,9 @@
 
 import os
 
-from devops.helpers.helpers import format_data
-from devops.helpers import subprocess_runner
+import exec_helpers
 
+from devops.helpers.helpers import format_data
 from devops import logger
 
 
@@ -92,4 +92,4 @@ def generate_cloud_image_settings(cloud_image_settings_path, meta_data_path,
                                user_data_path,
                                meta_data_path)
 
-    subprocess_runner.Subprocess.check_call(cmd)
+    exec_helpers.Subprocess().check_call(cmd)
