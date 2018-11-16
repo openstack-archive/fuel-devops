@@ -25,6 +25,7 @@ import warnings
 import xml.etree.ElementTree as ET
 
 from dateutil import tz
+import exec_helpers
 import six
 # pylint: disable=import-error
 # noinspection PyUnresolvedReferences
@@ -34,8 +35,6 @@ from six.moves import xmlrpc_client
 # pylint: enable=import-error
 
 from devops import error
-from devops.helpers import ssh_client
-from devops.helpers import subprocess_runner
 from devops import logger
 from devops import settings
 
@@ -53,7 +52,7 @@ def icmp_ping(host, timeout=1):
     returns True if host is pingable
     False - otherwise.
     """
-    result = subprocess_runner.Subprocess.execute(
+    result = exec_helpers.Subprocess().execute(
         "ping -c 1 -W '{timeout:d}' '{host:s}'".format(
             host=host, timeout=timeout))
     return result.exit_code == 0
@@ -238,10 +237,10 @@ def wait_ssh_cmd(
         username=settings.SSH_CREDENTIALS['login'],
         password=settings.SSH_CREDENTIALS['password'],
         timeout=0):
-    ssh = ssh_client.SSHClient(host=host, port=port,
-                               auth=ssh_client.SSHAuth(
-                                   username=username,
-                                   password=password))
+    ssh = exec_helpers.SSHClient(host=host, port=port,
+                                 auth=exec_helpers.SSHAuth(
+                                     username=username,
+                                     password=password))
     wait(lambda: not ssh.execute(check_cmd)['exit_code'],
          timeout=timeout)
 
