@@ -247,7 +247,7 @@ class DummyNode(node.Node):
         # list of disk devices
         print(self.disk_devices)
 
-        # list of network intefraces
+        # list of network interfaces
         print(self.interfaces)
 
         print('Do something before define')
