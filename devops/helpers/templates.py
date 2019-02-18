@@ -363,7 +363,7 @@ def create_address_pools(interfaceorder, networks_pools):
                     # Gateway will be used for configure OpenStack networks
                     'gateway': 1,
                     # l2_network_device will be used for configure local bridge
-                    'l2_network_device': 1,
+                    'default_l2_network_device': 1,
                 },
                 'ip_ranges': {
                     'default': [2, -2],

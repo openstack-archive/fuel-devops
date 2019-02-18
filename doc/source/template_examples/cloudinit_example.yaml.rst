@@ -31,7 +31,7 @@ example, change it for your purposes.
               vlan_start: 1210
               ip_reserved:
                 gateway: +1
-                l2_network_device: +1
+                default_l2_network_device: +1
               ip_ranges:
                 dhcp: [+128, -32]
                 rack-01: [+2, +127]
