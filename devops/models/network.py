@@ -59,7 +59,7 @@ class AddressPool(base.ParamedModel, base.BaseModel):
         params:
           ip_reserved:
             gateway: 1
-            l2_network_device: 1  # l2_network_device will get the
+            default_l2_network_device: 1  # l2_network_device will get the
                                   # IP address = 172.0.*.1  (net + 1)
           ip_ranges:
             default: [2, -2]     # admin IP range for 'default' nodegroup name
@@ -70,7 +70,7 @@ class AddressPool(base.ParamedModel, base.BaseModel):
           vlan_start: 100
           ip_reserved:
             gateway: 12.34.56.1
-            l2_network_device: 12.34.56.62 # l2_network_device will be assumed
+            default_l2_network_device: 12.34.56.62 # l2_network_device will be assumed
                                            # with this IP address.
                                            # It will be used for create libvirt
                                            # network if libvirt driver is used.
@@ -83,21 +83,21 @@ class AddressPool(base.ParamedModel, base.BaseModel):
         params:
           vlan_start: 101
           ip_reserved:
-            l2_network_device: 1  # 172.0.*.1
+            default_l2_network_device: 1  # 172.0.*.1
 
       management-pool01:
         net: 172.0.0.0/16:24
         params:
           vlan_start: 102
           ip_reserved:
-            l2_network_device: 1  # 172.0.*.1
+            default_l2_network_device: 1  # 172.0.*.1
 
       private-pool01:
         net: 192.168.0.0/24:26
         params:
           vlan_start: 103
           ip_reserved:
-            l2_network_device: 1  # 192.168.*.1
+            default_l2_network_device: 1  # 192.168.*.1
 
     """
     class Meta(object):

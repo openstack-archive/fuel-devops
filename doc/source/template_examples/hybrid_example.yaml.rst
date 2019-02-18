@@ -119,7 +119,7 @@ Additional details about this template:
               vlan_start: 0
               ip_reserved:
                 gateway: +1
-                l2_network_device: +1  # l2_network_device will get this IP address
+                default_l2_network_device: +1  # l2_network_device will get this IP address
               ip_ranges:
                 default: [+2, -2]     # admin IP range for 'default' nodegroup name
 
@@ -129,7 +129,7 @@ Additional details about this template:
               vlan_start: 200
               ip_reserved:
                 gateway: +1
-                l2_network_device: +1  # l2_network_device will get this IP address
+                default_l2_network_device: +1  # l2_network_device will get this IP address
               ip_ranges:
                 default: [+2, +127]  # public IP range for 'default' nodegroup name
                 floating: [+128, -2]

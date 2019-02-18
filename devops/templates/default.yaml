@@ -36,7 +36,7 @@ template:
             gateway: +1
 
             # Libvirt bridge will get this IP address
-            l2_network_device: +1
+            rack-01_l2_network_device: +1
 
           # IP ranges, reserved in the address pool.
           # - 'default' IP range stands for 'default' nodegroup in Fuel.
@@ -56,7 +56,7 @@ template:
           vlan_start: 0
           ip_reserved:
             gateway: +1
-            l2_network_device: +1  # l2_network_device will get this IP address
+            rack-01_l2_network_device: +1  # l2_network_device will get this IP address
           ip_ranges:
             default: [+2, +127]  # public IP range for 'default' nodegroup name
             floating: [+128, -2]

@@ -321,7 +321,10 @@ class Shell(object):
                             node.name,
                             node.get_ip_address_by_network_name(l2dev.name)))
             if ap_slave_ips:
-                slave_ips[l2dev.address_pool.name] = ap_slave_ips
+                if l2dev.address_pool.name in slave_ips:
+                    slave_ips[l2dev.address_pool.name] += ap_slave_ips
+                else:
+                    slave_ips[l2dev.address_pool.name] = ap_slave_ips
 
         if not slave_ips:
             sys.exit('No IPs were allocated for environment!')

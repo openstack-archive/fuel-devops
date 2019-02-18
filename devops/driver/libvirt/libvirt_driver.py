@@ -614,19 +614,29 @@ class LibvirtL2NetworkDevice(network.L2NetworkDevice):
         dhcp_range_end = None
         addresses = []
         if self.address_pool is not None:
-            # Reserved names 'l2_network_device' and 'dhcp'
-            ip_network_address = self.address_pool.get_ip('l2_network_device')
+            # Reserved name '<group.name>_l2_network_device'
+            ip_network_address = self.address_pool.get_ip(
+                    str(self.group.name) + '_l2_network_device')
 
-            # Workaround for fuel-qa compatibility, if 'l2_network_device'
-            # address was not reserved in the YAML template
+            # Backward compatibility with existing templates
+            # where only one l2_network_device per address pool is used
             if not ip_network_address:
-                ip_network_address = str(self.address_pool.ip_network[1])
+                ip_network_address = self.address_pool.get_ip(
+                    'l2_network_device')
 
             ip_network_prefixlen = str(self.address_pool.ip_network.prefixlen)
+            # Reserved name 'dhcp'
             dhcp_range_start = self.address_pool.ip_range_start('dhcp')
             dhcp_range_end = self.address_pool.ip_range_end('dhcp')
 
-            for interface in self.interfaces:
+            # Get all the interfaces that use the same self.address_pool
+            # to configure DHCP for all the nodes from all groups
+            l2devices = self.group.environment.get_env_l2_network_devices(
+                address_pool=self.address_pool)
+            ifaces = [iface for l2device in l2devices
+                      for iface in l2device.interfaces]
+
+            for interface in ifaces:
                 for address in interface.addresses:
                     ip_addr = netaddr.IPAddress(address.ip_address)
                     if ip_addr in self.address_pool.ip_network:
