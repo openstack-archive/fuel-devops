@@ -86,14 +86,16 @@ class Environment(DriverModel):
     def get_nodes(self, *args, **kwargs):
         return self.node_set.filter(*args, **kwargs)
 
-    def add_node(self, memory, name, vcpu=1, boot=None, role='fuel_slave'):
+    def add_node(self, memory, name, vcpu=1, boot=None, role='fuel_slave',
+                 enable_bootmenu=True):
         return Node.node_create(
             name=name,
             memory=memory,
             vcpu=vcpu,
             environment=self,
             role=role,
-            boot=boot)
+            boot=boot,
+            enable_bootmenu=enable_bootmenu)
 
     def add_empty_volume(self, node, name, capacity, device='disk',
                          bus='virtio', format='qcow2', multipath_count=0):
@@ -378,7 +380,9 @@ class Environment(DriverModel):
             role=config_node['role'],
             memory=int(node_params['memory']),
             vcpu=int(node_params['vcpu']),
-            boot=node_params['boot'])
+            boot=node_params['boot'],
+            enable_bootmenu=node_params.get('enable_bootmenu', True)
+        )
 
         self.create_interfaces(node_params['interfaces'], node)
 
