@@ -1,0 +1,9 @@
+Code-Review+1: Denis V. Meltsaykin <dmeltsaykin@mirantis.com>
+Code-Review+2: Dennis Dmitriev <dis.xcom@gmail.com>
+Workflow+1: Dennis Dmitriev <dis.xcom@gmail.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Fri, 29 Mar 2019 13:12:56 +0000
+Reviewed-on: https://review.openstack.org/648650
+Project: openstack/fuel-devops
+Branch: refs/heads/release/2.9
