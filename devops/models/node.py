@@ -49,6 +49,7 @@ class Node(DriverModel):
     os_type = choices('hvm')
     architecture = choices('x86_64', 'i686')
     boot = models.CharField(max_length=255, null=False, default=json.dumps([]))
+    enable_bootmenu = models.BooleanField(null=False, default=True)
     metadata = models.CharField(max_length=255, null=True)
     role = models.CharField(max_length=255, null=True)
     vcpu = models.PositiveSmallIntegerField(null=False, default=1)
@@ -98,8 +99,10 @@ class Node(DriverModel):
 
         :returns: Boolean
         """
-        return (self.is_admin and self.disk_devices.filter(bus='usb')) or \
-            (self.is_slave and not self.pxe_boot_interface_is_eth0)
+        return self.enable_bootmenu and (
+                (self.is_admin and self.disk_devices.filter(bus='usb')) or
+                (self.is_slave and not self.pxe_boot_interface_is_eth0)
+        )
 
     @property
     def on_second_admin_network(self):
@@ -516,7 +519,8 @@ class Node(DriverModel):
     @classmethod
     def node_create(cls, name, environment=None, role=None, vcpu=1,
                     memory=1024, has_vnc=True, metadata=None, hypervisor='kvm',
-                    os_type='hvm', architecture='x86_64', boot=None):
+                    os_type='hvm', architecture='x86_64', boot=None,
+                    enable_bootmenu=True):
         """Create node
 
         :rtype : Node
@@ -527,6 +531,7 @@ class Node(DriverModel):
             name=name, environment=environment,
             role=role, vcpu=vcpu, memory=memory,
             has_vnc=has_vnc, metadata=metadata, hypervisor=hypervisor,
-            os_type=os_type, architecture=architecture, boot=json.dumps(boot)
+            os_type=os_type, architecture=architecture, boot=json.dumps(boot),
+            enable_bootmenu=enable_bootmenu
         )
         return node

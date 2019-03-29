@@ -138,6 +138,8 @@ class Migration(SchemaMigration):
             'environment': ('django.db.models.fields.related.ForeignKey', [],
                             {'to': u"orm['devops.Environment']",
                              'null': 'True'}),
+            'enable_bootmenu': ('django.db.models.fields.BooleanField', [],
+                                {'default': 'True'}),
             'has_vnc': ('django.db.models.fields.BooleanField', [],
                         {'default': 'True'}),
             'hypervisor': ('django.db.models.fields.CharField', [],
