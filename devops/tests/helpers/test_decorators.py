@@ -76,8 +76,8 @@ class ThreadedTest(TestCase):
 
     def test_args(self):
         lock = RLock()
-        data = []
         global data
+        data = []
 
         @threaded(started=True)
         def func_test(add, rlock):
