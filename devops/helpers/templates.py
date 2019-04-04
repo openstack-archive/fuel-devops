@@ -146,7 +146,8 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
                         networks_multiplenetworks=None,
                         networks_nodegroups=None,
                         networks_bonding=None,
-                        networks_bondinginterfaces=None):
+                        networks_bondinginterfaces=None,
+                        enable_bootmenu=True):
 
     if networks_multiplenetworks:
         nodegroups_idx = 1 - int(slave_name[-2:]) % 2
@@ -186,6 +187,7 @@ def create_slave_config(slave_name, slave_role, slave_vcpu, slave_memory,
             'vcpu': slave_vcpu,
             'memory': slave_memory,
             'boot': ['network', 'hd'],
+            'enable_bootmenu': enable_bootmenu,
             'volumes': [
                 {
                     'name': 'system',
@@ -255,7 +257,8 @@ def create_devops_config(boot_from,
                          networks_interfaceorder,
                          networks_pools,
                          networks_forwarding,
-                         networks_dhcp):
+                         networks_dhcp,
+                         enable_bootmenu):
     """Creates devops config object
 
     This method is used for backward compatibility with old-style
@@ -309,7 +312,8 @@ def create_devops_config(boot_from,
             networks_multiplenetworks=networks_multiplenetworks,
             networks_nodegroups=networks_nodegroups,
             networks_bonding=networks_bonding,
-            networks_bondinginterfaces=networks_bondinginterfaces)
+            networks_bondinginterfaces=networks_bondinginterfaces,
+            enable_bootmenu=enable_bootmenu)
 
         config_nodes.append(slave_config)
 
@@ -323,7 +327,8 @@ def create_devops_config(boot_from,
             slave_memory=slave_memory,
             slave_volume_capacity=slave_volume_capacity,
             interfaceorder=['ironic'],
-            use_all_disks=None)
+            use_all_disks=None,
+            enable_bootmenu=enable_bootmenu)
 
         config_nodes.append(ironic_config)
 
