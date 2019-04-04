@@ -264,6 +264,7 @@ class Environment(DriverModel):
                 networks_pools=settings.POOLS,
                 networks_forwarding=settings.FORWARDING,
                 networks_dhcp=settings.DHCP,
+                enable_bootmenu=settings.ENABLE_BOOTMENU
             )
 
         environment = cls.create_environment(config)

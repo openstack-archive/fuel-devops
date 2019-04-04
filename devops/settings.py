@@ -298,3 +298,6 @@ REUSE_NETWORK_POOLS = os.environ.get("REUSE_NETWORK_POOLS", False)
 
 # Enable creating nwfilters for libvirt networks and interfaces
 ENABLE_LIBVIRT_NWFILTERS = get_var_as_bool('ENABLE_LIBVIRT_NWFILTERS', False)
+
+# Add "bootmenu" parameter to libvirt node xml
+ENABLE_BOOTMENU = get_var_as_bool("ENABLE_BOOTMENU", True)
